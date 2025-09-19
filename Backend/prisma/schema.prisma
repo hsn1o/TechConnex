@@ -34,6 +34,9 @@ model User {
   invoicesAsCustomer Invoice[]        @relation("InvoicesAsCustomer")
   Proposal           Proposal[]
   KycDocument        KycDocument[]
+  // Saved providers relations
+  savedProviders     SavedProvider[]  @relation("UserSavedProviders")
+  savedByUsers       SavedProvider[]  @relation("ProviderSavedByUsers")
 }
 
 model ProviderProfile {
@@ -325,6 +328,19 @@ model Message {
   replies       Message[] @relation("MessageReplies")
 
   @@map("messages")
+}
+
+// NEW: Saved providers/bookmarks
+model SavedProvider {
+  id          String @id @default(uuid()) @db.Uuid
+  user        User   @relation("UserSavedProviders", fields: [userId], references: [id], onDelete: Cascade)
+  userId      String @db.Uuid
+  provider    User   @relation("ProviderSavedByUsers", fields: [providerId], references: [id], onDelete: Cascade)
+  providerId  String @db.Uuid
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, providerId])
+  @@map("saved_providers")
 }
 
 // ── KYC enums

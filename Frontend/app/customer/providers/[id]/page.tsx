@@ -41,10 +41,46 @@ export default function ProviderProfilePage() {
     async function fetchProvider() {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:4000/api/${id}`);
+        const userJson = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+        const userId = (() => {
+          try {
+            return userJson ? JSON.parse(userJson)?.id || "" : "";
+          } catch {
+            return "";
+          }
+        })();
+        const res = await fetch(`http://localhost:4000/api/providers/${id}?userId=${encodeURIComponent(userId)}`);
         if (!res.ok) throw new Error("Failed to fetch provider");
-        const data = await res.json();
-        setProvider(data);
+        const apiData = await res.json();
+
+        const mapped = {
+          ...apiData,
+          isVerified: apiData.verified ?? apiData.isVerified ?? false,
+          isTopRated: apiData.topRated ?? apiData.isTopRated ?? false,
+          joinedDate: apiData.joinedDate ?? apiData.createdAt ?? new Date().toISOString(),
+          reviews: (apiData.reviews || []).map((r: any) => ({
+            id: r.id,
+            client: r.client ?? r.reviewer?.name ?? "Client",
+            avatar: r.avatar ?? r.reviewer?.providerProfile?.avatarUrl ?? "/placeholder.svg",
+            rating: r.rating,
+            project: r.project ?? "",
+            comment: r.comment ?? r.content ?? "",
+            date: r.date ?? r.createdAt,
+            helpful: r.helpful ?? 0,
+          })),
+          portfolio: (apiData.portfolio || []).map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            description: p.description,
+            technologies: p.technologies ?? p.techStack ?? [],
+            image: p.image ?? p.imageUrl ?? "/placeholder.svg",
+            completedAt: p.completedAt ?? p.date,
+            category: p.category ?? "",
+          })),
+        };
+
+        setProvider(mapped);
+        setIsSaved(Boolean(apiData.saved));
       } catch (err) {
         setProvider(null);
       } finally {
@@ -53,6 +89,41 @@ export default function ProviderProfilePage() {
     }
     if (id) fetchProvider();
   }, [id]);
+
+  const toggleSave = async () => {
+    try {
+      const userJson = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+      const userId = (() => {
+        try {
+          return userJson ? JSON.parse(userJson)?.id || "" : "";
+        } catch {
+          return "";
+        }
+      })();
+      if (!userId) {
+        alert("Please sign in to save providers.");
+        return;
+      }
+      if (!isSaved) {
+        const res = await fetch(`http://localhost:4000/api/providers/${id}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+        if (!res.ok) throw new Error("Failed to save provider");
+        setIsSaved(true);
+      } else {
+        const res = await fetch(`http://localhost:4000/api/providers/${id}/save?userId=${encodeURIComponent(userId)}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Failed to unsave provider");
+        setIsSaved(false);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Something went wrong. Please try again.");
+    }
+  };
 
   if (loading)
     return <div className="p-8 text-center">Loading provider...</div>;
@@ -145,7 +216,7 @@ export default function ProviderProfilePage() {
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
-                    onClick={() => setIsSaved(!isSaved)}
+                    onClick={toggleSave}
                     className={isSaved ? "text-red-600 border-red-600" : ""}
                   >
                     <Heart
@@ -244,21 +315,25 @@ export default function ProviderProfilePage() {
                     <div className="space-y-4">
                       {provider.skills?.map((skill: any) => (
                         <div
-                          key={skill.name}
+                          key={skill.name ?? skill}
                           className="flex items-center justify-between"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="font-medium">{skill.name}</span>
-                            <Badge
-                              className={getSkillLevelColor(skill.level)}
-                              variant="secondary"
-                            >
-                              {skill.level}
-                            </Badge>
+                            <span className="font-medium">{skill.name ?? skill}</span>
+                            {skill.level && (
+                              <Badge
+                                className={getSkillLevelColor(skill.level)}
+                                variant="secondary"
+                              >
+                                {skill.level}
+                              </Badge>
+                            )}
                           </div>
-                          <span className="text-sm text-gray-500">
-                            {skill.years} years
-                          </span>
+                          {skill.years && (
+                            <span className="text-sm text-gray-500">
+                              {skill.years} years
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -463,7 +538,7 @@ export default function ProviderProfilePage() {
                             src={review.avatar || "/placeholder.svg"}
                           />
                           <AvatarFallback>
-                            {review.client.charAt(0)}
+                            {review.client?.charAt(0) || "C"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">

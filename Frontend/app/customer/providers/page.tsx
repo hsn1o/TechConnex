@@ -26,20 +26,28 @@ import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
 
 type Provider = {
+  id: string;
   name: string;
-  email: string;
-  providerProfile: {
-    location: string;
-    bio: string;
-    hourlyRate: number | null;
-    availability: string | null;
-    rating: string;
-    totalReviews: number;
-    totalProjects: number;
-    responseTime: number;
-    skills: string[];
-  };
+  email?: string;
+  avatar?: string;
+  title?: string;
+  company?: string;
+  rating: number;
+  reviewCount: number;
+  completedJobs: number;
+  hourlyRate: number;
+  location: string;
+  bio?: string;
+  availability: string;
+  responseTime: string;
+  skills: string[];
+  specialties: string[];
+  languages?: string[];
+  verified?: boolean;
+  topRated?: boolean;
+  saved?: boolean;
 };
+
 export default function CustomerProvidersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -49,10 +57,45 @@ export default function CustomerProvidersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:4000/api/providers")
+    const userJson = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    const userId = (() => {
+      try {
+        return userJson ? JSON.parse(userJson)?.id || "" : "";
+      } catch {
+        return "";
+      }
+    })();
+    fetch(`http://localhost:4000/api/providers?userId=${encodeURIComponent(userId)}`)
       .then((res) => res.json())
       .then((data) => {
-        setProviders(data);
+        // Support both shapes: { providers, ... } and raw array
+        if (Array.isArray(data)) {
+          const mapped: Provider[] = data.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            email: p.email,
+            avatar: p.providerProfile?.avatarUrl || "/placeholder.svg",
+            title: p.title || "",
+            company: p.company || "",
+            rating: parseFloat(p.providerProfile?.rating ?? 0),
+            reviewCount: p.providerProfile?.totalReviews ?? 0,
+            completedJobs: p.providerProfile?.totalProjects ?? 0,
+            hourlyRate: p.providerProfile?.hourlyRate ?? 0,
+            location: p.providerProfile?.location || "",
+            bio: p.providerProfile?.bio || "",
+            availability: p.providerProfile?.availability || "Unknown",
+            responseTime: `${p.providerProfile?.responseTime ?? 0} hours`,
+            skills: p.providerProfile?.skills || [],
+            specialties: p.providerProfile?.specialties || [],
+            languages: p.providerProfile?.languages || [],
+            verified: p.providerProfile?.isVerified || false,
+            topRated: p.providerProfile?.isFeatured || false,
+            saved: false,
+          }));
+          setProviders(mapped);
+        } else {
+          setProviders(data.providers || []);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -61,28 +104,7 @@ export default function CustomerProvidersPage() {
       });
   }, []);
 
-  const mappedProviders = providers.map((p) => ({
-    id: p.id, // Use real unique id from backend
-    name: p.name,
-    title: "", // You can add logic to extract or default this
-    company: "",
-    rating: parseFloat(p.providerProfile.rating || "0"),
-    reviewCount: p.providerProfile.totalReviews,
-    completedJobs: p.providerProfile.totalProjects,
-    hourlyRate: p.providerProfile.hourlyRate || 0,
-    location: p.providerProfile.location,
-    avatar: "/placeholder.svg",
-    skills: p.providerProfile.skills,
-    specialties: [], // Optional - if your backend includes specialties, map them here
-    description: p.providerProfile.bio,
-    availability: p.providerProfile.availability || "Unknown",
-    responseTime: `${p.providerProfile.responseTime} hours`,
-    languages: [],
-    verified: true,
-    topRated: false,
-  }));
-
-  const filteredProviders = mappedProviders.filter((provider) => {
+  const filteredProviders = providers.filter((provider) => {
     const matchesSearch =
       provider.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       provider.skills.some((skill) =>
@@ -124,10 +146,12 @@ export default function CustomerProvidersPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline">
-              <Heart className="w-4 h-4 mr-2" />
-              Saved Providers
-            </Button>
+            <Link href="/customer/providers/saved">
+              <Button variant="outline">
+                <Heart className="w-4 h-4 mr-2" />
+                Saved Providers
+              </Button>
+            </Link>
             <Link href="/customer/projects/new">
               <Button>
                 <Briefcase className="w-4 h-4 mr-2" />
@@ -280,7 +304,7 @@ export default function CustomerProvidersPage() {
                   </div>
 
                   <p className="text-sm text-gray-600 line-clamp-2">
-                    {provider.description}
+                    {provider.bio}
                   </p>
 
                   <div className="flex flex-wrap gap-1">
