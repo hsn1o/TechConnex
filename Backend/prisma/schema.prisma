@@ -10,18 +10,22 @@ datasource db {
 }
 
 model User {
-  id                 String           @id @default(uuid()) @db.Uuid
-  email              String           @unique
-  password           String // 🔐 new
-  role               Role
-  kycStatus          KycStatus        @default(pending_verification)
-  name               String
-  phone              String? // ☎️ optional
-  isVerified         Boolean          @default(false)
-  createdAt          DateTime         @default(now())
-  providerProfile    ProviderProfile?
-  customerProfile    CustomerProfile?
-  resume             Resume? // 📄 1-to-1
+  id         String    @id @default(uuid()) @db.Uuid
+  email      String    @unique
+  password   String // 🔐 new
+  role       Role[]
+  name       String
+  phone      String? // ☎️ optional
+  kycStatus  KycStatus @default(pending_verification)
+  isVerified Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  //Profiles
+  providerProfile ProviderProfile?
+  customerProfile CustomerProfile?
+  resume          Resume? // 📄 1-to-1
+
+  //Relations
   requests           ServiceRequest[] @relation("CustomerRequests")
   projectsAsCustomer Project[]        @relation("CustomerProjects")
   projectsAsProvider Project[]        @relation("ProviderProjects")
@@ -37,87 +41,140 @@ model User {
   // Saved providers relations
   savedProviders     SavedProvider[]  @relation("UserSavedProviders")
   savedByUsers       SavedProvider[]  @relation("ProviderSavedByUsers")
+
+  //Notifications
+  notifications Notification[]
+
+  Dispute Dispute[]
+
+  ReviewReply ReviewReply[]
+
+  ReviewVote ReviewVote[]
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid // ✅ fix
+  type      String // proposal, payment, message, system
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model ProviderProfile {
-  id                       String             @id @default(uuid()) @db.Uuid
-  user                     User               @relation(fields: [userId], references: [id])
-  userId                   String             @unique @db.Uuid
-  location                 String?
-  bio                      String?
-  hourlyRate               Float?
-  availability             String?            @db.VarChar(50)
-  portfolioUrls            String[]
-  profileVideoUrl          String? // 🆕 Profile video
-  certifications           Certification[] // ➕ relation
-  languages                String[] // 🆕 Spoken languages
-  rating                   Decimal            @default(0.00) @db.Decimal(3, 2)
-  totalReviews             Int                @default(0) @map("total_reviews")
-  totalProjects            Int                @default(0) @map("total_projects")
-  totalEarnings            Decimal            @default(0.00) @map("total_earnings") @db.Decimal(15, 2)
-  viewsCount               Int                @default(0) @map("views_count")
-  successRate              Decimal            @default(0.00) @map("success_rate") @db.Decimal(5, 2)
-  responseTime             Int                @default(0) @map("response_time")
-  isFeatured               Boolean            @default(false) @map("is_featured")
-  isVerified               Boolean            @default(false) @map("is_verified")
+  id     String @id @default(uuid()) @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique @db.Uuid
+
+  // Profile
+  bio             String?
+  location        String?
+  hourlyRate      Float?
+  availability    String?  @db.VarChar(50)
+  languages       String[] // 🆕 Spoken languages
+  website         String? // 🆕 Personal or company site
+  profileVideoUrl String? // 🆕 Profile video
+
+  //Performance Metrics
+  rating        Decimal @default(0.00) @db.Decimal(3, 2)
+  totalReviews  Int     @default(0) @map("total_reviews")
+  totalProjects Int     @default(0) @map("total_projects")
+  totalEarnings Decimal @default(0.00) @map("total_earnings") @db.Decimal(15, 2)
+  viewsCount    Int     @default(0) @map("views_count")
+  successRate   Decimal @default(0.00) @map("success_rate") @db.Decimal(5, 2)
+  responseTime  Int     @default(0) @map("response_time")
+  isFeatured    Boolean @default(false) @map("is_featured")
+  isVerified    Boolean @default(false) @map("is_verified")
+  completion    Int? // 🆕 Completion %
+
+  //Skills & Work pref
   skills                   String[]
-  yearsExperience          Int?
-  website                  String? // 🆕 Personal or company site
-  completion               Int? // 🆕 Completion %
-  performance              PerformanceStat? // ➕ relation
+  certifications           Certification[] // ➕ relation
   portfolios               ProjectPortfolio[] // ➕ relation
+  performance              PerformanceStat? // ➕ relation
+  yearsExperience          Int?
   minimumProjectBudget     Decimal?           @map("minimum_project_budget") @db.Decimal(10, 2)
   maximumProjectBudget     Decimal?           @map("maximum_project_budget") @db.Decimal(10, 2)
   preferredProjectDuration String?            @map("preferred_project_duration") @db.VarChar(50)
   workPreference           String             @default("remote") @map("work_preference") @db.VarChar(50)
   teamSize                 Int                @default(1) @map("team_size")
-  companySize              String?            @map("company_size") @db.VarChar(50)
-  createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("users")
 }
 
 model CustomerProfile {
-  id              String   @id @default(uuid()) @db.Uuid
-  user            User     @relation(fields: [userId], references: [id])
-  userId          String   @unique @db.Uuid
-  bio             String?
-  location        String?
+  id     String @id @default(uuid()) @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique @db.Uuid
+
+  //Identity
+  description String?
+  industry    String?
+  location    String?
+  website     String? // 🆕 Personal or company site
+  logoUrl     String?  @map("logo_url")
+  socialLinks Json? // LinkedIn, Twitter, etc.
+  languages   String[] // 🆕 Spoken languages
+
+  // Business Profile
   companySize     String?  @map("company_size") @db.VarChar(50)
-  description     String?
-  website         String? // 🆕 Personal or company site
-  logoUrl         String?  @map("logo_url")
-  establishedYear Int?     @map("established_year")
   employeeCount   Int?     @map("employee_count")
-  languages       String[] // 🆕 Spoken languages
-  completion      Int? // 🆕 Completion %
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  establishedYear Int?     @map("established_year")
+  annualRevenue   Decimal? @db.Decimal(12, 2)
+  fundingStage    String? // e.g. Bootstrap, Seed, Series A
+
+  // Hiring Preferences
+  preferredContractTypes String[]
+  averageBudgetRange     String?
+  remotePolicy           String? // On-site, Remote, Hybrid
+  hiringFrequency        String? // occasional, regular, enterprise
+  categoriesHiringFor    String[]
+
+  // Platform Engagement
+  completion     Int?
+  rating         Float?    @default(0.0)
+  reviewCount    Int?      @default(0)
+  totalSpend     Decimal?  @db.Decimal(12, 2)
+  projectsPosted Int?      @default(0)
+  lastActiveAt   DateTime?
+
+  // Branding & Culture
+  mission      String?
+  values       String[]
+  benefits     Json?
+  mediaGallery String[]
+
+  // Trust & Compliance
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("companies")
 }
 
 model Certification {
-  id           String          @id @default(uuid()) @db.Uuid
-  profile      ProviderProfile @relation(fields: [profileId], references: [id])
-  profileId    String          @db.Uuid
-  name         String
-  issuer       String
-  issuedDate   DateTime
-  verified     Boolean         @default(false)
+  id         String          @id @default(uuid()) @db.Uuid
+  profile    ProviderProfile @relation(fields: [profileId], references: [id])
+  profileId  String          @db.Uuid
+  name       String
+  issuer     String
+  issuedDate DateTime
+  verified   Boolean         @default(false)
 
   // NEW
   serialNumber String?
   sourceUrl    String?
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now()) @updatedAt  // <-- add @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt // <-- add @default(now())
 
   @@index([issuer])
   @@index([serialNumber])
 }
-
 
 model PerformanceStat {
   id             String          @id @default(uuid()) @db.Uuid
@@ -145,8 +202,9 @@ model ProjectPortfolio {
 
 model Review {
   id                  String   @id @default(uuid()) @db.Uuid
+  // Many reviews can belong to one project
   project             Project  @relation(fields: [projectId], references: [id])
-  projectId           String   @unique @db.Uuid // 1 review per project
+  projectId           String   @db.Uuid
   reviewer            User     @relation("Reviewer", fields: [reviewerId], references: [id])
   reviewerId          String   @db.Uuid
   recipient           User     @relation("Recipient", fields: [recipientId], references: [id])
@@ -159,6 +217,32 @@ model Review {
   qualityRating       Int?     @map("quality_rating")
   timelinessRating    Int?     @map("timeliness_rating")
   createdAt           DateTime @default(now())
+
+  ReviewReply ReviewReply[]
+
+  ReviewVote ReviewVote[]
+}
+
+model ReviewReply {
+  id        String   @id @default(uuid()) @db.Uuid
+  review    Review   @relation(fields: [reviewId], references: [id])
+  reviewId  String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.Uuid
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model ReviewVote {
+  id        String   @id @default(uuid()) @db.Uuid
+  review    Review   @relation(fields: [reviewId], references: [id])
+  reviewId  String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.Uuid
+  value     Int      @default(1) // could be +1 (helpful), -1 (not helpful)
+  createdAt DateTime @default(now())
+
+  @@unique([reviewId, userId]) // prevent double voting
 }
 
 model Resume {
@@ -184,13 +268,13 @@ model ServiceRequest {
   priority       String?
   ndaSigned      Boolean         @default(false) // ✅ Make sure this is added
   status         RequestStatus   @default(OPEN)
-  createdAt      DateTime        @default(now())
-  matches        AiMatch[]
+  projectId      String?         @db.Uuid
   project        Project?        @relation(fields: [projectId], references: [id])
   proposals      Proposal[] // 👈 Add this
-  projectId      String?         @db.Uuid
+  matches        AiMatch[]
   requirements   Json? // or String?
   deliverables   Json? // or String?
+  createdAt      DateTime        @default(now())
 }
 
 model Proposal {
@@ -203,8 +287,8 @@ model Proposal {
   deliveryTime   Int // in days
   coverLetter    String
   attachmentUrl  String? // e.g., PDF proposal or portfolio
-  createdAt      DateTime       @default(now())
   milestones     Milestone[] // Optional: Link to separate milestone model
+  createdAt      DateTime       @default(now())
 }
 
 model AiMatch {
@@ -235,7 +319,7 @@ model Project {
   ndaSigned      Boolean          @default(false)
   milestones     Milestone[]
   payments       Payment[]
-  review         Review? // 1-to-1
+  reviews        Review[] // 1-to-1
   messages       Message[]
   invoices       Invoice[]
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -243,63 +327,87 @@ model Project {
   ServiceRequest ServiceRequest[]
   requirements   String?
   deliverables   String?
+
+  Dispute Dispute[]
 }
 
 model Invoice {
-  id             String    @id @default(uuid()) @db.Uuid
-  invoiceNumber  String    @unique @map("invoice_number") @db.VarChar(100)
-  projectId      String?   @map("project_id") @db.Uuid
-  providerId     String    @map("provider_id") @db.Uuid
-  customerId     String    @map("customer_id") @db.Uuid
-  status         String    @default("draft") @db.VarChar(50)
-  subtotal       Decimal   @db.Decimal(10, 2)
-  taxAmount      Decimal   @default(0.00) @map("tax_amount") @db.Decimal(10, 2)
-  discountAmount Decimal   @default(0.00) @map("discount_amount") @db.Decimal(10, 2)
-  totalAmount    Decimal   @map("total_amount") @db.Decimal(10, 2)
-  currency       String    @default("MYR") @db.VarChar(3)
-  issueDate      DateTime  @map("issue_date") @db.Date
-  dueDate        DateTime  @map("due_date") @db.Date
-  paidDate       DateTime? @map("paid_date") @db.Date
-  notes          String?
-  terms          String?
-  invoiceData    Json?     @map("invoice_data")
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String  @id @default(uuid()) @db.Uuid
+  invoiceNumber String  @unique @map("invoice_number") @db.VarChar(100)
+  customer      User    @relation("InvoicesAsCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  customerId    String  @map("customer_id") @db.Uuid
+  providerId    String  @map("provider_id") @db.Uuid
+  projectId     String? @map("project_id") @db.Uuid
+  paymentId     String? @db.Uuid
+
+  subtotal       Decimal @db.Decimal(10, 2)
+  taxAmount      Decimal @default(0.00) @map("tax_amount") @db.Decimal(10, 2)
+  discountAmount Decimal @default(0.00) @map("discount_amount") @db.Decimal(10, 2)
+  platformFee    Decimal @default(0.00) @db.Decimal(10, 2) // 👈 new
+  totalAmount    Decimal @map("total_amount") @db.Decimal(10, 2)
+  currency       String  @default("MYR") @db.VarChar(3)
+
+  status    String    @default("draft") @db.VarChar(50)
+  issueDate DateTime  @map("issue_date") @db.Date
+  dueDate   DateTime  @map("due_date") @db.Date
+  paidDate  DateTime? @map("paid_date") @db.Date
+
+  notes       String?
+  terms       String?
+  invoiceData Json?   @map("invoice_data")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   project  Project?  @relation(fields: [projectId], references: [id])
   provider User      @relation("InvoicesAsProvider", fields: [providerId], references: [id], onDelete: Cascade)
-  customer User      @relation("InvoicesAsCustomer", fields: [customerId], references: [id], onDelete: Cascade)
   payments Payment[]
 
   @@map("invoices")
 }
 
 model Milestone {
-  id          String          @id @default(uuid()) @db.Uuid
-  project     Project         @relation(fields: [projectId], references: [id])
-  projectId   String          @db.Uuid
-  title       String
-  description String
-  dueDate     DateTime
-  amount      Float
-  status      MilestoneStatus @default(PENDING)
-  payments    Payment[]
-  Proposal    Proposal?       @relation(fields: [proposalId], references: [id])
-  proposalId  String?         @db.Uuid
+  id           String          @id @default(uuid()) @db.Uuid
+  project      Project         @relation(fields: [projectId], references: [id])
+  projectId    String          @db.Uuid
+  title        String
+  description  String
+  dueDate      DateTime
+  amount       Float
+  status       MilestoneStatus @default(PENDING)
+  payments     Payment[]
+  Proposal     Proposal?       @relation(fields: [proposalId], references: [id])
+  proposalId   String?         @db.Uuid
+  deliverables Json? // files, links, docs submitted by provider
+  approvedAt   DateTime?
+  approvedBy   String?         @db.Uuid // customer who approved
+  submittedAt  DateTime?
 }
 
 model Payment {
-  id          String        @id @default(uuid()) @db.Uuid
-  project     Project       @relation(fields: [projectId], references: [id])
-  projectId   String        @db.Uuid
-  milestone   Milestone?    @relation(fields: [milestoneId], references: [id])
-  milestoneId String?       @db.Uuid
-  amount      Float
-  method      PaymentMethod
-  status      PaymentStatus
-  Invoice     Invoice?      @relation(fields: [invoiceId], references: [id])
-  invoiceId   String?       @db.Uuid
+  id          String     @id @default(uuid()) @db.Uuid
+  project     Project    @relation(fields: [projectId], references: [id])
+  projectId   String     @db.Uuid
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id])
+  milestoneId String?    @db.Uuid
+
+  // Stripe info
+  stripePaymentIntentId String? // ID from Stripe
+  stripeTransferId      String? // For payout to provider
+  stripeRefundId        String? // If refunded/dispute
+
+  amount    Float
+  currency  String        @default("MYR") @db.VarChar(3)
+  method    PaymentMethod
+  status    PaymentStatus
+  Invoice   Invoice?      @relation(fields: [invoiceId], references: [id])
+  invoiceId String?       @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Dispute Dispute[]
 }
 
 model Message {
@@ -332,12 +440,12 @@ model Message {
 
 // NEW: Saved providers/bookmarks
 model SavedProvider {
-  id          String @id @default(uuid()) @db.Uuid
-  user        User   @relation("UserSavedProviders", fields: [userId], references: [id], onDelete: Cascade)
-  userId      String @db.Uuid
-  provider    User   @relation("ProviderSavedByUsers", fields: [providerId], references: [id], onDelete: Cascade)
-  providerId  String @db.Uuid
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid()) @db.Uuid
+  user       User     @relation("UserSavedProviders", fields: [userId], references: [id], onDelete: Cascade)
+  userId     String   @db.Uuid
+  provider   User     @relation("ProviderSavedByUsers", fields: [providerId], references: [id], onDelete: Cascade)
+  providerId String   @db.Uuid
+  createdAt  DateTime @default(now())
 
   @@unique([userId, providerId])
   @@map("saved_providers")
@@ -374,6 +482,28 @@ model KycDocument {
 
   @@index([userId])
   @@index([type])
+}
+
+model Dispute {
+  id         String        @id @default(uuid()) @db.Uuid
+  payment    Payment       @relation(fields: [paymentId], references: [id])
+  paymentId  String        @db.Uuid
+  project    Project       @relation(fields: [projectId], references: [id])
+  projectId  String        @db.Uuid // ✅ fix
+  raisedBy   User          @relation(fields: [raisedById], references: [id])
+  raisedById String        @db.Uuid // ✅ fix
+  reason     String // e.g. "Missed deadline", "Low quality", "Payment not released"
+  status     DisputeStatus @default(OPEN)
+  resolution String? // decision or admin notes
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+enum DisputeStatus {
+  OPEN // User raised dispute
+  UNDER_REVIEW // Admin/platform investigating
+  RESOLVED // Agreement reached
+  REJECTED // Dispute not accepted
 }
 
 enum Role {
@@ -415,9 +545,13 @@ enum ProjectStatus {
 }
 
 enum MilestoneStatus {
-  PENDING
-  COMPLETED
-  RELEASED
+  PENDING // Created, not funded yet
+  FUNDED // Escrowed
+  SUBMITTED // Work submitted by provider
+  APPROVED // Accepted by customer
+  REJECTED // Customer sent back
+  DISPUTED // Dispute raised
+  RELEASED // Payment released to provider
 }
 
 enum PaymentMethod {
