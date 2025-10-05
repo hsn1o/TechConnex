@@ -1,16 +1,45 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("express").json;
-const routes = require("./routes");
-require("dotenv").config();
+import "dotenv/config.js";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import routes from "./routes/index.js";
+
 const app = express();
 
+// Security middlewares
+app.use(helmet());
 
-//cors
+// Enable CORS for all routes
 app.use(cors());
-//for accepting past form data
-app.use(bodyParser());
-//register routes
-app.use(routes);
 
-module.exports = app;
+// Parse incoming JSON
+app.use(express.json({ limit: "1mb" }));
+
+// Log HTTP requests in development
+app.use(morgan("dev"));
+
+// Register routes
+app.use("/api", routes);
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ ok: true, message: "API is healthy" });
+});
+
+// 404 fallback
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
+});
+
+// Global error handler (important for catching thrown errors)
+app.use((err, req, res, next) => {
+  console.error("💥 Global error:", err);
+  const status = err.status || 500;
+  res.status(status).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});
+
+export default app;

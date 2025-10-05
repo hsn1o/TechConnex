@@ -65,7 +65,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
       const user = localStorage.getItem("user");
       const token = localStorage.getItem("token");
 
-      if (!user || !token) {
+      if (user || token) {
         // User is not authenticated, redirect to login
         router.push("/auth/login");
         return;
