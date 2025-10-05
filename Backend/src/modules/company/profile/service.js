@@ -1,25 +1,265 @@
-// src/modules/company/profile/service.js
-import { UpsertCustomerProfileSchema } from "./dto.js";
-import {
-  findCustomerProfileByUserId,
-  upsertCustomerProfile,
-} from "./model.js";
+import CompanyProfileModel from "./model.js";
+import { CompanyProfileDto, CompanyProfileUpdateDto } from "./dto.js";
 
-export async function getMyProfile(userId) {
-  return findCustomerProfileByUserId(userId);
-}
+class CompanyProfileService {
+  // Get company profile by user ID
+  static async getProfile(userId) {
+    try {
+      const profile = await CompanyProfileModel.getProfileByUserId(userId);
+      
+      if (!profile) {
+        throw new Error("Company profile not found");
+      }
 
-export async function getProfileByUserId(userId) {
-  return findCustomerProfileByUserId(userId);
-}
-
-export async function upsertMyProfile(userId, body) {
-  const parsed = UpsertCustomerProfileSchema.safeParse(body);
-  if (!parsed.success) {
-    const error = new Error("Validation failed");
-    error.status = 400;
-    error.issues = parsed.error.flatten();
-    throw error;
+      // Calculate completion percentage
+      const completion = await CompanyProfileModel.getProfileCompletion(userId);
+      
+      return {
+        ...profile,
+        completion,
+      };
+    } catch (error) {
+      throw new Error(`Failed to get company profile: ${error.message}`);
+    }
   }
-  return upsertCustomerProfile(userId, parsed.data);
+
+  // Create new company profile
+  static async createProfile(userId, profileData) {
+    try {
+      // Validate input data
+      const dto = new CompanyProfileDto(profileData);
+      dto.validate();
+
+      // Check if profile already exists
+      const exists = await CompanyProfileModel.profileExists(userId);
+      if (exists) {
+        throw new Error("Company profile already exists for this user");
+      }
+
+      // Create profile
+      const profile = await CompanyProfileModel.createProfile(userId, dto.toUpdateData());
+
+      // Update completion percentage
+      const completion = await CompanyProfileModel.updateProfileCompletion(userId);
+
+      return {
+        ...profile,
+        completion,
+      };
+    } catch (error) {
+      throw new Error(`Failed to create company profile: ${error.message}`);
+    }
+  }
+
+  // Update company profile
+  static async updateProfile(userId, updateData) {
+    try {
+      // Validate input data
+      const dto = new CompanyProfileUpdateDto(updateData);
+      dto.validate();
+
+      // Check if profile exists
+      const exists = await CompanyProfileModel.profileExists(userId);
+      if (!exists) {
+        throw new Error("Company profile not found");
+      }
+
+      // Update profile
+      const profile = await CompanyProfileModel.updateProfile(userId, dto.toUpdateData());
+
+      // Update completion percentage
+      const completion = await CompanyProfileModel.updateProfileCompletion(userId);
+
+      return {
+        ...profile,
+        completion,
+      };
+    } catch (error) {
+      throw new Error(`Failed to update company profile: ${error.message}`);
+    }
+  }
+
+  // Create or update company profile (upsert)
+  static async upsertProfile(userId, profileData) {
+    try {
+      // Check if profile exists
+      const exists = await CompanyProfileModel.profileExists(userId);
+      
+      if (exists) {
+        return await this.updateProfile(userId, profileData);
+      } else {
+        return await this.createProfile(userId, profileData);
+      }
+    } catch (error) {
+      throw new Error(`Failed to upsert company profile: ${error.message}`);
+    }
+  }
+
+  // Get profile completion percentage
+  static async getProfileCompletion(userId) {
+    try {
+      const completion = await CompanyProfileModel.getProfileCompletion(userId);
+      return { completion };
+    } catch (error) {
+      throw new Error(`Failed to get profile completion: ${error.message}`);
+    }
+  }
+
+  // Get all company profiles (for admin or public listing)
+  static async getAllProfiles(filters = {}) {
+    try {
+      const profiles = await CompanyProfileModel.getAllProfiles(filters);
+      
+      // Add completion percentage to each profile
+      const profilesWithCompletion = await Promise.all(
+        profiles.map(async (profile) => {
+          const completion = await CompanyProfileModel.getProfileCompletion(profile.userId);
+          return {
+            ...profile,
+            completion,
+          };
+        })
+      );
+
+      return profilesWithCompletion;
+    } catch (error) {
+      throw new Error(`Failed to get all company profiles: ${error.message}`);
+    }
+  }
+
+  // Search company profiles
+  static async searchProfiles(searchTerm, filters = {}) {
+    try {
+      if (!searchTerm || searchTerm.trim().length < 2) {
+        throw new Error("Search term must be at least 2 characters long");
+      }
+
+      const profiles = await CompanyProfileModel.searchProfiles(searchTerm.trim(), filters);
+      
+      // Add completion percentage to each profile
+      const profilesWithCompletion = await Promise.all(
+        profiles.map(async (profile) => {
+          const completion = await CompanyProfileModel.getProfileCompletion(profile.userId);
+          return {
+            ...profile,
+            completion,
+          };
+        })
+      );
+
+      return profilesWithCompletion;
+    } catch (error) {
+      throw new Error(`Failed to search company profiles: ${error.message}`);
+    }
+  }
+
+  // Get profile statistics
+  static async getProfileStats(userId) {
+    try {
+      const profile = await CompanyProfileModel.getProfileByUserId(userId);
+      
+      if (!profile) {
+        throw new Error("Company profile not found");
+      }
+
+      // Get additional stats from related models
+      const stats = await CompanyProfileModel.prisma.$transaction(async (tx) => {
+        const projectsPosted = await tx.serviceRequest.count({
+          where: { customerId: userId },
+        });
+
+        const activeProjects = await tx.project.count({
+          where: {
+            customerId: userId,
+            status: 'IN_PROGRESS',
+          },
+        });
+
+        const completedProjects = await tx.project.count({
+          where: {
+            customerId: userId,
+            status: 'COMPLETED',
+          },
+        });
+
+        const totalSpend = await tx.payment.aggregate({
+          where: {
+            project: {
+              customerId: userId,
+            },
+            status: 'RELEASED',
+          },
+          _sum: {
+            amount: true,
+          },
+        });
+
+        return {
+          projectsPosted,
+          activeProjects,
+          completedProjects,
+          totalSpend: totalSpend._sum.amount || 0,
+        };
+      });
+
+      return {
+        ...profile,
+        stats,
+      };
+    } catch (error) {
+      throw new Error(`Failed to get profile statistics: ${error.message}`);
+    }
+  }
+
+  // Validate profile data before saving
+  static validateProfileData(profileData, isUpdate = false) {
+    try {
+      if (isUpdate) {
+        const dto = new CompanyProfileUpdateDto(profileData);
+        dto.validate();
+        return dto.toUpdateData();
+      } else {
+        const dto = new CompanyProfileDto(profileData);
+        dto.validate();
+        return dto.toUpdateData();
+      }
+    } catch (error) {
+      throw new Error(`Profile validation failed: ${error.message}`);
+    }
+  }
+
+  // Get profile by ID (for public viewing)
+  static async getPublicProfile(profileId) {
+    try {
+      const profile = await CompanyProfileModel.prisma.customerProfile.findUnique({
+        where: { id: profileId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              isVerified: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+      if (!profile) {
+        throw new Error("Company profile not found");
+      }
+
+      // Calculate completion percentage
+      const completion = await CompanyProfileModel.getProfileCompletion(profile.userId);
+
+      return {
+        ...profile,
+        completion,
+      };
+    } catch (error) {
+      throw new Error(`Failed to get public profile: ${error.message}`);
+    }
+  }
 }
+
+export default CompanyProfileService;

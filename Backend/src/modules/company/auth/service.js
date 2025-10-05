@@ -1,14 +1,13 @@
-// src/modules/company/auth/service.js
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const {
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import {
   findUserByEmail,
   findUserById,
   createCompanyUser,
   findProviderProfile,
   createProviderProfile,
   updateUserRole,
-} = require("./model");
+} from "./model.js";
 
 async function registerCompany(dto) {
   const existingUser = await findUserByEmail(dto.email);
@@ -58,7 +57,7 @@ async function becomeProvider(userId, { bio = "", skills = [] }) {
   return { alreadyProvider: false, profile };
 }
 
-module.exports = {
+export {
   registerCompany,
   loginCompany,
   becomeProvider,

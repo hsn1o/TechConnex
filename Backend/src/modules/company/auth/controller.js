@@ -1,6 +1,5 @@
-// src/modules/company/auth/controller.js
-const { registerCompany, loginCompany, becomeProvider } = require("./service");
-const { RegisterCompanyDto } = require("./dto");
+import { registerCompany, loginCompany, becomeProvider } from "./service.js";
+import { RegisterCompanyDto } from "./dto.js";
 
 async function register(req, res) {
   try {
@@ -42,7 +41,7 @@ async function becomeProviderHandler(req, res) {
   }
 }
 
-module.exports = {
+export {
   register,
   login,
   becomeProviderHandler,

@@ -1,17 +1,14 @@
-const express = require("express");
+import express from "express";
+import companyAuthRoutes from "../modules/company/auth/index.js";
+import companyProfileRoutes from "../modules/company/profile/index.js";
+
 const router = express.Router();
-
-// Import company auth routes
-const companyAuthRoutes = require("../modules/company/auth");
-import companyProfileRouter from "../modules/company/profile/index.js";
-
 
 // Mount them
 router.use("/company/auth", companyAuthRoutes);
-router.use("/company/profile", companyProfileRouter);
-
+router.use("/company/profile", companyProfileRoutes);
 
 // Healthcheck
 router.get("/health", (req, res) => res.json({ ok: true }));
 
-module.exports = router;
+export default router;

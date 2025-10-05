@@ -1,19 +1,34 @@
-import { Router } from "express";
-import { requireAuth } from "../../../middlewares/auth.js";
-import { getMe, upsertMe, getByUserId } from "./controller.js";
+import express from "express";
+import {
+  getProfile,
+  createProfile,
+  updateProfile,
+  upsertProfile,
+  getProfileCompletion,
+  getAllProfiles,
+  searchProfiles,
+  getProfileStats,
+  getPublicProfile,
+  validateProfile,
+} from "./controller.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
 
-const router = Router();
+const router = express.Router();
 
-// All company/profile routes require auth
-router.use(requireAuth);
+// Protected routes (require authentication)
+router.get("/", authenticateToken, getProfile);
+router.post("/", authenticateToken, createProfile);
+router.put("/", authenticateToken, updateProfile);
+router.patch("/", authenticateToken, upsertProfile);
+router.get("/completion", authenticateToken, getProfileCompletion);
+router.get("/stats", authenticateToken, getProfileStats);
 
-// GET my profile
-router.get("/me", getMe);
+// Public routes (no authentication required)
+router.get("/all", getAllProfiles);
+router.get("/search", searchProfiles);
+router.get("/public/:id", getPublicProfile);
 
-// PUT upsert my profile
-router.put("/", upsertMe);
-
-// (Optional) GET profile by user id (admin/dev)
-router.get("/:userId", getByUserId);
+// Utility routes
+router.post("/validate", validateProfile);
 
 export default router;

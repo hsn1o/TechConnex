@@ -1,4 +1,3 @@
-// src/modules/company/auth/dto.js
 class RegisterCompanyDto {
   constructor(body) {
     this.email = String(body.email).trim();
@@ -71,4 +70,4 @@ class RegisterCompanyDto {
   }
 }
 
-module.exports = { RegisterCompanyDto };
+export { RegisterCompanyDto };
