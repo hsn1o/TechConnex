@@ -236,6 +236,82 @@ async function validateProfile(req, res) {
   }
 }
 
+// Get KYC documents for the authenticated user
+async function getKycDocuments(req, res) {
+  try {
+    const userId = req.user.userId;
+    const result = await CompanyProfileService.getKycDocuments(userId);
+    
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get KYC documents error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// Get KYC document by ID
+async function getKycDocumentById(req, res) {
+  try {
+    const { documentId } = req.params;
+    const result = await CompanyProfileService.getKycDocumentById(documentId);
+    
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get KYC document by ID error:", error);
+    res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// Get user with enhanced KYC data
+async function getUserWithKycData(req, res) {
+  try {
+    const userId = req.user.userId;
+    const result = await CompanyProfileService.getUserWithKycData(userId);
+    
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get user with KYC data error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// Get comprehensive profile data including all user and KYC information
+async function getComprehensiveProfile(req, res) {
+  try {
+    const userId = req.user.userId;
+    const profile = await CompanyProfileService.getComprehensiveProfile(userId);
+    
+    res.status(200).json({
+      success: true,
+      data: profile,
+    });
+  } catch (error) {
+    console.error("Get comprehensive profile error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 export {
   getProfile,
   createProfile,
@@ -247,4 +323,8 @@ export {
   getProfileStats,
   getPublicProfile,
   validateProfile,
+  getKycDocuments,
+  getKycDocumentById,
+  getUserWithKycData,
+  getComprehensiveProfile,
 };

@@ -18,6 +18,23 @@ class CompanyProfileModel {
               kycStatus: true,
               isVerified: true,
               createdAt: true,
+              KycDocument: {
+                select: {
+                  id: true,
+                  type: true,
+                  fileUrl: true,
+                  filename: true,
+                  mimeType: true,
+                  status: true,
+                  reviewNotes: true,
+                  reviewedBy: true,
+                  uploadedAt: true,
+                  reviewedAt: true,
+                },
+                orderBy: {
+                  uploadedAt: 'desc',
+                },
+              },
             },
           },
         },
@@ -47,6 +64,23 @@ class CompanyProfileModel {
               kycStatus: true,
               isVerified: true,
               createdAt: true,
+              KycDocument: {
+                select: {
+                  id: true,
+                  type: true,
+                  fileUrl: true,
+                  filename: true,
+                  mimeType: true,
+                  status: true,
+                  reviewNotes: true,
+                  reviewedBy: true,
+                  uploadedAt: true,
+                  reviewedAt: true,
+                },
+                orderBy: {
+                  uploadedAt: 'desc',
+                },
+              },
             },
           },
         },
@@ -80,6 +114,23 @@ class CompanyProfileModel {
               kycStatus: true,
               isVerified: true,
               createdAt: true,
+              KycDocument: {
+                select: {
+                  id: true,
+                  type: true,
+                  fileUrl: true,
+                  filename: true,
+                  mimeType: true,
+                  status: true,
+                  reviewNotes: true,
+                  reviewedBy: true,
+                  uploadedAt: true,
+                  reviewedAt: true,
+                },
+                orderBy: {
+                  uploadedAt: 'desc',
+                },
+              },
             },
           },
         },
@@ -253,6 +304,23 @@ class CompanyProfileModel {
               kycStatus: true,
               isVerified: true,
               createdAt: true,
+              KycDocument: {
+                select: {
+                  id: true,
+                  type: true,
+                  fileUrl: true,
+                  filename: true,
+                  mimeType: true,
+                  status: true,
+                  reviewNotes: true,
+                  reviewedBy: true,
+                  uploadedAt: true,
+                  reviewedAt: true,
+                },
+                orderBy: {
+                  uploadedAt: 'desc',
+                },
+              },
             },
           },
         },
@@ -304,6 +372,23 @@ class CompanyProfileModel {
               kycStatus: true,
               isVerified: true,
               createdAt: true,
+              KycDocument: {
+                select: {
+                  id: true,
+                  type: true,
+                  fileUrl: true,
+                  filename: true,
+                  mimeType: true,
+                  status: true,
+                  reviewNotes: true,
+                  reviewedBy: true,
+                  uploadedAt: true,
+                  reviewedAt: true,
+                },
+                orderBy: {
+                  uploadedAt: 'desc',
+                },
+              },
             },
           },
         },
@@ -315,6 +400,74 @@ class CompanyProfileModel {
       return profiles;
     } catch (error) {
       throw new Error(`Failed to search company profiles: ${error.message}`);
+    }
+  }
+
+  // Get KYC documents for a user
+  static async getKycDocuments(userId) {
+    try {
+      const documents = await prisma.kycDocument.findMany({
+        where: { userId },
+        orderBy: {
+          uploadedAt: 'desc',
+        },
+      });
+
+      return documents;
+    } catch (error) {
+      throw new Error(`Failed to get KYC documents: ${error.message}`);
+    }
+  }
+
+  // Get KYC document by ID
+  static async getKycDocumentById(documentId) {
+    try {
+      const document = await prisma.kycDocument.findUnique({
+        where: { id: documentId },
+      });
+
+      return document;
+    } catch (error) {
+      throw new Error(`Failed to get KYC document: ${error.message}`);
+    }
+  }
+
+  // Get user with enhanced data including KYC documents
+  static async getUserWithKycData(userId) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          kycStatus: true,
+          isVerified: true,
+          createdAt: true,
+          KycDocument: {
+            select: {
+              id: true,
+              type: true,
+              fileUrl: true,
+              filename: true,
+              mimeType: true,
+              status: true,
+              reviewNotes: true,
+              reviewedBy: true,
+              uploadedAt: true,
+              reviewedAt: true,
+            },
+            orderBy: {
+              uploadedAt: 'desc',
+            },
+          },
+        },
+      });
+
+      return user;
+    } catch (error) {
+      throw new Error(`Failed to get user with KYC data: ${error.message}`);
     }
   }
 }

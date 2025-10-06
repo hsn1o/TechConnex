@@ -260,6 +260,71 @@ class CompanyProfileService {
       throw new Error(`Failed to get public profile: ${error.message}`);
     }
   }
+
+  // Get KYC documents for a user
+  static async getKycDocuments(userId) {
+    try {
+      const documents = await CompanyProfileModel.getKycDocuments(userId);
+      return { documents };
+    } catch (error) {
+      throw new Error(`Failed to get KYC documents: ${error.message}`);
+    }
+  }
+
+  // Get KYC document by ID
+  static async getKycDocumentById(documentId) {
+    try {
+      const document = await CompanyProfileModel.getKycDocumentById(documentId);
+      
+      if (!document) {
+        throw new Error("KYC document not found");
+      }
+
+      return { document };
+    } catch (error) {
+      throw new Error(`Failed to get KYC document: ${error.message}`);
+    }
+  }
+
+  // Get user with enhanced KYC data
+  static async getUserWithKycData(userId) {
+    try {
+      const user = await CompanyProfileModel.getUserWithKycData(userId);
+      
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      return { user };
+    } catch (error) {
+      throw new Error(`Failed to get user with KYC data: ${error.message}`);
+    }
+  }
+
+  // Get comprehensive profile data including all user and KYC information
+  static async getComprehensiveProfile(userId) {
+    try {
+      const profile = await CompanyProfileModel.getProfileByUserId(userId);
+      
+      if (!profile) {
+        throw new Error("Company profile not found");
+      }
+
+      // Calculate completion percentage
+      const completion = await CompanyProfileModel.getProfileCompletion(userId);
+      
+      // Get additional stats
+      const stats = await this.getProfileStats(userId);
+
+      return {
+        ...profile,
+        completion,
+        stats: stats.stats,
+      };
+    } catch (error) {
+      throw new Error(`Failed to get comprehensive profile: ${error.message}`);
+    }
+  }
 }
 
 export default CompanyProfileService;

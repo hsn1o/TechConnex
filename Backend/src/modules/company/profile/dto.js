@@ -168,7 +168,128 @@ class CompanyProfileUpdateDto {
   }
 }
 
+class CompanyProfileResponseDto {
+  constructor(profileData) {
+    this.id = profileData.id;
+    this.userId = profileData.userId;
+    this.description = profileData.description;
+    this.industry = profileData.industry;
+    this.location = profileData.location;
+    this.website = profileData.website;
+    this.logoUrl = profileData.logoUrl;
+    this.socialLinks = profileData.socialLinks;
+    this.languages = profileData.languages || [];
+    this.companySize = profileData.companySize;
+    this.employeeCount = profileData.employeeCount;
+    this.establishedYear = profileData.establishedYear;
+    this.annualRevenue = profileData.annualRevenue;
+    this.fundingStage = profileData.fundingStage;
+    this.preferredContractTypes = profileData.preferredContractTypes || [];
+    this.averageBudgetRange = profileData.averageBudgetRange;
+    this.remotePolicy = profileData.remotePolicy;
+    this.hiringFrequency = profileData.hiringFrequency;
+    this.categoriesHiringFor = profileData.categoriesHiringFor || [];
+    this.completion = profileData.completion;
+    this.rating = profileData.rating;
+    this.reviewCount = profileData.reviewCount;
+    this.totalSpend = profileData.totalSpend;
+    this.projectsPosted = profileData.projectsPosted;
+    this.lastActiveAt = profileData.lastActiveAt;
+    this.mission = profileData.mission;
+    this.values = profileData.values || [];
+    this.benefits = profileData.benefits;
+    this.mediaGallery = profileData.mediaGallery || [];
+    this.createdAt = profileData.createdAt;
+    this.updatedAt = profileData.updatedAt;
+
+    // Enhanced user data
+    this.user = profileData.user ? {
+      id: profileData.user.id,
+      email: profileData.user.email,
+      name: profileData.user.name,
+      phone: profileData.user.phone,
+      kycStatus: profileData.user.kycStatus,
+      isVerified: profileData.user.isVerified,
+      createdAt: profileData.user.createdAt,
+      kycDocuments: profileData.user.KycDocument || [],
+    } : null;
+
+    // Additional stats if available
+    this.stats = profileData.stats || null;
+  }
+
+  toResponse() {
+    return {
+      id: this.id,
+      userId: this.userId,
+      description: this.description,
+      industry: this.industry,
+      location: this.location,
+      website: this.website,
+      logoUrl: this.logoUrl,
+      socialLinks: this.socialLinks,
+      languages: this.languages,
+      companySize: this.companySize,
+      employeeCount: this.employeeCount,
+      establishedYear: this.establishedYear,
+      annualRevenue: this.annualRevenue,
+      fundingStage: this.fundingStage,
+      preferredContractTypes: this.preferredContractTypes,
+      averageBudgetRange: this.averageBudgetRange,
+      remotePolicy: this.remotePolicy,
+      hiringFrequency: this.hiringFrequency,
+      categoriesHiringFor: this.categoriesHiringFor,
+      completion: this.completion,
+      rating: this.rating,
+      reviewCount: this.reviewCount,
+      totalSpend: this.totalSpend,
+      projectsPosted: this.projectsPosted,
+      lastActiveAt: this.lastActiveAt,
+      mission: this.mission,
+      values: this.values,
+      benefits: this.benefits,
+      mediaGallery: this.mediaGallery,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      user: this.user,
+      stats: this.stats,
+    };
+  }
+}
+
+class KycDocumentResponseDto {
+  constructor(documentData) {
+    this.id = documentData.id;
+    this.type = documentData.type;
+    this.fileUrl = documentData.fileUrl;
+    this.filename = documentData.filename;
+    this.mimeType = documentData.mimeType;
+    this.status = documentData.status;
+    this.reviewNotes = documentData.reviewNotes;
+    this.reviewedBy = documentData.reviewedBy;
+    this.uploadedAt = documentData.uploadedAt;
+    this.reviewedAt = documentData.reviewedAt;
+  }
+
+  toResponse() {
+    return {
+      id: this.id,
+      type: this.type,
+      fileUrl: this.fileUrl,
+      filename: this.filename,
+      mimeType: this.mimeType,
+      status: this.status,
+      reviewNotes: this.reviewNotes,
+      reviewedBy: this.reviewedBy,
+      uploadedAt: this.uploadedAt,
+      reviewedAt: this.reviewedAt,
+    };
+  }
+}
+
 export {
   CompanyProfileDto,
   CompanyProfileUpdateDto,
+  CompanyProfileResponseDto,
+  KycDocumentResponseDto,
 };

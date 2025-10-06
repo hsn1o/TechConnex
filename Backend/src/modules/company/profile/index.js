@@ -10,6 +10,10 @@ import {
   getProfileStats,
   getPublicProfile,
   validateProfile,
+  getKycDocuments,
+  getKycDocumentById,
+  getUserWithKycData,
+  getComprehensiveProfile,
 } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 
@@ -22,6 +26,12 @@ router.put("/", authenticateToken, updateProfile);
 router.patch("/", authenticateToken, upsertProfile);
 router.get("/completion", authenticateToken, getProfileCompletion);
 router.get("/stats", authenticateToken, getProfileStats);
+router.get("/comprehensive", authenticateToken, getComprehensiveProfile);
+
+// KYC document routes
+router.get("/kyc-documents", authenticateToken, getKycDocuments);
+router.get("/kyc-documents/:documentId", authenticateToken, getKycDocumentById);
+router.get("/user-kyc-data", authenticateToken, getUserWithKycData);
 
 // Public routes (no authentication required)
 router.get("/all", getAllProfiles);
