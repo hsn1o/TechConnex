@@ -1,5 +1,4 @@
-// src/modules/company/auth/model.js
-const { PrismaClient, Prisma } = require("@prisma/client"); // <-- add Prisma
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -35,7 +34,6 @@ async function createCompanyUser(dto) {
               companySize: dto.customerProfile.companySize || null,
               employeeCount: dto.customerProfile.employeeCount || null,
               establishedYear: dto.customerProfile.establishedYear || null,
-                            description: dto.customerProfile.description || "",
               annualRevenue: dto.customerProfile.annualRevenue
                 ? new Prisma.Decimal(dto.customerProfile.annualRevenue)
                 : null,
@@ -68,8 +66,6 @@ async function createCompanyUser(dto) {
   });
 }
 
-
-
 // Provider profile queries
 async function findProviderProfile(userId) {
   return prisma.providerProfile.findUnique({ where: { userId } });
@@ -88,7 +84,7 @@ async function updateUserRole(userId, roles) {
   });
 }
 
-module.exports = {
+export {
   findUserByEmail,
   findUserById,
   createCompanyUser,

@@ -9,4 +9,4 @@ const loginAuth = require("../modules/auth");
 router.use("/company/auth", companyAuthRoutes);
 router.use("/auth", loginAuth);
 
-module.exports = router;
+export default router;

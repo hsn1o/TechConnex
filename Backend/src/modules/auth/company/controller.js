@@ -33,7 +33,7 @@ async function becomeProviderHandler(req, res) {
   }
 }
 
-module.exports = {
+export {
   register,
   becomeProviderHandler,
 };
