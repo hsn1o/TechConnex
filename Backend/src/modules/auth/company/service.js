@@ -20,21 +20,6 @@ async function registerCompany(dto) {
   return createCompanyUser({ ...dto, password: hashedPassword });
 }
 
-async function loginCompany({ email, password }) {
-  const user = await findUserByEmail(email);
-  if (!user) throw new Error("Invalid credentials");
-
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) throw new Error("Invalid credentials");
-
-  const token = jwt.sign(
-    { userId: user.id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
-
-  return { token, user };
-}
 
 async function becomeProvider(userId, { bio = "", skills = [] }) {
   const user = await findUserById(userId);
@@ -60,6 +45,5 @@ async function becomeProvider(userId, { bio = "", skills = [] }) {
 
 module.exports = {
   registerCompany,
-  loginCompany,
   becomeProvider,
 };

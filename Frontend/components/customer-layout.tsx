@@ -60,50 +60,45 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
   };
 
   useEffect(() => {
-    // Check if user is authenticated
-    if (typeof window !== "undefined") {
-      const user = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
+  if (typeof window !== "undefined") {
+    const user = localStorage.getItem("user");
+    const token = localStorage.getItem("token");
 
-      if (!user || !token) {
-        // User is not authenticated, redirect to login
-        router.push("/auth/login");
-        return;
-      }
+    if (!user || !token) {
+      router.push("/auth/login");
+      return;
     }
 
-    // Try to get user id from localStorage
-    let userId = null;
-    if (typeof window !== "undefined") {
-      try {
-        const user = JSON.parse(localStorage.getItem("user") || "null");
-        userId = user?.id;
-      } catch (e) {
-        userId = null;
-      }
-    }
+    try {
+      const parsedUser = JSON.parse(user);
+      const userId = parsedUser?.id;
 
-    if (userId) {
-      const endpoint = `http://localhost:4000/api/${userId}`;
-      console.log(endpoint);
-      fetch(endpoint)
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error("Failed to fetch profile");
-          }
-          return res.json();
+      if (userId) {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+        const endpoint = `${API_URL}/api/users/${userId}`; // ✅ updated endpoint
+
+        fetch(endpoint, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         })
-        .then((data) => setProfile(data))
-        .catch(() => {
-          setProfile(null);
-          // If profile fetch fails, user might be invalid, redirect to login
-          router.push("/auth/login");
-        })
-        .finally(() => setProfileLoading(false));
-    } else {
-      setProfileLoading(false);
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed to fetch profile");
+            return res.json();
+          })
+          .then((data) => setProfile(data))
+          .catch(() => {
+            setProfile(null);
+            // router.push("/auth/login");
+          })
+          .finally(() => setProfileLoading(false));
+      }
+    } catch (error) {
+      router.push("/auth/login");
     }
-  }, [router]);
+  }
+}, [router]);
+
 
   const navigation = [
     { name: "Dashboard", href: "/customer/dashboard", icon: Home },

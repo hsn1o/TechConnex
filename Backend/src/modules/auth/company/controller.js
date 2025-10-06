@@ -1,5 +1,5 @@
 // src/modules/company/auth/controller.js
-const { registerCompany, loginCompany, becomeProvider } = require("./service");
+const { registerCompany, becomeProvider } = require("./service");
 const { RegisterCompanyDto } = require("./dto");
 
 async function register(req, res) {
@@ -15,15 +15,6 @@ async function register(req, res) {
   }
 }
 
-async function login(req, res) {
-  try {
-    const { email, password } = req.body;
-    const { token, user } = await loginCompany({ email, password });
-    res.status(200).json({ success: true, token, user });
-  } catch (error) {
-    res.status(401).json({ success: false, message: error.message });
-  }
-}
 
 async function becomeProviderHandler(req, res) {
   try {
@@ -44,6 +35,5 @@ async function becomeProviderHandler(req, res) {
 
 module.exports = {
   register,
-  login,
   becomeProviderHandler,
 };
