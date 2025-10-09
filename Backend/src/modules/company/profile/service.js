@@ -1,5 +1,5 @@
 import CompanyProfileModel from "./model.js";
-import { CompanyProfileDto, CompanyProfileUpdateDto } from "./dto.js";
+import { CompanyProfileDto, CompanyProfileUpdateDto, CompanyProfileResponseDto } from "./dto.js";
 
 class CompanyProfileService {
   // Get company profile by user ID
@@ -14,10 +14,13 @@ class CompanyProfileService {
       // Calculate completion percentage
       const completion = await CompanyProfileModel.getProfileCompletion(userId);
       
-      return {
+      // Format response using DTO
+      const responseDto = new CompanyProfileResponseDto({
         ...profile,
         completion,
-      };
+      });
+      
+      return responseDto.toResponse();
     } catch (error) {
       throw new Error(`Failed to get company profile: ${error.message}`);
     }

@@ -22,26 +22,17 @@ export default function CompanyInfo({ value, onChange, isEditing }: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field
-            icon={<Building className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />}
-            id="company"
-            label="Company Name"
-            value={value.company}
-            disabled={!isEditing}
-            onChange={(v) => onChange({ ...value, company: v })}
-          />
-          <Field
-            id="position"
-            label="Your Position"
-            value={value.position}
-            disabled={!isEditing}
-            onChange={(v) => onChange({ ...value, position: v })}
-          />
           <div>
             <Label>Industry</Label>
             <Select
-              value={value.industry}
-              onValueChange={(v) => onChange({ ...value, industry: v })}
+              value={value.customerProfile.industry}
+              onValueChange={(v) => onChange({ 
+                ...value, 
+                customerProfile: { 
+                  ...value.customerProfile, 
+                  industry: v 
+                } 
+              })}
               disabled={!isEditing}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -55,17 +46,23 @@ export default function CompanyInfo({ value, onChange, isEditing }: Props) {
           <div>
             <Label>Company Size</Label>
             <Select
-              value={value.companySize}
-              onValueChange={(v) => onChange({ ...value, companySize: v })}
+              value={value.customerProfile.companySize}
+              onValueChange={(v) => onChange({ 
+                ...value, 
+                customerProfile: { 
+                  ...value.customerProfile, 
+                  companySize: v 
+                } 
+              })}
               disabled={!isEditing}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="startup">Startup (1-10 employees)</SelectItem>
-                <SelectItem value="small">Small (11-50 employees)</SelectItem>
-                <SelectItem value="medium">Medium (51-200 employees)</SelectItem>
-                <SelectItem value="large">Large (201-1000 employees)</SelectItem>
-                <SelectItem value="enterprise">Enterprise (1000+ employees)</SelectItem>
+                <SelectItem value="1-10 employees">Startup (1-10 employees)</SelectItem>
+                <SelectItem value="11-50 employees">Small (11-50 employees)</SelectItem>
+                <SelectItem value="51-200 employees">Medium (51-200 employees)</SelectItem>
+                <SelectItem value="201-1000 employees">Large (201-1000 employees)</SelectItem>
+                <SelectItem value="1000+ employees">Enterprise (1000+ employees)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -73,20 +70,62 @@ export default function CompanyInfo({ value, onChange, isEditing }: Props) {
             icon={<Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />}
             id="website"
             label="Website"
-            value={value.website}
+            value={value.customerProfile.website}
             disabled={!isEditing}
-            onChange={(v) => onChange({ ...value, website: v })}
+            onChange={(v) => onChange({ 
+              ...value, 
+              customerProfile: { 
+                ...value.customerProfile, 
+                website: v 
+              } 
+            })}
             placeholder="https://yourcompany.com"
           />
-          <Field
-            icon={<Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />}
-            id="linkedin"
-            label="LinkedIn Profile"
-            value={value.linkedin}
-            disabled={!isEditing}
-            onChange={(v) => onChange({ ...value, linkedin: v })}
-            placeholder="https://linkedin.com/in/yourprofile"
-          />
+          <div>
+            <Label>Employee Count</Label>
+            <Input
+              type="number"
+              value={value.customerProfile.employeeCount}
+              disabled={!isEditing}
+              onChange={(e) => onChange({ 
+                ...value, 
+                customerProfile: { 
+                  ...value.customerProfile, 
+                  employeeCount: parseInt(e.target.value) || 0 
+                } 
+              })}
+            />
+          </div>
+          <div>
+            <Label>Established Year</Label>
+            <Input
+              type="number"
+              value={value.customerProfile.establishedYear}
+              disabled={!isEditing}
+              onChange={(e) => onChange({ 
+                ...value, 
+                customerProfile: { 
+                  ...value.customerProfile, 
+                  establishedYear: parseInt(e.target.value) || 0 
+                } 
+              })}
+            />
+          </div>
+          <div>
+            <Label>Annual Revenue</Label>
+            <Input
+              value={value.customerProfile.annualRevenue}
+              disabled={!isEditing}
+              onChange={(e) => onChange({ 
+                ...value, 
+                customerProfile: { 
+                  ...value.customerProfile, 
+                  annualRevenue: e.target.value 
+                } 
+              })}
+              placeholder="5000000"
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

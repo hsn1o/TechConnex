@@ -170,89 +170,55 @@ class CompanyProfileUpdateDto {
 
 class CompanyProfileResponseDto {
   constructor(profileData) {
-    this.id = profileData.id;
-    this.userId = profileData.userId;
-    this.description = profileData.description;
-    this.industry = profileData.industry;
-    this.location = profileData.location;
-    this.website = profileData.website;
-    this.logoUrl = profileData.logoUrl;
-    this.socialLinks = profileData.socialLinks;
-    this.languages = profileData.languages || [];
-    this.companySize = profileData.companySize;
-    this.employeeCount = profileData.employeeCount;
-    this.establishedYear = profileData.establishedYear;
-    this.annualRevenue = profileData.annualRevenue;
-    this.fundingStage = profileData.fundingStage;
-    this.preferredContractTypes = profileData.preferredContractTypes || [];
-    this.averageBudgetRange = profileData.averageBudgetRange;
-    this.remotePolicy = profileData.remotePolicy;
-    this.hiringFrequency = profileData.hiringFrequency;
-    this.categoriesHiringFor = profileData.categoriesHiringFor || [];
-    this.completion = profileData.completion;
-    this.rating = profileData.rating;
-    this.reviewCount = profileData.reviewCount;
-    this.totalSpend = profileData.totalSpend;
-    this.projectsPosted = profileData.projectsPosted;
-    this.lastActiveAt = profileData.lastActiveAt;
-    this.mission = profileData.mission;
-    this.values = profileData.values || [];
-    this.benefits = profileData.benefits;
-    this.mediaGallery = profileData.mediaGallery || [];
-    this.createdAt = profileData.createdAt;
-    this.updatedAt = profileData.updatedAt;
-
-    // Enhanced user data
-    this.user = profileData.user ? {
-      id: profileData.user.id,
-      email: profileData.user.email,
-      name: profileData.user.name,
-      phone: profileData.user.phone,
-      kycStatus: profileData.user.kycStatus,
-      isVerified: profileData.user.isVerified,
-      createdAt: profileData.user.createdAt,
-      kycDocuments: profileData.user.KycDocument || [],
-    } : null;
-
-    // Additional stats if available
-    this.stats = profileData.stats || null;
+    this.profileData = profileData;
   }
 
   toResponse() {
+    const user = this.profileData.user;
+    const stats = this.profileData.stats;
+    
     return {
-      id: this.id,
-      userId: this.userId,
-      description: this.description,
-      industry: this.industry,
-      location: this.location,
-      website: this.website,
-      logoUrl: this.logoUrl,
-      socialLinks: this.socialLinks,
-      languages: this.languages,
-      companySize: this.companySize,
-      employeeCount: this.employeeCount,
-      establishedYear: this.establishedYear,
-      annualRevenue: this.annualRevenue,
-      fundingStage: this.fundingStage,
-      preferredContractTypes: this.preferredContractTypes,
-      averageBudgetRange: this.averageBudgetRange,
-      remotePolicy: this.remotePolicy,
-      hiringFrequency: this.hiringFrequency,
-      categoriesHiringFor: this.categoriesHiringFor,
-      completion: this.completion,
-      rating: this.rating,
-      reviewCount: this.reviewCount,
-      totalSpend: this.totalSpend,
-      projectsPosted: this.projectsPosted,
-      lastActiveAt: this.lastActiveAt,
-      mission: this.mission,
-      values: this.values,
-      benefits: this.benefits,
-      mediaGallery: this.mediaGallery,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
-      user: this.user,
-      stats: this.stats,
+      // User-level data (flattened)
+      email: user?.email || null,
+      name: user?.name || null,
+      phone: user?.phone || null,
+      isVerified: user?.isVerified || false,
+      kycStatus: user?.kycStatus || null,
+      createdAt: user?.createdAt || null,
+      
+      // Customer profile data (nested object)
+      customerProfile: {
+        description: this.profileData.description,
+        industry: this.profileData.industry,
+        location: this.profileData.location,
+        website: this.profileData.website,
+        logoUrl: this.profileData.logoUrl,
+        socialLinks: this.profileData.socialLinks || [],
+        languages: this.profileData.languages || [],
+        companySize: this.profileData.companySize,
+        employeeCount: this.profileData.employeeCount,
+        establishedYear: this.profileData.establishedYear,
+        annualRevenue: this.profileData.annualRevenue,
+        fundingStage: this.profileData.fundingStage,
+        preferredContractTypes: this.profileData.preferredContractTypes || [],
+        averageBudgetRange: this.profileData.averageBudgetRange,
+        remotePolicy: this.profileData.remotePolicy,
+        hiringFrequency: this.profileData.hiringFrequency,
+        categoriesHiringFor: this.profileData.categoriesHiringFor || [],
+        completion: this.profileData.completion || 0,
+        rating: this.profileData.rating || 0,
+        reviewCount: this.profileData.reviewCount || 0,
+        totalSpend: stats?.totalSpend || this.profileData.totalSpend || 0,
+        projectsPosted: stats?.projectsPosted || this.profileData.projectsPosted || 0,
+        lastActiveAt: this.profileData.lastActiveAt,
+        mission: this.profileData.mission,
+        values: this.profileData.values || [],
+        benefits: this.profileData.benefits,
+        mediaGallery: this.profileData.mediaGallery || [],
+      },
+      
+      // KYC documents (if available)
+      kycDocuments: user?.KycDocument || [],
     };
   }
 }

@@ -1,35 +1,100 @@
 // app/customer/profile/page.tsx
 import { CustomerLayout } from "@/components/customer-layout";
 import ProfileClient from "@/components/customer/profile/ProfileClient";
+import { getCompanyProfile } from "@/lib/api";
+import type { ProfileData, UploadedDocument, DocumentType, Stats } from "@/components/customer/profile/types";
 
-// Move static/mock data to the server page (or fetch here)
-// Then pass as props to the client component
+// Fetch real data from API
 export default async function ProfilePage() {
-  const profileData = {
-    firstName: "Ahmad",
-    lastName: "Rahman",
-    email: "ahmad.rahman@email.com",
-    phone: "+60123456789",
-    company: "Tech Innovations Sdn Bhd",
-    position: "IT Director",
-    industry: "Technology",
-    companySize: "medium",
-    address: "Jalan Ampang, Kuala Lumpur",
-    city: "Kuala Lumpur",
-    state: "Kuala Lumpur",
-    postalCode: "50450",
-    bio: "Experienced IT professional with over 10 years in technology leadership. Passionate about digital transformation and innovative solutions.",
-    website: "https://techinnovations.com.my",
-    linkedin: "https://linkedin.com/in/ahmadrahman",
-  };
+  let profileData: ProfileData;
+  let stats: Stats;
+  
+  try {
+    const response = await getCompanyProfile();
+    profileData = response.data;
+    
+    // Transform API data to stats format
+    stats = {
+      projectsPosted: profileData.customerProfile.projectsPosted,
+      rating: profileData.customerProfile.rating,
+      reviewCount: profileData.customerProfile.reviewCount,
+      totalSpend: profileData.customerProfile.totalSpend,
+      completion: profileData.customerProfile.completion,
+      lastActiveAt: profileData.customerProfile.lastActiveAt,
+      memberSince: new Date(profileData.createdAt).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long' 
+      }),
+    };
+  } catch (error) {
+    console.error("Failed to fetch profile data:", error);
+    // Fallback to mock data if API fails
+    profileData = {
+      email: "company33@example.com",
+      name: "My Company",
+      phone: "12345678",
+      isVerified: false,
+      kycStatus: "pending_verification",
+      createdAt: "2025-10-07T16:08:24.606Z",
+      customerProfile: {
+        description: "A test company providing IT solutions",
+        industry: "IT",
+        location: "Kuala Lumpur",
+        website: "https://mycompany.com",
+        logoUrl: "https://mycompany.com/logo.png",
+        socialLinks: [
+          "https://linkedin.com/company/mycompany",
+          "https://twitter.com/mycompany"
+        ],
+        languages: ["English", "Malay"],
+        companySize: "50-200 employees",
+        employeeCount: 120,
+        establishedYear: 2015,
+        annualRevenue: "5000000",
+        fundingStage: "Series A",
+        preferredContractTypes: ["Fixed-price", "Hourly"],
+        averageBudgetRange: "50,000 - 200,000 USD",
+        remotePolicy: "Hybrid",
+        hiringFrequency: "Quarterly",
+        categoriesHiringFor: ["Software Development", "UI/UX Design"],
+        completion: 100,
+        rating: 4.5,
+        reviewCount: 10,
+        totalSpend: "1000000",
+        projectsPosted: 25,
+        lastActiveAt: "2025-10-02T16:21:11.436Z",
+        mission: "To empower businesses with innovative IT solutions",
+        values: ["Innovation", "Integrity", "Customer-first"],
+        benefits: "Flexible working hours, health insurance, annual bonuses",
+        mediaGallery: [
+          "https://mycompany.com/images/office1.jpg",
+          "https://mycompany.com/images/office2.jpg"
+        ]
+      },
+      kycDocuments: []
+    };
+    
+    stats = {
+      projectsPosted: profileData.customerProfile.projectsPosted,
+      rating: profileData.customerProfile.rating,
+      reviewCount: profileData.customerProfile.reviewCount,
+      totalSpend: profileData.customerProfile.totalSpend,
+      completion: profileData.customerProfile.completion,
+      lastActiveAt: profileData.customerProfile.lastActiveAt,
+      memberSince: new Date(profileData.createdAt).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long' 
+      }),
+    };
+  }
 
-  const uploadedDocuments = [
+  const uploadedDocuments: UploadedDocument[] = [
     { id: "1", name: "Business_Registration_Certificate.pdf", type: "Business Registration", size: "2.4 MB", uploadDate: "2024-01-15", status: "approved" as const },
     { id: "2", name: "Tax_Identification_Number.pdf", type: "Tax Document", size: "1.8 MB", uploadDate: "2024-01-15", status: "approved" as const },
     { id: "3", name: "Bank_Account_Statement.pdf", type: "Bank Statement", size: "3.2 MB", uploadDate: "2024-01-20", status: "pending" as const },
   ];
 
-  const documentTypes = [
+  const documentTypes: DocumentType[] = [
     { value: "business_registration", label: "Business Registration Certificate (SSM)" },
     { value: "tax_document", label: "Tax Identification Number" },
     { value: "bank_statement", label: "Bank Account Statement" },
@@ -39,17 +104,6 @@ export default async function ProfilePage() {
     { value: "financial_statement", label: "Financial Statement" },
     { value: "other", label: "Other Documents" },
   ];
-
-  const stats = {
-    projectsPosted: 12,
-    activeProjects: 3,
-    completedProjects: 9,
-    totalSpent: 85000,
-    averageRating: 4.8,
-    responseTime: "2 hours",
-    memberSince: "January 2023",
-    successRate: 95,
-  };
 
   return (
     <CustomerLayout>

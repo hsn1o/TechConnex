@@ -210,6 +210,25 @@ export default function SignupPage() {
     // Step 3: Skills & Experience (Provider only)
     yearsExperience: "",
     hourlyRate: "",
+    availability: "",
+    minimumProjectBudget: "",
+    maximumProjectBudget: "",
+    preferredProjectDuration: "",
+    workPreference: "remote",
+    teamSize: "1",
+
+    // Company-specific fields
+    employeeCount: "",
+    establishedYear: "",
+    annualRevenue: "",
+    fundingStage: "",
+    preferredContractTypes: [] as string[],
+    averageBudgetRange: "",
+    remotePolicy: "",
+    hiringFrequency: "",
+    categoriesHiringFor: [] as string[],
+    mission: "",
+    values: [] as string[],
   });
 
   const [kycDocType, setKycDocType] = useState<
@@ -223,6 +242,25 @@ export default function SignupPage() {
   }, [userRole]);
 
   // Upload helper: call your Express KYC routes after we know userId
+  const uploadResume = async (userId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("resume", file);
+    formData.append("userId", userId);
+
+    return fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/resume/upload`, {
+      method: "POST",
+      body: formData,
+    });
+  };
+
+  const uploadCertifications = async (userId: string, certs: Certification[]) => {
+    return fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/certifications/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, certifications: certs }),
+    });
+  };
+
   const uploadKyc = async (userId: string) => {
     if (!kycFile) return { ok: true }; // allow register to succeed with no KYC
 
@@ -650,61 +688,91 @@ export default function SignupPage() {
     setSuccess("");
 
     try {
-      const formDataToSend = new FormData();
+      // Determine the correct endpoint based on user role
+      const endpoint = userRole === "provider" 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/provider/auth/register`
+        : `${process.env.NEXT_PUBLIC_API_URL}/company/auth/register`;
 
-      // Basic user data
-      formDataToSend.append("name", formData.name);
-      formDataToSend.append("email", formData.email);
-      formDataToSend.append("password", formData.password);
-      formDataToSend.append("phone", formData.phone);
-      formDataToSend.append(
-        "role",
-        userRole === "provider" ? "PROVIDER" : "CUSTOMER"
-      );
-      formDataToSend.append("location", formData.location);
+      // Prepare data according to backend DTO structure
+      const requestData: any = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone || null,
+      };
 
       if (userRole === "customer") {
-        // Customer-specific data
-        formDataToSend.append("companyName", formData.companyName);
-        formDataToSend.append("companySize", formData.companySize);
-        formDataToSend.append("industry", formData.industry);
-        formDataToSend.append("website", formData.website);
+        // Customer-specific data matching RegisterCompanyDto
+        requestData.customerProfile = {
+          description: formData.companyName || "",
+          industry: formData.industry || "",
+          location: formData.location || "",
+          website: formData.website || null,
+          companySize: formData.companySize || null,
+          employeeCount: formData.employeeCount || null,
+          establishedYear: formData.establishedYear || null,
+          annualRevenue: formData.annualRevenue || null,
+          fundingStage: formData.fundingStage || null,
+          preferredContractTypes: formData.preferredContractTypes || [],
+          averageBudgetRange: formData.averageBudgetRange || null,
+          remotePolicy: formData.remotePolicy || null,
+          hiringFrequency: formData.hiringFrequency || null,
+          categoriesHiringFor: formData.categoriesHiringFor || [],
+          mission: formData.mission || null,
+          values: formData.values || [],
+          languages: selectedLanguages,
+        };
       } else if (userRole === "provider") {
-        // Provider-specific data
-        formDataToSend.append("bio", formData.bio);
-        formDataToSend.append("website", formData.website);
-        formDataToSend.append("profileVideoUrl", formData.profileVideoUrl);
-        formDataToSend.append("skills", JSON.stringify(selectedSkills));
-        formDataToSend.append("languages", JSON.stringify(selectedLanguages));
-        formDataToSend.append("hourlyRate", formData.hourlyRate);
-        formDataToSend.append("yearsExperience", formData.yearsExperience);
-        formDataToSend.append("portfolioUrls", JSON.stringify(portfolioUrls));
-        formDataToSend.append("certifications", JSON.stringify(certifications));
-
-        if (resumeFile) {
-          formDataToSend.append("resume", resumeFile);
-        }
+        // Provider-specific data matching RegisterProviderDto
+        requestData.providerProfile = {
+          bio: formData.bio || "",
+          location: formData.location || "",
+          hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : null,
+          availability: formData.availability || null,
+          languages: selectedLanguages,
+          website: formData.website || null,
+          profileVideoUrl: formData.profileVideoUrl || null,
+          skills: selectedSkills,
+          yearsExperience: formData.yearsExperience ? parseInt(formData.yearsExperience) : null,
+          minimumProjectBudget: formData.minimumProjectBudget ? parseFloat(formData.minimumProjectBudget) : null,
+          maximumProjectBudget: formData.maximumProjectBudget ? parseFloat(formData.maximumProjectBudget) : null,
+          preferredProjectDuration: formData.preferredProjectDuration || null,
+          workPreference: formData.workPreference || "remote",
+          teamSize: formData.teamSize || 1,
+        };
       }
 
       // POST to the backend registration endpoint
-      const response = await fetch("http://localhost:4000/api/register", {
+      const response = await fetch(endpoint, {
         method: "POST",
-        body: formDataToSend,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestData),
       });
 
       const data = await response.json();
-      const newUserId: string | undefined =
-        data?.user?.id || data?.id || data?.userId;
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
 
-      if (newUserId) {
+      const newUserId: string | undefined = data?.user?.id;
+
+      // Handle KYC upload if file exists
+      if (newUserId && kycFile) {
         const kycRes = await uploadKyc(newUserId);
         if (!kycRes.ok) {
-          // You can decide to halt redirect or just show an error banner
           console.warn("KYC upload failed but account created.");
         }
       }
-      if (!response.ok) {
-        throw new Error(data.error || "Registration failed");
+
+      // Handle resume upload for providers
+      if (newUserId && userRole === "provider" && resumeFile) {
+        await uploadResume(newUserId, resumeFile);
+      }
+
+      // Handle certifications for providers
+      if (newUserId && userRole === "provider" && certifications.length > 0) {
+        await uploadCertifications(newUserId, certifications);
       }
 
       setSuccess("Account created successfully! Redirecting...");

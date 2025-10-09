@@ -9,32 +9,52 @@ export type UploadedDocument = {
 };
 
 export type ProfileData = {
-  firstName: string;
-  lastName: string;
   email: string;
+  name: string;
   phone: string;
-  company: string;
-  position: string;
-  industry: string;
-  companySize: string;
-  address: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  bio: string;
-  website: string;
-  linkedin: string;
+  isVerified: boolean;
+  kycStatus: string;
+  createdAt: string;
+  customerProfile: {
+    description: string;
+    industry: string;
+    location: string;
+    website: string;
+    logoUrl: string;
+    socialLinks: string[];
+    languages: string[];
+    companySize: string;
+    employeeCount: number;
+    establishedYear: number;
+    annualRevenue: string;
+    fundingStage: string;
+    preferredContractTypes: string[];
+    averageBudgetRange: string;
+    remotePolicy: string;
+    hiringFrequency: string;
+    categoriesHiringFor: string[];
+    completion: number;
+    rating: number;
+    reviewCount: number;
+    totalSpend: string;
+    projectsPosted: number;
+    lastActiveAt: string;
+    mission: string;
+    values: string[];
+    benefits: string;
+    mediaGallery: string[];
+  };
+  kycDocuments: any[];
 };
 
 export type Stats = {
   projectsPosted: number;
-  activeProjects: number;
-  completedProjects: number;
-  totalSpent: number;
-  averageRating: number;
-  responseTime: string;
+  rating: number;
+  reviewCount: number;
+  totalSpend: string;
+  completion: number;
+  lastActiveAt: string;
   memberSince: string;
-  successRate: number;
 };
 
 export type DocumentType = { value: string; label: string };

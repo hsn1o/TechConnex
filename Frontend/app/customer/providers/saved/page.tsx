@@ -49,7 +49,7 @@ export default function SavedProvidersPage() {
         setLoading(false);
         return;
       }
-      const res = await fetch(`http://localhost:4000/api/users/${encodeURIComponent(userId)}/saved-providers`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/users/${encodeURIComponent(userId)}/saved-providers`);
       const data = await res.json();
       setProviders(data.providers || []);
     } catch (e) {
@@ -68,7 +68,7 @@ export default function SavedProvidersPage() {
       const userId = getUserId();
       if (!userId) return;
       const res = await fetch(
-        `http://localhost:4000/api/providers/${providerId}/save?userId=${encodeURIComponent(userId)}`,
+        `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/${providerId}/save?userId=${encodeURIComponent(userId)}`,
         { method: "DELETE" }
       );
       if (!res.ok) throw new Error("Failed to unsave");

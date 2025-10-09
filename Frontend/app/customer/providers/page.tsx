@@ -3,8 +3,8 @@ import { CustomerLayout } from "@/components/customer-layout";
 import FindProvidersClient from "@/components/customer/providers/FindProvidersClient";
 
 export default async function ProvidersPage() {
-  // (Optional) prefetch static data on the server and pass as props
-  const categories = [
+  // Fetch filter options from backend
+  let categories = [
     { value: "all", label: "All Categories" },
     { value: "web", label: "Web Development" },
     { value: "mobile", label: "Mobile Development" },
@@ -13,7 +13,7 @@ export default async function ProvidersPage() {
     { value: "ui", label: "UI/UX Design" },
   ];
 
-  const locations = [
+  let locations = [
     { value: "all", label: "All Locations" },
     { value: "kuala lumpur", label: "Kuala Lumpur" },
     { value: "selangor", label: "Selangor" },
@@ -21,11 +21,29 @@ export default async function ProvidersPage() {
     { value: "johor", label: "Johor" },
   ];
 
-  const ratings = [
+  let ratings = [
     { value: "all", label: "All Ratings" },
     { value: "4.5+", label: "4.5+ Stars" },
     { value: "4.0+", label: "4.0+ Stars" },
   ];
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/filters`, {
+      cache: 'no-store'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        categories = data.categories || categories;
+        locations = data.locations || locations;
+        ratings = data.ratings || ratings;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch filter options:', error);
+    // Use default options if API fails
+  }
 
   return (
     <CustomerLayout>

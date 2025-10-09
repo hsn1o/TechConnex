@@ -70,4 +70,11 @@ class RegisterCompanyDto {
   }
 }
 
-export { RegisterCompanyDto };
+class LoginCompanyDto {
+  constructor(body) {
+    this.email = String(body.email).trim();
+    this.password = String(body.password);
+  }
+}
+
+export { RegisterCompanyDto, LoginCompanyDto };

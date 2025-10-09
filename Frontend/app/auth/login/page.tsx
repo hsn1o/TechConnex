@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import API_ENDPOINTS from "@/lib/api-config";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,16 +41,22 @@ export default function LoginPage() {
     const email = (form.elements.namedItem("email") as HTMLInputElement)?.value;
     const password = (form.elements.namedItem("password") as HTMLInputElement)
       ?.value;
+    const userType = (form.elements.namedItem("userType") as HTMLSelectElement)?.value;
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      // Determine the correct endpoint based on user type
+      const endpoint = userType === "provider" 
+        ? API_ENDPOINTS.PROVIDER_LOGIN
+        : API_ENDPOINTS.COMPANY_LOGIN;
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Login failed");
+      if (!res.ok) throw new Error(data.message || "Login failed");
 
       // Save token and user
       localStorage.setItem("token", data.token);
@@ -64,7 +71,7 @@ export default function LoginPage() {
       } else if (roles.includes("PROVIDER")) {
         router.push("/provider/dashboard");
       } else {
-        return error
+        setError("Invalid user role");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -101,6 +108,19 @@ export default function LoginPage() {
             <Tabs defaultValue="email" className="w-full">
               <TabsContent value="email">
                 <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="userType">Account Type</Label>
+                    <select
+                      id="userType"
+                      name="userType"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 bg-white/50"
+                      required
+                    >
+                      <option value="">Select account type</option>
+                      <option value="company">Company/Customer</option>
+                      <option value="provider">Provider/Freelancer</option>
+                    </select>
+                  </div>
                   <InputField
                     label="Email Address"
                     id="email"

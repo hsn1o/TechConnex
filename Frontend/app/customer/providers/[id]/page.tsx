@@ -2,47 +2,38 @@
 import { CustomerLayout } from "@/components/customer-layout";
 import ProviderDetailClient from "@/components/customer/providers/ProviderDetailClient";
 import type { Provider, Review, PortfolioItem } from "@/components/customer/providers/types";
+import { notFound } from "next/navigation";
 
 type Props = { params: { id: string } };
 
 export default async function ProviderDetailPage({ params }: Props) {
-  // You can replace this with a real server fetch:
-  // const res = await fetch(`${process.env.API_URL}/providers/${params.id}`, { cache: "no-store" });
-  // const raw = await res.json();
+  // Fetch provider data from backend
+  let provider: Provider | null = null;
+  let portfolio: PortfolioItem[] = [];
+  let reviews: Review[] = [];
 
-  // Mock mapping to our UI types:
-  const provider: Provider = {
-    id: params.id,
-    name: "Aisha Noor",
-    email: "aisha@example.com",
-    avatar: "/placeholder.svg",
-    title: "Full-stack Engineer",
-    company: "Noor Tech",
-    rating: 4.8,
-    reviewCount: 27,
-    completedJobs: 54,
-    hourlyRate: 120,
-    location: "Kuala Lumpur",
-    bio: "I build robust web apps with Next.js, Node, and Postgres. 7+ years of experience.",
-    availability: "Available",
-    responseTime: "2 hours",
-    skills: ["Next.js", "Node.js", "PostgreSQL", "Prisma", "Tailwind CSS"],
-    specialties: ["SaaS", "Dashboards", "eCommerce"],
-    languages: ["English", "Malay", "Arabic"],
-    verified: true,
-    topRated: true,
-    saved: false,
-  };
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/${params.id}/full`,
+      { cache: "no-store" }
+    );
 
-  const portfolio: PortfolioItem[] = [
-    { id: "p1", title: "SaaS Admin", cover: "/placeholder.svg", url: "#", tags: ["Next.js", "Charts"] },
-    { id: "p2", title: "eCommerce App", cover: "/placeholder.svg", url: "#", tags: ["Node", "Stripe"] },
-  ];
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        provider = data.provider;
+        portfolio = data.portfolio || [];
+        reviews = data.reviews || [];
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch provider details:', error);
+  }
 
-  const reviews: Review[] = [
-    { id: "r1", author: "Tech Innovations", rating: 5, date: "2024-08-04", text: "Excellent delivery and communication." },
-    { id: "r2", author: "Alpha Labs", rating: 4.5, date: "2024-05-22", text: "Great work; will hire again." },
-  ];
+  // If provider not found, show 404
+  if (!provider) {
+    notFound();
+  }
 
   return (
     <CustomerLayout>

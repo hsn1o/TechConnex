@@ -23,6 +23,41 @@ export default function ProviderDetailClient({
 }) {
   const [saved, setSaved] = useState<boolean>(!!provider.saved);
 
+  const getUserId = () => {
+    const userJson = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    try {
+      return userJson ? JSON.parse(userJson)?.id || "" : "";
+    } catch {
+      return "";
+    }
+  };
+
+  const handleSaveToggle = async () => {
+    try {
+      const userId = getUserId();
+      if (!userId) {
+        alert("Please login to save providers");
+        return;
+      }
+
+      const method = saved ? "DELETE" : "POST";
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/${provider.id}/save?userId=${encodeURIComponent(userId)}`,
+        { method }
+      );
+
+      if (response.ok) {
+        setSaved(!saved);
+      } else {
+        const data = await response.json();
+        alert(data.message || "Failed to update saved status");
+      }
+    } catch (error) {
+      console.error("Error toggling save status:", error);
+      alert("Failed to update saved status");
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Back + Actions */}
@@ -31,7 +66,7 @@ export default function ProviderDetailClient({
           <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" />Back to results</Button>
         </Link>
         <div className="flex gap-2">
-          <Button variant={saved ? "secondary" : "outline"} onClick={() => setSaved((s) => !s)}>
+          <Button variant={saved ? "secondary" : "outline"} onClick={handleSaveToggle}>
             <Heart className="w-4 h-4 mr-2" /> {saved ? "Saved" : "Save"}
           </Button>
           <Link href={`/customer/messages/new?to=${encodeURIComponent(provider.id)}`}>

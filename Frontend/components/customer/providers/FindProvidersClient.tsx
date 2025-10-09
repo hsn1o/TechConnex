@@ -37,64 +37,30 @@ export default function FindProvidersClient({
       }
     })();
 
-    fetch(`http://localhost:4000/api/providers?userId=${encodeURIComponent(userId)}`)
+    // Build query parameters
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (searchQuery) params.append('search', searchQuery);
+    if (categoryFilter !== 'all') params.append('category', categoryFilter);
+    if (locationFilter !== 'all') params.append('location', locationFilter);
+    if (ratingFilter !== 'all') params.append('rating', ratingFilter);
+
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
-        // Map API → UI shape (supports array or {providers})
-        const list: Provider[] = Array.isArray(data)
-          ? data.map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              email: p.email,
-              avatar: p.providerProfile?.avatarUrl || "/placeholder.svg",
-              title: p.title || "",
-              company: p.company || "",
-              rating: parseFloat(p.providerProfile?.rating ?? 0),
-              reviewCount: p.providerProfile?.totalReviews ?? 0,
-              completedJobs: p.providerProfile?.totalProjects ?? 0,
-              hourlyRate: p.providerProfile?.hourlyRate ?? 0,
-              location: p.providerProfile?.location || "",
-              bio: p.providerProfile?.bio || "",
-              availability: p.providerProfile?.availability || "Unknown",
-              responseTime: `${p.providerProfile?.responseTime ?? 0} hours`,
-              skills: p.providerProfile?.skills || [],
-              specialties: p.providerProfile?.specialties || [],
-              languages: p.providerProfile?.languages || [],
-              verified: p.providerProfile?.isVerified || false,
-              topRated: p.providerProfile?.isFeatured || false,
-              saved: false,
-            }))
-          : (data.providers || []);
-        setProviders(list);
+        if (data.success) {
+          setProviders(data.providers || []);
+        } else {
+          console.error("API error:", data.message);
+          setProviders([]);
+        }
       })
       .catch((err) => console.error("Failed to fetch providers:", err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [searchQuery, categoryFilter, locationFilter, ratingFilter]);
 
-  const filteredProviders = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    return providers.filter((p) => {
-      const matchesSearch =
-        p.name.toLowerCase().includes(q) ||
-        p.skills.some((s) => s.toLowerCase().includes(q)) ||
-        p.specialties.some((s) => s.toLowerCase().includes(q));
-
-      const matchesCategory =
-        categoryFilter === "all" ||
-        p.specialties.some((s) => s.toLowerCase().includes(categoryFilter.toLowerCase()));
-
-      const matchesLocation =
-        locationFilter === "all" ||
-        p.location.toLowerCase().includes(locationFilter.toLowerCase());
-
-      const matchesRating =
-        ratingFilter === "all" ||
-        (ratingFilter === "4.5+" && p.rating >= 4.5) ||
-        (ratingFilter === "4.0+" && p.rating >= 4.0);
-
-      return matchesSearch && matchesCategory && matchesLocation && matchesRating;
-    });
-  }, [providers, searchQuery, categoryFilter, locationFilter, ratingFilter]);
+  // No need for client-side filtering since backend handles it
+  const filteredProviders = providers;
 
   return (
     <div className="space-y-8">

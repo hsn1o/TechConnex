@@ -11,20 +11,18 @@ export default function ProfileStatsCard({ stats }: { stats: Stats }) {
         <CardDescription>Your activity and performance metrics</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <Stat label="Projects Posted" value={stats.projectsPosted} />
-          <Stat label="Active Projects" value={stats.activeProjects} />
-          <Stat label="Completed" value={stats.completedProjects} />
-          <Stat label="Total Spent" value={`RM${stats.totalSpent.toLocaleString()}`} />
+          <Stat label="Total Spent" value={`$${parseInt(stats.totalSpend).toLocaleString()}`} />
           <div className="text-center">
             <div className="flex items-center justify-center gap-1">
               <Star className="w-4 h-4" />
-              <span className="text-2xl font-bold">{stats.averageRating}</span>
+              <span className="text-2xl font-bold">{stats.rating}</span>
             </div>
             <div className="text-sm text-gray-500">Average Rating</div>
           </div>
-          <Stat label="Response Time" value={stats.responseTime} />
-          <Stat label="Success Rate" value={`${stats.successRate}%`} />
+          <Stat label="Reviews" value={stats.reviewCount} />
+          <Stat label="Profile Completion" value={`${stats.completion}%`} />
           <div className="text-center">
             <div className="text-sm font-bold text-gray-600">{stats.memberSince}</div>
             <div className="text-sm text-gray-500">Member Since</div>
