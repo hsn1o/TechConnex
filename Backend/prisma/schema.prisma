@@ -270,7 +270,7 @@ model ServiceRequest {
   status         RequestStatus   @default(OPEN)
   projectId      String?         @db.Uuid
   project        Project?        @relation(fields: [projectId], references: [id])
-  proposals      Proposal[] 
+  proposals      Proposal[] // 👈 Add this
   matches        AiMatch[]
   requirements   Json? // or String?
   deliverables   Json? // or String?
@@ -288,7 +288,6 @@ model Proposal {
   coverLetter    String
   attachmentUrl  String? // e.g., PDF proposal or portfolio
   milestones     Milestone[] // Optional: Link to separate milestone model
-  proposedMilestones Json? // Store proposed milestones as JSON for later use
   createdAt      DateTime       @default(now())
 }
 
