@@ -66,21 +66,26 @@ export default function CompanyInfo({ value, onChange, isEditing }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <Field
-            icon={<Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />}
-            id="website"
-            label="Website"
-            value={value.customerProfile.website}
-            disabled={!isEditing}
-            onChange={(v) => onChange({ 
-              ...value, 
-              customerProfile: { 
-                ...value.customerProfile, 
-                website: v 
-              } 
-            })}
-            placeholder="https://yourcompany.com"
-          />
+          <div>
+            <Label htmlFor="website">Website</Label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                id="website"
+                className="pl-10"
+                value={value.customerProfile.website}
+                disabled={!isEditing}
+                onChange={(e) => onChange({ 
+                  ...value, 
+                  customerProfile: { 
+                    ...value.customerProfile, 
+                    website: e.target.value 
+                  } 
+                })}
+                placeholder="https://yourcompany.com"
+              />
+            </div>
+          </div>
           <div>
             <Label>Employee Count</Label>
             <Input
@@ -132,20 +137,3 @@ export default function CompanyInfo({ value, onChange, isEditing }: Props) {
   );
 }
 
-function Field({
-  id, label, value, onChange, disabled, placeholder, icon
-}: {
-  id: string; label: string; value: string; onChange: (v: string) => void;
-  disabled?: boolean; placeholder?: string; icon?: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label htmlFor={id}>{label}</Label>
-      <div className="relative">
-        {icon}
-        <Input id={id} className={icon ? "pl-10" : ""} value={value} disabled={disabled} placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)} />
-      </div>
-    </div>
-  );
-}

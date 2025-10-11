@@ -37,6 +37,59 @@ export async function getCompanyProfile() {
   return data;
 }
 
+export async function updateCompanyProfile(profileData: any) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE_URL}/company/profile`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profileData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to update company profile");
+  return data;
+}
+
+export async function upsertCompanyProfile(profileData: any) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE_URL}/company/profile`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profileData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to save company profile");
+  return data;
+}
+
+export async function getKycDocuments() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE_URL}/company/profile/kyc-documents`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch KYC documents");
+  return data;
+}
+
 // Project API functions
 export async function getCompanyProjects(params?: {
   page?: number;
