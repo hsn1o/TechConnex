@@ -2,13 +2,14 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import {
-  findUserByEmail,
   findUserById,
   createCompanyUser,
   findProviderProfile,
   createProviderProfile,
   updateUserRole,
+  updateCompanyUser,
 } from "./model.js";
+import { findUserByEmail } from "../model.js";
 
 const prisma = new PrismaClient();
 
@@ -18,58 +19,22 @@ async function registerCompany(dto) {
 
   const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-  // Pass entire DTO, but overwrite the password
-  return createCompanyUser({ ...dto, password: hashedPassword });
-}
-
-async function loginCompany(email, password) {
-  const user = await findUserByEmail(email);
-  if (!user) throw new Error("Invalid credentials");
-
-  const isValidPassword = await bcrypt.compare(password, user.password);
-  if (!isValidPassword) throw new Error("Invalid credentials");
-
-  // Check if user has CUSTOMER role
-  const hasCustomerRole = Array.isArray(user.role) 
-    ? user.role.includes("CUSTOMER")
-    : user.role === "CUSTOMER";
-
-  if (!hasCustomerRole) {
-    throw new Error("User is not registered as a customer");
-  }
-
-  // Generate JWT token
-  const token = jwt.sign(
-    { 
-      userId: user.id, 
-      email: user.email, 
-      role: user.role 
-    },
-    process.env.JWT_SECRET || "your-secret-key",
-    { expiresIn: "24h" }
-  );
-
-  // Get customer profile
-  const customerProfile = await prisma.customerProfile.findUnique({ 
-    where: { userId: user.id } 
+  // 🧾 Pass full DTO + hashed password to the model
+  // model handles nested create for CustomerProfile + KycDocuments
+  const user = await createCompanyUser({
+    ...dto,
+    password: hashedPassword,
   });
 
-  return {
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      phone: user.phone,
-      role: user.role,
-      kycStatus: user.kycStatus,
-      isVerified: user.isVerified,
-      createdAt: user.createdAt,
-    },
-    customerProfile,
-    token,
-  };
-}
+  // 🧠 Optionally, you could auto-generate a token upon registration
+  const token = jwt.sign(
+    { userId: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
 
+  return { user, token };
+}
 
 async function becomeProvider(userId, { bio = "", skills = [] }) {
   const user = await findUserById(userId);
@@ -93,8 +58,31 @@ async function becomeProvider(userId, { bio = "", skills = [] }) {
   return { alreadyProvider: false, profile };
 }
 
-export {
-  registerCompany,
-  loginCompany,
-  becomeProvider,
-};
+
+async function updateCompanyProfile(userId, updateData) {
+  const user = await findUserById(userId);
+  if (!user) throw new Error("User not found");
+
+  // Update user + nested customerProfile
+  const updatedUser = await updateCompanyUser(userId, updateData);
+  return updatedUser;
+}
+
+async function updatePassword(userId, oldPassword, newPassword) {
+  const user = await findUserById(userId);
+  if (!user) throw new Error("User not found");
+
+  // Verify old password
+  const match = await bcrypt.compare(oldPassword, user.password);
+  if (!match) throw new Error("Old password is incorrect");
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  // Update password
+  const updatedUser = await updateCompanyUser(userId, { password: hashedPassword });
+  return updatedUser;
+}
+
+
+export { registerCompany, becomeProvider, updateCompanyProfile, updatePassword };

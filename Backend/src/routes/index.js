@@ -1,4 +1,5 @@
 import express from "express";
+import auth from "../modules/auth/index.js";
 import companyAuthRoutes from "../modules/auth/company/index.js";
 import providerAuthRoutes from "../modules/auth/provider/index.js";
 import companyProfileRouter from "../modules/company/profile/index.js";
@@ -8,30 +9,30 @@ import companyProjectRequestsRouter from "../modules/company/project-requests/in
 import providerSendProposalRouter from "../modules/provider/send-proposal/index.js";
 import resumeRouter from "../modules/resume/index.js";
 import certificationsRouter from "../modules/certifications/index.js";
-import checkEmailRouter from "./checkEmail.js";
+import klcRoutes from "../modules/auth/KYC/index.js";
 
 const router = express.Router();
 
 // Mount them
-router.use("/company/auth", companyAuthRoutes);
+router.use("/auth", auth);
+router.use("/kyc", klcRoutes);
+router.use("/auth/company", companyAuthRoutes);
 router.use("/provider/auth", providerAuthRoutes);
 router.use("/company/profile", companyProfileRouter);
-router.use("/api/providers", findProvidersRouter);
-router.use("/api/company/projects", companyProjectsRouter);
-router.use("/api/company/project-requests", companyProjectRequestsRouter);
-router.use("/api/provider/proposals", providerSendProposalRouter);
-router.use("/api/resume", resumeRouter);
-router.use("/api/certifications", certificationsRouter);
+router.use("/providers", findProvidersRouter);
+router.use("/company/projects", companyProjectsRouter);
+router.use("/company/project-requests", companyProjectRequestsRouter);
+router.use("/provider/proposals", providerSendProposalRouter);
+router.use("/resume", resumeRouter);
+router.use("/certifications", certificationsRouter);
 // Mount check-email under /api so frontend using NEXT_PUBLIC_API_BASE_URL that
 // points to http://host:PORT/api will be able to call `${API_BASE}/check-email`
-router.use("", checkEmailRouter);
-
 // Simple user endpoint for CustomerLayout
-router.get("/api/users/:id", async (req, res) => {
+router.get("/users/:id", async (req, res) => {
   try {
     const { PrismaClient } = await import("@prisma/client");
     const prisma = new PrismaClient();
-    
+
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
       include: {
@@ -42,7 +43,9 @@ router.get("/api/users/:id", async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // Return user data in the format expected by CustomerLayout

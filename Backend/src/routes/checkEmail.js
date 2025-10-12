@@ -1,5 +1,5 @@
 import express from "express";
-import { findUserByEmail } from "../modules/auth/company/model.js";
+import { findUserByEmail } from "../modules/auth/model.js";
 
 const router = express.Router();
 

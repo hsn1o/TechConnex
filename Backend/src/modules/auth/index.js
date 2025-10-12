@@ -1,8 +1,9 @@
-// src/modules/company/auth/index.js
-const express = require("express");
+import express from "express";
+import { checkEmail, login } from "./controller.js";
+
 const router = express.Router();
-const { login } = require("./controller");
 
 router.post("/login", login);
+router.get("/check-email", checkEmail);
 
-module.exports = router;
+export default router;

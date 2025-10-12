@@ -1,6 +1,6 @@
 // src/modules/auth/provider/controller.js
-import { registerProvider, loginProvider, becomeCustomer } from "./service.js";
-import { RegisterProviderDto, LoginProviderDto } from "./dto.js";
+import { registerProvider, becomeCustomer } from "./service.js";
+import { RegisterProviderDto } from "./dto.js";
 
 async function register(req, res) {
   try {
@@ -15,18 +15,18 @@ async function register(req, res) {
   }
 }
 
-async function login(req, res) {
-  try {
-    // Convert raw body → DTO
-    const dto = new LoginProviderDto(req.body);
+// async function login(req, res) {
+//   try {
+//     // Convert raw body → DTO
+//     const dto = new LoginProviderDto(req.body);
 
-    const result = await loginProvider(dto.email, dto.password);
-    res.status(200).json({ success: true, ...result });
-  } catch (error) {
-    console.error(error);
-    res.status(401).json({ success: false, message: error.message });
-  }
-}
+//     const result = await loginProvider(dto.email, dto.password);
+//     res.status(200).json({ success: true, ...result });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(401).json({ success: false, message: error.message });
+//   }
+// }
 
 async function becomeCustomerHandler(req, res) {
   try {
@@ -47,6 +47,6 @@ async function becomeCustomerHandler(req, res) {
 
 export {
   register,
-  login,
+  // login,
   becomeCustomerHandler,
 };

@@ -1,13 +1,9 @@
 // src/modules/company/auth/service.js
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const {
-  findUserByEmail,
-} = require("./model");
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { findUserByEmail } from "./model.js";
 
-
-
-async function loginCompany({ email, password }) {
+async function loginProvider({ email, password }) {
   const user = await findUserByEmail(email);
   if (!user) throw new Error("Invalid credentials");
 
@@ -23,7 +19,11 @@ async function loginCompany({ email, password }) {
   return { token, user };
 }
 
+async function checkEmailAvailability(email) {
+  const normalizedEmail = (email || "").toString().trim().toLowerCase();
+  if (!normalizedEmail) throw new Error("Email is required");
 
-module.exports = {
-  loginCompany,
-};
+  const user = await findUserByEmail(normalizedEmail);
+  return { available: !user };
+}
+export { loginProvider, checkEmailAvailability };

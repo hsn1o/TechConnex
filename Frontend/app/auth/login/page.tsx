@@ -44,12 +44,7 @@ export default function LoginPage() {
     const userType = (form.elements.namedItem("userType") as HTMLSelectElement)?.value;
 
     try {
-      // Determine the correct endpoint based on user type
-      const endpoint = userType === "provider" 
-        ? API_ENDPOINTS.PROVIDER_LOGIN
-        : API_ENDPOINTS.COMPANY_LOGIN;
-
-      const res = await fetch(endpoint, {
+      const res = await fetch(API_URL+'/auth/login', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -108,7 +103,7 @@ export default function LoginPage() {
             <Tabs defaultValue="email" className="w-full">
               <TabsContent value="email">
                 <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="userType">Account Type</Label>
                     <select
                       id="userType"
@@ -120,7 +115,7 @@ export default function LoginPage() {
                       <option value="company">Company/Customer</option>
                       <option value="provider">Provider/Freelancer</option>
                     </select>
-                  </div>
+                  </div> */}
                   <InputField
                     label="Email Address"
                     id="email"

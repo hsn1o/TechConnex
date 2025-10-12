@@ -14,6 +14,11 @@ class RegisterCompanyDto {
 
     // Normalize customer profile
     this.customerProfile = this.mapCustomerProfile(body.customerProfile || {});
+
+    // ✅ Optional KYC documents
+    this.kycDocuments = Array.isArray(body.kycDocuments)
+      ? body.kycDocuments.map(this.mapKycDocument)
+      : [];
   }
 
   mapCustomerProfile(profile) {
@@ -23,7 +28,9 @@ class RegisterCompanyDto {
       location: profile.location || "",
       website: profile.website || null,
       logoUrl: profile.logoUrl || null,
-      socialLinks: Array.isArray(profile.socialLinks) ? profile.socialLinks : null,
+      socialLinks: Array.isArray(profile.socialLinks)
+        ? profile.socialLinks
+        : null,
       languages: Array.isArray(profile.languages) ? profile.languages : [],
       companySize: profile.companySize || null,
       employeeCount: profile.employeeCount || null,
@@ -49,11 +56,24 @@ class RegisterCompanyDto {
       reviewCount: profile.reviewCount || 0,
       totalSpend: profile.totalSpend || null,
       projectsPosted: profile.projectsPosted || 0,
-      lastActiveAt: profile.lastActiveAt ? new Date(profile.lastActiveAt) : null,
+      lastActiveAt: profile.lastActiveAt
+        ? new Date(profile.lastActiveAt)
+        : null,
       mission: profile.mission || null,
       values: Array.isArray(profile.values) ? profile.values : [],
       benefits: profile.benefits || null,
-      mediaGallery: Array.isArray(profile.mediaGallery) ? profile.mediaGallery : [],
+      mediaGallery: Array.isArray(profile.mediaGallery)
+        ? profile.mediaGallery
+        : [],
+    };
+  }
+    mapKycDocument(doc) {
+    return {
+      type: doc.type, // e.g. "COMPANY_REG", "PROVIDER_ID", etc.
+      fileUrl: doc.fileUrl,
+      filename: doc.filename,
+      mimeType: doc.mimeType || null,
+      status: "uploaded",
     };
   }
 

@@ -29,6 +29,9 @@ import {
   CreditCard,
   Menu,
   X,
+  ClipboardList,
+  Wallet,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -60,52 +63,58 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
   };
 
   useEffect(() => {
-  if (typeof window !== "undefined") {
-    const user = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
+    if (typeof window !== "undefined") {
+      const user = localStorage.getItem("user");
+      const token = localStorage.getItem("token");
 
-    if (!user || !token) {
-      router.push("/auth/login");
-      return;
-    }
-
-    try {
-      const parsedUser = JSON.parse(user);
-      const userId = parsedUser?.id;
-
-      if (userId) {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-        const endpoint = `${API_URL}/api/users/${userId}`; // ✅ updated endpoint
-
-        fetch(endpoint, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error("Failed to fetch profile");
-            return res.json();
-          })
-          .then((data) => setProfile(data))
-          .catch(() => {
-            setProfile(null);
-            // router.push("/auth/login");
-          })
-          .finally(() => setProfileLoading(false));
+      if (!user || !token) {
+        router.push("/auth/login");
+        return;
       }
-    } catch (error) {
-      router.push("/auth/login");
-    }
-  }
-}, [router]);
 
+      try {
+        const parsedUser = JSON.parse(user);
+        const userId = parsedUser?.id;
+
+        if (userId) {
+          const API_URL =
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+          const endpoint = `${API_URL}/api/users/${userId}`; // ✅ updated endpoint
+
+          fetch(endpoint, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("Failed to fetch profile");
+              return res.json();
+            })
+            .then((data) => setProfile(data))
+            .catch(() => {
+              setProfile(null);
+              // router.push("/auth/login");
+            })
+            .finally(() => setProfileLoading(false));
+        }
+      } catch (error) {
+        router.push("/auth/login");
+      }
+    }
+  }, [router]);
 
   const navigation = [
     { name: "Dashboard", href: "/customer/dashboard", icon: Home },
     { name: "My Projects", href: "/customer/projects", icon: Briefcase },
-    { name: "Provider Requests", href: "/customer/requests", icon: Users },
     { name: "Find Providers", href: "/customer/providers", icon: Users },
+    {
+      name: "Provider Requests",
+      href: "/customer/requests",
+      icon: ClipboardList,
+    },
     { name: "Messages", href: "/customer/messages", icon: MessageSquare },
+    { name: "Reviews", href: "/customer/reviews", icon: Star },
+    { name: "Billing", href: "/customer/billing", icon: Wallet },
     { name: "Profile", href: "/customer/profile", icon: User },
     { name: "Settings", href: "/customer/settings", icon: Settings },
   ];
@@ -192,13 +201,24 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
               </Link>
             ))}
           </nav>
-          <div className="p-4 border-t">
+          {/* <div className="p-4 border-t">
             <Link href="/customer/projects/new">
               <Button className="w-full">
                 <Plus className="w-4 h-4 mr-2" />
                 New Project
               </Button>
             </Link>
+          </div> */}
+          <div className="p-4 border-t">
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 text-white">
+              <h3 className="text-sm font-medium mb-1">Need Help?</h3>
+              <p className="text-xs opacity-90 mb-3">
+                Contact our support team for assistance
+              </p>
+              <Button size="sm" variant="secondary" className="w-full">
+                Get Support
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -2,17 +2,12 @@ import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// User queries
-async function findUserByEmail(email) {
-  return prisma.user.findUnique({ where: { email } });
-}
-
 async function findUserById(id) {
   return prisma.user.findUnique({ where: { id } });
 }
 
 async function createCompanyUser(dto) {
- return prisma.user.create({
+  return prisma.user.create({
     data: {
       email: dto.email,
       password: dto.password,
@@ -39,11 +34,14 @@ async function createCompanyUser(dto) {
                 : null,
 
               fundingStage: dto.customerProfile.fundingStage || null,
-              preferredContractTypes: dto.customerProfile.preferredContractTypes || [],
-              averageBudgetRange: dto.customerProfile.averageBudgetRange || null,
+              preferredContractTypes:
+                dto.customerProfile.preferredContractTypes || [],
+              averageBudgetRange:
+                dto.customerProfile.averageBudgetRange || null,
               remotePolicy: dto.customerProfile.remotePolicy || null,
               hiringFrequency: dto.customerProfile.hiringFrequency || null,
-              categoriesHiringFor: dto.customerProfile.categoriesHiringFor || [],
+              categoriesHiringFor:
+                dto.customerProfile.categoriesHiringFor || [],
               completion: dto.customerProfile.completion || null,
               rating: dto.customerProfile.rating || 0,
               reviewCount: dto.customerProfile.reviewCount || 0,
@@ -84,11 +82,32 @@ async function updateUserRole(userId, roles) {
   });
 }
 
+async function updateCompanyUser(userId, updateData) {
+  // Separate nested customerProfile updates from user-level updates
+  const { customerProfile, ...userFields } = updateData;
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...userFields,
+      role: userFields.role ? { set: userFields.role } : undefined, // handle roles
+      customerProfile: customerProfile
+        ? {
+            update: customerProfile, // dynamically update nested profile
+          }
+        : undefined,
+    },
+    include: { customerProfile: true },
+  });
+}
+
+
+
 export {
-  findUserByEmail,
   findUserById,
   createCompanyUser,
   findProviderProfile,
   createProviderProfile,
   updateUserRole,
+  updateCompanyUser,
 };
