@@ -103,19 +103,6 @@ export default function LoginPage() {
             <Tabs defaultValue="email" className="w-full">
               <TabsContent value="email">
                 <form onSubmit={handleLogin} className="space-y-4">
-                  {/* <div className="space-y-2">
-                    <Label htmlFor="userType">Account Type</Label>
-                    <select
-                      id="userType"
-                      name="userType"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 bg-white/50"
-                      required
-                    >
-                      <option value="">Select account type</option>
-                      <option value="company">Company/Customer</option>
-                      <option value="provider">Provider/Freelancer</option>
-                    </select>
-                  </div> */}
                   <InputField
                     label="Email Address"
                     id="email"

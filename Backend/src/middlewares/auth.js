@@ -26,4 +26,24 @@ function authorizeRoles(...allowedRoles) {
   };
 }
 
+// Socket.IO authentication middleware (updated)
+export const authenticateSocket = async (socket, next) => {
+  const token = socket.handshake.auth.token;
+
+  if (!token) {
+    console.log("❌ No token provided in socket handshake");
+    return next(new Error("No token provided"));
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.log("❌ Invalid token");
+      return next(new Error("Invalid token"));
+    }
+
+    socket.user = decoded;
+    next();
+  });
+}
+
 export { authenticateToken, authorizeRoles };

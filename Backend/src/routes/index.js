@@ -10,6 +10,8 @@ import providerSendProposalRouter from "../modules/provider/send-proposal/index.
 import resumeRouter from "../modules/resume/index.js";
 import certificationsRouter from "../modules/certifications/index.js";
 import klcRoutes from "../modules/auth/KYC/index.js";
+import billingRouter from "../modules/company/billing/index.js";
+import messagesRouter from "../modules/messages/index.js";
 
 const router = express.Router();
 
@@ -17,7 +19,11 @@ const router = express.Router();
 router.use("/auth", auth);
 router.use("/kyc", klcRoutes);
 router.use("/auth/company", companyAuthRoutes);
-router.use("/provider/auth", providerAuthRoutes);
+router.use("/auth/provider", providerAuthRoutes);
+router.use("/messages", messagesRouter);
+router.use("/uploads", express.static("uploads"));
+
+router.use("/company/billing", billingRouter);
 router.use("/company/profile", companyProfileRouter);
 router.use("/providers", findProvidersRouter);
 router.use("/company/projects", companyProjectsRouter);

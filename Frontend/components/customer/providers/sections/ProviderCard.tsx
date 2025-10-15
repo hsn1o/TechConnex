@@ -7,8 +7,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Eye, MapPin, MessageSquare, Star } from "lucide-react";
 import type { Provider } from "../types";
+import { useRouter } from "next/navigation";
 
 export default function ProviderCard({ provider }: { provider: Provider }) {
+  const router = useRouter();
+
+const handleContact = () => {
+  // Navigate to chat with this provider
+  router.push(
+    `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
+      provider.name
+    )}&avatar=${encodeURIComponent(provider.avatar || "")}`
+  );
+};
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader className="pb-4">
@@ -20,7 +31,11 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
             </Avatar>
             {provider.verified && (
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="w-3 h-3 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path
                     fillRule="evenodd"
                     d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -32,9 +47,13 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-gray-900 truncate">{provider.name}</h3>
+              <h3 className="font-semibold text-gray-900 truncate">
+                {provider.name}
+              </h3>
               {provider.topRated && (
-                <Badge className="bg-yellow-100 text-yellow-800 text-xs">Top Rated</Badge>
+                <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                  Top Rated
+                </Badge>
               )}
             </div>
             <p className="text-sm text-gray-600 mb-1">{provider.title}</p>
@@ -48,7 +67,9 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 text-yellow-400 fill-current" />
             <span className="font-medium">{provider.rating}</span>
-            <span className="text-sm text-gray-500">({provider.reviewCount})</span>
+            <span className="text-sm text-gray-500">
+              ({provider.reviewCount})
+            </span>
           </div>
           <div className="flex items-center gap-1 text-sm text-gray-500">
             <MapPin className="w-3 h-3" />
@@ -86,16 +107,20 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
           <div className="flex items-center gap-2">
             <div
               className={`w-2 h-2 rounded-full ${
-                provider.availability === "Available" ? "bg-green-500" : "bg-yellow-500"
+                provider.availability === "Available"
+                  ? "bg-green-500"
+                  : "bg-yellow-500"
               }`}
             />
             <span className="text-gray-600">{provider.availability}</span>
           </div>
-          <span className="text-gray-500">Responds in {provider.responseTime}</span>
+          <span className="text-gray-500">
+            Responds in {provider.responseTime}
+          </span>
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button size="sm" className="flex-1">
+          <Button size="sm" className="flex-1" onClick={handleContact}>
             <MessageSquare className="w-4 h-4 mr-2" />
             Contact
           </Button>

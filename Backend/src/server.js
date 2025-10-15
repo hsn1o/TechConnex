@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import routes from "./routes/index.js";
+import { io } from "./index.js"; // Import the io instance
 
 const app = express();
 
@@ -40,6 +41,8 @@ app.use((err, req, res, next) => {
     success: false,
     message: err.message || "Internal Server Error",
   });
+  req.io = io;
+  next();
 });
 
 export default app;

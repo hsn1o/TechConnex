@@ -45,7 +45,7 @@ export default function FindProvidersClient({
     if (locationFilter !== 'all') params.append('location', locationFilter);
     if (ratingFilter !== 'all') params.append('rating', ratingFilter);
 
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers?${params.toString()}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/providers?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {

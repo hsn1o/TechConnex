@@ -1,13 +1,25 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -16,11 +28,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Progress } from "@/components/ui/progress"
-import { Separator } from "@/components/ui/separator"
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import {
   CreditCard,
   Download,
@@ -41,167 +60,60 @@ import {
   Trash2,
   ArrowUpRight,
   ArrowDownRight,
-} from "lucide-react"
-import { CustomerLayout } from "@/components/customer-layout"
-import { useToast } from "@/hooks/use-toast"
+} from "lucide-react";
+import { CustomerLayout } from "@/components/customer-layout";
+import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
 
 export default function CustomerBillingPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState("all")
-  const [filterPeriod, setFilterPeriod] = useState("all")
-  const [activeTab, setActiveTab] = useState("overview")
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
-  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
-  const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false)
-  const [addBudgetOpen, setAddBudgetOpen] = useState(false)
-  const [editBudgetOpen, setEditBudgetOpen] = useState(false)
-  const [selectedBudget, setSelectedBudget] = useState<any>(null)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPeriod, setFilterPeriod] = useState("all");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
+  const [addBudgetOpen, setAddBudgetOpen] = useState(false);
+  const [editBudgetOpen, setEditBudgetOpen] = useState(false);
+  const [selectedBudget, setSelectedBudget] = useState<any>(null);
 
+  const [stats, setStats] = useState({
+    totalSpent: 0,
+    pendingPayments: 0,
+    thisMonth: 0,
+    averageTransaction: 0,
+    completedPayments: 0,
+  });
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   // Mock data
-  const transactions = [
-    {
-      id: "TXN-001",
-      type: "payment",
-      description: "Payment to Ahmad Tech Solutions",
-      project: "E-commerce Mobile App Development",
-      amount: 5000,
-      currency: "MYR",
-      status: "completed",
-      date: "2024-01-15",
-      method: "Credit Card",
-      reference: "REF-2024-001",
-      provider: "Ahmad Tech Solutions",
-      milestone: "UI Design & Setup",
-      invoice: "INV-001",
-    },
-    {
-      id: "TXN-002",
-      type: "payment",
-      description: "Payment to Web Solutions Pro",
-      project: "Company Website Redesign",
-      amount: 3500,
-      currency: "MYR",
-      status: "completed",
-      date: "2024-01-10",
-      method: "Online Banking",
-      reference: "REF-2024-002",
-      provider: "Web Solutions Pro",
-      milestone: "Final Delivery",
-      invoice: "INV-002",
-    },
-    {
-      id: "TXN-003",
-      type: "refund",
-      description: "Refund from Digital Marketing Experts",
-      project: "SEO Optimization Campaign",
-      amount: 500,
-      currency: "MYR",
-      status: "processing",
-      date: "2024-01-08",
-      method: "Credit Card",
-      reference: "REF-2024-003",
-      provider: "Digital Marketing Experts",
-      milestone: "Partial Refund",
-      invoice: "INV-003",
-    },
-    {
-      id: "TXN-004",
-      type: "payment",
-      description: "Payment to Cloud Solutions Inc",
-      project: "AWS Infrastructure Setup",
-      amount: 2800,
-      currency: "MYR",
-      status: "pending",
-      date: "2024-01-20",
-      method: "Credit Card",
-      reference: "REF-2024-004",
-      provider: "Cloud Solutions Inc",
-      milestone: "Infrastructure Setup",
-      invoice: "INV-004",
-    },
-    {
-      id: "TXN-005",
-      type: "payment",
-      description: "Payment to Data Analytics Team",
-      project: "Business Intelligence Dashboard",
-      amount: 8000,
-      currency: "MYR",
-      status: "completed",
-      date: "2024-01-05",
-      method: "Credit Card",
-      reference: "REF-2024-005",
-      provider: "Data Analytics Team",
-      milestone: "Complete Development",
-      invoice: "INV-005",
-    },
-  ]
+const [invoices, setInvoices] = useState<any[]>([]);
+const [loadingInvoices, setLoadingInvoices] = useState(true);
+const [error, setError] = useState("");
 
-  const invoices = [
-    {
-      id: "INV-001",
-      number: "INV-2024-001",
-      project: "E-commerce Mobile App Development",
-      provider: "Ahmad Tech Solutions",
-      amount: 5000,
-      status: "paid",
-      issueDate: "2024-01-10",
-      dueDate: "2024-01-15",
-      paidDate: "2024-01-15",
-      items: [
-        { description: "UI/UX Design", quantity: 1, rate: 2000, amount: 2000 },
-        { description: "Mobile App Development", quantity: 1, rate: 2500, amount: 2500 },
-        { description: "Testing & QA", quantity: 1, rate: 500, amount: 500 },
-      ],
-    },
-    {
-      id: "INV-002",
-      number: "INV-2024-002",
-      project: "Company Website Redesign",
-      provider: "Web Solutions Pro",
-      amount: 3500,
-      status: "paid",
-      issueDate: "2024-01-05",
-      dueDate: "2024-01-10",
-      paidDate: "2024-01-10",
-      items: [
-        { description: "Website Design", quantity: 1, rate: 1500, amount: 1500 },
-        { description: "Frontend Development", quantity: 1, rate: 2000, amount: 2000 },
-      ],
-    },
-    {
-      id: "INV-003",
-      number: "INV-2024-003",
-      project: "AWS Infrastructure Setup",
-      provider: "Cloud Solutions Inc",
-      amount: 2800,
-      status: "pending",
-      issueDate: "2024-01-18",
-      dueDate: "2024-01-25",
-      paidDate: null,
-      items: [
-        { description: "AWS Setup & Configuration", quantity: 1, rate: 2000, amount: 2000 },
-        { description: "Security Implementation", quantity: 1, rate: 800, amount: 800 },
-      ],
-    },
-    {
-      id: "INV-004",
-      number: "INV-2024-004",
-      project: "Business Intelligence Dashboard",
-      provider: "Data Analytics Team",
-      amount: 8000,
-      status: "paid",
-      issueDate: "2024-01-01",
-      dueDate: "2024-01-05",
-      paidDate: "2024-01-05",
-      items: [
-        { description: "Dashboard Development", quantity: 1, rate: 5000, amount: 5000 },
-        { description: "Data Integration", quantity: 1, rate: 2000, amount: 2000 },
-        { description: "Training & Documentation", quantity: 1, rate: 1000, amount: 1000 },
-      ],
-    },
-  ]
+useEffect(() => {
+  const fetchInvoices = async () => {
+    try {
+      const data = await apiFetch("/company/billing/invoices");
+      setInvoices(data?.invoices || []);
+    } catch (err: unknown) {
+      console.error(err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to fetch invoices");
+      }
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
+
+  fetchInvoices();
+}, []);
 
   const paymentMethods = [
     {
@@ -232,231 +144,211 @@ export default function CustomerBillingPage() {
       accountName: "Tech Innovations Sdn Bhd",
       isDefault: false,
     },
-  ]
-
-  const budgets = [
-    {
-      id: "budget-1",
-      category: "Web Development",
-      allocated: 20000,
-      spent: 12000,
-      remaining: 8000,
-      projects: 3,
-      period: "Monthly",
-    },
-    {
-      id: "budget-2",
-      category: "Mobile Development",
-      allocated: 15000,
-      spent: 9000,
-      remaining: 6000,
-      projects: 2,
-      period: "Monthly",
-    },
-    {
-      id: "budget-3",
-      category: "Cloud Services",
-      allocated: 5000,
-      spent: 4200,
-      remaining: 800,
-      projects: 1,
-      period: "Monthly",
-    },
-    {
-      id: "budget-4",
-      category: "Marketing",
-      allocated: 10000,
-      spent: 3500,
-      remaining: 6500,
-      projects: 1,
-      period: "Monthly",
-    },
-  ]
-
-  const upcomingPayments = [
-    {
-      id: "up-1",
-      project: "AWS Infrastructure Setup",
-      provider: "Cloud Solutions Inc",
-      amount: 2800,
-      dueDate: "2024-01-25",
-      status: "pending",
-    },
-    {
-      id: "up-2",
-      project: "Mobile App Phase 2",
-      provider: "Ahmad Tech Solutions",
-      amount: 4500,
-      dueDate: "2024-02-01",
-      status: "scheduled",
-    },
-    {
-      id: "up-3",
-      project: "Security Audit",
-      provider: "CyberSec Experts",
-      amount: 6000,
-      dueDate: "2024-02-10",
-      status: "scheduled",
-    },
-  ]
+  ];
 
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch =
-      transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.description
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       transaction.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.provider.toLowerCase().includes(searchTerm.toLowerCase())
+      transaction.provider.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = filterStatus === "all" || transaction.status === filterStatus
+    const matchesStatus =
+      filterStatus === "all" || transaction.status === filterStatus;
 
     const matchesPeriod =
       filterPeriod === "all" ||
       (() => {
-        const transactionDate = new Date(transaction.date)
-        const now = new Date()
+        const transactionDate = new Date(transaction.date);
+        const now = new Date();
         switch (filterPeriod) {
           case "week":
-            return now.getTime() - transactionDate.getTime() <= 7 * 24 * 60 * 60 * 1000
+            return (
+              now.getTime() - transactionDate.getTime() <=
+              7 * 24 * 60 * 60 * 1000
+            );
           case "month":
-            return now.getTime() - transactionDate.getTime() <= 30 * 24 * 60 * 60 * 1000
+            return (
+              now.getTime() - transactionDate.getTime() <=
+              30 * 24 * 60 * 60 * 1000
+            );
           case "quarter":
-            return now.getTime() - transactionDate.getTime() <= 90 * 24 * 60 * 60 * 1000
+            return (
+              now.getTime() - transactionDate.getTime() <=
+              90 * 24 * 60 * 60 * 1000
+            );
           default:
-            return true
+            return true;
         }
-      })()
+      })();
 
-    return matchesSearch && matchesStatus && matchesPeriod
-  })
+    return matchesSearch && matchesStatus && matchesPeriod;
+  });
 
-  const stats = {
-    totalSpent: transactions
-      .filter((t) => t.type === "payment" && t.status === "completed")
-      .reduce((acc, t) => acc + t.amount, 0),
-    pendingPayments: transactions.filter((t) => t.status === "pending").reduce((acc, t) => acc + t.amount, 0),
-    totalTransactions: transactions.length,
-    thisMonth: transactions
-      .filter((t) => {
-        const transactionDate = new Date(t.date)
-        const now = new Date()
-        return transactionDate.getMonth() === now.getMonth() && transactionDate.getFullYear() === now.getFullYear()
-      })
-      .reduce((acc, t) => acc + (t.type === "payment" ? t.amount : 0), 0),
-    averageTransaction:
-      transactions.filter((t) => t.type === "payment").reduce((acc, t) => acc + t.amount, 0) /
-        transactions.filter((t) => t.type === "payment").length || 0,
-    completedPayments: transactions.filter((t) => t.status === "completed").length,
-  }
+  // const stats = {
+  //   totalSpent: transactions
+  //     .filter((t) => t.type === "payment" && t.status === "completed")
+  //     .reduce((acc, t) => acc + t.amount, 0),
+  //   pendingPayments: transactions.filter((t) => t.status === "pending").reduce((acc, t) => acc + t.amount, 0),
+  //   totalTransactions: transactions.length,
+  //   thisMonth: transactions
+  //     .filter((t) => {
+  //       const transactionDate = new Date(t.date)
+  //       const now = new Date()
+  //       return transactionDate.getMonth() === now.getMonth() && transactionDate.getFullYear() === now.getFullYear()
+  //     })
+  //     .reduce((acc, t) => acc + (t.type === "payment" ? t.amount : 0), 0),
+  //   averageTransaction:
+  //     transactions.filter((t) => t.type === "payment").reduce((acc, t) => acc + t.amount, 0) /
+  //       transactions.filter((t) => t.type === "payment").length || 0,
+  //   completedPayments: transactions.filter((t) => t.status === "completed").length,
+  // }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
       case "paid":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "pending":
       case "scheduled":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "processing":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "failed":
       case "overdue":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
       case "paid":
-        return <CheckCircle className="w-4 h-4" />
+        return <CheckCircle className="w-4 h-4" />;
       case "pending":
       case "scheduled":
-        return <Clock className="w-4 h-4" />
+        return <Clock className="w-4 h-4" />;
       case "processing":
-        return <Clock className="w-4 h-4" />
+        return <Clock className="w-4 h-4" />;
       case "failed":
       case "overdue":
-        return <AlertCircle className="w-4 h-4" />
+        return <AlertCircle className="w-4 h-4" />;
       default:
-        return <Clock className="w-4 h-4" />
+        return <Clock className="w-4 h-4" />;
     }
-  }
+  };
 
   const getCardIcon = (brand: string) => {
     switch (brand.toLowerCase()) {
       case "visa":
-        return "💳"
+        return "💳";
       case "mastercard":
-        return "💳"
+        return "💳";
       case "amex":
-        return "💳"
+        return "💳";
       default:
-        return "💳"
+        return "💳";
     }
-  }
+  };
 
   const handleViewTransactionDetails = (transactionId: string) => {
-    router.push(`/customer/billing/transactions/${transactionId}`)
-  }
+    router.push(`/customer/billing/transactions/${transactionId}`);
+  };
 
   const handleViewBudgetDetails = (budgetId: string) => {
-    router.push(`/customer/billing/budgets/${budgetId}`)
-  }
+    router.push(`/customer/billing/budgets/${budgetId}`);
+  };
 
   const handleEditBudget = (budget: any) => {
-    setSelectedBudget(budget)
-    setEditBudgetOpen(true)
-  }
+    setSelectedBudget(budget);
+    setEditBudgetOpen(true);
+  };
 
   const handleSaveBudgetEdit = () => {
     toast({
       title: "Budget Updated",
       description: `Budget for ${selectedBudget?.category} has been updated successfully.`,
-    })
-    setEditBudgetOpen(false)
-  }
+    });
+    setEditBudgetOpen(false);
+  };
 
   const handleViewInvoice = (invoice: any) => {
-    setSelectedInvoice(invoice)
-    setInvoiceDialogOpen(true)
-  }
+    setSelectedInvoice(invoice);
+    setInvoiceDialogOpen(true);
+  };
 
   const handleDownloadInvoice = (invoice: any) => {
     toast({
       title: "Downloading Invoice",
       description: `Invoice ${invoice.number} is being downloaded.`,
-    })
-  }
+    });
+  };
 
   const handlePayNow = (payment: any) => {
     toast({
       title: "Payment Processing",
-      description: `Processing payment of RM${payment.amount.toLocaleString()} for ${payment.project}`,
-    })
-  }
+      description: `Processing payment of RM${
+        payment.amount.toLocaleString() ?? "0.00"
+      } for ${payment.project}`,
+    });
+  };
 
   const handleAddPaymentMethod = () => {
     toast({
       title: "Payment Method Added",
       description: "Your new payment method has been added successfully.",
-    })
-    setAddPaymentMethodOpen(false)
-  }
+    });
+    setAddPaymentMethodOpen(false);
+  };
 
   const handleSetDefaultPaymentMethod = (methodId: string) => {
     toast({
       title: "Default Payment Method Updated",
       description: "Your default payment method has been changed.",
-    })
-  }
+    });
+  };
 
   const handleRemovePaymentMethod = (methodId: string) => {
     toast({
       title: "Payment Method Removed",
       description: "The payment method has been removed from your account.",
-    })
-  }
+    });
+  };
+
+  // ✅ Fetch all billing data
+  useEffect(() => {
+    const fetchBillingData = async () => {
+      try {
+        const [overviewRes, txnRes, upcomingRes] = await Promise.all([
+          apiFetch("/company/billing/overview"),
+          apiFetch("/company/billing/transactions"),
+          apiFetch("/company/billing/upcoming"),
+        ]);
+
+        // Match structure expected by UI
+        setStats(overviewRes.data.stats || {});
+        setBudgets(overviewRes.data.budgets || []);
+        setTransactions(txnRes.data || []);
+        setUpcomingPayments(upcomingRes.data || []);
+      } catch (error) {
+        console.error("Failed to fetch billing data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBillingData();
+  }, []);
+
+  if (loading)
+    return (
+      <div className="text-center p-10 text-gray-500">
+        Loading billing overview...
+      </div>
+    );
 
   return (
     <CustomerLayout>
@@ -464,15 +356,22 @@ export default function CustomerBillingPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Billing & Finance</h1>
-            <p className="text-gray-600">Manage your payments, invoices, and financial overview</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Billing & Finance
+            </h1>
+            <p className="text-gray-600">
+              Manage your payments, invoices, and financial overview
+            </p>
           </div>
           <div className="flex gap-3">
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
               Export Report
             </Button>
-            <Dialog open={addPaymentMethodOpen} onOpenChange={setAddPaymentMethodOpen}>
+            <Dialog
+              open={addPaymentMethodOpen}
+              onOpenChange={setAddPaymentMethodOpen}
+            >
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
@@ -482,7 +381,9 @@ export default function CustomerBillingPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Payment Method</DialogTitle>
-                  <DialogDescription>Add a new credit card or bank account to your account.</DialogDescription>
+                  <DialogDescription>
+                    Add a new credit card or bank account to your account.
+                  </DialogDescription>
                 </DialogHeader>
                 <AddPaymentMethodForm onSubmit={handleAddPaymentMethod} />
               </DialogContent>
@@ -490,7 +391,11 @@ export default function CustomerBillingPage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
@@ -501,14 +406,16 @@ export default function CustomerBillingPage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            {/* Stats Cards */}
+            {/* ===== Stats Cards ===== */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-500">Total Spent</p>
-                      <p className="text-2xl font-bold">RM{stats.totalSpent.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">
+                        RM{(stats?.totalSpent || 0).toLocaleString()}
+                      </p>
                       <div className="flex items-center mt-2 text-green-600 text-sm">
                         <TrendingUp className="w-4 h-4 mr-1" />
                         <span>12% vs last month</span>
@@ -518,27 +425,39 @@ export default function CustomerBillingPage() {
                   </div>
                 </CardContent>
               </Card>
+
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-500">Pending Payments</p>
-                      <p className="text-2xl font-bold">RM{stats.pendingPayments.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">
+                        RM{(stats?.pendingPayments || 0).toLocaleString()}
+                      </p>
                       <div className="flex items-center mt-2 text-yellow-600 text-sm">
                         <Clock className="w-4 h-4 mr-1" />
-                        <span>{transactions.filter((t) => t.status === "pending").length} pending</span>
+                        <span>
+                          {
+                            transactions.filter((t) => t.status === "pending")
+                              .length
+                          }{" "}
+                          pending
+                        </span>
                       </div>
                     </div>
                     <Clock className="w-8 h-8 text-yellow-600" />
                   </div>
                 </CardContent>
               </Card>
+
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-500">This Month</p>
-                      <p className="text-2xl font-bold">RM{stats.thisMonth.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">
+                        RM{(stats?.thisMonth || 0).toLocaleString()}
+                      </p>
                       <div className="flex items-center mt-2 text-blue-600 text-sm">
                         <Calendar className="w-4 h-4 mr-1" />
                         <span>January 2024</span>
@@ -548,12 +467,18 @@ export default function CustomerBillingPage() {
                   </div>
                 </CardContent>
               </Card>
+
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-500">Avg. Transaction</p>
-                      <p className="text-2xl font-bold">RM{Math.round(stats.averageTransaction).toLocaleString()}</p>
+                      <p className="text-2xl font-bold">
+                        RM RM
+                        {Math.round(
+                          stats?.averageTransaction || 0
+                        ).toLocaleString()}
+                      </p>
                       <div className="flex items-center mt-2 text-purple-600 text-sm">
                         <Receipt className="w-4 h-4 mr-1" />
                         <span>{stats.completedPayments} completed</span>
@@ -565,69 +490,95 @@ export default function CustomerBillingPage() {
               </Card>
             </div>
 
-            {/* Spending by Category */}
+            {/* ===== Spending by Category ===== */}
             <Card>
               <CardHeader>
                 <CardTitle>Spending by Category</CardTitle>
-                <CardDescription>Your budget allocation and spending overview</CardDescription>
+                <CardDescription>
+                  Your budget allocation and spending overview
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {budgets.map((budget) => {
-                    const percentage = (budget.spent / budget.allocated) * 100
+                    const percentage = (budget.spent / budget.allocated) * 100;
                     return (
                       <div key={budget.id} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium">{budget.category}</p>
-                            <p className="text-sm text-gray-500">{budget.projects} active projects</p>
+                            <p className="text-sm text-gray-500">
+                              {budget.projects} active projects
+                            </p>
                           </div>
                           <div className="text-right">
                             <p className="font-medium">
-                              RM{budget.spent.toLocaleString()} / RM{budget.allocated.toLocaleString()}
+                              RM{budget.spent.toLocaleString() ?? "0.00"} / RM
+                              {budget.allocated.toLocaleString() ?? "0.00"}
                             </p>
-                            <p className="text-sm text-gray-500">RM{budget.remaining.toLocaleString()} remaining</p>
+                            <p className="text-sm text-gray-500">
+                              RM{budget.remaining.toLocaleString() ?? "0.00"}{" "}
+                              remaining
+                            </p>
                           </div>
                         </div>
                         <Progress value={percentage} className="h-2" />
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Upcoming Payments */}
+            {/* ===== Upcoming Payments ===== */}
             <Card>
               <CardHeader>
                 <CardTitle>Upcoming Payments</CardTitle>
-                <CardDescription>Scheduled and pending payments</CardDescription>
+                <CardDescription>
+                  Scheduled and pending payments
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {upcomingPayments.map((payment) => (
-                    <div key={payment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={payment.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                           <Wallet className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
                           <h3 className="font-semibold">{payment.project}</h3>
-                          <p className="text-sm text-gray-500">{payment.provider}</p>
-                          <p className="text-xs text-gray-400">Due: {new Date(payment.dueDate).toLocaleDateString()}</p>
+                          <p className="text-sm text-gray-500">
+                            {payment.provider}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            Due:{" "}
+                            {new Date(payment.dueDate).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg font-bold text-gray-900">RM{payment.amount.toLocaleString()}</span>
+                          <span className="text-lg font-bold text-gray-900">
+                            RM{payment.amount.toLocaleString() ?? "0.00"}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge className={getStatusColor(payment.status)}>
                             {getStatusIcon(payment.status)}
-                            <span className="ml-1 capitalize">{payment.status}</span>
+                            <span className="ml-1 capitalize">
+                              {payment.status}
+                            </span>
                           </Badge>
                         </div>
-                        <Button size="sm" className="mt-2" onClick={() => handlePayNow(payment)}>
+                        <Button
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => handlePayNow(payment)}
+                        >
                           <Send className="w-3 h-3 mr-1" />
                           Pay Now
                         </Button>
@@ -638,15 +589,20 @@ export default function CustomerBillingPage() {
               </CardContent>
             </Card>
 
-            {/* Recent Transactions */}
+            {/* ===== Recent Transactions ===== */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Recent Transactions</CardTitle>
-                    <CardDescription>Your latest payment activities</CardDescription>
+                    <CardDescription>
+                      Your latest payment activities
+                    </CardDescription>
                   </div>
-                  <Button variant="outline" onClick={() => setActiveTab("transactions")}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setActiveTab("transactions")}
+                  >
                     View All
                     <ArrowUpRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -655,7 +611,10 @@ export default function CustomerBillingPage() {
               <CardContent>
                 <div className="space-y-4">
                   {transactions.slice(0, 5).map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                           {transaction.type === "payment" ? (
@@ -665,21 +624,34 @@ export default function CustomerBillingPage() {
                           )}
                         </div>
                         <div>
-                          <h3 className="font-semibold">{transaction.description}</h3>
-                          <p className="text-sm text-gray-500">{transaction.project}</p>
-                          <p className="text-xs text-gray-400">{new Date(transaction.date).toLocaleDateString()}</p>
+                          <h3 className="font-semibold">
+                            {transaction.description}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {transaction.project}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(transaction.date).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <span
-                          className={`text-lg font-bold ${transaction.type === "refund" ? "text-green-600" : "text-gray-900"}`}
+                          className={`text-lg font-bold ${
+                            transaction.type === "refund"
+                              ? "text-green-600"
+                              : "text-gray-900"
+                          }`}
                         >
-                          {transaction.type === "refund" ? "+" : "-"}RM{transaction.amount.toLocaleString()}
+                          {transaction.type === "refund" ? "+" : "-"}RM
+                          {transaction.amount.toLocaleString() ?? "0.00"}
                         </span>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge className={getStatusColor(transaction.status)}>
                             {getStatusIcon(transaction.status)}
-                            <span className="ml-1 capitalize">{transaction.status}</span>
+                            <span className="ml-1 capitalize">
+                              {transaction.status}
+                            </span>
                           </Badge>
                         </div>
                       </div>
@@ -751,28 +723,42 @@ export default function CustomerBillingPage() {
                           )}
                         </div>
                         <div>
-                          <h3 className="font-semibold">{transaction.description}</h3>
-                          <p className="text-sm text-gray-500">{transaction.project}</p>
+                          <h3 className="font-semibold">
+                            {transaction.description}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {transaction.project}
+                          </p>
                           <p className="text-xs text-gray-400">
-                            {transaction.milestone} • {transaction.method} • {transaction.reference}
+                            {transaction.milestone} • {transaction.method} •{" "}
+                            {transaction.reference}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="flex items-center gap-2 mb-1">
                           <span
-                            className={`text-lg font-bold ${transaction.type === "refund" ? "text-green-600" : "text-gray-900"}`}
+                            className={`text-lg font-bold ${
+                              transaction.type === "refund"
+                                ? "text-green-600"
+                                : "text-gray-900"
+                            }`}
                           >
-                            {transaction.type === "refund" ? "+" : "-"}RM{transaction.amount.toLocaleString()}
+                            {transaction.type === "refund" ? "+" : "-"}RM
+                            {transaction.amount.toLocaleString() ?? "0.00"}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge className={getStatusColor(transaction.status)}>
                             {getStatusIcon(transaction.status)}
-                            <span className="ml-1 capitalize">{transaction.status}</span>
+                            <span className="ml-1 capitalize">
+                              {transaction.status}
+                            </span>
                           </Badge>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{new Date(transaction.date).toLocaleDateString()}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(transaction.date).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
                     <div className="flex justify-end mt-4 pt-4 border-t">
@@ -780,7 +766,9 @@ export default function CustomerBillingPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleViewTransactionDetails(transaction.id)}
+                          onClick={() =>
+                            handleViewTransactionDetails(transaction.id)
+                          }
                         >
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
@@ -800,9 +788,13 @@ export default function CustomerBillingPage() {
               <Card>
                 <CardContent className="p-12 text-center">
                   <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No transactions found</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No transactions found
+                  </h3>
                   <p className="text-gray-600">
-                    {searchTerm || filterStatus !== "all" || filterPeriod !== "all"
+                    {searchTerm ||
+                    filterStatus !== "all" ||
+                    filterPeriod !== "all"
                       ? "Try adjusting your search or filter criteria."
                       : "You haven't made any payments yet."}
                   </p>
@@ -811,12 +803,13 @@ export default function CustomerBillingPage() {
             )}
           </TabsContent>
 
-          {/* Invoices Tab */}
           <TabsContent value="invoices" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>All Invoices</CardTitle>
-                <CardDescription>View and download your invoices</CardDescription>
+                <CardDescription>
+                  View and download your invoices
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -832,33 +825,67 @@ export default function CustomerBillingPage() {
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
+
                   <TableBody>
-                    {invoices.map((invoice) => (
-                      <TableRow key={invoice.id}>
-                        <TableCell className="font-medium">{invoice.number}</TableCell>
-                        <TableCell>{invoice.project}</TableCell>
-                        <TableCell>{invoice.provider}</TableCell>
-                        <TableCell>RM{invoice.amount.toLocaleString()}</TableCell>
-                        <TableCell>{new Date(invoice.issueDate).toLocaleDateString()}</TableCell>
-                        <TableCell>{new Date(invoice.dueDate).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(invoice.status)}>
-                            {getStatusIcon(invoice.status)}
-                            <span className="ml-1 capitalize">{invoice.status}</span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleViewInvoice(invoice)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
-                              <Download className="w-4 h-4" />
-                            </Button>
-                          </div>
+                    {invoices.length > 0 ? (
+                      invoices.map((invoice) => (
+                        <TableRow key={invoice.id}>
+                          <TableCell className="font-medium">
+                            {invoice.number}
+                          </TableCell>
+                          <TableCell>{invoice.project}</TableCell>
+                          <TableCell>{invoice.provider}</TableCell>
+                          <TableCell>
+                            RM{(invoice.amount ?? 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            {invoice.issueDate
+                              ? new Date(invoice.issueDate).toLocaleDateString()
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {invoice.dueDate
+                              ? new Date(invoice.dueDate).toLocaleDateString()
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(invoice.status)}>
+                              {getStatusIcon(invoice.status)}
+                              <span className="ml-1 capitalize">
+                                {invoice.status}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewInvoice(invoice)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadInvoice(invoice)}
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={8}
+                          className="text-center text-gray-500"
+                        >
+                          No invoices found.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -869,12 +896,17 @@ export default function CustomerBillingPage() {
           <TabsContent value="methods" className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               {paymentMethods.map((method) => (
-                <Card key={method.id} className={method.isDefault ? "ring-2 ring-blue-500" : ""}>
+                <Card
+                  key={method.id}
+                  className={method.isDefault ? "ring-2 ring-blue-500" : ""}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="text-2xl">
-                          {method.type === "credit_card" ? getCardIcon(method.brand!) : "🏦"}
+                          {method.type === "credit_card"
+                            ? getCardIcon(method.brand!)
+                            : "🏦"}
                         </div>
                         <div>
                           {method.type === "credit_card" ? (
@@ -883,25 +915,43 @@ export default function CustomerBillingPage() {
                                 {method.brand} •••• {method.last4}
                               </p>
                               <p className="text-sm text-gray-500">
-                                Expires {method.expiryMonth!.toString().padStart(2, "0")}/{method.expiryYear}
+                                Expires{" "}
+                                {method
+                                  .expiryMonth!.toString()
+                                  .padStart(2, "0")}
+                                /{method.expiryYear}
                               </p>
                             </>
                           ) : (
                             <>
                               <p className="font-semibold">{method.bankName}</p>
-                              <p className="text-sm text-gray-500">Account •••• {method.last4}</p>
+                              <p className="text-sm text-gray-500">
+                                Account •••• {method.last4}
+                              </p>
                             </>
                           )}
                         </div>
                       </div>
-                      {method.isDefault && <Badge className="bg-blue-100 text-blue-800">Default</Badge>}
+                      {method.isDefault && (
+                        <Badge className="bg-blue-100 text-blue-800">
+                          Default
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600 mb-4">
-                      {method.type === "credit_card" ? method.name : method.accountName}
+                      {method.type === "credit_card"
+                        ? method.name
+                        : method.accountName}
                     </p>
                     <div className="flex gap-2">
                       {!method.isDefault && (
-                        <Button variant="outline" size="sm" onClick={() => handleSetDefaultPaymentMethod(method.id)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleSetDefaultPaymentMethod(method.id)
+                          }
+                        >
                           Set as Default
                         </Button>
                       )}
@@ -930,7 +980,9 @@ export default function CustomerBillingPage() {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-semibold">Budget Management</h3>
-                <p className="text-sm text-gray-600">Track and manage your project budgets</p>
+                <p className="text-sm text-gray-600">
+                  Track and manage your project budgets
+                </p>
               </div>
               <Dialog open={addBudgetOpen} onOpenChange={setAddBudgetOpen}>
                 <DialogTrigger asChild>
@@ -942,7 +994,9 @@ export default function CustomerBillingPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Create Budget</DialogTitle>
-                    <DialogDescription>Set up a new budget for your projects.</DialogDescription>
+                    <DialogDescription>
+                      Set up a new budget for your projects.
+                    </DialogDescription>
                   </DialogHeader>
                   <AddBudgetForm />
                 </DialogContent>
@@ -951,15 +1005,22 @@ export default function CustomerBillingPage() {
 
             <div className="grid md:grid-cols-2 gap-6">
               {budgets.map((budget) => {
-                const percentage = (budget.spent / budget.allocated) * 100
-                const isOverBudget = percentage > 90
+                const percentage = (budget.spent / budget.allocated) * 100;
+                const isOverBudget = percentage > 90;
                 return (
-                  <Card key={budget.id} className={isOverBudget ? "ring-2 ring-red-500" : ""}>
+                  <Card
+                    key={budget.id}
+                    className={isOverBudget ? "ring-2 ring-red-500" : ""}
+                  >
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <h3 className="font-semibold text-lg">{budget.category}</h3>
-                          <p className="text-sm text-gray-500">{budget.period} Budget</p>
+                          <h3 className="font-semibold text-lg">
+                            {budget.category}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {budget.period} Budget
+                          </p>
                         </div>
                         {isOverBudget && (
                           <Badge className="bg-red-100 text-red-800">
@@ -974,11 +1035,19 @@ export default function CustomerBillingPage() {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm text-gray-600">Spent</span>
                             <span className="font-medium">
-                              RM{budget.spent.toLocaleString()} / RM{budget.allocated.toLocaleString()}
+                              RM{budget.spent.toLocaleString() ?? "0.00"} / RM
+                              {budget.allocated.toLocaleString() ?? "0.00"}
                             </span>
                           </div>
-                          <Progress value={percentage} className={`h-2 ${isOverBudget ? "bg-red-100" : ""}`} />
-                          <p className="text-sm text-gray-500 mt-1">{percentage.toFixed(0)}% used</p>
+                          <Progress
+                            value={percentage}
+                            className={`h-2 ${
+                              isOverBudget ? "bg-red-100" : ""
+                            }`}
+                          />
+                          <p className="text-sm text-gray-500 mt-1">
+                            {percentage.toFixed(0)}% used
+                          </p>
                         </div>
 
                         <Separator />
@@ -986,11 +1055,17 @@ export default function CustomerBillingPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-sm text-gray-600">Remaining</p>
-                            <p className="text-lg font-bold text-green-600">RM{budget.remaining.toLocaleString()}</p>
+                            <p className="text-lg font-bold text-green-600">
+                              RM{budget.remaining.toLocaleString() ?? "0.00"}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600">Active Projects</p>
-                            <p className="text-lg font-bold">{budget.projects}</p>
+                            <p className="text-sm text-gray-600">
+                              Active Projects
+                            </p>
+                            <p className="text-lg font-bold">
+                              {budget.projects}
+                            </p>
                           </div>
                         </div>
 
@@ -1017,7 +1092,7 @@ export default function CustomerBillingPage() {
                       </div>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
 
@@ -1031,19 +1106,28 @@ export default function CustomerBillingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-gray-900">
-                      RM{budgets.reduce((acc, b) => acc + b.allocated, 0).toLocaleString()}
+                      RM
+                      {budgets
+                        .reduce((acc, b) => acc + b.allocated, 0)
+                        .toLocaleString() ?? "0.00"}
                     </div>
                     <div className="text-sm text-gray-500">Total Allocated</div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-gray-900">
-                      RM{budgets.reduce((acc, b) => acc + b.spent, 0).toLocaleString()}
+                      RM
+                      {budgets
+                        .reduce((acc, b) => acc + b.spent, 0)
+                        .toLocaleString() ?? "0.00"}
                     </div>
                     <div className="text-sm text-gray-500">Total Spent</div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
-                      RM{budgets.reduce((acc, b) => acc + b.remaining, 0).toLocaleString()}
+                      RM
+                      {budgets
+                        .reduce((acc, b) => acc + b.remaining, 0)
+                        .toLocaleString() ?? "0.00"}
                     </div>
                     <div className="text-sm text-gray-500">Total Remaining</div>
                   </div>
@@ -1066,7 +1150,9 @@ export default function CustomerBillingPage() {
               <>
                 <DialogHeader>
                   <DialogTitle>Invoice Details</DialogTitle>
-                  <DialogDescription>Invoice {selectedInvoice.number}</DialogDescription>
+                  <DialogDescription>
+                    Invoice {selectedInvoice.number}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6">
                   {/* Invoice Header */}
@@ -1086,12 +1172,18 @@ export default function CustomerBillingPage() {
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <h4 className="font-semibold mb-2">From:</h4>
-                      <p className="text-sm text-gray-600">{selectedInvoice.provider}</p>
+                      <p className="text-sm text-gray-600">
+                        {selectedInvoice.provider}
+                      </p>
                     </div>
                     <div>
                       <h4 className="font-semibold mb-2">To:</h4>
-                      <p className="text-sm text-gray-600">Tech Innovations Sdn Bhd</p>
-                      <p className="text-sm text-gray-600">sarah@techcorp.com</p>
+                      <p className="text-sm text-gray-600">
+                        Tech Innovations Sdn Bhd
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        sarah@techcorp.com
+                      </p>
                     </div>
                   </div>
 
@@ -1099,18 +1191,24 @@ export default function CustomerBillingPage() {
                     <div>
                       <h4 className="font-semibold mb-2">Issue Date:</h4>
                       <p className="text-sm text-gray-600">
-                        {new Date(selectedInvoice.issueDate).toLocaleDateString()}
+                        {new Date(
+                          selectedInvoice.issueDate
+                        ).toLocaleDateString()}
                       </p>
                     </div>
                     <div>
                       <h4 className="font-semibold mb-2">Due Date:</h4>
-                      <p className="text-sm text-gray-600">{new Date(selectedInvoice.dueDate).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(selectedInvoice.dueDate).toLocaleDateString()}
+                      </p>
                     </div>
                     <div>
                       <h4 className="font-semibold mb-2">Paid Date:</h4>
                       <p className="text-sm text-gray-600">
                         {selectedInvoice.paidDate
-                          ? new Date(selectedInvoice.paidDate).toLocaleDateString()
+                          ? new Date(
+                              selectedInvoice.paidDate
+                            ).toLocaleDateString()
                           : "Not paid yet"}
                       </p>
                     </div>
@@ -1131,14 +1229,20 @@ export default function CustomerBillingPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedInvoice.items.map((item: any, index: number) => (
-                          <TableRow key={index}>
-                            <TableCell>{item.description}</TableCell>
-                            <TableCell>{item.quantity}</TableCell>
-                            <TableCell>RM{item.rate.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">RM{item.amount.toLocaleString()}</TableCell>
-                          </TableRow>
-                        ))}
+                        {selectedInvoice.items.map(
+                          (item: any, index: number) => (
+                            <TableRow key={index}>
+                              <TableCell>{item.description}</TableCell>
+                              <TableCell>{item.quantity}</TableCell>
+                              <TableCell>
+                                RM{item.rate.toLocaleString() ?? "0.00"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                RM{item.amount.toLocaleString() ?? "0.00"}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -1150,7 +1254,9 @@ export default function CustomerBillingPage() {
                     <div className="w-64 space-y-2">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Subtotal:</span>
-                        <span>RM{selectedInvoice.amount.toLocaleString()}</span>
+                        <span>
+                          RM{selectedInvoice.amount.toLocaleString()}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Tax (0%):</span>
@@ -1159,16 +1265,23 @@ export default function CustomerBillingPage() {
                       <Separator />
                       <div className="flex justify-between text-lg font-bold">
                         <span>Total:</span>
-                        <span>RM{selectedInvoice.amount.toLocaleString()}</span>
+                        <span>
+                          RM{selectedInvoice.amount.toLocaleString() ?? "0.00"}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setInvoiceDialogOpen(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setInvoiceDialogOpen(false)}
+                  >
                     Close
                   </Button>
-                  <Button onClick={() => handleDownloadInvoice(selectedInvoice)}>
+                  <Button
+                    onClick={() => handleDownloadInvoice(selectedInvoice)}
+                  >
                     <Download className="w-4 h-4 mr-2" />
                     Download PDF
                   </Button>
@@ -1183,17 +1296,26 @@ export default function CustomerBillingPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Budget</DialogTitle>
-              <DialogDescription>Update your budget allocation and settings.</DialogDescription>
+              <DialogDescription>
+                Update your budget allocation and settings.
+              </DialogDescription>
             </DialogHeader>
             {selectedBudget && (
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="edit-category">Category</Label>
-                  <Input id="edit-category" defaultValue={selectedBudget.category} />
+                  <Input
+                    id="edit-category"
+                    defaultValue={selectedBudget.category}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="edit-allocated">Allocated Amount (RM)</Label>
-                  <Input id="edit-allocated" type="number" defaultValue={selectedBudget.allocated} />
+                  <Input
+                    id="edit-allocated"
+                    type="number"
+                    defaultValue={selectedBudget.allocated}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="edit-period">Period</Label>
@@ -1211,7 +1333,10 @@ export default function CustomerBillingPage() {
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditBudgetOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setEditBudgetOpen(false)}
+              >
                 Cancel
               </Button>
               <Button onClick={handleSaveBudgetEdit}>Save Changes</Button>
@@ -1220,7 +1345,7 @@ export default function CustomerBillingPage() {
         </Dialog>
       </div>
     </CustomerLayout>
-  )
+  );
 }
 
 function AddPaymentMethodForm({ onSubmit }: { onSubmit: () => void }) {
@@ -1287,7 +1412,7 @@ function AddPaymentMethodForm({ onSubmit }: { onSubmit: () => void }) {
         <Button onClick={onSubmit}>Add Payment Method</Button>
       </DialogFooter>
     </div>
-  )
+  );
 }
 
 function AddBudgetForm() {
@@ -1331,5 +1456,5 @@ function AddBudgetForm() {
         <Button>Create Budget</Button>
       </DialogFooter>
     </div>
-  )
+  );
 }

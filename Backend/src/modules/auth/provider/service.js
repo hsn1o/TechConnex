@@ -21,51 +21,6 @@ async function registerProvider(dto) {
   return createProviderUser({ ...dto, password: hashedPassword });
 }
 
-// async function loginProvider(email, password) {
-//   const user = await findUserByEmail(email);
-//   if (!user) throw new Error("Invalid credentials");
-
-//   const isValidPassword = await bcrypt.compare(password, user.password);
-//   if (!isValidPassword) throw new Error("Invalid credentials");
-
-//   // Check if user has PROVIDER role
-//   const hasProviderRole = Array.isArray(user.role) 
-//     ? user.role.includes("PROVIDER")
-//     : user.role === "PROVIDER";
-
-//   if (!hasProviderRole) {
-//     throw new Error("User is not registered as a provider");
-//   }
-
-//   // Generate JWT token
-//   const token = jwt.sign(
-//     { 
-//       userId: user.id, 
-//       email: user.email, 
-//       role: user.role 
-//     },
-//     process.env.JWT_SECRET || "your-secret-key",
-//     { expiresIn: "24h" }
-//   );
-
-//   // Get provider profile
-//   const providerProfile = await findProviderProfile(user.id);
-
-//   return {
-//     user: {
-//       id: user.id,
-//       email: user.email,
-//       name: user.name,
-//       phone: user.phone,
-//       role: user.role,
-//       kycStatus: user.kycStatus,
-//       isVerified: user.isVerified,
-//       createdAt: user.createdAt,
-//     },
-//     providerProfile,
-//     token,
-//   };
-// }
 
 async function becomeCustomer(userId, { description = "", industry = "" }) {
   const user = await findUserById(userId);
@@ -97,6 +52,5 @@ async function becomeCustomer(userId, { description = "", industry = "" }) {
 
 export {
   registerProvider,
-  // loginProvider,
   becomeCustomer,
 };
