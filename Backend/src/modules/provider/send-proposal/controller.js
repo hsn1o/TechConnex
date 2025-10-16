@@ -5,6 +5,8 @@ import {
   getProposalById,
   updateProposal,
   deleteProposal,
+  getProposalMilestones,
+  updateProposalMilestones,
 } from "./service.js";
 import { SendProposalDto, GetProposalsDto } from "./dto.js";
 
@@ -136,6 +138,81 @@ export async function deleteProposalController(req, res) {
     });
   } catch (error) {
     console.error("Error in deleteProposalController:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/provider/proposals/:id/milestones - Get proposal milestones
+export async function getProposalMilestonesController(req, res) {
+  try {
+    const proposalId = req.params.id;
+    const providerId = req.user.userId;
+
+    if (!proposalId) {
+      return res.status(400).json({
+        success: false,
+        message: "Proposal ID is required",
+      });
+    }
+
+    const milestones = await getProposalMilestones(proposalId, providerId);
+
+    res.json({
+      success: true,
+      milestones,
+    });
+  } catch (error) {
+    console.error("Error in getProposalMilestonesController:", error);
+    res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// POST /api/provider/proposals/:id/milestones - Update proposal milestones
+export async function updateProposalMilestonesController(req, res) {
+  try {
+    const proposalId = req.params.id;
+    const providerId = req.user.userId;
+    const { milestones } = req.body;
+
+    if (!proposalId) {
+      return res.status(400).json({
+        success: false,
+        message: "Proposal ID is required",
+      });
+    }
+
+    if (!milestones || !Array.isArray(milestones)) {
+      return res.status(400).json({
+        success: false,
+        message: "Milestones array is required",
+      });
+    }
+
+    // Validate milestone structure
+    for (const milestone of milestones) {
+      if (!milestone.title || !milestone.amount) {
+        return res.status(400).json({
+          success: false,
+          message: "Each milestone must have title and amount",
+        });
+      }
+    }
+
+    const updatedMilestones = await updateProposalMilestones(proposalId, providerId, milestones);
+
+    res.json({
+      success: true,
+      message: "Proposal milestones updated successfully",
+      milestones: updatedMilestones,
+    });
+  } catch (error) {
+    console.error("Error in updateProposalMilestonesController:", error);
     res.status(400).json({
       success: false,
       message: error.message,

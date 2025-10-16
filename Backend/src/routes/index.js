@@ -7,11 +7,16 @@ import findProvidersRouter from "../modules/company/find-providers/index.js";
 import companyProjectsRouter from "../modules/company/projects/index.js";
 import companyProjectRequestsRouter from "../modules/company/project-requests/index.js";
 import providerSendProposalRouter from "../modules/provider/send-proposal/index.js";
-import resumeRouter from "../modules/resume/index.js";
 import certificationsRouter from "../modules/certifications/index.js";
 import klcRoutes from "../modules/auth/KYC/index.js";
 import billingRouter from "../modules/company/billing/index.js";
 import messagesRouter from "../modules/messages/index.js";
+import resumeRouter from "../modules/resume/index.js";
+import companyMilestonesRouter from "../modules/company/milestones/index.js";
+import providerOpportunitiesRouter from "../modules/provider/opportunities/index.js";
+import providerMilestonesRouter from "../modules/provider/milestones/index.js";
+import providerProjectsRouter from "../modules/provider/projects/index.js";
+import providerProfileRouter from "../modules/provider/profile/index.js";
 
 const router = express.Router();
 
@@ -20,6 +25,8 @@ router.use("/auth", auth);
 router.use("/kyc", klcRoutes);
 router.use("/auth/company", companyAuthRoutes);
 router.use("/auth/provider", providerAuthRoutes);
+router.use("/resume", resumeRouter);
+
 router.use("/messages", messagesRouter);
 router.use("/uploads", express.static("uploads"));
 
@@ -31,6 +38,14 @@ router.use("/company/project-requests", companyProjectRequestsRouter);
 router.use("/provider/proposals", providerSendProposalRouter);
 router.use("/resume", resumeRouter);
 router.use("/certifications", certificationsRouter);
+
+
+router.use("/company/milestones", companyMilestonesRouter);
+router.use("/provider/opportunities", providerOpportunitiesRouter);
+router.use("/provider/milestones", providerMilestonesRouter);
+router.use("/provider/projects", providerProjectsRouter);
+router.use("/provider/profile", providerProfileRouter);
+
 // Mount check-email under /api so frontend using NEXT_PUBLIC_API_BASE_URL that
 // points to http://host:PORT/api will be able to call `${API_BASE}/check-email`
 // Simple user endpoint for CustomerLayout

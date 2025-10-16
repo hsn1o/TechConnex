@@ -6,6 +6,8 @@ export class GetProjectRequestsDto {
     this.limit = parseInt(data.limit) || 10;
     this.status = data.status;
     this.category = data.category;
+    this.proposalStatus = data.proposalStatus;
+    this.serviceRequestId = data.serviceRequestId;
   }
 
   validate() {
@@ -19,6 +21,7 @@ export class AcceptProposalDto {
   constructor(data) {
     this.proposalId = data.proposalId;
     this.customerId = data.customerId;
+    this.useProviderMilestones = data.useProviderMilestones !== undefined ? data.useProviderMilestones : true;
   }
 
   validate() {
@@ -27,6 +30,9 @@ export class AcceptProposalDto {
     }
     if (!this.customerId) {
       throw new Error("Customer ID is required");
+    }
+    if (typeof this.useProviderMilestones !== 'boolean') {
+      throw new Error("useProviderMilestones must be a boolean");
     }
   }
 }

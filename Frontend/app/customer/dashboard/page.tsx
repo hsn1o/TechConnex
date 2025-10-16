@@ -24,6 +24,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
+import {
+  getCompanyProjects,
+  getProjectRequestStats,
+  searchProviders,
+} from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 // Define Project type outside the component so it can be used in useState
 export type Project = {
@@ -41,6 +48,15 @@ export type Project = {
 };
 
 export default function CustomerDashboard() {
+  const { toast } = useToast();
+  const router = useRouter();
+  const handleContact = (provider: any) => {
+    router.push(
+      `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
+        provider.name
+      )}&avatar=${encodeURIComponent(provider.avatar || "")}`
+    );
+  };
   const [stats, setStats] = useState({
     activeProjects: 0,
     completedProjects: 0,
@@ -52,117 +68,182 @@ export default function CustomerDashboard() {
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [recommendedProviders, setRecommendedProviders] = useState<any[]>([]);
   const [recommendedLoading, setRecommendedLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get user from localStorage
-    const user =
-      typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("user") || "null")
-        : null;
-    const customerId = user?.id; // fallback to example id
-    // Fetch stats
-    fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api/"
-      }/projects/customers/${customerId}/stats`
-    )
-      .then((res) => res.json())
-      .then((data) => setStats(data))
-      .catch(() =>
-        setStats({
-          activeProjects: 0,
-          completedProjects: 0,
-          totalSpent: 0,
-          rating: null,
-        })
-      );
-    // Fetch recent projects
-    fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api"
-      }/projects/${customerId}`
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        // Handle the new response structure with projects array
-        let projects = data.projects || [];
-        if (projects.length && projects[0].createdAt) {
-          projects = projects.sort((a: any, b: any) => {
-            const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return bDate - aDate;
+    const fetchDashboardData = async () => {
+      try {
+        setError(null);
+
+        // Fetch project requests stats
+        const statsResponse = await getProjectRequestStats();
+        if (statsResponse.success && statsResponse.stats) {
+          setStats({
+            activeProjects: statsResponse.stats.openRequests || 0,
+            completedProjects: statsResponse.stats.matchedRequests || 0,
+            totalSpent: 0, // Not available in current API
+            rating: null, // Not available in current API
+          });
+        } else {
+          // Set default stats if API call fails or returns no data
+          setStats({
+            activeProjects: 0,
+            completedProjects: 0,
+            totalSpent: 0,
+            rating: null,
           });
         }
-        // Map the projects to match the expected structure
-        const mappedProjects = projects.map((project: any) => ({
-          id: project.id,
-          title: project.title,
-          provider: project.provider?.name,
-          providerName: project.provider?.name,
-          status: project.status?.toLowerCase() || "pending",
-          progress: 0, // Default progress since it's not in the API response
-          budget: project.budgetMax,
-          deadline: project.timeline,
-          avatar: "/placeholder.svg?height=40&width=40",
-          createdAt: project.createdAt,
-          category: project.category,
-          description: project.description,
-        }));
-        setRecentProjects(mappedProjects.slice(0, 3));
-      })
-      .catch(() => setRecentProjects([]))
-      .finally(() => setProjectsLoading(false));
 
-    // Fetch recommended providers (random selection)
-    fetch("http://localhost:4000/api/providers")
-      .then((res) => res.json())
-      .then((data) => {
-        // Shuffle and pick 2 random providers
-        const shuffled = data.sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, 2).map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          specialty: p.providerProfile?.skills?.[0] || "Specialty",
-          rating: parseFloat(p.providerProfile?.rating || "0"),
-          completedJobs: p.providerProfile?.totalProjects || 0,
-          hourlyRate: p.providerProfile?.hourlyRate || 0,
-          location: p.providerProfile?.location || "Unknown",
-          avatar: "/placeholder.svg?height=60&width=60",
-          skills: p.providerProfile?.skills || [],
-        }));
-        setRecommendedProviders(selected);
-        setRecommendedLoading(false);
-      })
-      .catch(() => {
-        setRecommendedProviders([]);
-        setRecommendedLoading(false);
-      });
-  }, []);
+        // Fetch recent projects
+        const projectsResponse = await getCompanyProjects({
+          page: 1,
+          limit: 3,
+        });
+        if (projectsResponse.success && projectsResponse.items) {
+          // Map projects to expected structure
+          const mappedProjects = projectsResponse.items.map((project: any) => ({
+            id: project.id,
+            title: project.title,
+            provider: project.provider?.name,
+            providerName: project.provider?.name,
+            status: project.status?.toLowerCase() || "pending",
+            progress: project.progress || 0,
+            budget: project.budgetMax,
+            deadline: project.timeline,
+            avatar:
+              project.provider?.avatarUrl ||
+              "/placeholder.svg?height=40&width=40",
+            createdAt: project.createdAt,
+            category: project.category,
+            description: project.description,
+            type: project.type, // ServiceRequest or Project
+          }));
+          setRecentProjects(mappedProjects);
+        } else {
+          // Set empty projects if API call fails or returns no data
+          setRecentProjects([]);
+        }
 
-  const getStatusColor = (status: string) => {
+        // Fetch recommended providers (top-rated providers) - make this optional
+        try {
+          const providersResponse = await searchProviders({
+            limit: 2,
+          });
+          if (providersResponse.success && providersResponse.providers) {
+            // Map providers to expected structure
+            const mappedProviders = providersResponse.providers.map(
+              (provider: any) => ({
+                id: provider.id,
+                name: provider.name,
+                specialty:
+                  provider.specialties?.[0] ||
+                  provider.skills?.[0] ||
+                  "ICT Professional",
+                rating: provider.rating || 0,
+                completedJobs: provider.completedJobs || 0,
+                hourlyRate: provider.hourlyRate || 0,
+                location: provider.location || "Malaysia",
+                avatar:
+                  provider.avatar || "/placeholder.svg?height=60&width=60",
+                skills: provider.skills || [],
+                verified: provider.verified || false,
+                topRated: provider.topRated || false,
+              })
+            );
+            setRecommendedProviders(mappedProviders);
+          } else {
+            // Set empty providers if API call fails or returns no data
+            setRecommendedProviders([]);
+          }
+        } catch (providerError) {
+          console.warn("Failed to fetch recommended providers:", providerError);
+          // Set empty providers if API call fails - don't break the dashboard
+          setRecommendedProviders([]);
+        }
+        setRecommendedLoading(false);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load dashboard data"
+        );
+        toast({
+          title: "Error",
+          description: "Failed to load dashboard data",
+          variant: "destructive",
+        });
+      } finally {
+        setProjectsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [toast]);
+
+  const getStatusColor = (status: string, type?: string) => {
+    // Handle ServiceRequest statuses
+    if (type === "ServiceRequest") {
+      switch (status) {
+        case "OPEN":
+          return "bg-blue-100 text-blue-800";
+        case "CLOSED":
+          return "bg-gray-100 text-gray-800";
+        default:
+          return "bg-gray-100 text-gray-800";
+      }
+    }
+
+    // Handle Project statuses
     switch (status) {
-      case "completed":
+      case "COMPLETED":
         return "bg-green-100 text-green-800";
-      case "in_progress":
+      case "IN_PROGRESS":
         return "bg-blue-100 text-blue-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
+      case "DISPUTED":
+        return "bg-red-100 text-red-800";
+      case "CANCELLED":
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, type?: string) => {
+    // Handle ServiceRequest statuses
+    if (type === "ServiceRequest") {
+      switch (status) {
+        case "OPEN":
+          return "Open";
+        case "CLOSED":
+          return "Closed";
+        default:
+          return status;
+      }
+    }
+
+    // Handle Project statuses
     switch (status) {
-      case "completed":
+      case "COMPLETED":
         return "Completed";
-      case "in_progress":
+      case "IN_PROGRESS":
         return "In Progress";
-      case "pending":
-        return "Pending";
+      case "DISPUTED":
+        return "Disputed";
+      case "CANCELLED":
+        return "Cancelled";
       default:
         return status;
     }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-MY", {
+      style: "currency",
+      currency: "MYR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -280,66 +361,80 @@ export default function CustomerDashboard() {
                     <div className="text-center text-gray-500 py-8">
                       Loading projects...
                     </div>
+                  ) : error ? (
+                    <div className="text-center text-red-500 py-8">{error}</div>
                   ) : recentProjects.length === 0 ? (
                     <div className="text-center text-gray-500 py-8">
                       No recent projects found.
                     </div>
                   ) : (
                     recentProjects.map((project) => (
-                      <div
+                      <Link
                         key={project.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                        href={`/customer/projects/${project.id}`}
                       >
-                        <div className="flex items-center space-x-4">
-                          <Avatar>
-                            <AvatarImage
-                              src={project.avatar || "/placeholder.svg"}
-                            />
-                            <AvatarFallback>
-                              {project.provider?.charAt(0) ||
-                                project.title?.charAt(0) ||
-                                "P"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">
-                              {project.title}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              {project.provider || project.providerName || "-"}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge className={getStatusColor(project.status)}>
-                                {getStatusText(project.status)}
-                              </Badge>
-                              <span className="text-xs text-gray-500">
-                                Due:{" "}
-                                {project.deadline
-                                  ? new Date(
-                                      project.deadline
-                                    ).toLocaleDateString()
-                                  : "-"}
-                              </span>
+                        <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                          <div className="flex items-center space-x-4">
+                            <Avatar>
+                              <AvatarImage
+                                src={project.avatar || "/placeholder.svg"}
+                              />
+                              <AvatarFallback>
+                                {project.provider?.charAt(0) ||
+                                  project.title?.charAt(0) ||
+                                  "P"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                {project.title}
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                {project.provider ||
+                                  project.providerName ||
+                                  "-"}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge
+                                  className={getStatusColor(
+                                    project.status,
+                                    project.type
+                                  )}
+                                >
+                                  {getStatusText(project.status, project.type)}
+                                </Badge>
+                                {project.type && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {project.type}
+                                  </Badge>
+                                )}
+                                <span className="text-xs text-gray-500">
+                                  Timeline:{" "}
+                                  {project.deadline || "Not specified"}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-gray-900">
+                              {project.budget
+                                ? formatCurrency(project.budget)
+                                : "-"}
+                            </p>
+                            {project.status === "IN_PROGRESS" && (
+                              <div className="mt-2 w-24">
+                                <Progress
+                                  value={project.progress || 0}
+                                  className="h-2"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {project.progress || 0}%
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-gray-900">
-                            RM{project.budget?.toLocaleString?.() ?? "-"}
-                          </p>
-                          {project.status === "in_progress" && (
-                            <div className="mt-2 w-24">
-                              <Progress
-                                value={project.progress}
-                                className="h-2"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                {project.progress}%
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      </Link>
                     ))
                   )}
                 </div>
@@ -368,69 +463,81 @@ export default function CustomerDashboard() {
                     </div>
                   ) : (
                     recommendedProviders.map((provider) => (
-                      <div
+                      <Link
                         key={provider.id}
-                        className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                        href={`/customer/providers/${provider.id}`}
                       >
-                        <div className="flex items-start space-x-3">
-                          <Avatar className="w-12 h-12">
-                            <AvatarImage
-                              src={provider.avatar || "/placeholder.svg"}
-                            />
-                            <AvatarFallback>
-                              {provider.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900 truncate">
-                              {provider.name}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              {provider.specialty}
-                            </p>
-                            <div className="flex items-center gap-1 mt-1">
-                              <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-medium">
-                                {provider.rating}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                ({provider.completedJobs} jobs)
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 mt-1">
-                              <MapPin className="w-3 h-3 text-gray-400" />
-                              <span className="text-xs text-gray-500">
-                                {provider.location}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {provider.skills
-                                .slice(0, 2)
-                                .map((skill: string) => (
+                        <div className="p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                          <div className="flex items-start space-x-3">
+                            <Avatar className="w-12 h-12">
+                              <AvatarImage
+                                src={provider.avatar || "/placeholder.svg"}
+                              />
+                              <AvatarFallback>
+                                {provider.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-gray-900 truncate">
+                                {provider.name}
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                {provider.specialty}
+                              </p>
+                              <div className="flex items-center gap-1 mt-1">
+                                <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                                <span className="text-sm font-medium">
+                                  {provider.rating}
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  ({provider.completedJobs} jobs)
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 mt-1">
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span className="text-xs text-gray-500">
+                                  {provider.location}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {provider.skills
+                                  .slice(0, 2)
+                                  .map((skill: string) => (
+                                    <Badge
+                                      key={skill}
+                                      variant="secondary"
+                                      className="text-xs"
+                                    >
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                {provider.skills.length > 2 && (
                                   <Badge
-                                    key={skill}
                                     variant="secondary"
                                     className="text-xs"
                                   >
-                                    {skill}
+                                    +{provider.skills.length - 2}
                                   </Badge>
-                                ))}
-                              {provider.skills.length > 2 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{provider.skills.length - 2}
-                                </Badge>
-                              )}
+                                )}
+                              </div>
+                              <p className="text-sm font-medium text-blue-600 mt-2">
+                                RM{provider.hourlyRate}/hour
+                              </p>
                             </div>
-                            <p className="text-sm font-medium text-blue-600 mt-2">
-                              RM{provider.hourlyRate}/hour
-                            </p>
                           </div>
+                          <Button
+                            size="sm"
+                            className="w-full mt-3"
+                            onClick={(e) => {
+                              e.preventDefault(); // prevents Link from triggering navigation
+                              handleContact(provider);
+                            }}
+                          >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Contact
+                          </Button>
                         </div>
-                        <Button size="sm" className="w-full mt-3">
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          Contact
-                        </Button>
-                      </div>
+                      </Link>
                     ))
                   )}
                 </div>

@@ -69,6 +69,7 @@ export default function CustomerMessagesPage() {
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Get user data and token
   const getAuthData = () => {
@@ -101,10 +102,25 @@ export default function CustomerMessagesPage() {
     if (!token) return;
 
     const newSocket = io(API_URL!, {
-      auth: { token },
+      auth: {
+        token: token,
+      },
       transports: ["websocket", "polling"],
     });
+    // In your socket connection, add error handling:
+    newSocket.on("message_error", (error: { error: string }) => {
+      console.error("❌ Message sending failed:", error.error);
+      alert(`Failed to send message: ${error.error}`);
 
+      // Remove the optimistic message
+      setMessages((prev) => prev.filter((msg) => msg.id.startsWith("temp-")));
+    });
+
+    // Also add this to handle connection errors
+    newSocket.on("connect_error", (error) => {
+      console.error("❌ Socket connection error:", error);
+      setIsConnected(false);
+    });
     newSocket.on("connect", () => {
       console.log("✅ Connected to server");
       setIsConnected(true);
@@ -296,6 +312,43 @@ export default function CustomerMessagesPage() {
     fetchMessages(conversation.userId);
   };
 
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file || !token || !socket || !selectedChat) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Upload file to backend
+    const res = await fetch(`${API_URL}/messages/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+      alert("File upload failed");
+      return;
+    }
+
+    // Send file message
+    const messageData = {
+      senderId: currentUserId,
+      receiverId: selectedChat,
+      messageType: "file",
+      attachments: [data.fileUrl],
+    };
+
+    socket.emit("send_message", messageData, (response: any) => {
+      if (!response?.success) {
+        alert("Failed to send file: " + response.error);
+      }
+    });
+  };
+
   // Send message
   const handleSendMessage = async () => {
     console.log("🔄 Send message triggered");
@@ -309,6 +362,7 @@ export default function CustomerMessagesPage() {
     }
 
     const messageData = {
+      senderId: currentUserId, // ✅ add this line
       receiverId: selectedChat,
       content: newMessage.trim(),
       messageType: "text" as const,
@@ -545,12 +599,12 @@ export default function CustomerMessagesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
+                      {/* <Button variant="outline" size="sm">
                         <Phone className="w-4 h-4" />
                       </Button>
                       <Button variant="outline" size="sm">
                         <Video className="w-4 h-4" />
-                      </Button>
+                      </Button> */}
                       <Button variant="outline" size="sm">
                         <MoreVertical className="w-4 h-4" />
                       </Button>
@@ -609,7 +663,62 @@ export default function CustomerMessagesPage() {
                                 : "bg-gray-100 text-gray-900"
                             }`}
                           >
-                            <p className="text-sm">{message.content}</p>
+                            {message.messageType === "file" ? (
+                              message.attachments.map((fileUrl, index) => {
+                                const isImage =
+                                  /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(
+                                    fileUrl
+                                  );
+                                const isPDF = /\.pdf$/i.test(fileUrl);
+                                const fileName = fileUrl.split("/").pop();
+
+                                return (
+                                  <div key={index} className="mt-2">
+                                    {isImage ? (
+                                      <a
+                                        href={fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <img
+                                          src={fileUrl}
+                                          alt="Attachment"
+                                          className="rounded-lg max-w-[200px] border"
+                                        />
+                                      </a>
+                                    ) : isPDF ? (
+                                      <a
+                                        href={fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`block mt-1 underline ${
+                                          isOwn
+                                            ? "text-blue-100"
+                                            : "text-blue-600"
+                                        }`}
+                                      >
+                                        📄 {fileName}
+                                      </a>
+                                    ) : (
+                                      <a
+                                        href={fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`block mt-1 underline ${
+                                          isOwn
+                                            ? "text-blue-100"
+                                            : "text-blue-600"
+                                        }`}
+                                      >
+                                        📎 {fileName}
+                                      </a>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <p className="text-sm">{message.content}</p>
+                            )}
                             <p
                               className={`text-xs mt-1 ${
                                 isOwn ? "text-blue-100" : "text-gray-500"
@@ -642,9 +751,22 @@ export default function CustomerMessagesPage() {
             {selectedChat && (
               <div className="border-t p-4">
                 <div className="flex items-end space-x-2">
-                  <Button variant="outline" size="sm">
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Paperclip className="w-5 h-5" />
+                    </Button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+                  </div>
+
                   <div className="flex-1">
                     <Textarea
                       placeholder="Type your message..."

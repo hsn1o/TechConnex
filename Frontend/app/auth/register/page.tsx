@@ -141,6 +141,13 @@ export default function SignupPage() {
     serialNumber: "",
     sourceUrl: "",
   });
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editCertification, setEditCertification] = useState<Certification | null>(null);
+const handleEditCertification = (index: number) => {
+  setEditingIndex(index);
+  setEditCertification({ ...certifications[index] });
+};
+
 
   const [isProcessingCV, setIsProcessingCV] = useState(false);
   const [cvExtractedData, setCvExtractedData] = useState<any>(null);
@@ -239,7 +246,7 @@ export default function SignupPage() {
     formData.append("resume", file);
     formData.append("userId", userId);
 
-    return fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/resume/upload`, {
+    return fetch(`${process.env.NEXT_PUBLIC_API_URL}/resume/upload`, {
       method: "POST",
       body: formData,
     });
@@ -417,6 +424,16 @@ export default function SignupPage() {
           const kycOk = Boolean(kycDocType) && Boolean(kycFile);
           return bioOk && locOk && resumeOk && kycOk;
         }
+        case 5: {
+          const requiredFilled =
+            (!!newCertification.name &&
+              !!newCertification.issuedDate &&
+              !!newCertification.issuer &&
+              !!newCertification.serialNumber) ||
+            !!newCertification.sourceUrl;
+
+          return requiredFilled;
+        }
         default:
           return true;
       }
@@ -475,8 +492,8 @@ export default function SignupPage() {
       // 1️⃣ Register user
       const endpoint =
         userRole === "provider"
-          ? `${process.env.NEXT_PUBLIC_API_URL}/provider/auth/register`
-          : `${process.env.NEXT_PUBLIC_API_URL}/company/auth/register`;
+          ? `${process.env.NEXT_PUBLIC_API_URL}/auth/provider/register`
+          : `${process.env.NEXT_PUBLIC_API_URL}/auth/company/register`;
 
       const requestData: any = {
         email: formData.email,
@@ -911,17 +928,6 @@ export default function SignupPage() {
             </CardHeader>
 
             <CardContent>
-              {error && (
-                <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-600 text-sm">{error}</p>
-                </div>
-              )}
-              {success && (
-                <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-green-600 text-sm">{success}</p>
-                </div>
-              )}
-
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentStep}
@@ -994,7 +1000,16 @@ export default function SignupPage() {
                   )}
                 </motion.div>
               </AnimatePresence>
-
+              {error && (
+                <div className="my-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
+              {success && (
+                <div className="my-6 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-600 text-sm">{success}</p>
+                </div>
+              )}
               <div className="flex justify-between mt-8 pt-6 border-t">
                 <Button
                   type="button"

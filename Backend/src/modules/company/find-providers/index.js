@@ -1,5 +1,6 @@
 // src/modules/company/find-providers/index.js
 import express from "express";
+import { authenticateToken } from "../../../middlewares/auth.js";
 import {
   findProviders,
   getProvider,
@@ -14,6 +15,9 @@ import {
 } from "./controller.js";
 
 const router = express.Router();
+
+// Apply authentication to all routes
+router.use(authenticateToken);
 
 // Provider search and listing
 router.get("/", findProviders);

@@ -65,7 +65,8 @@ export async function acceptProposalController(req, res) {
   try {
     const dto = new AcceptProposalDto({
       proposalId: req.params.id,
-      customerId: req.user.id, // Assuming user ID comes from auth middleware
+      customerId: req.user.userId, // Assuming user ID comes from auth middleware
+      useProviderMilestones: req.body.useProviderMilestones,
     });
     dto.validate();
 
@@ -90,7 +91,7 @@ export async function rejectProposalController(req, res) {
   try {
     const dto = new RejectProposalDto({
       proposalId: req.params.id,
-      customerId: req.user.id, // Assuming user ID comes from auth middleware
+      customerId: req.user.userId, // Assuming user ID comes from auth middleware
       reason: req.body.reason,
     });
     dto.validate();

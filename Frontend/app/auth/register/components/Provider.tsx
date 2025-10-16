@@ -14,8 +14,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Lock, Eye, EyeOff, Phone, MapPin, Globe, FileText, Upload, X, Plus, Award, Building2, Calendar, Zap, CheckCircle, AlertCircle } from "lucide-react";
-import { RegistrationFormData , Certification } from "../page";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Phone,
+  MapPin,
+  Globe,
+  FileText,
+  Upload,
+  X,
+  Plus,
+  Award,
+  Building2,
+  Calendar,
+  Zap,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
+import { RegistrationFormData, Certification } from "../page";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -102,7 +120,9 @@ interface ProviderRegistrationProps {
   kycFile: File | null;
   setKycFile: (file: File | null) => void;
   kycDocType: "" | "PASSPORT" | "IC" | "COMPANY_REGISTRATION";
-  setKycDocType: (type: "" | "PASSPORT" | "IC" | "COMPANY_REGISTRATION") => void;
+  setKycDocType: (
+    type: "" | "PASSPORT" | "IC" | "COMPANY_REGISTRATION"
+  ) => void;
   resumeFile: File | null;
   setResumeFile: (file: File | null) => void;
   selectedSkills: string[];
@@ -172,7 +192,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
   setAiProcessingComplete,
 }) => {
   const isStrongPassword = (pwd: string) =>
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|;:'",.<>/?`~]).{8,}$/.test(pwd);
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|;:'",.<>/?`~]).{8,}$/.test(
+      pwd
+    );
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -188,7 +210,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
     formData.append("resume", file);
 
     try {
-      const res = await fetch("http://localhost:4000/api/resume/analyze", {
+      const res = await fetch("http://localhost:4000/resume/analyze", {
         method: "POST",
         body: formData,
       });
@@ -215,7 +237,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
 
   const handleLanguageToggle = (language: string) => {
     setSelectedLanguages((prev) =>
-      prev.includes(language) ? prev.filter((l) => l !== language) : [...prev, language]
+      prev.includes(language)
+        ? prev.filter((l) => l !== language)
+        : [...prev, language]
     );
   };
 
@@ -227,7 +251,10 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
   };
 
   const handleAddCustomLanguage = () => {
-    if (customLanguage.trim() && !selectedLanguages.includes(customLanguage.trim())) {
+    if (
+      customLanguage.trim() &&
+      !selectedLanguages.includes(customLanguage.trim())
+    ) {
       setSelectedLanguages((prev) => [...prev, customLanguage.trim()]);
       setCustomLanguage("");
     }
@@ -242,7 +269,10 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
   };
 
   const handleAddPortfolioUrl = () => {
-    if (newPortfolioUrl.trim() && !portfolioUrls.includes(newPortfolioUrl.trim())) {
+    if (
+      newPortfolioUrl.trim() &&
+      !portfolioUrls.includes(newPortfolioUrl.trim())
+    ) {
       setPortfolioUrls((prev) => [...prev, newPortfolioUrl.trim()]);
       setNewPortfolioUrl("");
     }
@@ -253,36 +283,39 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
   };
 
   const handleAddCertification = () => {
-    const hasSerialOrUrl =
-      (newCertification.serialNumber && newCertification.serialNumber.trim()) ||
-      (newCertification.sourceUrl && newCertification.sourceUrl.trim());
+  const hasSerialOrUrl =
+    (newCertification.serialNumber && newCertification.serialNumber.trim()) ||
+    (newCertification.sourceUrl && newCertification.sourceUrl.trim());
 
-    if (
-      newCertification.name.trim() &&
-      newCertification.issuer.trim() &&
-      newCertification.issuedDate &&
-      hasSerialOrUrl
-    ) {
-      setCertifications((prev) => [...prev, { ...newCertification }]);
-      setNewCertification({
-        name: "",
-        issuer: "",
-        issuedDate: "",
-        verified: false,
-        serialNumber: "",
-        sourceUrl: "",
-      });
-    }
-  };
+  if (
+    newCertification.name.trim() &&
+    newCertification.issuer.trim() &&
+    newCertification.issuedDate &&
+    hasSerialOrUrl
+  ) {
+    setCertifications((prev) => [...prev, { ...newCertification }]);
+    setNewCertification({
+      name: "",
+      issuer: "",
+      issuedDate: "",
+      verified: false,
+      serialNumber: "",
+      sourceUrl: "",
+    });
+  }
+};
 
-  const handleRemoveCertification = (index: number) => {
-    setCertifications((prev) => prev.filter((_, i) => i !== index));
-  };
+// ✅ Remove Certification
+const handleRemoveCertification = (index: number) => {
+  setCertifications((prev) => prev.filter((_, i) => i !== index));
+};
+
+
 
   const applyAIExtractedData = () => {
     if (!cvExtractedData) return;
 
-    // Update form fields individually
+    // 🔹 Basic info
     if (cvExtractedData.bio) {
       handleInputChange("bio", cvExtractedData.bio);
     }
@@ -293,7 +326,27 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
       handleInputChange("hourlyRate", cvExtractedData.suggestedHourlyRate);
     }
 
-    // Update skills
+    // 🔹 Location
+    if (cvExtractedData.location) {
+      handleInputChange("location", cvExtractedData.location);
+    }
+
+    // 🔹 Portfolio URLs (prevent duplicates)
+    if (cvExtractedData.portfolios && cvExtractedData.portfolios.length > 0) {
+      setPortfolioUrls((prev) => {
+        const newLinks = cvExtractedData.portfolios
+          .map((url: string) => url.trim())
+          .filter((url: string) => !prev.includes(url));
+        return [...prev, ...newLinks];
+      });
+    }
+
+    // 🔹 Official Website
+    if (cvExtractedData.website) {
+      handleInputChange("website", cvExtractedData.website);
+    }
+
+    // 🔹 Skills
     if (cvExtractedData.skills && cvExtractedData.skills.length > 0) {
       setSelectedSkills((prev) => {
         const newSkills = cvExtractedData.skills.filter(
@@ -303,7 +356,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
       });
     }
 
-    // Update languages
+    // 🔹 Languages
     if (cvExtractedData.languages && cvExtractedData.languages.length > 0) {
       setSelectedLanguages((prev) => {
         const newLanguages = cvExtractedData.languages.filter(
@@ -313,11 +366,24 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
       });
     }
 
-    // Update certifications
-    if (cvExtractedData.certifications && cvExtractedData.certifications.length > 0) {
-      setCertifications((prev) => [...prev, ...cvExtractedData.certifications]);
+    // 🔹 Certifications (with certificate link or serial)
+    if (
+      cvExtractedData.certifications &&
+      cvExtractedData.certifications.length > 0
+    ) {
+      setCertifications((prev) => {
+        const newCerts = cvExtractedData.certifications.map((cert: any) => ({
+          name: cert.name || "",
+          issuer: cert.issuer || "",
+          issuedDate: cert.issuedDate || "",
+          serialNumber: cert.serialNumber || "", // ✅ NEW
+          verificationLink: cert.verificationLink || "", // ✅ NEW
+        }));
+        return [...prev, ...newCerts];
+      });
     }
 
+    // ✅ Close the AI results modal
     setShowAIResults(false);
   };
 
@@ -332,7 +398,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
         >
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Account Setup</h2>
-            <p className="text-gray-600">Let's start with your basic information</p>
+            <p className="text-gray-600">
+              Let's start with your basic information
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -366,7 +434,8 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               </div>
 
               <p className="text-xs text-gray-500">
-                We'll use this email <strong>now</strong> when you click <em>Next</em> to check availability.
+                We'll use this email <strong>now</strong> when you click{" "}
+                <em>Next</em> to check availability.
               </p>
 
               {emailStatus === "checking" && (
@@ -375,9 +444,11 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               {fieldErrors.email && (
                 <p className="text-xs text-red-600">{fieldErrors.email}</p>
               )}
-              {emailStatus === "available" && !fieldErrors.email && formData.email && (
-                <p className="text-xs text-green-600">Email is available.</p>
-              )}
+              {emailStatus === "available" &&
+                !fieldErrors.email &&
+                formData.email && (
+                  <p className="text-xs text-green-600">Email is available.</p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -406,7 +477,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   placeholder="Create a strong password"
                   className="pl-10 pr-10 bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                   value={formData.password}
-                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("password", e.target.value)
+                  }
                   required
                 />
                 <button
@@ -414,7 +487,11 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -429,19 +506,26 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   placeholder="Re-enter your password"
                   className="pl-10 bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                   value={formData.confirmPassword}
-                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("confirmPassword", e.target.value)
+                  }
                   required
                 />
               </div>
 
-              {!isStrongPassword(formData.password) && formData.password.length > 0 && (
-                <p className="text-xs text-red-600">
-                  Use at least 8 characters with uppercase, lowercase, number, and symbol.
-                </p>
-              )}
-              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                <p className="text-xs text-red-600">Passwords do not match.</p>
-              )}
+              {!isStrongPassword(formData.password) &&
+                formData.password.length > 0 && (
+                  <p className="text-xs text-red-600">
+                    Use at least 8 characters with uppercase, lowercase, number,
+                    and symbol.
+                  </p>
+                )}
+              {formData.confirmPassword &&
+                formData.password !== formData.confirmPassword && (
+                  <p className="text-xs text-red-600">
+                    Passwords do not match.
+                  </p>
+                )}
             </div>
           </div>
         </motion.div>
@@ -459,7 +543,8 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           <div className="space-y-2 border-t pt-6">
             <Label htmlFor="resume">Resume (PDF only) *</Label>
             <p className="text-sm text-gray-600 mb-4">
-              Upload your CV to get AI-powered assistance filling out your profile
+              Upload your CV to get AI-powered assistance filling out your
+              profile
             </p>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-white/50 hover:border-blue-400 transition-colors">
               <input
@@ -496,7 +581,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                         <p className="text-lg font-medium text-green-600 mb-2">
                           {resumeFile.name}
                         </p>
-                        <p className="text-sm text-gray-500">Click to change file</p>
+                        <p className="text-sm text-gray-500">
+                          Click to change file
+                        </p>
                         {aiProcessingComplete && (
                           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="flex items-center justify-center">
@@ -513,7 +600,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                         <p className="text-lg font-medium text-gray-600 mb-2">
                           Upload your resume
                         </p>
-                        <p className="text-sm text-gray-500 mb-4">PDF files only, max 5MB</p>
+                        <p className="text-sm text-gray-500 mb-4">
+                          PDF files only, max 5MB
+                        </p>
                         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
                           <div className="flex items-center justify-center">
                             <Zap className="w-5 h-5 text-blue-600 mr-2" />
@@ -545,6 +634,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               </div>
 
               <div className="space-y-4 mb-6">
+                {/* Bio / Summary */}
                 {cvExtractedData.bio && (
                   <div>
                     <Label className="text-sm font-medium text-blue-800">
@@ -556,46 +646,59 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   </div>
                 )}
 
-                {cvExtractedData.skills && cvExtractedData.skills.length > 0 && (
+                {/* Skills */}
+                {cvExtractedData.skills?.length > 0 && (
                   <div>
                     <Label className="text-sm font-medium text-blue-800">
                       Skills Found ({cvExtractedData.skills.length}):
                     </Label>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {cvExtractedData.skills.map((skill: string, index: number) => (
-                        <Badge key={index} className="bg-blue-600 text-white">
-                          {skill}
-                        </Badge>
-                      ))}
+                      {cvExtractedData.skills.map(
+                        (skill: string, i: number) => (
+                          <Badge key={i} className="bg-blue-600 text-white">
+                            {skill}
+                          </Badge>
+                        )
+                      )}
                     </div>
                   </div>
                 )}
 
-                {cvExtractedData.languages && cvExtractedData.languages.length > 0 && (
+                {/* Languages */}
+                {cvExtractedData.languages?.length > 0 && (
                   <div>
                     <Label className="text-sm font-medium text-blue-800">
                       Languages ({cvExtractedData.languages.length}):
                     </Label>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {cvExtractedData.languages.map((lang: string, index: number) => (
-                        <Badge key={index} className="bg-green-600 text-white">
-                          {lang}
-                        </Badge>
-                      ))}
+                      {cvExtractedData.languages.map(
+                        (lang: string, i: number) => (
+                          <Badge key={i} className="bg-green-600 text-white">
+                            {lang}
+                          </Badge>
+                        )
+                      )}
                     </div>
                   </div>
                 )}
 
+                {/* Experience and Rate */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {cvExtractedData.yearsExperience && (
                     <div>
-                      <Label className="text-sm font-medium text-blue-800">Experience:</Label>
-                      <p className="text-sm text-blue-700">{cvExtractedData.yearsExperience}</p>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Experience:
+                      </Label>
+                      <p className="text-sm text-blue-700">
+                        {cvExtractedData.yearsExperience}
+                      </p>
                     </div>
                   )}
                   {cvExtractedData.suggestedHourlyRate && (
                     <div>
-                      <Label className="text-sm font-medium text-blue-800">Suggested Rate:</Label>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Suggested Rate:
+                      </Label>
                       <p className="text-sm text-blue-700">
                         RM {cvExtractedData.suggestedHourlyRate}/hour
                       </p>
@@ -603,28 +706,114 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   )}
                 </div>
 
-                {cvExtractedData.certifications && cvExtractedData.certifications.length > 0 && (
+                {/* Location */}
+                {cvExtractedData.location && (
                   <div>
                     <Label className="text-sm font-medium text-blue-800">
-                      Certifications Found:
+                      Location:
                     </Label>
-                    <div className="space-y-2 mt-2">
-                      {cvExtractedData.certifications.map((cert: any, index: number) => (
-                        <div
-                          key={index}
-                          className="text-sm text-blue-700 bg-white/50 p-2 rounded border"
-                        >
-                          <span className="font-medium">{cert.name}</span> - {cert.issuer}
-                          {cert.issuedDate && (
-                            <span className="text-blue-600"> ({cert.issuedDate})</span>
-                          )}
-                        </div>
-                      ))}
+                    <p className="text-sm text-blue-700 bg-white/50 p-2 rounded border mt-1">
+                      {cvExtractedData.location}
+                    </p>
+                  </div>
+                )}
+
+                {/* Portfolio URLs */}
+                {cvExtractedData.portfolioUrls?.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-blue-800">
+                      Portfolio Links:
+                    </Label>
+                    <ul className="list-disc pl-5 text-sm text-blue-700 mt-1">
+                      {cvExtractedData.portfolioUrls.map(
+                        (url: string, i: number) => (
+                          <li key={i}>
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline hover:text-blue-900"
+                            >
+                              {url}
+                            </a>
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Official Website */}
+                {cvExtractedData.officialWebsite && (
+                  <div>
+                    <Label className="text-sm font-medium text-blue-800">
+                      Official Website:
+                    </Label>
+                    <p className="text-sm text-blue-700">
+                      <a
+                        href={cvExtractedData.officialWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-blue-900"
+                      >
+                        {cvExtractedData.officialWebsite}
+                      </a>
+                    </p>
+                  </div>
+                )}
+
+                {/* Certifications */}
+                {cvExtractedData.certifications?.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-blue-800">
+                      Certifications:
+                    </Label>
+                    <div className="space-y-3 mt-2">
+                      {cvExtractedData.certifications.map(
+                        (cert: any, i: number) => (
+                          <div
+                            key={i}
+                            className="text-sm text-blue-700 bg-white/50 p-3 rounded border"
+                          >
+                            <p>
+                              <span className="font-medium">{cert.name}</span> —{" "}
+                              {cert.issuer}
+                              {cert.issuedDate && (
+                                <span className="text-blue-600">
+                                  {" "}
+                                  ({cert.issuedDate})
+                                </span>
+                              )}
+                            </p>
+                            {cert.serialNumber && (
+                              <p className="text-xs mt-1 text-blue-800">
+                                Serial:{" "}
+                                <span className="font-mono">
+                                  {cert.serialNumber}
+                                </span>
+                              </p>
+                            )}
+                            {cert.certificateLink && (
+                              <p className="text-xs mt-1">
+                                <a
+                                  href={cert.certificateLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline text-blue-700 hover:text-blue-900"
+                                >
+                                  View Certificate
+                                </a>
+                              </p>
+                            )}
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
                 )}
               </div>
 
+              {/* Action Buttons */}
               <div className="flex gap-3">
                 <Button
                   onClick={applyAIExtractedData}
@@ -649,9 +838,12 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           )}
 
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Profile & CV Upload</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Profile & CV Upload
+            </h2>
             <p className="text-gray-600">
-              Tell clients about yourself and upload your resume for AI assistance
+              Tell clients about yourself and upload your resume for AI
+              assistance
             </p>
           </div>
 
@@ -666,7 +858,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                 value={formData.bio}
                 onChange={(e) => handleInputChange("bio", e.target.value)}
               />
-              <p className="text-xs text-gray-500">{formData.bio.length}/500 characters</p>
+              <p className="text-xs text-gray-500">
+                {formData.bio.length}/500 characters
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -675,7 +869,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Select
                   value={formData.location}
-                  onValueChange={(value) => handleInputChange("location", value)}
+                  onValueChange={(value) =>
+                    handleInputChange("location", value)
+                  }
                 >
                   <SelectTrigger className="pl-10 bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500">
                     <SelectValue placeholder="Select your state" />
@@ -716,7 +912,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   placeholder="https://youtube.com/watch?v=..."
                   className="pl-10 bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                   value={formData.profileVideoUrl}
-                  onChange={(e) => handleInputChange("profileVideoUrl", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("profileVideoUrl", e.target.value)
+                  }
                 />
               </div>
               <p className="text-xs text-gray-500">
@@ -727,10 +925,12 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
 
           {/* KYC Section */}
           <div className="space-y-4 mt-8 p-4 border rounded-lg bg-white/50">
-            <h3 className="text-lg font-semibold text-gray-900">KYC Verification (Provider)</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              KYC Verification (Provider)
+            </h3>
             <p className="text-sm text-gray-600">
-              Upload a valid <strong>Passport</strong> or <strong>IC</strong> image for
-              verification.
+              Upload a valid <strong>Passport</strong> or <strong>IC</strong>{" "}
+              image for verification.
             </p>
 
             <div className="space-y-2">
@@ -786,7 +986,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           className="space-y-6"
         >
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Skills & Experience</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Skills & Experience
+            </h2>
             <p className="text-gray-600">Showcase your technical expertise</p>
           </div>
 
@@ -802,10 +1004,15 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   placeholder="Type a skill and press Add"
                   className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                   onKeyPress={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), handleAddCustomSkill())
+                    e.key === "Enter" &&
+                    (e.preventDefault(), handleAddCustomSkill())
                   }
                 />
-                <Button type="button" onClick={handleAddCustomSkill} variant="outline">
+                <Button
+                  type="button"
+                  onClick={handleAddCustomSkill}
+                  variant="outline"
+                >
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
@@ -836,7 +1043,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               )}
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Popular Skills (click to add)</Label>
+                <Label className="text-sm font-medium">
+                  Popular Skills (click to add)
+                </Label>
                 <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-3 border rounded-lg bg-white/50">
                   {popularSkills
                     .filter((skill) => !selectedSkills.includes(skill))
@@ -865,10 +1074,15 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   placeholder="Type a language and press Add"
                   className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                   onKeyPress={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), handleAddCustomLanguage())
+                    e.key === "Enter" &&
+                    (e.preventDefault(), handleAddCustomLanguage())
                   }
                 />
-                <Button type="button" onClick={handleAddCustomLanguage} variant="outline">
+                <Button
+                  type="button"
+                  onClick={handleAddCustomLanguage}
+                  variant="outline"
+                >
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
@@ -899,7 +1113,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               )}
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Common Languages (click to add)</Label>
+                <Label className="text-sm font-medium">
+                  Common Languages (click to add)
+                </Label>
                 <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-white/50">
                   {commonLanguages
                     .filter((language) => !selectedLanguages.includes(language))
@@ -928,7 +1144,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   max={50}
                   placeholder="e.g. 4"
                   value={formData.yearsExperience}
-                  onChange={(e) => handleInputChange("yearsExperience", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("yearsExperience", e.target.value)
+                  }
                   className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -942,7 +1160,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   max="1000"
                   className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                   value={formData.hourlyRate}
-                  onChange={(e) => handleInputChange("hourlyRate", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("hourlyRate", e.target.value)
+                  }
                 />
               </div>
             </div>
@@ -959,8 +1179,12 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           className="space-y-6"
         >
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Portfolio & Links</h2>
-            <p className="text-gray-600">Showcase your work and professional profiles</p>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Portfolio & Links
+            </h2>
+            <p className="text-gray-600">
+              Showcase your work and professional profiles
+            </p>
           </div>
 
           <div className="space-y-6">
@@ -968,7 +1192,8 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
             <div className="space-y-4">
               <Label>Portfolio URLs</Label>
               <p className="text-sm text-gray-600">
-                Add links to your GitHub, LinkedIn, or other professional profiles
+                Add links to your GitHub, LinkedIn, or other professional
+                profiles
               </p>
 
               <div className="flex gap-2">
@@ -979,7 +1204,11 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                   className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                   type="url"
                 />
-                <Button type="button" onClick={handleAddPortfolioUrl} variant="outline">
+                <Button
+                  type="button"
+                  onClick={handleAddPortfolioUrl}
+                  variant="outline"
+                >
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
@@ -1088,10 +1317,12 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               <div className="flex items-start">
                 <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
                 <div>
-                  <p className="text-sm text-blue-800 font-medium">Why add certifications?</p>
+                  <p className="text-sm text-blue-800 font-medium">
+                    Why add certifications?
+                  </p>
                   <p className="text-sm text-blue-700">
-                    Certifications help build trust with clients and showcase your expertise in
-                    specific technologies.
+                    Certifications help build trust with clients and showcase
+                    your expertise in specific technologies.
                   </p>
                 </div>
               </div>
@@ -1153,7 +1384,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="certSerial">Serial Number (optional*)</Label>
+                    <Label htmlFor="certSerial">
+                      Serial Number (optional*)
+                    </Label>
                     <Input
                       id="certSerial"
                       placeholder="e.g. ABC-123-XYZ"
@@ -1168,7 +1401,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="certLink">Verification Link (optional*)</Label>
+                    <Label htmlFor="certLink">
+                      Verification Link (optional*)
+                    </Label>
                     <Input
                       id="certLink"
                       type="url"
@@ -1183,7 +1418,8 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                       }
                     />
                     <p className="text-xs text-gray-500">
-                      *At least one of Serial Number or Verification Link is required.
+                      *At least one of Serial Number or Verification Link is
+                      required.
                     </p>
                   </div>
                 </div>
@@ -1218,12 +1454,17 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                 </h3>
                 <div className="space-y-3">
                   {certifications.map((cert, index) => (
-                    <div key={index} className="p-4 border rounded-lg bg-white/50">
+                    <div
+                      key={index}
+                      className="p-4 border rounded-lg bg-white/50"
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center mb-2">
                             <Award className="w-5 h-5 text-blue-600 mr-2" />
-                            <h4 className="font-medium text-gray-900">{cert.name}</h4>
+                            <h4 className="font-medium text-gray-900">
+                              {cert.name}
+                            </h4>
                           </div>
                           <p className="text-sm text-gray-600 mb-1">
                             <Building2 className="w-4 h-4 inline mr-1" />
@@ -1269,7 +1510,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           animate="animate"
           className="space-y-6"
         >
-          <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">Review & Submit</h2>
+          <h2 className="text-2xl font-bold text-gray-900 text-center mb-6">
+            Review & Submit
+          </h2>
 
           <p className="text-gray-600 text-center">
             Please review your profile details before submission.

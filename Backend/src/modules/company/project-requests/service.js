@@ -24,6 +24,16 @@ export async function getProjectRequests(dto) {
       };
     }
 
+    // NEW: filter by proposal's own status if provided
+    if (dto.proposalStatus) {
+      where.status = dto.proposalStatus; // ACCEPTED | REJECTED | PENDING
+    }
+
+    // Filter by specific service request ID if provided
+    if (dto.serviceRequestId) {
+      where.serviceRequestId = dto.serviceRequestId;
+    }
+
     const skip = (dto.page - 1) * dto.limit;
 
     const [proposals, total] = await Promise.all([
@@ -58,12 +68,22 @@ export async function getProjectRequests(dto) {
               category: true,
               budgetMin: true,
               budgetMax: true,
+              skills: true, // Use skills, not aiStackSuggest
               timeline: true,
               priority: true,
               status: true,
               requirements: true,
               deliverables: true,
               createdAt: true,
+              projectId: true,
+              acceptedProposalId: true,
+              chosenMilestoneSource: true,
+              milestones: {
+                orderBy: {
+                  order: "asc",
+                },
+              },
+              project: { select: { providerId: true } },
             },
           },
           milestones: {
@@ -77,9 +97,7 @@ export async function getProjectRequests(dto) {
             },
           },
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: { createdAt: "desc" },
         skip,
         take: dto.limit,
       }),
@@ -89,7 +107,7 @@ export async function getProjectRequests(dto) {
     const totalPages = Math.ceil(total / dto.limit);
 
     return {
-      proposals,
+      proposals, // includes proposal.status now
       pagination: {
         page: dto.page,
         limit: dto.limit,
@@ -164,18 +182,25 @@ export async function getProjectRequestById(requestId, customerId) {
             category: true,
             budgetMin: true,
             budgetMax: true,
+            skills: true, // Use skills, not aiStackSuggest
             timeline: true,
             priority: true,
             status: true,
             requirements: true,
             deliverables: true,
             createdAt: true,
+            projectId: true,
+            acceptedProposalId: true,
+            chosenMilestoneSource: true,
+            milestones: {
+              orderBy: {
+                order: "asc",
+              },
+            },
           },
         },
         milestones: {
-          orderBy: {
-            dueDate: "asc",
-          },
+          orderBy: { dueDate: "asc" },
         },
       },
     });
@@ -184,6 +209,7 @@ export async function getProjectRequestById(requestId, customerId) {
       throw new Error("Project request not found");
     }
 
+    // proposal.status is included automatically (root scalars)
     return proposal;
   } catch (error) {
     console.error("Error fetching project request:", error);
@@ -193,7 +219,7 @@ export async function getProjectRequestById(requestId, customerId) {
 
 export async function acceptProposal(dto) {
   try {
-    // Check if proposal exists and belongs to customer's service request
+    // Load proposal with all necessary relations
     const proposal = await prisma.proposal.findFirst({
       where: {
         id: dto.proposalId,
@@ -202,9 +228,21 @@ export async function acceptProposal(dto) {
         },
       },
       include: {
-        serviceRequest: true,
+        serviceRequest: {
+          include: {
+            milestones: {
+              orderBy: {
+                order: "asc",
+              },
+            },
+          },
+        },
         provider: true,
-        milestones: true,
+        milestones: {
+          orderBy: {
+            order: "asc",
+          },
+        },
       },
     });
 
@@ -212,13 +250,60 @@ export async function acceptProposal(dto) {
       throw new Error("Proposal not found or you don't have permission to accept it");
     }
 
+    // Guard rails
     if (proposal.serviceRequest.status !== "OPEN") {
       throw new Error("This service request is no longer accepting proposals");
     }
 
-    // Start a transaction to create project and update service request
+    if (proposal.serviceRequest.projectId) {
+      throw new Error("This service request has already been matched to a project");
+    }
+
+    // Choose milestones based on useProviderMilestones flag
+    let chosenMilestones = [];
+    let chosenMilestoneSource = "COMPANY";
+
+    if (dto.useProviderMilestones && proposal.milestones.length > 0) {
+      // Use provider milestones
+      chosenMilestones = proposal.milestones.map(m => ({
+        title: m.title,
+        description: m.description,
+        amount: m.amount,
+        dueDate: m.dueDate,
+        order: m.order,
+        status: "PENDING",
+        source: "FINAL",
+      }));
+      chosenMilestoneSource = "PROVIDER";
+    } else if (proposal.serviceRequest.milestones.length > 0) {
+      // Use company milestones
+      chosenMilestones = proposal.serviceRequest.milestones.map(m => ({
+        title: m.title,
+        description: m.description,
+        amount: m.amount,
+        dueDate: m.dueDate,
+        order: m.order,
+        status: "PENDING",
+        source: "FINAL",
+      }));
+      chosenMilestoneSource = "COMPANY";
+    } else {
+      // Create default milestone
+      chosenMilestones = [{
+        title: "Full project",
+        description: "Complete project delivery",
+        amount: proposal.bidAmount,
+        dueDate: null,
+        order: 1,
+        status: "PENDING",
+        source: "FINAL",
+      }];
+      chosenMilestoneSource = "COMPANY";
+    }
+
+    // Single transaction for all operations
     const result = await prisma.$transaction(async (tx) => {
-      // Create project from accepted proposal
+      // Create Project (mirror fields from ServiceRequest)
       const project = await tx.project.create({
         data: {
           title: proposal.serviceRequest.title,
@@ -226,51 +311,89 @@ export async function acceptProposal(dto) {
           category: proposal.serviceRequest.category,
           budgetMin: proposal.serviceRequest.budgetMin,
           budgetMax: proposal.serviceRequest.budgetMax,
+          skills: proposal.serviceRequest.skills, // Use skills, not aiStackSuggest
           timeline: proposal.serviceRequest.timeline,
           priority: proposal.serviceRequest.priority,
-          skills: proposal.serviceRequest.aiStackSuggest || [],
-          customerId: dto.customerId,
-          providerId: proposal.providerId,
-          status: "IN_PROGRESS",
+          ndaSigned: proposal.serviceRequest.ndaSigned || false,
           requirements: proposal.serviceRequest.requirements,
           deliverables: proposal.serviceRequest.deliverables,
+          status: "IN_PROGRESS",
+          customerId: proposal.serviceRequest.customerId,
+          providerId: proposal.providerId,
+          // Initialize milestone approval flags
+          milestonesLocked: false,
+          companyApproved: false,
+          providerApproved: false,
           milestones: {
-            create: proposal.milestones.map((milestone) => ({
-              title: milestone.title,
-              description: milestone.description,
-              dueDate: milestone.dueDate,
-              amount: milestone.amount,
-              status: "PENDING",
+            create: chosenMilestones.map(m => ({
+              ...m,
+              status: "DRAFT", // Start as DRAFT, not PENDING
             })),
           },
         },
         include: {
-          customer: {
-            select: {
-              name: true,
+          customer: { 
+            select: { 
+              id: true,
+              name: true, 
               email: true,
+              customerProfile: {
+                select: {
+                  companySize: true,
+                  industry: true,
+                },
+              },
+            } 
+          },
+          provider: { 
+            select: { 
+              id: true,
+              name: true, 
+              email: true,
+              providerProfile: {
+                select: {
+                  rating: true,
+                  totalProjects: true,
+                  location: true,
+                },
+              },
+            } 
+          },
+          milestones: {
+            orderBy: {
+              order: "asc",
             },
           },
-          provider: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-          milestones: true,
         },
       });
 
-      // Update service request status to MATCHED
+      // Update ServiceRequest (ignore draft fields - they're no longer used)
       await tx.serviceRequest.update({
         where: { id: proposal.serviceRequest.id },
-        data: { 
+        data: {
           status: "MATCHED",
           projectId: project.id,
+          acceptedProposalId: proposal.id,
+          chosenMilestoneSource: chosenMilestoneSource,
         },
       });
 
-      // Create notification for provider
+      // Mark accepted proposal
+      await tx.proposal.update({
+        where: { id: proposal.id },
+        data: { status: "ACCEPTED" },
+      });
+
+      // Mark all other proposals for this SR as REJECTED
+      await tx.proposal.updateMany({
+        where: {
+          serviceRequestId: proposal.serviceRequest.id,
+          id: { not: proposal.id },
+        },
+        data: { status: "REJECTED" },
+      });
+
+      // Notify provider
       await tx.notification.create({
         data: {
           userId: proposal.providerId,
@@ -291,7 +414,7 @@ export async function acceptProposal(dto) {
 
 export async function rejectProposal(dto) {
   try {
-    // Check if proposal exists and belongs to customer's service request
+    // Ensure the proposal belongs to a service request owned by the customer
     const proposal = await prisma.proposal.findFirst({
       where: {
         id: dto.proposalId,
@@ -309,7 +432,13 @@ export async function rejectProposal(dto) {
       throw new Error("Proposal not found or you don't have permission to reject it");
     }
 
-    // Create notification for provider
+    // Persist rejection
+    await prisma.proposal.update({
+      where: { id: dto.proposalId },
+      data: { status: "REJECTED" },
+    });
+
+    // Notify provider
     await prisma.notification.create({
       data: {
         userId: proposal.providerId,
@@ -328,37 +457,27 @@ export async function rejectProposal(dto) {
 export async function getProposalStats(customerId) {
   try {
     const stats = await prisma.proposal.groupBy({
-      by: ['serviceRequestId'],
+      by: ["serviceRequestId"],
       where: {
         serviceRequest: {
           customerId: customerId,
         },
       },
-      _count: {
-        id: true,
-      },
+      _count: { id: true },
     });
 
     const totalProposals = await prisma.proposal.count({
       where: {
-        serviceRequest: {
-          customerId: customerId,
-        },
+        serviceRequest: { customerId },
       },
     });
 
     const openRequests = await prisma.serviceRequest.count({
-      where: {
-        customerId: customerId,
-        status: "OPEN",
-      },
+      where: { customerId, status: "OPEN" },
     });
 
     const matchedRequests = await prisma.serviceRequest.count({
-      where: {
-        customerId: customerId,
-        status: "MATCHED",
-      },
+      where: { customerId, status: "MATCHED" },
     });
 
     return {

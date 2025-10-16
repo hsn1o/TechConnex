@@ -255,40 +255,114 @@ model Resume {
 }
 
 model ServiceRequest {
-  id             String          @id @default(uuid()) @db.Uuid
-  customer       User            @relation("CustomerRequests", fields: [customerId], references: [id])
-  customerId     String          @db.Uuid
-  title          String
-  description    String
-  category       ServiceCategory
-  budgetMin      Float
-  budgetMax      Float
-  aiStackSuggest String[]
-  timeline       String?
-  priority       String?
-  ndaSigned      Boolean         @default(false) // ✅ Make sure this is added
-  status         RequestStatus   @default(OPEN)
-  projectId      String?         @db.Uuid
-  project        Project?        @relation(fields: [projectId], references: [id])
-  proposals      Proposal[] // 👈 Add this
-  matches        AiMatch[]
-  requirements   Json? // or String?
-  deliverables   Json? // or String?
-  createdAt      DateTime        @default(now())
+  id           String          @id @default(uuid()) @db.Uuid
+  title        String
+  description  String
+  category     ServiceCategory
+  budgetMin    Float
+  budgetMax    Float
+  skills       String[]
+  timeline     String?
+  priority     String?
+  ndaSigned    Boolean         @default(false)
+  requirements  String[] @default([])   // was: Json
+  deliverables  String[] @default([])   // was: Json
+
+  status       RequestStatus   @default(OPEN)
+
+  // Ownership & lifecycle
+  customer   User     @relation("CustomerRequests", fields: [customerId], references: [id])
+  customerId String   @db.Uuid
+  projectId  String?  @db.Uuid
+  project    Project? @relation(fields: [projectId], references: [id])
+
+  // Drafted milestones by the company (optional)
+  milestones ServiceRequestMilestone[]
+
+  // Proposals & matching
+  proposals Proposal[]
+  matches   AiMatch[]
+
+  // (Optional) record of which milestone set was chosen
+  acceptedProposalId    String?          @db.Uuid
+  chosenMilestoneSource MilestoneSource? // COMPANY or PROVIDER
+
+  // Milestone negotiation fields (Option A)
+  milestoneDraft            Json?
+  milestoneDraftVersion     Int       @default(0)
+  milestoneCompanyAccepted  Boolean   @default(false)
+  milestoneProviderAccepted Boolean   @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("service_requests")
+}
+
+model ServiceRequestMilestone {
+  id               String         @id @default(uuid()) @db.Uuid
+  serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id])
+  serviceRequestId String         @db.Uuid
+
+  title       String
+  description String?
+  amount      Float
+  dueDate     DateTime?
+  order       Int       @default(1)
+
+  status MilestoneStatus @default(PENDING)
+  source MilestoneSource @default(COMPANY) // fixed for SR milestones
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("service_request_milestones")
 }
 
 model Proposal {
-  id             String         @id @default(uuid()) @db.Uuid
-  provider       User           @relation(fields: [providerId], references: [id])
-  providerId     String         @db.Uuid
-  serviceRequest ServiceRequest @relation(fields: [requestId], references: [id])
-  requestId      String         @db.Uuid
-  bidAmount      Float
-  deliveryTime   Int // in days
-  coverLetter    String
-  attachmentUrl  String? // e.g., PDF proposal or portfolio
-  milestones     Milestone[] // Optional: Link to separate milestone model
-  createdAt      DateTime       @default(now())
+  id         String @id @default(uuid()) @db.Uuid
+  // Relations
+  providerId String @db.Uuid
+  provider   User   @relation(fields: [providerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  serviceRequestId String              @db.Uuid
+  serviceRequest   ServiceRequest      @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  
+  // Business fields
+  bidAmount         Float?           // consider Decimal later if you want exact money
+  status            ProposalStatus   @default(PENDING)
+  deliveryTime      Int              // in days
+  coverLetter       String           @db.Text
+  attachmentUrl     String?          // e.g., PDF proposal or portfolio
+
+
+  // Provider-proposed milestones for this proposal
+  milestones        ProposalMilestone[]
+
+  // Timestamps
+  createdAt         DateTime         @default(now()) @map("created_at")  @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt      @map("updated_at")  @db.Timestamptz(6)
+  Milestone Milestone[]
+}
+
+model ProposalMilestone {
+  id         String   @id @default(uuid()) @db.Uuid
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+  proposalId String   @db.Uuid
+
+  title       String
+  description String?
+  amount      Float
+  dueDate     DateTime?
+  order       Int       @default(1)
+
+  status MilestoneStatus @default(PENDING)
+  source MilestoneSource @default(PROVIDER) // fixed for proposal milestones
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("proposal_milestones")
 }
 
 model AiMatch {
@@ -302,33 +376,45 @@ model AiMatch {
 }
 
 model Project {
-  id             String           @id @default(uuid()) @db.Uuid
-  title          String
-  description    String
-  category       ServiceCategory
-  budgetMin      Float
-  budgetMax      Float
-  timeline       String?
-  priority       String?
-  skills         String[] // if using Postgres array
-  customer       User             @relation("CustomerProjects", fields: [customerId], references: [id])
-  customerId     String           @db.Uuid
-  provider       User             @relation("ProviderProjects", fields: [providerId], references: [id])
-  providerId     String           @db.Uuid
-  status         ProjectStatus
-  ndaSigned      Boolean          @default(false)
-  milestones     Milestone[]
+  id           String          @id @default(uuid()) @db.Uuid
+  title        String
+  description  String
+  category     ServiceCategory
+  budgetMin    Float
+  budgetMax    Float
+  skills       String[]
+  timeline     String?
+  priority     String?
+  ndaSigned    Boolean         @default(false)
+  requirements  String[] @default([])   // was: Json
+  deliverables  String[] @default([])   // was: Json
+
+  status       ProjectStatus
+
+  // Ownership & lifecycle
+  customer   User   @relation("CustomerProjects", fields: [customerId], references: [id])
+  customerId String @db.Uuid
+  provider   User   @relation("ProviderProjects", fields: [providerId], references: [id])
+  providerId String @db.Uuid
+
+  // Milestone approval workflow
+  milestonesLocked      Boolean @default(false) @map("milestones_locked")
+  companyApproved       Boolean @default(false) @map("company_approved")
+  providerApproved      Boolean @default(false) @map("provider_approved")
+  milestonesApprovedAt  DateTime? @map("milestones_approved_at")
+
+  // Final milestones (snapshot after acceptance)
+  milestones Milestone[]
+
   payments       Payment[]
   reviews        Review[] // 1-to-1
   messages       Message[]
   invoices       Invoice[]
-  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  Dispute        Dispute[]
   ServiceRequest ServiceRequest[]
-  requirements   String?
-  deliverables   String?
 
-  Dispute Dispute[]
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 }
 
 model Invoice {
@@ -368,20 +454,28 @@ model Invoice {
 }
 
 model Milestone {
-  id           String          @id @default(uuid()) @db.Uuid
-  project      Project         @relation(fields: [projectId], references: [id])
-  projectId    String          @db.Uuid
-  title        String
-  description  String
-  dueDate      DateTime
-  amount       Float
-  status       MilestoneStatus @default(PENDING)
-  payments     Payment[]
-  Proposal     Proposal?       @relation(fields: [proposalId], references: [id])
-  proposalId   String?         @db.Uuid
-  deliverables Json? // files, links, docs submitted by provider
+  id        String  @id @default(uuid()) @db.Uuid
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String  @db.Uuid
+
+  title       String
+  description String
+  amount      Float
+  dueDate     DateTime
+  order       Int      @default(1)
+
+  status MilestoneStatus @default(PENDING)
+  source MilestoneSource @default(FINAL) // final snapshot in project
+
+  isPaid   Boolean   @default(false)
+  paidAt   DateTime?
+  payments Payment[]
+
+  Proposal     Proposal? @relation(fields: [proposalId], references: [id])
+  proposalId   String?   @db.Uuid
+  deliverables Json?
   approvedAt   DateTime?
-  approvedBy   String?         @db.Uuid // customer who approved
+  approvedBy   String?   @db.Uuid
   submittedAt  DateTime?
 }
 
@@ -449,6 +543,12 @@ model SavedProvider {
 
   @@unique([userId, providerId])
   @@map("saved_providers")
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 // ── KYC enums
@@ -545,13 +645,15 @@ enum ProjectStatus {
 }
 
 enum MilestoneStatus {
-  PENDING // Created, not funded yet
-  FUNDED // Escrowed
-  SUBMITTED // Work submitted by provider
-  APPROVED // Accepted by customer
-  REJECTED // Customer sent back
-  DISPUTED // Dispute raised
-  RELEASED // Payment released to provider
+  DRAFT // not shown to counterparty yet (optional use)
+  PENDING // created and visible, not started
+  LOCKED // milestones approved by both parties, ready to start work
+  IN_PROGRESS // provider started working on milestone
+  SUBMITTED // provider submitted for review
+  APPROVED // company approved the milestone work
+  PAID // milestone payment completed
+  REJECTED
+  CANCELLED
 }
 
 enum PaymentMethod {
@@ -571,4 +673,10 @@ enum MessageType {
   file
   system
   proposal
+}
+
+enum MilestoneSource {
+  COMPANY // milestones authored by the company on ServiceRequest
+  PROVIDER // milestones authored by the provider on Proposal
+  FINAL // milestones copied into Project after acceptance
 }
