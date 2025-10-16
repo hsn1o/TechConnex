@@ -15,7 +15,7 @@ export async function createProject(dto) {
         budgetMax: dto.budgetMax,
         timeline: dto.timeline,
         priority: dto.priority,
-        aiStackSuggest: dto.skills,
+        skills: dto.skills,
         requirements: dto.requirements,
         deliverables: dto.deliverables,
         customerId: dto.customerId,
