@@ -4,8 +4,13 @@ import {
   getProjects,
   getProjectById,
   updateProjectStatus,
+  getServiceRequestMilestones,
+  updateServiceRequestMilestones,
+  updateProjectDetails,
+  approveIndividualMilestone,
+  payMilestone
 } from "./service.js";
-import { CreateProjectDto, GetProjectsDto } from "./dto.js";
+import { CreateProjectDto, GetProjectsDto, UpdateProjectDto  } from "./dto.js";
 
 // POST /api/company/projects - Create a new project
 export async function createProjectController(req, res) {
@@ -53,7 +58,7 @@ export async function getProjectsController(req, res) {
 
     res.json({
       success: true,
-      serviceRequests: result.serviceRequests,
+      items: result.items,
       pagination: result.pagination,
     });
   } catch (error) {
@@ -114,7 +119,7 @@ export async function updateProjectStatusController(req, res) {
       });
     }
 
-    const validStatuses = ["IN_PROGRESS", "COMPLETED", "DISPUTED"];
+    const validStatuses = ["IN_PROGRESS", "COMPLETED", "DISPUTED", "CANCELLED"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -131,6 +136,175 @@ export async function updateProjectStatusController(req, res) {
     });
   } catch (error) {
     console.error("Error in updateProjectStatusController:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/company/projects/:id/milestones - Get ServiceRequest milestones
+export async function getServiceRequestMilestonesController(req, res) {
+  try {
+    const serviceRequestId = req.params.id;
+    const customerId = req.user.userId;
+
+    if (!serviceRequestId) {
+      return res.status(400).json({
+        success: false,
+        message: "ServiceRequest ID is required",
+      });
+    }
+
+    const milestones = await getServiceRequestMilestones(serviceRequestId, customerId);
+
+    res.json({
+      success: true,
+      milestones,
+    });
+  } catch (error) {
+    console.error("Error in getServiceRequestMilestonesController:", error);
+    res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// POST /api/company/projects/:id/milestones - Update ServiceRequest milestones
+export async function updateServiceRequestMilestonesController(req, res) {
+  try {
+    const serviceRequestId = req.params.id;
+    const customerId = req.user.userId;
+    const { milestones } = req.body;
+
+    if (!serviceRequestId) {
+      return res.status(400).json({
+        success: false,
+        message: "ServiceRequest ID is required",
+      });
+    }
+
+    if (!milestones || !Array.isArray(milestones)) {
+      return res.status(400).json({
+        success: false,
+        message: "Milestones array is required",
+      });
+    }
+
+    // Validate milestone structure
+    for (const milestone of milestones) {
+      if (!milestone.title || !milestone.amount) {
+        return res.status(400).json({
+          success: false,
+          message: "Each milestone must have title and amount",
+        });
+      }
+    }
+
+    const updatedMilestones = await updateServiceRequestMilestones(serviceRequestId, customerId, milestones);
+
+    res.json({
+      success: true,
+      message: "Milestones updated successfully",
+      milestones: updatedMilestones,
+    });
+  } catch (error) {
+    console.error("Error in updateServiceRequestMilestonesController:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// src/modules/company/projects/controller.js
+export async function updateProjectDetailsController(req, res) {
+  try {
+    const projectId = req.params.id;
+    const customerId = req.user.userId;
+
+    if (!projectId) {
+      return res.status(400).json({ success: false, message: "Project ID is required" });
+    }
+
+    const dto = new UpdateProjectDto({ ...req.body, customerId });
+    dto.validatePartial(); // allow partial updates
+
+    const project = await updateProjectDetails(projectId, customerId, dto);
+
+    res.json({ success: true, message: "Updated successfully", project });
+  } catch (error) {
+    console.error("Error in updateProjectDetailsController:", error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * POST /api/company/projects/milestones/:id/approve - Approve individual milestone
+ */
+export async function approveIndividualMilestoneController(req, res) {
+  try {
+    const milestoneId = req.params.id;
+    const customerId = req.user.userId;
+
+    if (!milestoneId) {
+      return res.status(400).json({
+        success: false,
+        message: "Milestone ID is required",
+      });
+    }
+
+    const dto = {
+      milestoneId,
+      customerId,
+    };
+
+    const milestone = await approveIndividualMilestone(dto);
+
+    res.json({
+      success: true,
+      message: "Milestone approved successfully",
+      milestone,
+    });
+  } catch (error) {
+    console.error("Error in approveIndividualMilestoneController:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+/**
+ * POST /api/company/projects/milestones/:id/pay - Pay milestone
+ */
+export async function payMilestoneController(req, res) {
+  try {
+    const milestoneId = req.params.id;
+    const customerId = req.user.userId;
+
+    if (!milestoneId) {
+      return res.status(400).json({
+        success: false,
+        message: "Milestone ID is required",
+      });
+    }
+
+    const dto = {
+      milestoneId,
+      customerId,
+    };
+
+    const milestone = await payMilestone(dto);
+
+    res.json({
+      success: true,
+      message: "Milestone payment processed successfully",
+      milestone,
+    });
+  } catch (error) {
+    console.error("Error in payMilestoneController:", error);
     res.status(400).json({
       success: false,
       message: error.message,

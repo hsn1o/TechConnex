@@ -102,7 +102,7 @@ export async function updateProjectMilestones(projectId, customerId, milestones)
       // Reset approval flags when milestones are edited
       const updatedProject = await tx.project.update({
         where: { id: projectId },
-        data: {
+      data: {
           companyApproved: false,
           providerApproved: false,
           milestonesApprovedAt: null
@@ -175,7 +175,7 @@ export async function approveMilestones(projectId, customerId) {
         // Update project to lock milestones
         const lockedProject = await tx.project.update({
           where: { id: projectId },
-          data: {
+      data: {
             milestonesLocked: true,
             milestonesApprovedAt: new Date()
           }

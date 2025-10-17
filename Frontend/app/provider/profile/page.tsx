@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,182 +11,35 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle, Loader2 } from "lucide-react"
+import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle } from "lucide-react"
 import { ProviderLayout } from "@/components/provider-layout"
-import { getProviderProfile, upsertProviderProfile, getProviderProfileStats, getProviderProfileCompletion } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
 
 export default function ProviderProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [profileData, setProfileData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    bio: "",
-    location: "",
-    hourlyRate: 0,
-    website: "",
-    profileVideoUrl: "",
-    languages: [],
-    availability: "available",
-    skills: [],
-    yearsExperience: 0,
-    minimumProjectBudget: 0,
-    maximumProjectBudget: 0,
-    preferredProjectDuration: "",
-    workPreference: "remote",
-    teamSize: 1,
+    name: "Ahmad Rahman",
+    title: "Senior Full-Stack Developer",
+    company: "Tech Solutions Malaysia",
+    location: "Kuala Lumpur",
+    hourlyRate: 120,
+    bio: "Experienced full-stack developer with 8+ years in building scalable web applications and mobile solutions for Malaysian businesses. Specialized in React, Node.js, and cloud technologies.",
+    phone: "+60123456789",
+    email: "ahmad@techexpert.com",
+    website: "https://ahmadrahman.dev",
+    languages: ["English", "Bahasa Malaysia", "Mandarin"],
+    availability: "Available",
   })
-  const [profileStats, setProfileStats] = useState({
-    rating: 0,
-    totalReviews: 0,
-    totalProjects: 0,
-    totalEarnings: 0,
-    viewsCount: 0,
-    successRate: 0,
-    responseTime: 0,
-    completion: 0,
-  })
-  const [profileCompletion, setProfileCompletion] = useState(0)
-  const { toast } = useToast()
 
-  // Load profile data on component mount
-  useEffect(() => {
-    const loadProfileData = async () => {
-      try {
-        setLoading(true)
-        const [profileResponse, statsResponse, completionResponse] = await Promise.all([
-          getProviderProfile(),
-          getProviderProfileStats(),
-          getProviderProfileCompletion()
-        ])
-
-        if (profileResponse.success) {
-          const profile = profileResponse.data
-          setProfileData({
-            name: profile.user?.name || "",
-            email: profile.user?.email || "",
-            phone: profile.user?.phone || "",
-            bio: profile.bio || "",
-            location: profile.location || "",
-            hourlyRate: profile.hourlyRate || 0,
-            website: profile.website || "",
-            profileVideoUrl: profile.profileVideoUrl || "",
-            languages: profile.languages || [],
-            availability: profile.availability || "available",
-            skills: profile.skills || [],
-            yearsExperience: profile.yearsExperience || 0,
-            minimumProjectBudget: profile.minimumProjectBudget || 0,
-            maximumProjectBudget: profile.maximumProjectBudget || 0,
-            preferredProjectDuration: profile.preferredProjectDuration || "",
-            workPreference: profile.workPreference || "remote",
-            teamSize: profile.teamSize || 1,
-          })
-        }
-
-        if (statsResponse.success) {
-          setProfileStats(statsResponse.data)
-        }
-
-        if (completionResponse.success) {
-          setProfileCompletion(completionResponse.data.completion)
-        }
-      } catch (error) {
-        console.error("Error loading profile data:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load profile data",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadProfileData()
-  }, [toast])
-
-  // Save profile data
-  const handleSaveProfile = async () => {
-    try {
-      setSaving(true)
-      const response = await upsertProviderProfile({
-        bio: profileData.bio,
-        location: profileData.location,
-        hourlyRate: profileData.hourlyRate,
-        availability: profileData.availability,
-        languages: profileData.languages,
-        website: profileData.website,
-        profileVideoUrl: profileData.profileVideoUrl,
-        skills: profileData.skills,
-        yearsExperience: profileData.yearsExperience,
-        minimumProjectBudget: profileData.minimumProjectBudget,
-        maximumProjectBudget: profileData.maximumProjectBudget,
-        preferredProjectDuration: profileData.preferredProjectDuration,
-        workPreference: profileData.workPreference,
-        teamSize: profileData.teamSize,
-      })
-
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: "Profile updated successfully",
-        })
-        setIsEditing(false)
-        // Reload completion percentage
-        const completionResponse = await getProviderProfileCompletion()
-        if (completionResponse.success) {
-          setProfileCompletion(completionResponse.data.completion)
-        }
-      }
-    } catch (error) {
-      console.error("Error saving profile:", error)
-      toast({
-        title: "Error",
-        description: "Failed to save profile",
-        variant: "destructive",
-      })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  // Handle input changes
-  const handleInputChange = (field: string, value: any) => {
-    setProfileData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
-  // Handle skills array changes
-  const handleSkillsChange = (skills: string[]) => {
-    setProfileData(prev => ({
-      ...prev,
-      skills
-    }))
-  }
-
-  // Handle languages array changes
-  const handleLanguagesChange = (languages: string[]) => {
-    setProfileData(prev => ({
-      ...prev,
-      languages
-    }))
-  }
-
-  if (loading) {
-    return (
-      <ProviderLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading profile...</span>
-        </div>
-      </ProviderLayout>
-    )
-  }
+  const skills = [
+    { name: "React", level: 95, category: "Frontend" },
+    { name: "Node.js", level: 90, category: "Backend" },
+    { name: "TypeScript", level: 88, category: "Language" },
+    { name: "AWS", level: 85, category: "Cloud" },
+    { name: "MongoDB", level: 82, category: "Database" },
+    { name: "Next.js", level: 90, category: "Framework" },
+    { name: "Python", level: 75, category: "Language" },
+    { name: "Docker", level: 80, category: "DevOps" },
+  ]
 
   const portfolio = [
     {
@@ -279,6 +132,19 @@ export default function ProviderProfilePage() {
     },
   ]
 
+  const stats = {
+    totalProjects: 45,
+    completedProjects: 43,
+    rating: 4.9,
+    reviewCount: 127,
+    responseTime: "2 hours",
+    completionRate: 98,
+    onTimeDelivery: 94,
+    repeatClients: 67,
+  }
+
+  const profileCompletion = 92
+
   return (
     <ProviderLayout>
       <div className="space-y-8">
@@ -293,31 +159,10 @@ export default function ProviderProfilePage() {
               <Eye className="w-4 h-4 mr-2" />
               Preview Profile
             </Button>
-            {isEditing ? (
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveProfile} disabled={saving}>
-                  {saving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Save Changes
-                    </>
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={() => setIsEditing(true)}>
+            <Button onClick={() => setIsEditing(!isEditing)}>
               <Edit className="w-4 h-4 mr-2" />
-                Edit Profile
+              {isEditing ? "Save Changes" : "Edit Profile"}
             </Button>
-            )}
           </div>
         </div>
 
@@ -381,54 +226,52 @@ export default function ProviderProfilePage() {
                                 <Input
                                   id="name"
                                   value={profileData.name}
-                                  onChange={(e) => handleInputChange('name', e.target.value)}
+                                  onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
                                 />
                               </div>
                               <div>
-                                <Label htmlFor="email">Email</Label>
+                                <Label htmlFor="title">Professional Title</Label>
                                 <Input
-                                  id="email"
-                                  type="email"
-                                  value={profileData.email}
-                                  onChange={(e) => handleInputChange('email', e.target.value)}
+                                  id="title"
+                                  value={profileData.title}
+                                  onChange={(e) => setProfileData({ ...profileData, title: e.target.value })}
                                 />
                               </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <Label htmlFor="phone">Phone</Label>
+                                <Label htmlFor="company">Company</Label>
                                 <Input
-                                  id="phone"
-                                  value={profileData.phone}
-                                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                                  id="company"
+                                  value={profileData.company}
+                                  onChange={(e) => setProfileData({ ...profileData, company: e.target.value })}
                                 />
                               </div>
                               <div>
                                 <Label htmlFor="location">Location</Label>
-                                <Input
-                                  id="location"
+                                <Select
                                   value={profileData.location}
-                                  onChange={(e) => handleInputChange('location', e.target.value)}
-                                />
+                                  onValueChange={(value) => setProfileData({ ...profileData, location: value })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
+                                    <SelectItem value="Selangor">Selangor</SelectItem>
+                                    <SelectItem value="Penang">Penang</SelectItem>
+                                    <SelectItem value="Johor">Johor</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
-                            </div>
-                            <div>
-                              <Label htmlFor="bio">Bio</Label>
-                              <Textarea
-                                id="bio"
-                                value={profileData.bio}
-                                onChange={(e) => handleInputChange('bio', e.target.value)}
-                                placeholder="Tell clients about your experience and expertise..."
-                                rows={4}
-                              />
                             </div>
                           </>
                         ) : (
                           <>
                             <div>
                               <h2 className="text-2xl font-bold text-gray-900">{profileData.name}</h2>
-                              <p className="text-lg text-gray-600">{profileData.email}</p>
-                              <p className="text-gray-500">{profileData.phone}</p>
+                              <p className="text-lg text-gray-600">{profileData.title}</p>
+                              <p className="text-gray-500">{profileData.company}</p>
                             </div>
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <div className="flex items-center gap-1">
@@ -437,7 +280,7 @@ export default function ProviderProfilePage() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                {profileStats.rating} ({profileStats.totalReviews} reviews)
+                                {stats.rating} ({stats.reviewCount} reviews)
                               </div>
                               <div className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
@@ -449,12 +292,20 @@ export default function ProviderProfilePage() {
                       </div>
                     </div>
 
-                    {!isEditing && (
                     <div>
-                        <Label>Professional Bio</Label>
-                        <p className="text-gray-600 mt-2">{profileData.bio || "No bio provided"}</p>
+                      <Label htmlFor="bio">Professional Bio</Label>
+                      {isEditing ? (
+                        <Textarea
+                          id="bio"
+                          value={profileData.bio}
+                          onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                          className="mt-2"
+                          rows={4}
+                        />
+                      ) : (
+                        <p className="text-gray-600 mt-2">{profileData.bio}</p>
+                      )}
                     </div>
-                    )}
 
                     {isEditing && (
                       <div className="grid grid-cols-2 gap-4">
@@ -464,22 +315,24 @@ export default function ProviderProfilePage() {
                             id="hourlyRate"
                             type="number"
                             value={profileData.hourlyRate}
-                            onChange={(e) => handleInputChange('hourlyRate', Number(e.target.value))}
+                            onChange={(e) =>
+                              setProfileData({ ...profileData, hourlyRate: Number.parseInt(e.target.value) })
+                            }
                           />
                         </div>
                         <div>
                           <Label htmlFor="availability">Availability</Label>
                           <Select
                             value={profileData.availability}
-                            onValueChange={(value) => handleInputChange('availability', value)}
+                            onValueChange={(value) => setProfileData({ ...profileData, availability: value })}
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="available">Available</SelectItem>
-                              <SelectItem value="busy">Busy</SelectItem>
-                              <SelectItem value="unavailable">Unavailable</SelectItem>
+                              <SelectItem value="Available">Available</SelectItem>
+                              <SelectItem value="Busy">Busy</SelectItem>
+                              <SelectItem value="Unavailable">Unavailable</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -543,23 +396,23 @@ export default function ProviderProfilePage() {
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Total Projects</span>
-                      <span className="font-semibold">{profileStats.totalProjects}</span>
+                      <span className="font-semibold">{stats.totalProjects}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Success Rate</span>
-                      <span className="font-semibold">{profileStats.successRate}%</span>
+                      <span className="text-sm text-gray-600">Completion Rate</span>
+                      <span className="font-semibold">{stats.completionRate}%</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Total Earnings</span>
-                      <span className="font-semibold">RM {profileStats.totalEarnings}</span>
+                      <span className="text-sm text-gray-600">On-time Delivery</span>
+                      <span className="font-semibold">{stats.onTimeDelivery}%</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Response Time</span>
-                      <span className="font-semibold">{profileStats.responseTime} hours</span>
+                      <span className="font-semibold">{stats.responseTime}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Profile Views</span>
-                      <span className="font-semibold">{profileStats.viewsCount}</span>
+                      <span className="text-sm text-gray-600">Repeat Clients</span>
+                      <span className="font-semibold">{stats.repeatClients}%</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -573,40 +426,28 @@ export default function ProviderProfilePage() {
                     {isEditing ? (
                       <>
                         <div>
-                          <Label htmlFor="sidebar-email">Email</Label>
+                          <Label htmlFor="email">Email</Label>
                           <Input
-                            id="sidebar-email"
+                            id="email"
                             type="email"
                             value={profileData.email}
-                            onChange={(e) => handleInputChange('email', e.target.value)}
+                            onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                           />
                         </div>
                         <div>
-                          <Label htmlFor="sidebar-phone">Phone</Label>
+                          <Label htmlFor="phone">Phone</Label>
                           <Input
-                            id="sidebar-phone"
+                            id="phone"
                             value={profileData.phone}
-                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                            onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
                           />
                         </div>
                         <div>
-                          <Label htmlFor="sidebar-website">Website</Label>
+                          <Label htmlFor="website">Website</Label>
                           <Input
-                            id="sidebar-website"
+                            id="website"
                             value={profileData.website}
-                            onChange={(e) => handleInputChange('website', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="sidebar-languages">Languages (comma-separated)</Label>
-                          <Input
-                            id="sidebar-languages"
-                            value={profileData.languages.join(', ')}
-                            onChange={(e) => {
-                              const languages = e.target.value.split(',').map(l => l.trim()).filter(l => l.length > 0)
-                              handleLanguagesChange(languages)
-                            }}
-                            placeholder="English, Bahasa Malaysia, Mandarin..."
+                            onChange={(e) => setProfileData({ ...profileData, website: e.target.value })}
                           />
                         </div>
                       </>
@@ -622,7 +463,6 @@ export default function ProviderProfilePage() {
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">Website</p>
-                          {profileData.website ? (
                           <a
                             href={profileData.website}
                             className="font-medium text-blue-600 hover:underline flex items-center gap-1"
@@ -630,22 +470,6 @@ export default function ProviderProfilePage() {
                             {profileData.website}
                             <ExternalLink className="w-3 h-3" />
                           </a>
-                          ) : (
-                            <p className="font-medium text-gray-500">No website provided</p>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Languages</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {profileData.languages.map((language, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {language}
-                              </Badge>
-                            ))}
-                            {profileData.languages.length === 0 && (
-                              <p className="text-gray-500 text-sm">No languages specified</p>
-                            )}
-                          </div>
                         </div>
                       </>
                     )}
@@ -733,161 +557,30 @@ export default function ProviderProfilePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold">Skills & Expertise</h2>
-                  <p className="text-gray-600">Showcase your technical skills and expertise</p>
+                  <p className="text-gray-600">Showcase your technical skills and proficiency levels</p>
                 </div>
-                {isEditing && (
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Skill
                 </Button>
-                )}
               </div>
 
-              {isEditing ? (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-6">
+                {skills.map((skill, index) => (
+                  <Card key={index}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
                         <div>
-                        <Label htmlFor="skills">Skills (comma-separated)</Label>
-                        <Input
-                          id="skills"
-                          value={profileData.skills.join(', ')}
-                          onChange={(e) => {
-                            const skills = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0)
-                            handleSkillsChange(skills)
-                          }}
-                          placeholder="React, Node.js, TypeScript, AWS..."
-                        />
+                          <h3 className="font-semibold">{skill.name}</h3>
+                          <p className="text-sm text-gray-500">{skill.category}</p>
                         </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="yearsExperience">Years of Experience</Label>
-                          <Input
-                            id="yearsExperience"
-                            type="number"
-                            value={profileData.yearsExperience}
-                            onChange={(e) => handleInputChange('yearsExperience', Number(e.target.value))}
-                          />
+                        <span className="font-semibold text-blue-600">{skill.level}%</span>
                       </div>
-                        <div>
-                          <Label htmlFor="workPreference">Work Preference</Label>
-                          <Select
-                            value={profileData.workPreference}
-                            onValueChange={(value) => handleInputChange('workPreference', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="remote">Remote</SelectItem>
-                              <SelectItem value="onsite">On-site</SelectItem>
-                              <SelectItem value="hybrid">Hybrid</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="minimumProjectBudget">Minimum Project Budget (RM)</Label>
-                          <Input
-                            id="minimumProjectBudget"
-                            type="number"
-                            value={profileData.minimumProjectBudget}
-                            onChange={(e) => handleInputChange('minimumProjectBudget', Number(e.target.value))}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="maximumProjectBudget">Maximum Project Budget (RM)</Label>
-                          <Input
-                            id="maximumProjectBudget"
-                            type="number"
-                            value={profileData.maximumProjectBudget}
-                            onChange={(e) => handleInputChange('maximumProjectBudget', Number(e.target.value))}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="preferredProjectDuration">Preferred Project Duration</Label>
-                          <Input
-                            id="preferredProjectDuration"
-                            value={profileData.preferredProjectDuration}
-                            onChange={(e) => handleInputChange('preferredProjectDuration', e.target.value)}
-                            placeholder="e.g., 1-3 months, 3-6 months..."
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="teamSize">Team Size</Label>
-                          <Input
-                            id="teamSize"
-                            type="number"
-                            value={profileData.teamSize}
-                            onChange={(e) => handleInputChange('teamSize', Number(e.target.value))}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                      <Progress value={skill.level} className="h-2" />
                     </CardContent>
                   </Card>
-              ) : (
-                <div className="space-y-4">
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="font-semibold mb-4">Technical Skills</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {profileData.skills.map((skill, index) => (
-                          <Badge key={index} variant="secondary" className="text-sm">
-                            {skill}
-                          </Badge>
-                        ))}
-                        {profileData.skills.length === 0 && (
-                          <p className="text-gray-500">No skills added yet</p>
-                        )}
+                ))}
               </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="font-semibold mb-4">Experience & Preferences</h3>
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-sm text-gray-600">Years of Experience</p>
-                            <p className="font-medium">{profileData.yearsExperience} years</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Work Preference</p>
-                            <p className="font-medium capitalize">{profileData.workPreference}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Team Size</p>
-                            <p className="font-medium">{profileData.teamSize} person(s)</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="font-semibold mb-4">Project Preferences</h3>
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-sm text-gray-600">Budget Range</p>
-                            <p className="font-medium">
-                              RM {profileData.minimumProjectBudget} - RM {profileData.maximumProjectBudget}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Preferred Duration</p>
-                            <p className="font-medium">{profileData.preferredProjectDuration || "Not specified"}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              )}
             </div>
           </TabsContent>
 
@@ -902,9 +595,9 @@ export default function ProviderProfilePage() {
                 <div className="text-right">
                   <div className="flex items-center gap-2">
                     <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                    <span className="text-2xl font-bold">{profileStats.rating}</span>
+                    <span className="text-2xl font-bold">{stats.rating}</span>
                   </div>
-                  <p className="text-sm text-gray-500">{profileStats.totalReviews} reviews</p>
+                  <p className="text-sm text-gray-500">{stats.reviewCount} reviews</p>
                 </div>
               </div>
 

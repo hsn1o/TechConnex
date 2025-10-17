@@ -1,5 +1,5 @@
 // lib/api.ts
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
 
 export async function uploadKyc(files: File[], type: "PROVIDER_ID" | "COMPANY_REG" | "COMPANY_DIRECTOR_ID") {
@@ -130,25 +130,33 @@ export async function createProject(projectData: {
   timeline: string;
   priority: string;
   skills: string[];
-  requirements?: string;
-  deliverables?: string;
+  ndaSigned?: boolean;
+  requirements?: string[];  // ✅ updated to accept arrays
+  deliverables?: string[];  // ✅ updated to accept arrays
 }) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+
   if (!token) throw new Error("Not authenticated");
 
   const res = await fetch(`${API_BASE}/company/projects`, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(projectData),
   });
-  
+
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || "Failed to create project");
+
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to create project");
+  }
+
   return data;
 }
+
 
 export async function getProjectRequests(params?: {
   page?: number;
@@ -214,7 +222,6 @@ export async function rejectProposal(proposalId: string, reason?: string) {
   if (!res.ok) throw new Error(data?.message || "Failed to reject proposal");
   return data;
 }
-
 
 // Get single project/service request details
 export async function getProjectById(id: string) {
@@ -876,23 +883,22 @@ export async function getProviderProfileCompletion() {
   return data;
 }
 
-
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const headers = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token ? { Authorization: Bearer ${token} } : {}),
     ...options.headers,
   };
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+  const res = await fetch(${process.env.NEXT_PUBLIC_API_URL}${endpoint}, {
     ...options,
     headers,
   });
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Request failed");
-  return data;
+  return data;
 }
