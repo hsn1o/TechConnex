@@ -19,6 +19,7 @@ import {
 import { CustomerLayout } from "@/components/customer-layout";
 import io, { Socket } from "socket.io-client";
 import { useSearchParams } from "next/navigation";
+import { ProviderLayout } from "@/components/provider-layout";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -467,16 +468,16 @@ export default function CustomerMessagesPage() {
 
   if (!token || !user) {
     return (
-      <CustomerLayout>
+      <ProviderLayout>
         <div className="flex items-center justify-center h-64">
           <p className="text-gray-500">Please log in to view messages</p>
         </div>
-      </CustomerLayout>
+      </ProviderLayout>
     );
   }
 
   return (
-    <CustomerLayout>
+    <ProviderLayout>
       <div className="h-[calc(100vh-8rem)] flex gap-6">
         {/* 🧾 Conversations List */}
         <div className="w-1/3">
@@ -797,6 +798,6 @@ export default function CustomerMessagesPage() {
           </Card>
         </div>
       </div>
-    </CustomerLayout>
+    </ProviderLayout>
   );
 }

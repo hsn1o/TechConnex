@@ -79,7 +79,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
         if (userId) {
           const API_URL =
             process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-          const endpoint = `${API_URL}/api/users/${userId}`; // ✅ updated endpoint
+          const endpoint = `${API_URL}/company/profile/`; // ✅ updated endpoint
 
           fetch(endpoint, {
             headers: {
@@ -93,7 +93,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
             .then((data) => setProfile(data))
             .catch(() => {
               setProfile(null);
-              // router.push("/auth/login");
+              router.push("/auth/login");
             })
             .finally(() => setProfileLoading(false));
         }
@@ -276,8 +276,8 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                         />
                       )}
                       <AvatarFallback>
-                        {profile && profile.name
-                          ? profile.name
+                        {profile && profile.data.name
+                          ? profile.data.name
                               .split(" ")
                               .map((n: string) => n[0])
                               .join("")
@@ -293,15 +293,15 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                       <p className="text-sm font-medium leading-none">
                         {profileLoading
                           ? "Loading..."
-                          : profile && profile.name
-                          ? profile.name
+                          : profile && profile.data.name
+                          ? profile.data.name
                           : "Unknown User"}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {profileLoading
                           ? "Loading..."
-                          : profile && profile.email
-                          ? profile.email
+                          : profile && profile.data.email
+                          ? profile.data.email
                           : "-"}
                       </p>
                     </div>

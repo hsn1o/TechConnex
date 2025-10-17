@@ -44,8 +44,13 @@ export default function FindProvidersClient({
     if (categoryFilter !== 'all') params.append('category', categoryFilter);
     if (locationFilter !== 'all') params.append('location', locationFilter);
     if (ratingFilter !== 'all') params.append('rating', ratingFilter);
+      const token = localStorage.getItem("token");
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/providers?${params.toString()}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/providers?${params.toString()}`,{
+      headers: {
+              Authorization: `Bearer ${token}`,
+            },
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {

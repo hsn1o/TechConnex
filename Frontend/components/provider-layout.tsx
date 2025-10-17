@@ -101,13 +101,18 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
         router.push("/auth/login");
         return;
       }
-
+ const API_URL =
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       // Fetch user profile
       try {
-        const endpoint = `http://localhost:4000/api/${userId}`;
+          const endpoint = `${API_URL}/provider/profile/`; // ✅ updated endpoint
         console.log("🌐 Fetching profile from:", endpoint);
 
-        const res = await fetch(endpoint);
+        const res = await fetch(endpoint, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
         if (!res.ok) {
           throw new Error("Failed to fetch profile");
         }
@@ -288,7 +293,7 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
                       {profile && profile.resume && profile.resume.fileUrl ? (
                         <AvatarImage
                           src={`/${profile.resume.fileUrl.replace(/\\/g, "/")}`}
-                          alt={profile.name || "User"}
+                          alt={profile.data.user.name|| "User"}
                         />
                       ) : (
                         <AvatarImage
@@ -297,8 +302,8 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
                         />
                       )}
                       <AvatarFallback>
-                        {profile && profile.name
-                          ? profile.name
+                        {profile && profile.data.user.name
+                          ? profile.data.user.name
                               .split(" ")
                               .map((n: string) => n[0])
                               .join("")
@@ -314,15 +319,15 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
                       <p className="text-sm font-medium leading-none">
                         {profileLoading
                           ? "Loading..."
-                          : profile && profile.name
-                          ? profile.name
+                          : profile && profile.data.user.name
+                          ? profile.data.user.name
                           : "Unknown User"}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {profileLoading
                           ? "Loading..."
-                          : profile && profile.email
-                          ? profile.email
+                          : profile && profile.data.user.email
+                          ? profile.data.user.email
                           : "-"}
                       </p>
                     </div>

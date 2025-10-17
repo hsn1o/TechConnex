@@ -33,13 +33,15 @@ export default function SavedProvidersPage() {
   const [loading, setLoading] = useState(true);
 
   const getUserId = () => {
-    const userJson = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    const userJson =
+      typeof window !== "undefined" ? localStorage.getItem("user") : null;
     try {
       return userJson ? JSON.parse(userJson)?.id || "" : "";
     } catch {
       return "";
     }
   };
+  const token = localStorage.getItem("token") || "";
 
   const fetchSaved = async () => {
     try {
@@ -49,7 +51,17 @@ export default function SavedProvidersPage() {
         setLoading(false);
         return;
       }
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/users/${encodeURIComponent(userId)}/saved-providers`);
+      const res = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+        }/providers/users/${encodeURIComponent(userId)}/saved-providers`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // ✅ token added here
+          },
+        }
+      );
       const data = await res.json();
       setProviders(data.providers || []);
     } catch (e) {
@@ -68,8 +80,16 @@ export default function SavedProvidersPage() {
       const userId = getUserId();
       if (!userId) return;
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/${providerId}/save?userId=${encodeURIComponent(userId)}`,
-        { method: "DELETE" }
+        `${
+          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
+        }/providers/${providerId}/save?userId=${encodeURIComponent(userId)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // ✅ token added here
+          },
+        }
       );
       if (!res.ok) throw new Error("Failed to unsave");
       setProviders((prev) => prev.filter((p) => p.id !== providerId));
@@ -84,7 +104,9 @@ export default function SavedProvidersPage() {
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Saved Providers</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Saved Providers
+            </h1>
             <p className="text-gray-600">Providers you have bookmarked</p>
           </div>
         </div>
@@ -96,18 +118,27 @@ export default function SavedProvidersPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {providers.map((provider) => (
-              <Card key={provider.id} className="hover:shadow-lg transition-shadow">
+              <Card
+                key={provider.id}
+                className="hover:shadow-lg transition-shadow"
+              >
                 <CardHeader className="pb-4">
                   <div className="flex items-start space-x-4">
                     <Avatar className="w-16 h-16">
-                      <AvatarImage src={provider.avatar || "/placeholder.svg"} />
+                      <AvatarImage
+                        src={provider.avatar || "/placeholder.svg"}
+                      />
                       <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900 truncate">{provider.name}</h3>
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {provider.name}
+                        </h3>
                         {provider.topRated && (
-                          <Badge className="bg-yellow-100 text-yellow-800 text-xs">Top Rated</Badge>
+                          <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                            Top Rated
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-1 text-sm text-gray-500">
@@ -121,16 +152,26 @@ export default function SavedProvidersPage() {
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
                       <span className="font-medium">{provider.rating}</span>
-                      <span className="text-sm text-gray-500">({provider.reviewCount})</span>
+                      <span className="text-sm text-gray-500">
+                        ({provider.reviewCount})
+                      </span>
                     </div>
-                    <div className="text-sm text-gray-500">RM{provider.hourlyRate}/hr</div>
+                    <div className="text-sm text-gray-500">
+                      RM{provider.hourlyRate}/hr
+                    </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 line-clamp-2">{provider.bio}</p>
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {provider.bio}
+                  </p>
 
                   <div className="flex flex-wrap gap-1">
                     {provider.skills.slice(0, 4).map((skill) => (
-                      <Badge key={skill} variant="secondary" className="text-xs">
+                      <Badge
+                        key={skill}
+                        variant="secondary"
+                        className="text-xs"
+                      >
                         {skill}
                       </Badge>
                     ))}
@@ -142,7 +183,11 @@ export default function SavedProvidersPage() {
                         <Eye className="w-4 h-4 mr-2" /> View Profile
                       </Button>
                     </Link>
-                    <Button size="sm" variant="destructive" onClick={() => unsave(provider.id)}>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => unsave(provider.id)}
+                    >
                       <Trash2 className="w-4 h-4 mr-2" /> Remove
                     </Button>
                   </div>
@@ -154,4 +199,4 @@ export default function SavedProvidersPage() {
       </div>
     </CustomerLayout>
   );
-} 
+}

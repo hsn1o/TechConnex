@@ -1,21 +1,34 @@
 // app/customer/providers/[id]/page.tsx
+import { cookies } from "next/headers";
 import { CustomerLayout } from "@/components/customer-layout";
 import ProviderDetailClient from "@/components/customer/providers/ProviderDetailClient";
 import type { Provider, Review, PortfolioItem } from "@/components/customer/providers/types";
 import { notFound } from "next/navigation";
 
-type Props = { params: { id: string } };
+export default async function ProviderDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-export default async function ProviderDetailPage({ params }: Props) {
-  // Fetch provider data from backend
+  // ✅ Read token from cookies
+  const cookieStore = cookies();
+  const token = (await cookieStore).get("token")?.value;
+
   let provider: Provider | null = null;
   let portfolio: PortfolioItem[] = [];
   let reviews: Review[] = [];
 
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/${params.id}/full`,
-      { cache: "no-store" }
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/providers/${id}`,
+      {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        cache: "no-store",
+      }
     );
 
     if (response.ok) {
@@ -24,13 +37,16 @@ export default async function ProviderDetailPage({ params }: Props) {
         provider = data.provider;
         portfolio = data.portfolio || [];
         reviews = data.reviews || [];
+      } else {
+        console.error("Backend returned success=false", data);
       }
+    } else {
+      console.error("Response not ok:", response.status);
     }
   } catch (error) {
-    console.error('Failed to fetch provider details:', error);
+    console.error("Failed to fetch provider details:", error);
   }
 
-  // If provider not found, show 404
   if (!provider) {
     notFound();
   }

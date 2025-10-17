@@ -3,11 +3,24 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { MapPin, Star, CheckCircle2, MessageSquare, Heart, ArrowLeft } from "lucide-react";
+import {
+  MapPin,
+  Star,
+  CheckCircle2,
+  MessageSquare,
+  Heart,
+  ArrowLeft,
+} from "lucide-react";
 import type { Provider, PortfolioItem, Review } from "./types";
 import PortfolioGrid from "./sections/PortfolioGrid";
 import ReviewsList from "./sections/ReviewsList";
@@ -23,27 +36,37 @@ export default function ProviderDetailClient({
 }) {
   const [saved, setSaved] = useState<boolean>(!!provider.saved);
 
-  const getUserId = () => {
-    const userJson = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const getUserAndToken = () => {
+    if (typeof window === "undefined") return { userId: "", token: "" };
     try {
-      return userJson ? JSON.parse(userJson)?.id || "" : "";
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const token = localStorage.getItem("token") || "";
+      return { userId: user?.id || "", token };
     } catch {
-      return "";
+      return { userId: "", token: "" };
     }
   };
 
   const handleSaveToggle = async () => {
     try {
-      const userId = getUserId();
-      if (!userId) {
+      const { userId, token } = getUserAndToken();
+      if (!userId || !token) {
         alert("Please login to save providers");
         return;
       }
 
       const method = saved ? "DELETE" : "POST";
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/${provider.id}/save?userId=${encodeURIComponent(userId)}`,
-        { method }
+        `${
+          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
+        }/providers/${provider.id}/save?userId=${encodeURIComponent(userId)}`,
+        {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // ✅ token added here
+          },
+        }
       );
 
       if (response.ok) {
@@ -63,14 +86,25 @@ export default function ProviderDetailClient({
       {/* Back + Actions */}
       <div className="flex items-center justify-between">
         <Link href="/customer/providers">
-          <Button variant="outline"><ArrowLeft className="w-4 h-4 mr-2" />Back to results</Button>
+          <Button variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to results
+          </Button>
         </Link>
         <div className="flex gap-2">
-          <Button variant={saved ? "secondary" : "outline"} onClick={handleSaveToggle}>
+          <Button
+            variant={saved ? "secondary" : "outline"}
+            onClick={handleSaveToggle}
+          >
             <Heart className="w-4 h-4 mr-2" /> {saved ? "Saved" : "Save"}
           </Button>
-          <Link href={`/customer/messages/new?to=${encodeURIComponent(provider.id)}`}>
-            <Button><MessageSquare className="w-4 h-4 mr-2" />Contact</Button>
+          <Link
+            href={`/customer/messages/new?to=${encodeURIComponent(provider.id)}`}
+          >
+            <Button>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Contact
+            </Button>
           </Link>
         </div>
       </div>
@@ -88,25 +122,41 @@ export default function ProviderDetailClient({
                 <h1 className="text-2xl font-bold">{provider.name}</h1>
                 {provider.verified && (
                   <Badge className="bg-green-100 text-green-800">
-                    <CheckCircle2 className="w-4 h-4 mr-1" />Verified
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    Verified
                   </Badge>
                 )}
                 {provider.topRated && (
-                  <Badge className="bg-yellow-100 text-yellow-800">Top Rated</Badge>
+                  <Badge className="bg-yellow-100 text-yellow-800">
+                    Top Rated
+                  </Badge>
                 )}
               </div>
-              <p className="text-gray-600">{provider.title} • {provider.company}</p>
+              <p className="text-gray-600">
+                {provider.title} • {provider.company}
+              </p>
               <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-600">
                 <span className="flex items-center gap-1">
                   <Star className="w-4 h-4 text-yellow-400 fill-current" />
                   <b>{provider.rating}</b> ({provider.reviewCount})
                 </span>
-                <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{provider.location}</span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {provider.location}
+                </span>
                 <span>RM{provider.hourlyRate}/hr</span>
                 <span>{provider.completedJobs} completed jobs</span>
                 <span>Responds in {provider.responseTime}</span>
                 <span className="flex items-center gap-2">
-                  {provider.languages?.map((l) => <Badge key={l} variant="secondary" className="text-xs">{l}</Badge>)}
+                  {provider.languages?.map((l) => (
+                    <Badge
+                      key={l}
+                      variant="secondary"
+                      className="text-xs"
+                    >
+                      {l}
+                    </Badge>
+                  ))}
                 </span>
               </div>
             </div>
@@ -115,7 +165,9 @@ export default function ProviderDetailClient({
           <p className="text-gray-800">{provider.bio}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {provider.skills.map((s) => (
-              <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+              <Badge key={s} variant="secondary" className="text-xs">
+                {s}
+              </Badge>
             ))}
           </div>
         </CardContent>
@@ -153,11 +205,21 @@ export default function ProviderDetailClient({
               <CardDescription>Start a project or send a message</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Link href={`/customer/requests/new?providerId=${encodeURIComponent(provider.id)}`}>
+              <Link
+                href={`/customer/requests/new?providerId=${encodeURIComponent(
+                  provider.id
+                )}`}
+              >
                 <Button className="w-full">Request a Proposal</Button>
               </Link>
-              <Link href={`/customer/messages/new?to=${encodeURIComponent(provider.id)}`}>
-                <Button variant="outline" className="w-full">Send Message</Button>
+              <Link
+                href={`/customer/messages/new?to=${encodeURIComponent(
+                  provider.id
+                )}`}
+              >
+                <Button variant="outline" className="w-full">
+                  Send Message
+                </Button>
               </Link>
             </CardContent>
           </Card>
@@ -169,7 +231,9 @@ export default function ProviderDetailClient({
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {provider.specialties.map((sp) => (
-                <Badge key={sp} variant="secondary" className="text-xs">{sp}</Badge>
+                <Badge key={sp} variant="secondary" className="text-xs">
+                  {sp}
+                </Badge>
               ))}
             </CardContent>
           </Card>
