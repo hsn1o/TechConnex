@@ -44,12 +44,25 @@ export default function SavedProvidersPage() {
   const fetchSaved = async () => {
     try {
       const userId = getUserId();
-      if (!userId) {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      
+      if (!userId || !token) {
         setProviders([]);
         setLoading(false);
         return;
       }
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/users/${encodeURIComponent(userId)}/saved-providers`);
+      
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/users/${encodeURIComponent(userId)}/saved-providers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
       setProviders(data.providers || []);
     } catch (e) {
@@ -66,10 +79,19 @@ export default function SavedProvidersPage() {
   const unsave = async (providerId: string) => {
     try {
       const userId = getUserId();
-      if (!userId) return;
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      
+      if (!userId || !token) return;
+      
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/${providerId}/save?userId=${encodeURIComponent(userId)}`,
-        { method: "DELETE" }
+        { 
+          method: "DELETE",
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
       );
       if (!res.ok) throw new Error("Failed to unsave");
       setProviders((prev) => prev.filter((p) => p.id !== providerId));

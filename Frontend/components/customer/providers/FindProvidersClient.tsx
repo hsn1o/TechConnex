@@ -45,8 +45,26 @@ export default function FindProvidersClient({
     if (locationFilter !== 'all') params.append('location', locationFilter);
     if (ratingFilter !== 'all') params.append('rating', ratingFilter);
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/providers?${params.toString()}`)
-      .then((res) => res.json())
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    
+    if (!token) {
+      console.error("No token found");
+      setLoading(false);
+      return;
+    }
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/providers?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data.success) {
           setProviders(data.providers || []);

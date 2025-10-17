@@ -35,7 +35,9 @@ export default function ProviderDetailClient({
   const handleSaveToggle = async () => {
     try {
       const userId = getUserId();
-      if (!userId) {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      
+      if (!userId || !token) {
         alert("Please login to save providers");
         return;
       }
@@ -43,7 +45,13 @@ export default function ProviderDetailClient({
       const method = saved ? "DELETE" : "POST";
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/providers/${provider.id}/save?userId=${encodeURIComponent(userId)}`,
-        { method }
+        { 
+          method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
       );
 
       if (response.ok) {
