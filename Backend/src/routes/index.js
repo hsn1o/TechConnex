@@ -15,6 +15,7 @@ import resumeRouter from "../modules/resume/index.js";
 import certificationsRouter from "../modules/certifications/index.js";
 import klcRoutes from "../modules/auth/KYC/index.js";
 import providerProfileRouter from "../modules/provider/profile/index.js";
+import messagesRouter from "../modules/messages/index.js";
 
 const router = express.Router();
 
@@ -35,6 +36,8 @@ router.use("/provider/projects", providerProjectsRouter);
 router.use("/resume", resumeRouter);
 router.use("/certifications", certificationsRouter);
 router.use("/provider/profile", providerProfileRouter);
+router.use("/messages", messagesRouter);
+router.use("/uploads", express.static("uploads"));
 // Mount check-email under /api so frontend using NEXT_PUBLIC_API_BASE_URL that
 // points to http://host:PORT/api will be able to call `${API_BASE}/check-email`
 // Simple user endpoint for CustomerLayout
