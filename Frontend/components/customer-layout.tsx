@@ -82,10 +82,8 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
           const endpoint = `${API_URL}/api/users/${userId}`; // ✅ updated endpoint
 
           fetch(endpoint, {
-            method: 'GET',
             headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
             },
           })
             .then((res) => {

@@ -20,8 +20,8 @@ app.use(express.json({ limit: "1mb" }));
 // Log HTTP requests in development
 app.use(morgan("dev"));
 
-// Register routes under /api
-app.use("/api", routes);
+// Register routes
+app.use("", routes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

@@ -37,26 +37,9 @@ router.use("/certifications", certificationsRouter);
 router.use("/provider/profile", providerProfileRouter);
 // Mount check-email under /api so frontend using NEXT_PUBLIC_API_BASE_URL that
 // points to http://host:PORT/api will be able to call `${API_BASE}/check-email`
-// Simple user endpoint for CustomerLayout - requires authentication
+// Simple user endpoint for CustomerLayout
 router.get("/users/:id", async (req, res) => {
   try {
-    // Check for authentication token
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-    
-    if (!token) {
-      return res.status(401).json({ success: false, message: "No token provided" });
-    }
-
-    // Verify token (basic check - in production, use proper JWT verification)
-    const jwt = await import("jsonwebtoken");
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Only allow users to fetch their own data or admin access
-    if (decoded.id !== req.params.id && !decoded.roles?.includes("ADMIN")) {
-      return res.status(403).json({ success: false, message: "Access denied" });
-    }
-
     const { PrismaClient } = await import("@prisma/client");
     const prisma = new PrismaClient();
 
@@ -92,9 +75,6 @@ router.get("/users/:id", async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching user:", error);
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ success: false, message: "Invalid or expired token" });
-    }
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });

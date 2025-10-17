@@ -16,17 +16,12 @@ import {
 
 const router = express.Router();
 
-// Provider search and listing (public endpoints)
-router.get("/filters", getFilters);
-
-// Apply authentication to protected routes
+// Apply authentication to all routes
 router.use(authenticateToken);
 
-// Protected provider search and listing
+// Provider search and listing
 router.get("/", findProviders);
-
-// Saved providers for user (must come before /:id routes)
-router.get("/users/:userId/saved-providers", getSavedProviders);
+router.get("/filters", getFilters);
 
 // Individual provider endpoints
 router.get("/:id", getProvider);
@@ -38,5 +33,8 @@ router.get("/:id/stats", getProviderStats);
 // Save/unsave provider
 router.post("/:id/save", saveProvider);
 router.delete("/:id/save", unsaveProvider);
+
+// Saved providers for user
+router.get("/users/:userId/saved-providers", getSavedProviders);
 
 export default router;
