@@ -142,12 +142,12 @@ export default function SignupPage() {
     sourceUrl: "",
   });
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editCertification, setEditCertification] = useState<Certification | null>(null);
-const handleEditCertification = (index: number) => {
-  setEditingIndex(index);
-  setEditCertification({ ...certifications[index] });
-};
-
+  const [editCertification, setEditCertification] =
+    useState<Certification | null>(null);
+  const handleEditCertification = (index: number) => {
+    setEditingIndex(index);
+    setEditCertification({ ...certifications[index] });
+  };
 
   const [isProcessingCV, setIsProcessingCV] = useState(false);
   const [cvExtractedData, setCvExtractedData] = useState<any>(null);
@@ -257,7 +257,7 @@ const handleEditCertification = (index: number) => {
     certs: Certification[]
   ) => {
     return fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/certifications/upload`,
+      `${process.env.NEXT_PUBLIC_API_URL}/certifications/upload`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -425,15 +425,39 @@ const handleEditCertification = (index: number) => {
           return bioOk && locOk && resumeOk && kycOk;
         }
         case 5: {
-          const requiredFilled =
-            (!!newCertification.name &&
-              !!newCertification.issuedDate &&
-              !!newCertification.issuer &&
-              !!newCertification.serialNumber) ||
-            !!newCertification.sourceUrl;
+          const allCertsValid =
+            certifications.length > 0 &&
+            certifications.every(
+              (cert) =>
+                !!cert.name &&
+                !!cert.issuer &&
+                !!cert.issuedDate &&
+                ((!!cert.serialNumber?.trim() &&
+                  cert.serialNumber.trim().toLowerCase() !== "not specified" &&
+                  cert.serialNumber.trim().toLowerCase() !== "n/a") ||
+                  (!!cert.sourceUrl?.trim() &&
+                    cert.sourceUrl.trim().toLowerCase() !== "not specified" &&
+                    cert.sourceUrl.trim().toLowerCase() !== "n/a"))
+            );
 
-          return requiredFilled;
+          const newCertValid =
+            !!newCertification.name &&
+            !!newCertification.issuer &&
+            !!newCertification.issuedDate &&
+            ((!!newCertification.serialNumber?.trim() &&
+              newCertification.serialNumber.trim().toLowerCase() !==
+                "not specified" &&
+              newCertification.serialNumber.trim().toLowerCase() !== "n/a") ||
+              (!!newCertification.sourceUrl?.trim() &&
+                newCertification.sourceUrl.trim().toLowerCase() !==
+                  "not specified" &&
+                newCertification.sourceUrl.trim().toLowerCase() !== "n/a"));
+
+          return allCertsValid || newCertValid;
         }
+        case 6:
+          return Boolean(formData.acceptedTerms); // or Boolean(formData.acceptedTerms) if using boolean
+
         default:
           return true;
       }
@@ -552,7 +576,6 @@ const handleEditCertification = (index: number) => {
             : null,
           preferredProjectDuration: formData.preferredProjectDuration || null,
           workPreference: formData.workPreference || "remote",
-          teamSize: formData.teamSize || 1,
         };
       }
 
@@ -565,7 +588,8 @@ const handleEditCertification = (index: number) => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Registration failed");
 
-      const newUserId: string | undefined = data?.user?.user.id;
+      const newUserId: string | undefined =
+        userRole === "provider" ? data?.user?.id : data?.user?.user.id;
       if (!newUserId) throw new Error("User ID missing after registration");
 
       // 2️⃣ Upload KYC only after successful registration
@@ -986,6 +1010,10 @@ const handleEditCertification = (index: number) => {
                       setNewPortfolioUrl={setNewPortfolioUrl}
                       certifications={certifications}
                       setCertifications={setCertifications}
+                      editCertification={editCertification}
+                      editingIndex={editingIndex}
+                      setEditCertification={setEditCertification}
+                      setEditingIndex={setEditingIndex}
                       newCertification={newCertification}
                       setNewCertification={setNewCertification}
                       isProcessingCV={isProcessingCV}
@@ -996,6 +1024,7 @@ const handleEditCertification = (index: number) => {
                       setShowAIResults={setShowAIResults}
                       aiProcessingComplete={aiProcessingComplete}
                       setAiProcessingComplete={setAiProcessingComplete}
+                      handleBooleanInputChange={handleBooleanInputChange}
                     />
                   )}
                 </motion.div>

@@ -16,6 +16,7 @@ import certificationsRouter from "../modules/certifications/index.js";
 import klcRoutes from "../modules/auth/KYC/index.js";
 import providerProfileRouter from "../modules/provider/profile/index.js";
 import messagesRouter from "../modules/messages/index.js";
+// import providerCertificateRouter from "../modules/certifications/index.js";
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ const router = express.Router();
 router.use("/auth", auth);
 router.use("/kyc", klcRoutes);
 router.use("/auth/company", companyAuthRoutes);
-router.use("/provider/auth", providerAuthRoutes);
+router.use("/auth/provider", providerAuthRoutes);
 router.use("/company/profile", companyProfileRouter);
 router.use("/providers", findProvidersRouter);
 router.use("/company/projects", companyProjectsRouter);
@@ -33,6 +34,7 @@ router.use("/provider/proposals", providerSendProposalRouter);
 router.use("/provider/opportunities", providerOpportunitiesRouter);
 router.use("/provider/milestones", providerMilestonesRouter);
 router.use("/provider/projects", providerProjectsRouter);
+// router.use("/provider/certificate", providerCertificateRouter);
 router.use("/resume", resumeRouter);
 router.use("/certifications", certificationsRouter);
 router.use("/provider/profile", providerProfileRouter);

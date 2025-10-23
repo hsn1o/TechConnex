@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import fs from "fs";
-import { analyzeResume } from "./controller.js";
+import { analyzeResume, uploadResumeController } from "./controller.js";
 
 const router = express.Router();
 
@@ -22,10 +22,22 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Routes
-router.post("/analyze", upload.single("resume"), (req, res, next) => {
-  console.log("File uploaded:", req.file);
-  next();
-}, analyzeResume);
+router.post(
+  "/analyze",
+  upload.single("resume"),
+  (req, res, next) => {
+    console.log("File uploaded:", req.file);
+    next();
+  },
+  analyzeResume
+);
 
+// Separate routes
+router.post(
+  "/upload",
+
+  upload.single("resume"),
+  uploadResumeController
+);
 
 export default router;

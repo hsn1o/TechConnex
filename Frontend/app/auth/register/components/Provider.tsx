@@ -32,8 +32,11 @@ import {
   Zap,
   CheckCircle,
   AlertCircle,
+  Edit,
+  Link,
 } from "lucide-react";
 import { RegistrationFormData, Certification } from "../page";
+import { Checkbox } from "@radix-ui/react-checkbox";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -149,6 +152,17 @@ interface ProviderRegistrationProps {
   setShowAIResults: React.Dispatch<React.SetStateAction<boolean>>;
   aiProcessingComplete: boolean;
   setAiProcessingComplete: React.Dispatch<React.SetStateAction<boolean>>;
+  handleBooleanInputChange: (
+    key: keyof RegistrationFormData,
+    value: boolean
+  ) => void;
+  // 👇 Add these two new props
+  editingIndex: number | null;
+  setEditingIndex: React.Dispatch<React.SetStateAction<number | null>>;
+  editCertification: Certification | null;
+  setEditCertification: React.Dispatch<
+    React.SetStateAction<Certification | null>
+  >;
 }
 
 const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
@@ -190,7 +204,16 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
   setShowAIResults,
   aiProcessingComplete,
   setAiProcessingComplete,
+  handleBooleanInputChange,
+
+  // 👇 Add these
+  editingIndex,
+  setEditingIndex,
+  editCertification,
+  setEditCertification,
 }) => {
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+
   const isStrongPassword = (pwd: string) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|;:'",.<>/?`~]).{8,}$/.test(
       pwd
@@ -210,7 +233,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
     formData.append("resume", file);
 
     try {
-      const res = await fetch("http://localhost:4000/resume/analyze", {
+      const res = await fetch(`${API_BASE}/resume/analyze`, {
         method: "POST",
         body: formData,
       });
@@ -283,34 +306,46 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
   };
 
   const handleAddCertification = () => {
-  const hasSerialOrUrl =
-    (newCertification.serialNumber && newCertification.serialNumber.trim()) ||
-    (newCertification.sourceUrl && newCertification.sourceUrl.trim());
+    const hasSerialOrUrl =
+      (newCertification.serialNumber && newCertification.serialNumber.trim()) ||
+      (newCertification.sourceUrl && newCertification.sourceUrl.trim());
 
-  if (
-    newCertification.name.trim() &&
-    newCertification.issuer.trim() &&
-    newCertification.issuedDate &&
-    hasSerialOrUrl
-  ) {
-    setCertifications((prev) => [...prev, { ...newCertification }]);
-    setNewCertification({
-      name: "",
-      issuer: "",
-      issuedDate: "",
-      verified: false,
-      serialNumber: "",
-      sourceUrl: "",
-    });
-  }
-};
+    if (
+      newCertification.name.trim() &&
+      newCertification.issuer.trim() &&
+      newCertification.issuedDate &&
+      hasSerialOrUrl
+    ) {
+      setCertifications((prev) => [...prev, { ...newCertification }]);
+      setNewCertification({
+        name: "",
+        issuer: "",
+        issuedDate: "",
+        verified: false,
+        serialNumber: "",
+        sourceUrl: "",
+      });
+    }
+  };
 
-// ✅ Remove Certification
-const handleRemoveCertification = (index: number) => {
-  setCertifications((prev) => prev.filter((_, i) => i !== index));
-};
+  // ✅ Remove Certification
+  const handleRemoveCertification = (index: number) => {
+    setCertifications((prev) => prev.filter((_, i) => i !== index));
+  };
 
+  const handleEditCertification = (index: number) => {
+    setEditingIndex(index);
+    setEditCertification(certifications[index]);
+  };
+  const handleSaveEditedCertification = () => {
+    if (editingIndex === null || !editCertification) return;
 
+    setCertifications((prev) =>
+      prev.map((cert, i) => (i === editingIndex ? editCertification : cert))
+    );
+    setEditingIndex(null);
+    setEditCertification(null);
+  };
 
   const applyAIExtractedData = () => {
     if (!cvExtractedData) return;
@@ -331,10 +366,13 @@ const handleRemoveCertification = (index: number) => {
       handleInputChange("location", cvExtractedData.location);
     }
 
-    // 🔹 Portfolio URLs (prevent duplicates)
-    if (cvExtractedData.portfolios && cvExtractedData.portfolios.length > 0) {
+    // 🔹 Portfolio URLs (AI returns `portfolioUrls`)
+    if (
+      cvExtractedData.portfolioUrls &&
+      cvExtractedData.portfolioUrls.length > 0
+    ) {
       setPortfolioUrls((prev) => {
-        const newLinks = cvExtractedData.portfolios
+        const newLinks = cvExtractedData.portfolioUrls
           .map((url: string) => url.trim())
           .filter((url: string) => !prev.includes(url));
         return [...prev, ...newLinks];
@@ -877,11 +915,23 @@ const handleRemoveCertification = (index: number) => {
                     <SelectValue placeholder="Select your state" />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* Always show predefined Malaysian states */}
                     {malaysianStates.map((state) => (
                       <SelectItem key={state} value={state}>
                         {state}
                       </SelectItem>
                     ))}
+
+                    {/* Dynamically show the AI-extracted value if it's not already included */}
+                    {formData.location &&
+                      !malaysianStates.includes(formData.location) && (
+                        <SelectItem
+                          key={formData.location}
+                          value={formData.location}
+                        >
+                          {formData.location}
+                        </SelectItem>
+                      )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1136,7 +1186,7 @@ const handleRemoveCertification = (index: number) => {
             {/* Experience and Rate */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="experience">Years of Experience *</Label>
+                <Label htmlFor="experience">Years of Experience</Label>
                 <Input
                   id="experience"
                   type="number"
@@ -1151,7 +1201,7 @@ const handleRemoveCertification = (index: number) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="hourlyRate">Hourly Rate (RM) *</Label>
+                <Label htmlFor="hourlyRate">Hourly Rate (RM)</Label>
                 <Input
                   id="hourlyRate"
                   type="number"
@@ -1474,14 +1524,40 @@ const handleRemoveCertification = (index: number) => {
                             <Calendar className="w-4 h-4 inline mr-1" />
                             {new Date(cert.issuedDate).toLocaleDateString()}
                           </p>
+                          {cert.serialNumber && (
+                            <p className="text-sm text-gray-500 mt-1">
+                              <span className="font-medium">Serial No:</span>{" "}
+                              {cert.serialNumber}
+                            </p>
+                          )}
+
+                          {cert.sourceUrl && (
+                            <a
+                              href={cert.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline text-sm mt-1 inline-block"
+                            >
+                              Verify Certificate ↗
+                            </a>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCertification(index)}
-                          className="text-red-500 hover:text-red-700 p-1"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEditCertification(index)}
+                            className="text-blue-600 hover:text-blue-800 p-1"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCertification(index)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1499,9 +1575,89 @@ const handleRemoveCertification = (index: number) => {
               </div>
             )}
           </div>
+          {editCertification && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+                <h3 className="text-lg font-semibold mb-4">
+                  Edit Certification
+                </h3>
+
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Certification Name"
+                    value={editCertification.name}
+                    onChange={(e) =>
+                      setEditCertification((prev: any) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    placeholder="Issuer"
+                    value={editCertification.issuer}
+                    onChange={(e) =>
+                      setEditCertification((prev: any) => ({
+                        ...prev,
+                        issuer: e.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    type="date"
+                    value={editCertification.issuedDate}
+                    onChange={(e) =>
+                      setEditCertification((prev: any) => ({
+                        ...prev,
+                        issuedDate: e.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    placeholder="Serial Number"
+                    value={editCertification.serialNumber || ""}
+                    onChange={(e) =>
+                      setEditCertification((prev: any) => ({
+                        ...prev,
+                        serialNumber: e.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    type="url"
+                    placeholder="Verification Link"
+                    value={editCertification.sourceUrl || ""}
+                    onChange={(e) =>
+                      setEditCertification((prev: any) => ({
+                        ...prev,
+                        sourceUrl: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEditCertification(null);
+                      setEditingIndex(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={handleSaveEditedCertification}
+                  >
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       );
-
     case 6:
       return (
         <motion.div
@@ -1515,41 +1671,188 @@ const handleRemoveCertification = (index: number) => {
           </h2>
 
           <p className="text-gray-600 text-center">
-            Please review your profile details before submission.
+            Please review your profile details carefully before submission.
           </p>
 
-          <div className="bg-white/50 p-4 rounded-lg border">
-            <p>
-              <strong>Name:</strong> {formData.name}
-            </p>
-            <p>
-              <strong>Email:</strong> {formData.email}
-            </p>
-            <p>
-              <strong>Bio:</strong> {formData.bio}
-            </p>
-            <p>
-              <strong>Location:</strong> {formData.location}
-            </p>
-            <p>
-              <strong>Years of Experience:</strong> {formData.yearsExperience}
-            </p>
-            <p>
-              <strong>Hourly Rate:</strong> RM {formData.hourlyRate}
-            </p>
-            <p>
-              <strong>Skills:</strong> {selectedSkills.join(", ")}
-            </p>
-            <p>
-              <strong>Languages:</strong> {selectedLanguages.join(", ")}
-            </p>
-            <p>
-              <strong>Portfolio URLs:</strong> {portfolioUrls.join(", ")}
-            </p>
-            <p>
-              <strong>Certifications:</strong>{" "}
-              {certifications.map((c) => c.name).join(", ")}
-            </p>
+          <div className="bg-white/50 p-6 rounded-lg border space-y-4 text-gray-800">
+            {/* Basic Information */}
+            <div>
+              <h3 className="text-lg font-semibold text-blue-700 mb-2">
+                Personal Information
+              </h3>
+              <p>
+                <strong>Full Name:</strong> {formData.name}
+              </p>
+              <p>
+                <strong>Email:</strong> {formData.email}
+              </p>
+              <p>
+                <strong>Phone:</strong> {formData.phone}
+              </p>
+              <p>
+                <strong>Location:</strong> {formData.location}
+              </p>
+              <p>
+                <strong>Bio:</strong> {formData.bio}
+              </p>
+            </div>
+
+            {/* Professional Details */}
+            <div>
+              <h3 className="text-lg font-semibold text-blue-700 mb-2">
+                Professional Details
+              </h3>
+              <p>
+                <strong>Years of Experience:</strong> {formData.yearsExperience}
+              </p>
+              <p>
+                <strong>Hourly Rate:</strong> RM {formData.hourlyRate}
+              </p>
+              <p>
+                <strong>Skills:</strong>{" "}
+                {selectedSkills.length > 0
+                  ? selectedSkills.join(", ")
+                  : "Not provided"}
+              </p>
+              <p>
+                <strong>Languages:</strong>{" "}
+                {selectedLanguages.length > 0
+                  ? selectedLanguages.join(", ")
+                  : "Not provided"}
+              </p>
+            </div>
+
+            {/* Portfolio Section */}
+            <div>
+              <h3 className="text-lg font-semibold text-blue-700 mb-2">
+                Portfolio Links
+              </h3>
+              {portfolioUrls.length > 0 ? (
+                <ul className="list-disc list-inside text-gray-700">
+                  {portfolioUrls.map((url, idx) => (
+                    <li key={idx}>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {url}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>None added</p>
+              )}
+            </div>
+
+            {/* Resume / KYC Section */}
+            <div>
+              <h3 className="text-lg font-semibold text-blue-700 mb-2">
+                Documents
+              </h3>
+              <p>
+                <strong>Resume:</strong>{" "}
+                {resumeFile ? resumeFile.name : "Not uploaded"}
+              </p>
+              <p>
+                <strong>KYC Document:</strong>{" "}
+                {kycDocType
+                  ? `${kycDocType} (${kycFile ? kycFile.name : "Not uploaded"})`
+                  : "Not provided"}
+              </p>
+            </div>
+
+            {/* Certifications Section */}
+            <div>
+              <h3 className="text-lg font-semibold text-blue-700 mb-2">
+                Certifications
+              </h3>
+              {certifications.length > 0 ? (
+                <ul className="space-y-3">
+                  {certifications.map((cert, idx) => (
+                    <li
+                      key={idx}
+                      className="p-3 border rounded-lg bg-white/70 shadow-sm"
+                    >
+                      <p>
+                        <strong>Name:</strong> {cert.name}
+                      </p>
+                      <p>
+                        <strong>Issuer:</strong> {cert.issuer}
+                      </p>
+                      <p>
+                        <strong>Issued Date:</strong>{" "}
+                        {new Date(cert.issuedDate).toLocaleDateString()}
+                      </p>
+                      {cert.serialNumber && (
+                        <p>
+                          <strong>Serial Number:</strong> {cert.serialNumber}
+                        </p>
+                      )}
+                      {cert.sourceUrl && (
+                        <p>
+                          <strong>Verification Link:</strong>{" "}
+                          <a
+                            href={cert.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {cert.sourceUrl}
+                          </a>
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No certifications added</p>
+              )}
+            </div>
+
+            {/* AI CV Extraction Results (if available) */}
+            {showAIResults && aiProcessingComplete && cvExtractedData && (
+              <div>
+                <h3 className="text-lg font-semibold text-blue-700 mb-2">
+                  AI CV Extracted Insights
+                </h3>
+                <pre className="bg-gray-50 p-3 rounded-lg border text-sm text-gray-700 whitespace-pre-wrap">
+                  {JSON.stringify(cvExtractedData, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-start space-x-2 p-4 border rounded-lg bg-blue-50">
+            <Checkbox
+              id="terms"
+              className="mt-1"
+              checked={formData.acceptedTerms}
+              onCheckedChange={(checked) =>
+                handleBooleanInputChange("acceptedTerms", checked as boolean)
+              }
+              required
+            />
+            <Label
+              htmlFor="terms"
+              className="text-sm text-gray-700 leading-relaxed"
+            >
+              I agree to the{" "}
+              <Link href="/terms" className="text-blue-600 hover:text-blue-700">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                className="text-blue-600 hover:text-blue-700"
+              >
+                Privacy Policy
+              </Link>
+              . I understand that my information will be used in accordance with
+              Malaysian data protection laws.
+            </Label>
           </div>
         </motion.div>
       );

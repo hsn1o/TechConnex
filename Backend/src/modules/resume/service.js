@@ -1,7 +1,17 @@
 import { parseResumeText } from "./model.js";
+import {
+  saveResumeRecord,
+  getResumeByUserId,
+  updateResumeDescription,
+} from "./model.js";
 import { ChatOpenAI } from "@langchain/openai";
 import { RunnableSequence } from "@langchain/core/runnables";
 import { PromptTemplate } from "@langchain/core/prompts";
+
+export const uploadResumeFile = async (userId, filePath) => {
+  const saved = await saveResumeRecord(userId, filePath);
+  return saved;
+};
 
 export const summarizeFullResume = async (pdfPath) => {
   const text = await parseResumeText(pdfPath);
@@ -58,3 +68,4 @@ Return ONLY valid JSON — no explanations, text, or code blocks.
     throw new Error("AI returned invalid JSON format");
   }
 };
+
