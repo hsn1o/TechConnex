@@ -265,10 +265,10 @@ model ServiceRequest {
   timeline     String?
   priority     String?
   ndaSigned    Boolean         @default(false)
-  requirements  String[] @default([])   // was: Json
-  deliverables  String[] @default([])   // was: Json
+  requirements String[]        @default([]) // was: Json
+  deliverables String[]        @default([]) // was: Json
 
-  status       RequestStatus   @default(OPEN)
+  status RequestStatus @default(OPEN)
 
   // Ownership & lifecycle
   customer   User     @relation("CustomerRequests", fields: [customerId], references: [id])
@@ -289,9 +289,9 @@ model ServiceRequest {
 
   // Milestone negotiation fields (Option A)
   milestoneDraft            Json?
-  milestoneDraftVersion     Int       @default(0)
-  milestoneCompanyAccepted  Boolean   @default(false)
-  milestoneProviderAccepted Boolean   @default(false)
+  milestoneDraftVersion     Int     @default(0)
+  milestoneCompanyAccepted  Boolean @default(false)
+  milestoneProviderAccepted Boolean @default(false)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -325,23 +325,22 @@ model Proposal {
   providerId String @db.Uuid
   provider   User   @relation(fields: [providerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  serviceRequestId String              @db.Uuid
-  serviceRequest   ServiceRequest      @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  
-  // Business fields
-  bidAmount         Float?           // consider Decimal later if you want exact money
-  status            ProposalStatus   @default(PENDING)
-  deliveryTime      Int              // in days
-  coverLetter       String           @db.Text
-  attachmentUrl     String?          // e.g., PDF proposal or portfolio
+  serviceRequestId String         @db.Uuid
+  serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  // Business fields
+  bidAmount      Float? // consider Decimal later if you want exact money
+  status         ProposalStatus @default(PENDING)
+  deliveryTime   Int // in days
+  coverLetter    String         @db.Text
+  attachmentUrls String[]       @default([]) // e.g., PDF proposal or portfolio
 
   // Provider-proposed milestones for this proposal
-  milestones        ProposalMilestone[]
+  milestones ProposalMilestone[]
 
   // Timestamps
-  createdAt         DateTime         @default(now()) @map("created_at")  @db.Timestamptz(6)
-  updatedAt         DateTime         @updatedAt      @map("updated_at")  @db.Timestamptz(6)
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
   Milestone Milestone[]
 }
 
@@ -386,10 +385,10 @@ model Project {
   timeline     String?
   priority     String?
   ndaSigned    Boolean         @default(false)
-  requirements  String[] @default([])   // was: Json
-  deliverables  String[] @default([])   // was: Json
+  requirements String[]        @default([]) // was: Json
+  deliverables String[]        @default([]) // was: Json
 
-  status       ProjectStatus
+  status ProjectStatus
 
   // Ownership & lifecycle
   customer   User   @relation("CustomerProjects", fields: [customerId], references: [id])
@@ -398,10 +397,10 @@ model Project {
   providerId String @db.Uuid
 
   // Milestone approval workflow
-  milestonesLocked      Boolean @default(false) @map("milestones_locked")
-  companyApproved       Boolean @default(false) @map("company_approved")
-  providerApproved      Boolean @default(false) @map("provider_approved")
-  milestonesApprovedAt  DateTime? @map("milestones_approved_at")
+  milestonesLocked     Boolean   @default(false) @map("milestones_locked")
+  companyApproved      Boolean   @default(false) @map("company_approved")
+  providerApproved     Boolean   @default(false) @map("provider_approved")
+  milestonesApprovedAt DateTime? @map("milestones_approved_at")
 
   // Final milestones (snapshot after acceptance)
   milestones Milestone[]

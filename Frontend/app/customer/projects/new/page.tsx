@@ -55,6 +55,8 @@ export default function NewProjectPage() {
     deliverables: "",
   });
 
+  const [newSkill, setNewSkill] = useState("");
+
   const [aiSuggestions, setAiSuggestions] = useState({
     techStack: [] as string[],
     estimatedDuration: "",
@@ -63,6 +65,15 @@ export default function NewProjectPage() {
   });
 
   const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+
+  const [errors, setErrors] = useState<{
+    title?: string;
+    category?: string;
+    description?: string;
+    budgetMin?: string;
+    budgetMax?: string;
+    timeline?: string;
+  }>({});
 
   const categories = [
     { value: "WEB_DEVELOPMENT", label: "Web Development" },
@@ -116,6 +127,26 @@ export default function NewProjectPage() {
     }));
   };
 
+  const handleAddCustomSkill = () => {
+    const cleaned = newSkill.trim();
+
+    // block empty, block duplicates (case-insensitive)
+    if (!cleaned) return;
+
+    const alreadyExists = formData.skills.some(
+      (s) => s.toLowerCase() === cleaned.toLowerCase()
+    );
+
+    if (!alreadyExists) {
+      setFormData((prev) => ({
+        ...prev,
+        skills: [...prev.skills, cleaned],
+      }));
+    }
+
+    setNewSkill("");
+  };
+
   const generateAiSuggestions = () => {
     // Simulate AI suggestions based on form data
     setAiSuggestions({
@@ -132,6 +163,55 @@ export default function NewProjectPage() {
     setShowAiSuggestions(true);
   };
 
+  const validateForm = () => {
+    const newErrors: typeof errors = {};
+
+    // Required text fields
+    if (!formData.title.trim()) {
+      newErrors.title = "Project title is required.";
+    }
+    if (!formData.category.trim()) {
+      newErrors.category = "Please select a category.";
+    }
+    if (!formData.description.trim()) {
+      newErrors.description = "Project description is required.";
+    }
+
+    // Budget checks
+    const minVal = Number(formData.budgetMin);
+    const maxVal = Number(formData.budgetMax);
+
+    if (!formData.budgetMin) {
+      newErrors.budgetMin = "Minimum budget is required.";
+    } else if (isNaN(minVal) || minVal <= 0) {
+      newErrors.budgetMin = "Minimum budget must be a positive number.";
+    }
+
+    if (!formData.budgetMax) {
+      newErrors.budgetMax = "Maximum budget is required.";
+    } else if (isNaN(maxVal) || maxVal <= 0) {
+      newErrors.budgetMax = "Maximum budget must be a positive number.";
+    }
+
+    // Relationship rule: min < max
+    if (!newErrors.budgetMin && !newErrors.budgetMax) {
+      if (minVal >= maxVal) {
+        newErrors.budgetMax =
+          "Maximum budget must be greater than minimum budget.";
+      }
+    }
+
+    // Timeline check (if you want timeline to be required; remove this block if it's optional)
+    if (!formData.timeline.trim()) {
+      newErrors.timeline = "Timeline is required.";
+    }
+
+    setErrors(newErrors);
+
+    // valid if no keys in newErrors
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async () => {
     const toLines = (s: string) =>
       s
@@ -139,17 +219,12 @@ export default function NewProjectPage() {
         .map((x) => x.trim())
         .filter(Boolean);
 
-    // Validate form
-    if (
-      !formData.title ||
-      !formData.description ||
-      !formData.category ||
-      !formData.budgetMin ||
-      !formData.budgetMax
-    ) {
+    // Run client validation
+    const isValid = validateForm();
+    if (!isValid) {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
+        title: "Please fix the form",
+        description: "Some fields need your attention.",
         variant: "destructive",
       });
       return;
@@ -159,17 +234,17 @@ export default function NewProjectPage() {
       setLoading(true);
 
       const projectData = {
-        title: formData.title,
-        description: formData.description,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
         category: formData.category,
-        budgetMin: parseFloat(formData.budgetMin),
-        budgetMax: parseFloat(formData.budgetMax),
-        timeline: formData.timeline,
+        budgetMin: Number(formData.budgetMin),
+        budgetMax: Number(formData.budgetMax),
+        timeline: formData.timeline.trim(),
         priority: formData.priority,
         skills: formData.skills,
         ndaSigned: formData.ndaSigned,
-        requirements: toLines(formData.requirements), // <— array of strings
-        deliverables: toLines(formData.deliverables), // <— array of strings
+        requirements: toLines(formData.requirements),
+        deliverables: toLines(formData.deliverables),
       };
 
       const response = await createProject(projectData);
@@ -237,7 +312,15 @@ export default function NewProjectPage() {
                     placeholder="e.g., E-commerce Mobile App Development"
                     value={formData.title}
                     onChange={(e) => handleInputChange("title", e.target.value)}
+                    className={
+                      errors.title
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
                   />
+                  {errors.title && (
+                    <p className="text-xs text-red-600">{errors.title}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -247,7 +330,13 @@ export default function NewProjectPage() {
                       handleInputChange("category", value)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger
+                      className={
+                        errors.category
+                          ? "border-red-500 focus:ring-red-500"
+                          : ""
+                      }
+                    >
                       <SelectValue placeholder="Select project category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -258,19 +347,29 @@ export default function NewProjectPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.category && (
+                    <p className="text-xs text-red-600">{errors.category}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Project Description</Label>
                   <Textarea
                     id="description"
-                    placeholder="Describe your project in detail. What are you trying to achieve? What features do you need? Who is your target audience?"
-                    className="min-h-[120px]"
+                    placeholder="Describe your project in detail..."
+                    className={`min-h-[120px] ${
+                      errors.description
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }`}
                     value={formData.description}
                     onChange={(e) =>
                       handleInputChange("description", e.target.value)
                     }
                   />
+                  {errors.description && (
+                    <p className="text-xs text-red-600">{errors.description}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -284,8 +383,17 @@ export default function NewProjectPage() {
                       onChange={(e) =>
                         handleInputChange("budgetMin", e.target.value)
                       }
+                      className={
+                        errors.budgetMin
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }
                     />
+                    {errors.budgetMin && (
+                      <p className="text-xs text-red-600">{errors.budgetMin}</p>
+                    )}
                   </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="budgetMax">Maximum Budget (RM)</Label>
                     <Input
@@ -296,32 +404,60 @@ export default function NewProjectPage() {
                       onChange={(e) =>
                         handleInputChange("budgetMax", e.target.value)
                       }
+                      className={
+                        errors.budgetMax
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }
                     />
+                    {errors.budgetMax && (
+                      <p className="text-xs text-red-600">{errors.budgetMax}</p>
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="timeline">Project Timeline</Label>
-                  <Select
-                    onValueChange={(value) =>
-                      handleInputChange("timeline", value)
+                  <Input
+                    id="timeline"
+                    type="text"
+                    placeholder="Enter expected timeline (e.g., 2 weeks, 1 month)"
+                    value={formData.timeline}
+                    onChange={(e) =>
+                      handleInputChange("timeline", e.target.value)
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select expected timeline" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1-2-weeks">1-2 weeks</SelectItem>
-                      <SelectItem value="3-4-weeks">3-4 weeks</SelectItem>
-                      <SelectItem value="1-2-months">1-2 months</SelectItem>
-                      <SelectItem value="3-6-months">3-6 months</SelectItem>
-                      <SelectItem value="6-months-plus">6+ months</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    className={
+                      errors.timeline
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
+                  />
+                  {errors.timeline && (
+                    <p className="text-xs text-red-600">{errors.timeline}</p>
+                  )}
                 </div>
 
                 <div className="space-y-3">
                   <Label>Required Skills</Label>
+
+                  {/* Selected skills preview */}
+                  {formData.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.skills.map((skill) => (
+                        <Badge
+                          key={skill}
+                          variant="default"
+                          className="cursor-pointer"
+                          onClick={() => handleSkillToggle(skill)}
+                          title="Click to remove"
+                        >
+                          {skill} ✕
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Preset skills to click/toggle */}
                   <div className="flex flex-wrap gap-2">
                     {skillOptions.map((skill) => (
                       <Badge
@@ -338,6 +474,33 @@ export default function NewProjectPage() {
                       </Badge>
                     ))}
                   </div>
+
+                  {/* Add custom skill */}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newSkill}
+                      placeholder="Add a required skill (e.g. Laravel, PenTesting, POS integration)"
+                      onChange={(e) => setNewSkill(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomSkill();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddCustomSkill}
+                    >
+                      Add
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    Click a badge to select / unselect. You can also type your
+                    own skill and press Enter.
+                  </p>
                 </div>
 
                 <Separator />

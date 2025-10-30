@@ -6,7 +6,11 @@ export class SendProposalDto {
     this.bidAmount = Number(data.bidAmount);
     this.deliveryTime = Number(data.deliveryTime);
     this.coverLetter = (data.coverLetter || "").toString();
-    this.attachmentUrl = data.attachmentUrl;
+    // map uploaded files -> relative URLs
+    // if controller passes req.files, we collect their paths
+    this.attachmentUrls = Array.isArray(data.attachmentUrls)
+      ? data.attachmentUrls
+      : [];
     this.milestones = Array.isArray(data.milestones) ? data.milestones.map((m, i) => ({
       sequence: Number(m.sequence ?? i + 1),
       title: (m.title || "").toString().trim(),
@@ -25,6 +29,9 @@ export class SendProposalDto {
     if (!this.bidAmount || this.bidAmount <= 0) throw new Error("Valid bid amount is required");
     if (!this.deliveryTime || this.deliveryTime <= 0) throw new Error("Valid delivery time is required");
     if (!this.coverLetter || this.coverLetter.trim() === "") throw new Error("Cover letter is required");
+    if (this.attachmentUrls.length > 3) {
+      throw new Error("Maximum 3 attachments allowed");
+    }
 
     if (this.milestones.length > 0) {
       // Tolerance ±2% or 1 unit, whichever is larger

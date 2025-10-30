@@ -58,7 +58,7 @@ export async function sendProposal(dto) {
           bidAmount: dto.bidAmount,
           deliveryTime: dto.deliveryTime,
           coverLetter: dto.coverLetter,
-          attachmentUrl: dto.attachmentUrl,
+          attachmentUrls: dto.attachmentUrls,
           status: "PENDING",
         },
       });

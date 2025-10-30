@@ -313,34 +313,32 @@ export async function getProviderOpportunities(params?: {
   return data;
 }
 
-export async function sendProposal(proposalData: {
-  serviceRequestId: string;
-  bidAmount: number;
-  deliveryTime: number;
-  coverLetter: string;
-  milestones?: Array<{
-    title: string;
-    amount: number;
-    dueDate: string;
-    order: number;
-  }>;
-}) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
-  if (!token) throw new Error("Not authenticated");
+export async function sendProposal(formData: FormData) {
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("token")
+      : undefined;
 
-  const res = await fetch(`${API_BASE}/provider/proposals`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(proposalData),
-  });
-  
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/provider/proposals`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+        // DO NOT set Content-Type manually.
+      },
+      body: formData,
+    }
+  );
+
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || "Failed to send proposal");
+  if (!res.ok) {
+    throw new Error(data?.message || "Proposal submit failed");
+  }
   return data;
 }
+
+
 
 // Company project requests API functions
 export async function getCompanyProjectRequests(params?: {

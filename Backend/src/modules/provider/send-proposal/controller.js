@@ -13,9 +13,15 @@ import { SendProposalDto, GetProposalsDto } from "./dto.js";
 // POST /api/provider/proposals - Send a proposal
 export async function sendProposalController(req, res) {
   try {
+
+    const uploadedFiles = Array.isArray(req.files)
+      ? req.files.map((f) => f.path) // e.g. "uploads/proposals/1730349382712_CV_Hasan.pdf"
+      : [];
+
     const dto = new SendProposalDto({
       ...req.body,
       providerId: req.user.userId, // User ID from JWT payload
+      attachmentUrls: uploadedFiles,
     });
     dto.validate();
 

@@ -70,6 +70,7 @@ interface ProviderRequest {
   skills: string[];
   portfolio: string[];
   experience: string;
+  attachments: string[];
 }
 
 interface ApiProposal {
@@ -100,6 +101,7 @@ interface ApiProposal {
     dueDate: string;
     order: number;
   }>;
+  attachmentUrls?: string[];
 }
 
 export default function CustomerRequestsPage() {
@@ -247,6 +249,9 @@ export default function CustomerRequestsPage() {
                 ? provider.portfolio
                 : [],
               experience: profile.experience ?? provider.experience ?? "",
+              attachments: Array.isArray(proposal.attachmentUrls)
+                ? proposal.attachmentUrls
+                : [],
             };
           }
         );
@@ -333,8 +338,8 @@ export default function CustomerRequestsPage() {
       if (projectId) {
         const milestoneData = await getCompanyProjectMilestones(projectId);
         setMilestones(
-          Array.isArray(milestoneData.milestones) 
-            ? milestoneData.milestones.map(m => ({ ...m, sequence: m.order }))
+          Array.isArray(milestoneData.milestones)
+            ? milestoneData.milestones.map((m) => ({ ...m, sequence: m.order }))
             : []
         );
         setMilestoneApprovalState({
@@ -372,7 +377,10 @@ export default function CustomerRequestsPage() {
         amount: Number(m.amount),
         dueDate: new Date(m.dueDate).toISOString(),
       }));
-      const res = await updateCompanyProjectMilestones(activeProjectId, payload);
+      const res = await updateCompanyProjectMilestones(
+        activeProjectId,
+        payload
+      );
       setMilestoneApprovalState({
         milestonesLocked: res.milestonesLocked,
         companyApproved: res.companyApproved,
@@ -405,7 +413,7 @@ export default function CustomerRequestsPage() {
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
-      
+
       if (res.locked) {
         toast({
           title: "Milestones approved and locked",
@@ -421,7 +429,8 @@ export default function CustomerRequestsPage() {
     } catch (e) {
       toast({
         title: "Approval failed",
-        description: e instanceof Error ? e.message : "Could not approve milestones",
+        description:
+          e instanceof Error ? e.message : "Could not approve milestones",
         variant: "destructive",
       });
     }
@@ -958,6 +967,76 @@ export default function CustomerRequestsPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Attachments */}
+                  {Array.isArray(selectedRequest.attachments) &&
+                    selectedRequest.attachments.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="font-semibold mb-3 flex items-center text-gray-900">
+                          Attachments
+                        </h4>
+
+                        <div className="space-y-2">
+                          {selectedRequest.attachments.map((rawUrl, idx) => {
+                            // rawUrl can look like: "uploads\proposals\1761857633365_Screenshots.pdf"
+                            // We normalize slashes and extract filename.
+                            const normalized = rawUrl.replace(/\\/g, "/"); // -> "uploads/proposals/..."
+                            const fileName =
+                              normalized.split("/").pop() || `file-${idx + 1}`;
+
+                            // Build absolute URL to download
+                            const fullUrl = `${
+                              process.env.NEXT_PUBLIC_API_URL ||
+                              "http://localhost:4000"
+                            }/${normalized.replace(/^\//, "")}`;
+
+                            return (
+                              <a
+                                key={idx}
+                                href={fullUrl}
+                                download={fileName}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                              >
+                                {/* Icon circle */}
+                                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                                  {/* If you want, you can make this dynamic based on extension */}
+                                  PDF
+                                </div>
+
+                                {/* File info */}
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                    {fileName}
+                                  </span>
+                                  <span className="text-xs text-gray-500 leading-snug">
+                                    Click to preview / download
+                                  </span>
+                                </div>
+
+                                {/* Download icon on the far right */}
+                                <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <path d="M7 10l5 5 5-5" />
+                                    <path d="M12 15V3" />
+                                  </svg>
+                                </div>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                 </div>
 
                 <DialogFooter>
@@ -1059,7 +1138,7 @@ export default function CustomerRequestsPage() {
           <DialogHeader>
             <DialogTitle>Edit Milestones</DialogTitle>
             <DialogDescription>
-              Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} · 
+              Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
               Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
               {milestoneApprovalState.milestonesLocked && " · LOCKED"}
             </DialogDescription>

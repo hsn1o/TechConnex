@@ -252,6 +252,7 @@ export default function ProviderOpportunitiesPage() {
   };
 
   const handleProposalSubmit = async () => {
+    // Required basic fields
     if (
       !proposalData.coverLetter ||
       !proposalData.bidAmount ||
@@ -266,39 +267,83 @@ export default function ProviderOpportunitiesPage() {
       return;
     }
 
+    // Attachments validation (mirrors backend rules)
+    if (proposalData.attachments.length > MAX_FILES) {
+      toast.error("You can only upload up to 3 attachments");
+      return;
+    }
+    for (const file of proposalData.attachments) {
+      if (file.size > MAX_SIZE_BYTES) {
+        toast.error(`"${file.name}" is larger than 10 MB`);
+        return;
+      }
+    }
+
     try {
       setSubmittingProposal(true);
 
+      // Normalize milestones for the backend
       const normalized = normalizeDraftSequences(proposalData.milestones).map(
-        (m) => ({
+        (m, idx) => ({
+          sequence: idx + 1, // backend expects sequence
           title: (m.title || "").trim(),
+          description: m.description || "",
           amount: Number(m.amount || 0),
-          // API wants a string; ensure ISO even if user left it blank
           dueDate: m.dueDate
             ? new Date(m.dueDate).toISOString()
             : new Date().toISOString(),
-          order: Number(m.sequence || 1),
         })
       );
 
-      const proposalPayload = {
-        serviceRequestId: selectedProject.originalData.id,
-        bidAmount: parseFloat(proposalData.bidAmount),
-        // NOTE: your Select options are strings like "1-2 weeks".
-        // parseInt("1-2 weeks") => 1, which may be okay for now.
-        // Later, map to days if the backend expects days.
-        deliveryTime: parseInt(proposalData.timeline),
-        coverLetter: proposalData.coverLetter,
-        milestones: normalized.length ? normalized : undefined,
-      };
+      // Build multipart/form-data to match multer .array("attachments")
+      const formDataToSend = new FormData();
 
-      const response = await sendProposal(proposalPayload);
+      formDataToSend.append(
+        "serviceRequestId",
+        selectedProject.originalData.id
+      );
+
+      formDataToSend.append(
+        "bidAmount",
+        parseFloat(proposalData.bidAmount).toString()
+      );
+
+      // timeline like "1-2 weeks" → parseInt -> 1
+      formDataToSend.append(
+        "deliveryTime",
+        parseInt(proposalData.timeline).toString()
+      );
+
+      formDataToSend.append("coverLetter", proposalData.coverLetter);
+
+      // milestones[0][...]
+      normalized.forEach((m, idx) => {
+        formDataToSend.append(
+          `milestones[${idx}][sequence]`,
+          String(m.sequence)
+        );
+        formDataToSend.append(`milestones[${idx}][title]`, m.title);
+        formDataToSend.append(`milestones[${idx}][description]`, m.description);
+        formDataToSend.append(
+          `milestones[${idx}][amount]`,
+          m.amount != null ? String(m.amount) : "0"
+        );
+        formDataToSend.append(`milestones[${idx}][dueDate]`, m.dueDate);
+      });
+
+      // files
+      proposalData.attachments.forEach((file) => {
+        formDataToSend.append("attachments", file);
+      });
+
+      // Send request
+      const response = await sendProposal(formDataToSend);
 
       if (response.success) {
         toast.success("Proposal submitted successfully!");
         setIsProposalModalOpen(false);
 
-        // Update the opportunity status optimistically
+        // Optimistic UI update
         const updatedOpportunities = opportunities.map((opp) =>
           opp.id === selectedProject?.id
             ? {
@@ -331,12 +376,36 @@ export default function ProviderOpportunitiesPage() {
     }
   };
 
+  const MAX_FILES = 3;
+  const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    setProposalData((prev) => ({
-      ...prev,
-      attachments: [...prev.attachments, ...files],
-    }));
+    const incoming = Array.from(event.target.files || []);
+
+    // size check
+    for (const file of incoming) {
+      if (file.size > MAX_SIZE_BYTES) {
+        toast.error(`"${file.name}" is larger than 10 MB`);
+        return;
+      }
+    }
+
+    setProposalData((prev) => {
+      const combined = [...prev.attachments, ...incoming];
+
+      if (combined.length > MAX_FILES) {
+        toast.error("Maximum 3 attachments allowed");
+        return prev; // don't add
+      }
+
+      return {
+        ...prev,
+        attachments: combined,
+      };
+    });
+
+    // reset input so same file can be re-selected if removed
+    event.target.value = "";
   };
 
   const removeAttachment = (index: number) => {
