@@ -36,6 +36,7 @@ import {
   Download,
   RefreshCw,
   Loader2,
+  CheckCircle,
 } from "lucide-react";
 import { CustomerLayout } from "@/components/customer-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -72,6 +73,13 @@ interface ProviderRequest {
   portfolio: string[];
   experience: string;
   attachments: string[];
+  milestones: Array<{
+    title: string;
+    description?: string; // backend may not send, so optional
+    amount: number;
+    dueDate: string;
+    order: number;
+  }>;
 }
 
 interface ApiProposal {
@@ -149,6 +157,7 @@ export default function CustomerRequestsPage() {
   });
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [savingMilestones, setSavingMilestones] = useState(false);
+  const [milestoneFinalizeOpen, setMilestoneFinalizeOpen] = useState(false);
 
   const normalizeSequences = (items: Milestone[]) =>
     items
@@ -252,6 +261,9 @@ export default function CustomerRequestsPage() {
               experience: profile.experience ?? provider.experience ?? "",
               attachments: Array.isArray(proposal.attachmentUrls)
                 ? proposal.attachmentUrls
+                : [],
+              milestones: Array.isArray(proposal.milestones)
+                ? proposal.milestones
                 : [],
             };
           }
@@ -404,10 +416,12 @@ export default function CustomerRequestsPage() {
     }
   };
 
-  const handleApproveMilestones = async () => {
+  const handleApproveAcceptedMilestones = async () => {
     if (!activeProjectId) return;
+
     try {
       const res = await approveCompanyMilestones(activeProjectId);
+
       setMilestoneApprovalState({
         milestonesLocked: res.milestonesLocked,
         companyApproved: res.companyApproved,
@@ -415,18 +429,19 @@ export default function CustomerRequestsPage() {
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
 
-      if (res.locked) {
-        toast({
-          title: "Milestones approved and locked",
-          description: "Both parties have approved. Milestones are now locked.",
-        });
-        setMilestonesOpen(false);
-      } else {
-        toast({
-          title: "Approved",
-          description: "Waiting for provider to approve.",
-        });
-      }
+      // 1. Close the milestone editor dialog ALWAYS
+      setMilestonesOpen(false);
+
+      // 2. Toast feedback
+      toast({
+        title: "Milestones approved",
+        description: res.milestonesLocked
+          ? "Milestones are now locked. Work can start and payments will follow these milestones."
+          : "Waiting for provider to approve.",
+      });
+
+      // 3. Open summary / receipt dialog
+      setMilestoneFinalizeOpen(true);
     } catch (e) {
       toast({
         title: "Approval failed",
@@ -1082,6 +1097,73 @@ export default function CustomerRequestsPage() {
                       )}
                     </div>
                   </div>
+                  {/* Proposed Milestones */}
+                  {selectedRequest.milestones &&
+                    selectedRequest.milestones.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold mb-2">
+                          Proposed Milestones
+                        </h4>
+
+                        <div className="space-y-4">
+                          {selectedRequest.milestones
+                            .sort((a, b) => a.order - b.order)
+                            .map((m, idx) => (
+                              <Card
+                                key={idx}
+                                className="border border-gray-200"
+                              >
+                                <CardContent className="p-4 space-y-2">
+                                  {/* Top row: title + amount */}
+                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="secondary">
+                                        #{m.order || idx + 1}
+                                      </Badge>
+                                      <span className="font-medium text-gray-900">
+                                        {m.title || "Untitled milestone"}
+                                      </span>
+                                    </div>
+
+                                    <div className="text-right">
+                                      <span className="text-sm text-gray-500 block">
+                                        Amount
+                                      </span>
+                                      <span className="text-lg font-semibold text-gray-900">
+                                        RM{" "}
+                                        {Number(m.amount || 0).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Description */}
+                                  {m.description &&
+                                    m.description.trim() !== "" && (
+                                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                        {m.description}
+                                      </p>
+                                    )}
+
+                                  {/* Dates */}
+                                  <div className="text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="w-4 h-4" />
+                                      <span>
+                                        Due:{" "}
+                                        {m.dueDate
+                                          ? new Date(
+                                              m.dueDate
+                                            ).toLocaleDateString()
+                                          : "—"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                        </div>
+                      </div>
+                    )}
 
                   {/* Attachments */}
                   {Array.isArray(selectedRequest.attachments) &&
@@ -1332,12 +1414,104 @@ export default function CustomerRequestsPage() {
                 >
                   {savingMilestones ? "Saving..." : "Save Changes"}
                 </Button>
-                <Button onClick={handleApproveMilestones}>Approve</Button>
+                <Button onClick={handleApproveAcceptedMilestones}>
+                  Approve
+                </Button>
               </div>
             </div>
           </div>
 
           <DialogFooter />
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={milestoneFinalizeOpen}
+        onOpenChange={setMilestoneFinalizeOpen}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Milestones Submitted</DialogTitle>
+            <DialogDescription>
+              These milestones are now awaiting final confirmation, or have been
+              locked if both sides approved.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="flex items-start gap-3">
+              <CheckCircle
+                className={`w-5 h-5 ${
+                  milestoneApprovalState.companyApproved
+                    ? "text-green-600"
+                    : "text-gray-400"
+                }`}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">
+                  Company Approved
+                </div>
+                <div>
+                  {milestoneApprovalState.companyApproved
+                    ? "You have approved the milestone plan."
+                    : "You haven't approved yet."}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <CheckCircle
+                className={`w-5 h-5 ${
+                  milestoneApprovalState.providerApproved
+                    ? "text-green-600"
+                    : "text-gray-400"
+                }`}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">
+                  Provider Approved
+                </div>
+                <div>
+                  {milestoneApprovalState.providerApproved
+                    ? "The provider approved the milestone plan."
+                    : "Waiting for provider approval."}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <CheckCircle
+                className={`w-5 h-5 ${
+                  milestoneApprovalState.milestonesLocked
+                    ? "text-green-600"
+                    : "text-gray-400"
+                }`}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">
+                  Locked & Ready
+                </div>
+                <div>
+                  {milestoneApprovalState.milestonesLocked
+                    ? "Milestones are locked. Work can start and payments follow these milestones."
+                    : "Milestones are not locked yet."}
+                </div>
+                {milestoneApprovalState.milestonesApprovedAt && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    Locked at{" "}
+                    {new Date(
+                      milestoneApprovalState.milestonesApprovedAt
+                    ).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-4">
+            <Button onClick={() => setMilestoneFinalizeOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </CustomerLayout>

@@ -30,9 +30,18 @@ import {
   Eye,
   Send,
   Loader2,
+  X,
+  Check,
+  MapPin,
+  Paperclip,
 } from "lucide-react";
 import { CustomerLayout } from "@/components/customer-layout";
-import { getProjectById, getProposalsByServiceRequest } from "@/lib/api";
+import {
+  getProjectById,
+  getProposalsByServiceRequest,
+  acceptProjectRequest,
+  rejectProjectRequest,
+} from "@/lib/api";
 import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,12 +64,35 @@ import {
   payMilestone,
   type Milestone,
 } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProjectDetailsPage({
   params,
 }: {
   params: { id: string };
 }) {
+  const { toast } = useToast();
+
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [selectedProposalForAction, setSelectedProposalForAction] =
+    useState<any>(null);
+
+  // for milestone editing after accepting
+  const [milestonesOpen, setMilestonesOpen] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [milestonesDraft, setMilestonesDraft] = useState<Milestone[]>([]);
+  const [savingMilestonesModal, setSavingMilestonesModal] = useState(false);
+  const [milestoneApprovalStateModal, setMilestoneApprovalStateModal] =
+    useState({
+      milestonesLocked: false,
+      companyApproved: false,
+      providerApproved: false,
+      milestonesApprovedAt: null as string | null,
+    });
+
   const [activeTab, setActiveTab] = useState("overview");
   const [project, setProject] = useState<any>(null);
   const [proposals, setProposals] = useState<any[]>([]);
@@ -97,8 +129,17 @@ export default function ProjectDetailsPage({
 
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [selectedMilestoneForPayment, setSelectedMilestoneForPayment] = useState<any>(null);
+  const [selectedMilestoneForPayment, setSelectedMilestoneForPayment] =
+    useState<any>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+
+  // controls the proposal "View Details" dialog
+  const [proposalDetailsOpen, setProposalDetailsOpen] = useState(false);
+  const [selectedProposalDetails, setSelectedProposalDetails] =
+    useState<any>(null);
+
+  // controls the post-accept milestone review/approval dialog
+  const [milestoneFinalizeOpen, setMilestoneFinalizeOpen] = useState(false);
 
   // Turn array | string | object into a string[] for bullet lists
   const toList = (v: any): string[] => {
@@ -225,8 +266,8 @@ export default function ProjectDetailsPage({
       try {
         const milestoneData = await getCompanyProjectMilestones(project.id);
         setProjectMilestones(
-          Array.isArray(milestoneData.milestones) 
-            ? milestoneData.milestones.map(m => ({ ...m, sequence: m.order }))
+          Array.isArray(milestoneData.milestones)
+            ? milestoneData.milestones.map((m) => ({ ...m, sequence: m.order }))
             : []
         );
         setMilestoneApprovalState({
@@ -447,11 +488,13 @@ export default function ProjectDetailsPage({
     if (!project?.id) return;
     try {
       setSavingMilestones(true);
-      const payload = normalizeMilestoneSequences(projectMilestones).map((m) => ({
-        ...m,
-        amount: Number(m.amount),
-        dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
-      }));
+      const payload = normalizeMilestoneSequences(projectMilestones).map(
+        (m) => ({
+          ...m,
+          amount: Number(m.amount),
+          dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
+        })
+      );
       const res = await updateCompanyProjectMilestones(project.id, payload);
       setMilestoneApprovalState({
         milestonesLocked: res.milestonesLocked,
@@ -480,25 +523,27 @@ export default function ProjectDetailsPage({
     if (!project?.id) return;
     try {
       const res = await approveCompanyMilestones(project.id);
+
       setMilestoneApprovalState({
         milestonesLocked: res.milestonesLocked,
         companyApproved: res.companyApproved,
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
-      
-      if (res.locked) {
-        toast({
-          title: "Milestones approved and locked",
-          description: "Both parties have approved. Milestones are now locked.",
-        });
-        setMilestoneEditorOpen(false);
-      } else {
-        toast({
-          title: "Approved",
-          description: "Waiting for provider to approve.",
-        });
-      }
+
+      // Always close the inline milestone editor
+      setMilestoneEditorOpen(false);
+
+      // Toast feedback
+      toast({
+        title: "Milestones approved",
+        description: res.milestonesLocked
+          ? "Milestones are now locked. Work can start."
+          : "Waiting for provider to approve.",
+      });
+
+      // Pop the finalize/summary dialog
+      setMilestoneFinalizeOpen(true);
     } catch (e) {
       toast({
         title: "Approval failed",
@@ -515,7 +560,8 @@ export default function ProjectDetailsPage({
       await approveIndividualMilestone(milestoneId);
       toast({
         title: "Milestone approved",
-        description: "The milestone has been approved and is ready for payment.",
+        description:
+          "The milestone has been approved and is ready for payment.",
       });
       // Reload project data to reflect the change
       window.location.reload();
@@ -535,7 +581,8 @@ export default function ProjectDetailsPage({
       // For now, just show a message. In the future, this could open a dialog for feedback
       toast({
         title: "Feature coming soon",
-        description: "Milestone rejection functionality will be available soon.",
+        description:
+          "Milestone rejection functionality will be available soon.",
       });
     } catch (e) {
       toast({
@@ -548,35 +595,218 @@ export default function ProjectDetailsPage({
 
   // Handle payment button click
   const handlePayMilestone = (milestoneId: string, amount: number) => {
-    const milestone = projectMilestones.find(m => m.id === milestoneId);
+    const milestone = projectMilestones.find((m) => m.id === milestoneId);
     if (milestone) {
       setSelectedMilestoneForPayment(milestone);
       setPaymentDialogOpen(true);
     }
   };
 
+  // Accept proposal from Bids tab
+  const handleAcceptProposal = async (proposal: any) => {
+    try {
+      setProcessingId(proposal.id);
+
+      // accept on backend (true = auto create project / link)
+      const response = await acceptProjectRequest(proposal.id, true);
+
+      // new project id that was created/matched
+      const newProjectId = response?.id || response?.project?.id;
+
+      // optimistic UI: mark proposal as accepted in local proposals state
+      setProposals((prev) =>
+        prev.map((p) =>
+          p.id === proposal.id ? { ...p, status: "ACCEPTED" } : p
+        )
+      );
+
+      // if we got a project id, pull milestones for editing
+      if (newProjectId) {
+        const milestoneData = await getCompanyProjectMilestones(newProjectId);
+
+        setMilestonesDraft(
+          Array.isArray(milestoneData.milestones)
+            ? milestoneData.milestones.map((m: any) => ({
+                ...m,
+                sequence: m.order,
+              }))
+            : []
+        );
+
+        setMilestoneApprovalStateModal({
+          milestonesLocked: milestoneData.milestonesLocked,
+          companyApproved: milestoneData.companyApproved,
+          providerApproved: milestoneData.providerApproved,
+          milestonesApprovedAt: milestoneData.milestonesApprovedAt,
+        });
+
+        setActiveProjectId(newProjectId);
+        setMilestonesOpen(true);
+      }
+
+      toast({
+        title: "Request Accepted",
+        description: "Edit milestones and confirm to finalize.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description:
+          err instanceof Error ? err.message : "Failed to accept request",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Save milestones after accept (inside modal)
+  const handleSaveAcceptedMilestones = async () => {
+    if (!activeProjectId) return;
+    try {
+      setSavingMilestonesModal(true);
+
+      const payload = milestonesDraft
+        .map((m, i) => ({
+          ...m,
+          sequence: i + 1,
+          amount: Number(m.amount),
+          dueDate: new Date(m.dueDate).toISOString(),
+        }))
+        .sort((a, b) => a.sequence - b.sequence);
+
+      const res = await updateCompanyProjectMilestones(
+        activeProjectId,
+        payload
+      );
+
+      setMilestoneApprovalStateModal({
+        milestonesLocked: res.milestonesLocked,
+        companyApproved: res.companyApproved,
+        providerApproved: res.providerApproved,
+        milestonesApprovedAt: res.milestonesApprovedAt,
+      });
+
+      toast({
+        title: "Milestones updated",
+        description: "Milestone changes have been saved.",
+      });
+    } catch (e) {
+      toast({
+        title: "Save failed",
+        description:
+          e instanceof Error ? e.message : "Could not save milestones",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingMilestonesModal(false);
+    }
+  };
+
+  // Approve milestones after editing (inside modal)
+  const handleApproveAcceptedMilestones = async () => {
+    if (!activeProjectId) return;
+
+    try {
+      const res = await approveCompanyMilestones(activeProjectId);
+
+      // sync the approval state shown in the finalize dialog
+      setMilestoneApprovalStateModal({
+        milestonesLocked: res.milestonesLocked,
+        companyApproved: res.companyApproved,
+        providerApproved: res.providerApproved,
+        milestonesApprovedAt: res.milestonesApprovedAt,
+      });
+
+      // 1. ALWAYS close the milestone editor dialog
+      setMilestonesOpen(false);
+
+      // 2. Show success toast
+      toast({
+        title: "Milestones approved",
+        description: res.milestonesLocked
+          ? "Milestones are now locked. Work can start."
+          : "Waiting for provider approval.",
+      });
+
+      // 3. Open the summary/status dialog
+      setMilestoneFinalizeOpen(true);
+    } catch (e) {
+      toast({
+        title: "Approval failed",
+        description:
+          e instanceof Error ? e.message : "Could not approve milestones",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Reject proposal flow
+  const handleStartRejectProposal = (proposal: any) => {
+    setSelectedProposalForAction(proposal);
+    setRejectDialogOpen(true);
+  };
+
+  const handleConfirmRejectProposal = async () => {
+    if (!selectedProposalForAction) return;
+    try {
+      setProcessingId(selectedProposalForAction.id);
+
+      await rejectProjectRequest(selectedProposalForAction.id, rejectReason);
+
+      // optimistic UI
+      setProposals((prev) =>
+        prev.map((p) =>
+          p.id === selectedProposalForAction.id
+            ? { ...p, status: "REJECTED" }
+            : p
+        )
+      );
+
+      // cleanup
+      setRejectDialogOpen(false);
+      setRejectReason("");
+      setSelectedProposalForAction(null);
+
+      toast({
+        title: "Request Rejected",
+        description: "The provider has been notified.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description:
+          err instanceof Error ? err.message : "Failed to reject request",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   // Process milestone payment
   const handleProcessPayment = async () => {
     if (!selectedMilestoneForPayment) return;
-    
+
     try {
       setProcessingPayment(true);
       await payMilestone(selectedMilestoneForPayment.id);
-      
+
       toast({
         title: "Payment processed",
         description: `Payment of RM ${selectedMilestoneForPayment.amount} has been processed successfully.`,
       });
-      
+
       setPaymentDialogOpen(false);
       setSelectedMilestoneForPayment(null);
-      
+
       // Reload project data to reflect the change
       window.location.reload();
     } catch (e) {
       toast({
         title: "Payment failed",
-        description: e instanceof Error ? e.message : "Could not process payment",
+        description:
+          e instanceof Error ? e.message : "Could not process payment",
         variant: "destructive",
       });
     } finally {
@@ -871,8 +1101,10 @@ export default function ProjectDetailsPage({
                 {project?.type === "Project" && (
                   <div className="flex flex-wrap items-center gap-2 mb-4">
                     <Badge variant="outline">
-                      Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} · 
-                      Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
+                      Company{" "}
+                      {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
+                      Provider{" "}
+                      {milestoneApprovalState.providerApproved ? "✓" : "✗"}
                       {milestoneApprovalState.milestonesLocked && " · LOCKED"}
                     </Badge>
                     {!milestoneApprovalState.milestonesLocked && (
@@ -949,7 +1181,9 @@ export default function ProjectDetailsPage({
                           <div className="mt-3 flex gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleApproveIndividualMilestone(milestone.id)}
+                              onClick={() =>
+                                handleApproveIndividualMilestone(milestone.id)
+                              }
                               className="bg-green-600 hover:bg-green-700"
                             >
                               <CheckCircle className="w-4 h-4 mr-2" />
@@ -958,7 +1192,9 @@ export default function ProjectDetailsPage({
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleRejectMilestone(milestone.id)}
+                              onClick={() =>
+                                handleRejectMilestone(milestone.id)
+                              }
                             >
                               <AlertCircle className="w-4 h-4 mr-2" />
                               Request Changes
@@ -969,7 +1205,12 @@ export default function ProjectDetailsPage({
                           <div className="mt-3 flex gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handlePayMilestone(milestone.id, milestone.amount)}
+                              onClick={() =>
+                                handlePayMilestone(
+                                  milestone.id,
+                                  milestone.amount
+                                )
+                              }
                               className="bg-blue-600 hover:bg-blue-700"
                             >
                               <DollarSign className="w-4 h-4 mr-2" />
@@ -997,75 +1238,195 @@ export default function ProjectDetailsPage({
               <CardContent>
                 <div className="space-y-6">
                   {proposals.map((p: any) => (
-                    <div key={p.id} className="border rounded-lg p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-4">
-                          <Avatar>
+                    <div
+                      key={p.id}
+                      className="border rounded-lg p-6 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex flex-col lg:flex-row gap-6">
+                        {/* Provider Info (matches requests page layout) */}
+                        <div className="flex items-start space-x-4 flex-1">
+                          <Avatar className="w-12 h-12">
                             <AvatarImage
                               src={p.provider?.avatar || "/placeholder.svg"}
                             />
                             <AvatarFallback>
-                              {p.provider?.name?.charAt(0) || "P"}
+                              {(p.provider?.name || "P").charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <h3 className="font-semibold">
-                              {p.provider?.name || "Provider"}
-                            </h3>
-                            <div className="text-sm text-gray-500">
-                              {p.provider?.email || ""}
+
+                          <div className="flex-1 min-w-0">
+                            {/* Name + rating */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-gray-900">
+                                {p.provider?.name || "Provider"}
+                              </h3>
+                              <div className="flex items-center gap-1">
+                                <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                                <span className="text-sm text-gray-600">
+                                  {p.provider?.rating ?? "—"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* You can add location / response time later if that data exists on p.provider */}
+
+                            {/* Cover letter (short preview) */}
+                            {p.coverLetter && (
+                              <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                                {p.coverLetter}
+                              </p>
+                            )}
+
+                            {/* Skills preview if provider has skills */}
+                            {Array.isArray(p.provider?.skills) &&
+                              p.provider.skills.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {p.provider.skills
+                                    .slice(0, 3)
+                                    .map((skill: string) => (
+                                      <Badge
+                                        key={skill}
+                                        variant="secondary"
+                                        className="text-[10px] leading-tight"
+                                      >
+                                        {skill}
+                                      </Badge>
+                                    ))}
+                                  {p.provider.skills.length > 3 && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] leading-tight"
+                                    >
+                                      +{p.provider.skills.length - 3} more
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                          </div>
+                        </div>
+
+                        {/* Proposal Details + Actions (right column, like requests page) */}
+                        <div className="lg:w-80 space-y-3">
+                          {/* status + submitted date */}
+                          <div className="flex justify-between items-center">
+                            <Badge className={getStatusColor(p.status)}>
+                              {getStatusText(p.status)}
+                            </Badge>
+                            <span className="text-sm text-gray-500">
+                              {p.createdAt
+                                ? new Date(p.createdAt).toLocaleDateString()
+                                : ""}
+                            </span>
+                          </div>
+
+                          {/* bid / timeline */}
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-sm text-gray-600">
+                                Bid Amount
+                              </p>
+                              <p className="font-semibold text-lg">
+                                RM {Number(p.bidAmount ?? 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-600">Timeline</p>
+                              <p className="font-medium">
+                                {p.deliveryTime
+                                  ? `${p.deliveryTime} days`
+                                  : "—"}
+                              </p>
                             </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold">
-                            RM {Number(p.bidAmount ?? 0).toLocaleString()}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {p.deliveryTime ? `${p.deliveryTime} days` : ""}
-                          </div>
-                          <Badge className={getStatusColor(p.status)}>
-                            {getStatusText(p.status)}
-                          </Badge>
-                        </div>
-                      </div>
-                      {p.coverLetter && (
-                        <p className="text-gray-600 mb-4">{p.coverLetter}</p>
-                      )}
-                      {!!p.milestones?.length && (
-                        <div className="mt-2">
-                          <div className="text-sm font-medium mb-2">
-                            Proposed Milestones
-                          </div>
-                          <ul className="text-sm space-y-1">
-                            {p.milestones.map((m: any) => (
-                              <li
-                                key={m.id || m.sequence}
-                                className="flex justify-between"
+
+                          {/* milestones mini list */}
+                          {!!p.milestones?.length && (
+                            <div className="text-xs text-gray-600 bg-gray-50 rounded p-2">
+                              <div className="font-medium text-gray-900 mb-1">
+                                Proposed Milestones
+                              </div>
+                              <ul className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                                {p.milestones.map((m: any) => (
+                                  <li
+                                    key={m.id || m.sequence}
+                                    className="flex justify-between"
+                                  >
+                                    <span className="truncate">{m.title}</span>
+                                    <span>
+                                      RM {Number(m.amount).toLocaleString()}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* actions */}
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            {/* View profile */}
+                            {p.provider?.id && (
+                              <a
+                                href={`/customer/providers/${p.provider.id}`}
+                                className="flex-1"
                               >
-                                <span>{m.title}</span>
-                                <span>
-                                  RM {Number(m.amount).toLocaleString()}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between mt-4">
-                        <span className="text-sm text-gray-500">
-                          Submitted:{" "}
-                          {new Date(p.createdAt).toLocaleDateString()}
-                        </span>
-                        {/* Wire these to your accept/reject/message actions if needed */}
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            Message
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            Reject
-                          </Button>
-                          <Button size="sm">Accept</Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  View Profile
+                                </Button>
+                              </a>
+                            )}
+
+                            {/* View details dialog (re-use your own Dialog in this page later if you add it) */}
+                            {/* For now we'll give a placeholder button */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                setSelectedProposalDetails(p);
+                                setProposalDetailsOpen(true);
+                              }}
+                            >
+                              <MessageSquare className="w-4 h-4 mr-1" />
+                              View Details
+                            </Button>
+
+                            {/* Accept / Reject only if status is PENDING */}
+                            {String(p.status).toUpperCase() === "PENDING" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleAcceptProposal(p)}
+                                  className="bg-green-600 hover:bg-green-700 flex-1"
+                                  disabled={processingId === p.id}
+                                >
+                                  {processingId === p.id ? (
+                                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                  ) : (
+                                    <Check className="w-4 h-4 mr-1" />
+                                  )}
+                                  {processingId === p.id
+                                    ? "Accepting..."
+                                    : "Accept"}
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleStartRejectProposal(p)}
+                                  className="text-red-600 hover:text-red-700 flex-1"
+                                  disabled={processingId === p.id}
+                                >
+                                  <X className="w-4 h-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1327,7 +1688,7 @@ export default function ProjectDetailsPage({
           <DialogHeader>
             <DialogTitle>Edit Milestones</DialogTitle>
             <DialogDescription>
-              Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} · 
+              Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
               Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
               {milestoneApprovalState.milestonesLocked && " · LOCKED"}
             </DialogDescription>
@@ -1381,7 +1742,9 @@ export default function ProjectDetailsPage({
                       rows={2}
                       value={m.description || ""}
                       onChange={(e) =>
-                        updateProjectMilestone(i, { description: e.target.value })
+                        updateProjectMilestone(i, {
+                          description: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -1410,7 +1773,9 @@ export default function ProjectDetailsPage({
                 >
                   {savingMilestones ? "Saving..." : "Save Changes"}
                 </Button>
-                <Button onClick={handleApproveProjectMilestones}>Approve</Button>
+                <Button onClick={handleApproveProjectMilestones}>
+                  Approve
+                </Button>
               </div>
             </div>
           </div>
@@ -1428,12 +1793,16 @@ export default function ProjectDetailsPage({
               Confirm payment for the milestone work
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedMilestoneForPayment && (
             <div className="space-y-4">
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">{selectedMilestoneForPayment.title}</h4>
-                <p className="text-sm text-gray-600 mb-2">{selectedMilestoneForPayment.description}</p>
+                <h4 className="font-medium mb-2">
+                  {selectedMilestoneForPayment.title}
+                </h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  {selectedMilestoneForPayment.description}
+                </p>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Amount to pay:</span>
                   <span className="text-lg font-semibold text-green-600">
@@ -1441,28 +1810,32 @@ export default function ProjectDetailsPage({
                   </span>
                 </div>
               </div>
-              
+
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <DollarSign className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-900">Payment Method</span>
+                  <span className="font-medium text-blue-900">
+                    Payment Method
+                  </span>
                 </div>
                 <p className="text-sm text-blue-700">
-                  This is a temporary payment dialog. In production, this would integrate with payment gateways like Stripe, FPX, or other payment methods.
+                  This is a temporary payment dialog. In production, this would
+                  integrate with payment gateways like Stripe, FPX, or other
+                  payment methods.
                 </p>
               </div>
             </div>
           )}
-          
+
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setPaymentDialogOpen(false)}
               disabled={processingPayment}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleProcessPayment}
               disabled={processingPayment}
               className="bg-blue-600 hover:bg-blue-700"
@@ -1478,6 +1851,395 @@ export default function ProjectDetailsPage({
                   Process Payment
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Proposal</DialogTitle>
+            <DialogDescription>
+              Let the provider know why you're rejecting.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Label htmlFor="rejectReason">Reason / message to provider</Label>
+            <Textarea
+              id="rejectReason"
+              placeholder="Example: Budget is too high, timeline not suitable..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRejectDialogOpen(false);
+                setRejectReason("");
+                setSelectedProposalForAction(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmRejectProposal}
+              disabled={processingId === selectedProposalForAction?.id}
+            >
+              {processingId === selectedProposalForAction?.id ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <X className="w-4 h-4 mr-2" />
+              )}
+              {processingId === selectedProposalForAction?.id
+                ? "Rejecting..."
+                : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Proposal Details Dialog (View Details) */}
+      <Dialog
+        open={proposalDetailsOpen}
+        onOpenChange={(open) => {
+          setProposalDetailsOpen(open);
+          if (!open) {
+            setSelectedProposalDetails(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Proposal Details</DialogTitle>
+            <DialogDescription>
+              Full proposal from{" "}
+              {selectedProposalDetails?.provider?.name || "Provider"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedProposalDetails && (
+            <div className="space-y-6">
+              {/* Provider Header */}
+              <div className="flex items-start space-x-4">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage
+                    src={
+                      selectedProposalDetails.provider?.avatar ||
+                      "/placeholder.svg"
+                    }
+                  />
+                  <AvatarFallback>
+                    {(selectedProposalDetails.provider?.name || "P")
+                      .split(" ")
+                      .filter(Boolean)
+                      .map((n: string) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold">
+                    {selectedProposalDetails.provider?.name || "Provider"}
+                  </h3>
+
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mt-1 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span>
+                        {selectedProposalDetails.provider?.rating ??
+                          "No rating"}
+                      </span>
+                    </div>
+
+                    {selectedProposalDetails.provider?.location && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        <span>
+                          {selectedProposalDetails.provider?.location}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedProposalDetails.createdAt && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>
+                          Submitted{" "}
+                          {new Date(
+                            selectedProposalDetails.createdAt
+                          ).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bid / Timeline / Attachments Summary */}
+              <Card>
+                <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-500">Bid Amount</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      RM{" "}
+                      {Number(
+                        selectedProposalDetails.bidAmount || 0
+                      ).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-gray-500">Timeline</div>
+                    <div className="font-medium text-gray-900">
+                      {selectedProposalDetails.deliveryTime
+                        ? `${selectedProposalDetails.deliveryTime} days`
+                        : "—"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-gray-500">Attachments</div>
+                    <div className="font-medium text-gray-900">
+                      {Array.isArray(selectedProposalDetails.attachmentUrls)
+                        ? `${selectedProposalDetails.attachmentUrls.length} file(s)`
+                        : "0 file(s)"}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cover Letter */}
+              {selectedProposalDetails.coverLetter && (
+                <div>
+                  <h4 className="font-semibold mb-2">Cover Letter</h4>
+                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed text-sm">
+                    {selectedProposalDetails.coverLetter}
+                  </p>
+                </div>
+              )}
+
+              {/* Milestones */}
+              {Array.isArray(selectedProposalDetails.milestones) &&
+                selectedProposalDetails.milestones.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Proposed Milestones</h4>
+
+                    <div className="space-y-4">
+                      {selectedProposalDetails.milestones
+                        .slice()
+                        .sort(
+                          (a: any, b: any) =>
+                            (a.sequence ?? a.order ?? 0) -
+                            (b.sequence ?? b.order ?? 0)
+                        )
+                        .map((m: any, idx: number) => (
+                          <Card key={idx} className="border border-gray-200">
+                            <CardContent className="p-4 space-y-2 text-sm">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary">
+                                    #{m.sequence ?? m.order ?? idx + 1}
+                                  </Badge>
+                                  <span className="font-medium text-gray-900">
+                                    {m.title || "Untitled milestone"}
+                                  </span>
+                                </div>
+
+                                <div className="text-right">
+                                  <div className="text-gray-500 text-xs">
+                                    Amount
+                                  </div>
+                                  <div className="text-lg font-semibold text-gray-900">
+                                    RM {Number(m.amount || 0).toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {m.description && (
+                                <p className="text-gray-700 whitespace-pre-wrap">
+                                  {m.description}
+                                </p>
+                              )}
+
+                              <div className="text-gray-600 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>
+                                    Due:{" "}
+                                    {m.dueDate
+                                      ? new Date(m.dueDate).toLocaleDateString()
+                                      : "—"}
+                                  </span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                    </div>
+
+                    {/* Total vs Bid */}
+                    <div className="text-xs text-gray-700 font-medium pt-3 border-t">
+                      {(() => {
+                        const total = selectedProposalDetails.milestones.reduce(
+                          (sum: number, mm: any) =>
+                            sum + (Number(mm.amount) || 0),
+                          0
+                        );
+                        return (
+                          <>
+                            Milestones total: RM {total.toLocaleString()} <br />
+                            Provider bid: RM{" "}
+                            {Number(
+                              selectedProposalDetails.bidAmount || 0
+                            ).toLocaleString()}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+              {/* Attachments list */}
+              {Array.isArray(selectedProposalDetails.attachmentUrls) &&
+                selectedProposalDetails.attachmentUrls.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-3 text-gray-900 flex items-center gap-2">
+                      <Paperclip className="w-4 h-4" /> Attachments
+                    </h4>
+
+                    <ul className="space-y-2 text-sm">
+                      {selectedProposalDetails.attachmentUrls.map(
+                        (url: string, i: number) => {
+                          const fileName =
+                            url.split("/").pop() || `File ${i + 1}`;
+                          return (
+                            <li
+                              key={i}
+                              className="flex items-center justify-between bg-gray-50 p-2 rounded border hover:bg-gray-100 transition"
+                            >
+                              <div className="flex items-center gap-2 text-gray-700 truncate">
+                                <Paperclip className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate">{fileName}</span>
+                              </div>
+                              <a
+                                className="text-blue-600 text-xs font-medium hover:underline flex items-center gap-1"
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Download className="w-4 h-4" /> View
+                              </a>
+                            </li>
+                          );
+                        }
+                      )}
+                    </ul>
+                  </div>
+                )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setProposalDetailsOpen(false);
+                setSelectedProposalDetails(null);
+              }}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Milestones Finalized Dialog */}
+      <Dialog
+        open={milestoneFinalizeOpen}
+        onOpenChange={setMilestoneFinalizeOpen}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Milestones Submitted</DialogTitle>
+            <DialogDescription>
+              These milestones are now awaiting final confirmation, or have been
+              locked if both sides approved.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm text-gray-700">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <div>
+                <div className="font-semibold text-gray-900">
+                  Company Approved
+                </div>
+                <div>
+                  {milestoneApprovalStateModal.companyApproved
+                    ? "You have approved the milestone plan."
+                    : "You haven't approved yet."}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <CheckCircle
+                className={`w-5 h-5 flex-shrink-0 ${
+                  milestoneApprovalStateModal.providerApproved
+                    ? "text-green-600"
+                    : "text-gray-400"
+                }`}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">
+                  Provider Approved
+                </div>
+                <div>
+                  {milestoneApprovalStateModal.providerApproved
+                    ? "Provider approved the milestone plan."
+                    : "Waiting for provider approval."}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <CheckCircle
+                className={`w-5 h-5 flex-shrink-0 ${
+                  milestoneApprovalStateModal.milestonesLocked
+                    ? "text-green-600"
+                    : "text-gray-400"
+                }`}
+              />
+              <div>
+                <div className="font-semibold text-gray-900">
+                  Locked & Ready
+                </div>
+                <div>
+                  {milestoneApprovalStateModal.milestonesLocked
+                    ? "Milestones are locked. Work can start and payments will follow these milestones."
+                    : "Milestones are not locked yet."}
+                </div>
+                {milestoneApprovalStateModal.milestonesApprovedAt && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    Locked at{" "}
+                    {new Date(
+                      milestoneApprovalStateModal.milestonesApprovedAt
+                    ).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-4">
+            <Button onClick={() => setMilestoneFinalizeOpen(false)}>
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>
