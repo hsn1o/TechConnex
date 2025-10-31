@@ -51,6 +51,7 @@ import {
   approveCompanyMilestones,
   type Milestone,
 } from "@/lib/api";
+import Link from "next/link";
 
 interface ProviderRequest {
   id: string;
@@ -710,7 +711,9 @@ export default function CustomerRequestsPage() {
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
+
                       <div className="flex-1 min-w-0">
+                        {/* Name + rating */}
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-semibold text-gray-900">
                             {request.providerName}
@@ -722,22 +725,58 @@ export default function CustomerRequestsPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+
+                        {/* Location + response time */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mb-2">
                           <div className="flex items-center gap-1">
                             <MapPin className="w-4 h-4" />
-                            {request.providerLocation}
+                            {request.providerLocation || "—"}
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            Responds in {request.providerResponseTime}
+                            Responds in {request.providerResponseTime || "N/A"}
                           </div>
                         </div>
-                        <p className="text-sm font-medium text-gray-900 mb-2">
+
+                        {/* Project title */}
+                        <p className="text-sm font-medium text-gray-900 mb-1">
                           {request.projectTitle}
                         </p>
-                        <p className="text-sm text-gray-600 line-clamp-2">
+
+                        {/* Cover letter */}
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-2">
                           {request.coverLetter}
                         </p>
+
+                        {/* ⬅ NEW: skills preview */}
+                        <div className="flex flex-wrap gap-1">
+                          {asArray<string>(request.skills)
+                            .slice(0, 3)
+                            .map((skill) => (
+                              <Badge
+                                key={skill}
+                                variant="secondary"
+                                className="text-[10px] leading-tight"
+                              >
+                                {skill}
+                              </Badge>
+                            ))}
+                          {asArray<string>(request.skills).length > 3 && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] leading-tight"
+                            >
+                              +{asArray<string>(request.skills).length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* ⬅ NEW: short experience line */}
+                        {request.experience && (
+                          <p className="text-[12px] text-gray-500 mt-2 line-clamp-1">
+                            {request.experience} experience
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -788,22 +827,40 @@ export default function CustomerRequestsPage() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-2 pt-2">
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {/* View profile - always visible */}
+                        <Link
+                          href={`/customer/providers/${request.providerId}`}
+                          className="flex-1"
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Profile
+                          </Button>
+                        </Link>
+
+                        {/* View details dialog (proposal info) */}
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleViewDetails(request)}
                           className="flex-1"
                         >
-                          <Eye className="w-4 h-4 mr-1" />
+                          <MessageSquare className="w-4 h-4 mr-1" />
                           View Details
                         </Button>
+
+                        {/* Accept / Reject if pending */}
                         {request.status === "pending" && (
                           <>
                             <Button
                               size="sm"
                               onClick={() => handleAcceptRequest(request.id)}
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-green-600 hover:bg-green-700 flex-1"
                               disabled={processingId === request.id}
                             >
                               {processingId === request.id ? (
@@ -815,6 +872,7 @@ export default function CustomerRequestsPage() {
                                 ? "Accepting..."
                                 : "Accept"}
                             </Button>
+
                             <Button
                               variant="outline"
                               size="sm"
@@ -822,7 +880,7 @@ export default function CustomerRequestsPage() {
                                 setSelectedRequest(request);
                                 setRejectDialogOpen(true);
                               }}
-                              className="text-red-600 hover:text-red-700"
+                              className="text-red-600 hover:text-red-700 flex-1"
                               disabled={processingId === request.id}
                             >
                               <X className="w-4 h-4 mr-1" />
@@ -869,27 +927,84 @@ export default function CustomerRequestsPage() {
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
+
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold">
-                        {selectedRequest.providerName}
-                      </h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span>{selectedRequest.providerRating} rating</span>
+                      {/* Name + rating */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                          <h3 className="text-xl font-semibold">
+                            {selectedRequest.providerName}
+                          </h3>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                              <span>
+                                {selectedRequest.providerRating} rating
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              {selectedRequest.providerLocation || "—"}
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {selectedRequest.providerResponseTime} response
+                              time
+                            </div>
+                          </div>
+
+                          {selectedRequest.experience && (
+                            <p className="text-sm text-gray-600 mt-2">
+                              {selectedRequest.experience} experience
+                            </p>
+                          )}
+
+                          {/* ⬅ NEW: top skills inline preview */}
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {asArray<string>(selectedRequest.skills)
+                              .slice(0, 4)
+                              .map((skill) => (
+                                <Badge
+                                  key={skill}
+                                  variant="secondary"
+                                  className="text-[10px] leading-tight"
+                                >
+                                  {skill}
+                                </Badge>
+                              ))}
+                            {asArray<string>(selectedRequest.skills).length >
+                              4 && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] leading-tight"
+                              >
+                                +
+                                {asArray<string>(selectedRequest.skills)
+                                  .length - 4}{" "}
+                                more
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {selectedRequest.providerLocation}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {selectedRequest.providerResponseTime} response time
-                        </div>
+
+                        {/* ⬅ NEW: View profile button */}
+                        <Link
+                          href={`/customer/providers/${selectedRequest.providerId}`}
+                          className="self-start"
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Profile
+                          </Button>
+                        </Link>
                       </div>
-                      <p className="text-sm text-gray-600 mt-2">
-                        {selectedRequest.experience} experience
-                      </p>
                     </div>
                   </div>
 

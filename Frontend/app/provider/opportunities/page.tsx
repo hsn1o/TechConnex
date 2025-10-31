@@ -67,6 +67,14 @@ export default function ProviderOpportunitiesPage() {
     dueDate: string; // ISO (yyyy-mm-dd or full ISO; we’ll normalize on submit)
   };
 
+  type ProposalFormData = {
+    coverLetter: string;
+    bidAmount: string;
+    timeline: string;
+    milestones: Milestone[];
+    attachments: File[];
+  };
+
   const [proposalData, setProposalData] = useState({
     coverLetter: "",
     bidAmount: "",
@@ -80,6 +88,13 @@ export default function ProviderOpportunitiesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submittingProposal, setSubmittingProposal] = useState(false);
+  const [proposalErrors, setProposalErrors] = useState<{
+    bidAmount?: string;
+    timeline?: string;
+    coverLetter?: string;
+    milestones?: string;
+    attachments?: string;
+  }>({});
 
   // Fetch opportunities from API
   useEffect(() => {
@@ -250,24 +265,101 @@ export default function ProviderOpportunitiesPage() {
       attachments: [],
     });
   };
+  // --- Proposal validation helpers ---
+  // --- Proposal validation ---
+  function validateProposal(form: ProposalFormData) {
+    const newErrors: {
+      bidAmount?: string;
+      timeline?: string;
+      coverLetter?: string;
+      milestones?: string;
+    } = {};
+
+    const messages: string[] = [];
+
+    // Bid amount: required, >0
+    const bidAmountNum = Number(form.bidAmount);
+    if (!form.bidAmount) {
+      newErrors.bidAmount = "Bid amount is required.";
+      messages.push("Bid amount is required.");
+    } else if (isNaN(bidAmountNum) || bidAmountNum <= 0) {
+      newErrors.bidAmount = "Bid amount must be a positive number.";
+      messages.push("Bid amount must be a positive number.");
+    }
+
+    // Timeline: required
+    if (!form.timeline) {
+      newErrors.timeline = "Delivery timeline is required.";
+      messages.push("Delivery timeline is required.");
+    }
+
+    // Cover letter: required, min length 20
+    if (!form.coverLetter || form.coverLetter.trim().length < 20) {
+      newErrors.coverLetter = "Cover letter must be at least 20 characters.";
+      messages.push("Cover letter must be at least 20 characters.");
+    }
+
+    // Milestones validation (only if user added any milestones)
+    if (form.milestones.length > 0) {
+      // each milestone needs title, amount>0, dueDate
+      form.milestones.forEach((m: Milestone, idx: number) => {
+        if (!m.title || !m.title.trim()) {
+          messages.push(`Milestone #${idx + 1}: title is required.`);
+        }
+        if (
+          m.amount == null ||
+          isNaN(Number(m.amount)) ||
+          Number(m.amount) <= 0
+        ) {
+          messages.push(`Milestone #${idx + 1}: amount must be > 0.`);
+        }
+        if (!m.dueDate) {
+          messages.push(`Milestone #${idx + 1}: due date is required.`);
+        }
+      });
+
+      // sum rule: milestones total must equal bidAmount
+      if (!isNaN(bidAmountNum) && bidAmountNum > 0) {
+        const sumMilestones = form.milestones.reduce(
+          (sum: number, m: Milestone) => {
+            const val = Number(m.amount);
+            if (!isNaN(val)) return sum + val;
+            return sum;
+          },
+          0
+        );
+
+        if (sumMilestones !== bidAmountNum) {
+          const msg = `Total of milestones (RM ${sumMilestones}) must equal your bid amount (RM ${bidAmountNum}).`;
+          newErrors.milestones = msg;
+          messages.push(msg);
+        }
+      }
+    }
+
+    return { fieldErrors: newErrors, messages };
+  }
 
   const handleProposalSubmit = async () => {
-    // Required basic fields
-    if (
-      !proposalData.coverLetter ||
-      !proposalData.bidAmount ||
-      !proposalData.timeline
-    ) {
-      toast.error("Please fill in all required fields");
+    // 1. run validation
+    const { fieldErrors, messages } = validateProposal(proposalData);
+
+    // save inline field errors to state (like customer form does with setErrors) :contentReference[oaicite:2]{index=2}
+    setProposalErrors(fieldErrors);
+
+    // if there are validation problems, stop here and toast
+    if (messages.length > 0) {
+      toast.error(messages.map((m, i) => `• ${m}`).join("\n"));
       return;
     }
 
+    // 2. make sure we have selectedProject data
     if (!selectedProject?.originalData) {
       toast.error("Invalid project data");
       return;
     }
 
-    // Attachments validation (mirrors backend rules)
+    // 3. attachments validation (same as before)
     if (proposalData.attachments.length > MAX_FILES) {
       toast.error("You can only upload up to 3 attachments");
       return;
@@ -284,8 +376,8 @@ export default function ProviderOpportunitiesPage() {
 
       // Normalize milestones for the backend
       const normalized = normalizeDraftSequences(proposalData.milestones).map(
-        (m, idx) => ({
-          sequence: idx + 1, // backend expects sequence
+        (m: Milestone, idx: number) => ({
+          sequence: idx + 1,
           title: (m.title || "").trim(),
           description: m.description || "",
           amount: Number(m.amount || 0),
@@ -295,7 +387,7 @@ export default function ProviderOpportunitiesPage() {
         })
       );
 
-      // Build multipart/form-data to match multer .array("attachments")
+      // Build multipart/form-data
       const formDataToSend = new FormData();
 
       formDataToSend.append(
@@ -316,7 +408,6 @@ export default function ProviderOpportunitiesPage() {
 
       formDataToSend.append("coverLetter", proposalData.coverLetter);
 
-      // milestones[0][...]
       normalized.forEach((m, idx) => {
         formDataToSend.append(
           `milestones[${idx}][sequence]`,
@@ -331,19 +422,17 @@ export default function ProviderOpportunitiesPage() {
         formDataToSend.append(`milestones[${idx}][dueDate]`, m.dueDate);
       });
 
-      // files
       proposalData.attachments.forEach((file) => {
         formDataToSend.append("attachments", file);
       });
 
-      // Send request
       const response = await sendProposal(formDataToSend);
 
       if (response.success) {
         toast.success("Proposal submitted successfully!");
         setIsProposalModalOpen(false);
 
-        // Optimistic UI update
+        // optimistic UI
         const updatedOpportunities = opportunities.map((opp) =>
           opp.id === selectedProject?.id
             ? {
@@ -355,7 +444,7 @@ export default function ProviderOpportunitiesPage() {
         );
         setOpportunities(updatedOpportunities);
 
-        // Reset form
+        // reset form + errors
         setProposalData({
           coverLetter: "",
           bidAmount: "",
@@ -363,6 +452,7 @@ export default function ProviderOpportunitiesPage() {
           milestones: [],
           attachments: [],
         });
+        setProposalErrors({});
       } else {
         toast.error(response.message || "Failed to submit proposal");
       }
@@ -382,10 +472,20 @@ export default function ProviderOpportunitiesPage() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const incoming = Array.from(event.target.files || []);
 
-    // size check
+    if (incoming.length === 0) return;
+
+    // --- Reset previous attachment errors ---
+    setProposalErrors((prev) => ({ ...prev, attachments: undefined }));
+
+    // --- Check file sizes ---
     for (const file of incoming) {
       if (file.size > MAX_SIZE_BYTES) {
         toast.error(`"${file.name}" is larger than 10 MB`);
+        setProposalErrors((prev) => ({
+          ...prev,
+          attachments: `"${file.name}" exceeds 10 MB.`,
+        }));
+        event.target.value = "";
         return;
       }
     }
@@ -393,9 +493,13 @@ export default function ProviderOpportunitiesPage() {
     setProposalData((prev) => {
       const combined = [...prev.attachments, ...incoming];
 
+      // --- File count validation ---
       if (combined.length > MAX_FILES) {
-        toast.error("Maximum 3 attachments allowed");
-        return prev; // don't add
+        const errorMsg = `You can upload a maximum of ${MAX_FILES} files only. Remove some before adding new ones.`;
+        toast.error(errorMsg);
+        setProposalErrors((prev) => ({ ...prev, attachments: errorMsg }));
+        event.target.value = "";
+        return prev; // stop update
       }
 
       return {
@@ -404,7 +508,7 @@ export default function ProviderOpportunitiesPage() {
       };
     });
 
-    // reset input so same file can be re-selected if removed
+    // reset input
     event.target.value = "";
   };
 
@@ -914,30 +1018,45 @@ export default function ProviderOpportunitiesPage() {
                         bidAmount: e.target.value,
                       }))
                     }
+                    className={
+                      proposalErrors.bidAmount
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
                   />
+                  {proposalErrors.bidAmount && (
+                    <p className="text-xs text-red-600">
+                      {proposalErrors.bidAmount}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 mt-1">
                     Client budget: {selectedProject?.budget}
                   </p>
                 </div>
                 <div>
                   <Label htmlFor="timeline">Delivery Timeline *</Label>
-                  <Select
+                  <Input
+                    id="timeline"
+                    type="text"
+                    placeholder="e.g. 2 weeks, 10 days, or custom duration"
                     value={proposalData.timeline}
-                    onValueChange={(value) =>
-                      setProposalData((prev) => ({ ...prev, timeline: value }))
+                    onChange={(e) =>
+                      setProposalData((prev) => ({
+                        ...prev,
+                        timeline: e.target.value,
+                      }))
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select timeline" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1-2 weeks">1-2 weeks</SelectItem>
-                      <SelectItem value="3-4 weeks">3-4 weeks</SelectItem>
-                      <SelectItem value="1-2 months">1-2 months</SelectItem>
-                      <SelectItem value="2-3 months">2-3 months</SelectItem>
-                      <SelectItem value="3+ months">3+ months</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    className={
+                      proposalErrors.timeline
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
+                  />
+                  {proposalErrors.timeline && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {proposalErrors.timeline}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -947,7 +1066,11 @@ export default function ProviderOpportunitiesPage() {
                 <Textarea
                   id="coverLetter"
                   placeholder="Introduce yourself and explain why you're the best fit for this project..."
-                  className="min-h-[120px]"
+                  className={`min-h-[120px] ${
+                    proposalErrors.coverLetter
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }`}
                   value={proposalData.coverLetter}
                   onChange={(e) =>
                     setProposalData((prev) => ({
@@ -956,6 +1079,11 @@ export default function ProviderOpportunitiesPage() {
                     }))
                   }
                 />
+                {proposalErrors.coverLetter && (
+                  <p className="text-xs text-red-600">
+                    {proposalErrors.coverLetter}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">
                   {proposalData.coverLetter.length}/1000 characters
                 </p>
@@ -1058,12 +1186,63 @@ export default function ProviderOpportunitiesPage() {
                     </Card>
                   ))}
                 </div>
+                {/* Milestones total check */}
+                {proposalData.milestones.length > 0 && (
+                  <div className="mt-4 rounded-md border p-3 text-sm">
+                    {(() => {
+                      const bidAmountNum = Number(proposalData.bidAmount || 0);
+                      const sumMilestones = proposalData.milestones.reduce(
+                        (sum, m) => {
+                          const val = Number(m.amount);
+                          if (!isNaN(val)) return sum + val;
+                          return sum;
+                        },
+                        0
+                      );
+
+                      const match =
+                        bidAmountNum > 0 && sumMilestones === bidAmountNum;
+
+                      return (
+                        <div className="flex justify-between flex-wrap gap-2">
+                          <div>
+                            <div className="font-medium">
+                              Milestones total: RM {sumMilestones || 0}
+                            </div>
+                            <div>Your bid: RM {bidAmountNum || 0}</div>
+                          </div>
+                          <div
+                            className={
+                              "text-xs font-semibold " +
+                              (match ? "text-green-600" : "text-red-600")
+                            }
+                          >
+                            {match
+                              ? "Total matches bid ✅"
+                              : "Total does not match bid ❗"}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+                {proposalErrors.milestones && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {proposalErrors.milestones}
+                  </p>
+                )}
               </div>
 
               {/* File Attachments */}
               <div>
                 <Label>Attachments (Optional)</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 text-center ${
+                    proposalErrors.attachments
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
+                  }`}
+                >
                   <input
                     type="file"
                     multiple
@@ -1105,6 +1284,11 @@ export default function ProviderOpportunitiesPage() {
                       </div>
                     ))}
                   </div>
+                )}
+                {proposalErrors.attachments && (
+                  <p className="text-xs text-red-600 mt-2">
+                    {proposalErrors.attachments}
+                  </p>
                 )}
               </div>
 
