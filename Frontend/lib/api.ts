@@ -430,6 +430,26 @@ export async function getProjectRequestStats() {
   return data;
 }
 
+/**
+ * Get company project statistics (active projects, completed projects, total spent)
+ */
+export async function getCompanyProjectStats() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/company/projects/stats`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch project stats");
+  return data;
+}
+
 // Provider projects API functions
 export async function getProviderProjects(params?: {
   page?: number;

@@ -419,6 +419,48 @@ export async function getProjectById(projectId, customerId) {
   }
 }
 
+/**
+ * Get project statistics for company (inspired by provider stats)
+ */
+export async function getCompanyProjectStats(customerId) {
+  try {
+    const [
+      activeProjects,
+      completedProjects,
+      totalSpentResult,
+    ] = await Promise.all([
+      prisma.project.count({
+        where: {
+          customerId,
+          status: "IN_PROGRESS",
+        },
+      }),
+      prisma.project.count({
+        where: {
+          customerId,
+          status: "COMPLETED",
+        },
+      }),
+      prisma.milestone.aggregate({
+        where: {
+          project: { customerId },
+          status: "PAID",
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    return {
+      activeProjects,
+      completedProjects,
+      totalSpent: totalSpentResult._sum.amount || 0,
+    };
+  } catch (error) {
+    console.error("Error fetching company project stats:", error);
+    throw new Error("Failed to fetch project statistics");
+  }
+}
+
 export async function updateProjectStatus(projectId, customerId, status) {
   try {
     const project = await prisma.project.update({
@@ -808,6 +850,8 @@ export async function payMilestone(dto) {
           select: {
             id: true,
             title: true,
+            status: true,
+            providerId: true,
             provider: {
               select: {
                 id: true,
@@ -828,6 +872,50 @@ export async function payMilestone(dto) {
         content: `Payment for milestone "${milestone.title}" has been processed (RM ${milestone.amount})`,
       },
     });
+
+    // Check if all milestones are paid and update project status to COMPLETED if needed
+    const projectId = updatedMilestone.project.id;
+    const allMilestones = await prisma.milestone.findMany({
+      where: {
+        projectId: projectId,
+        status: {
+          notIn: ["CANCELLED", "REJECTED"], // Exclude cancelled/rejected milestones from count
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    const totalMilestones = allMilestones.length;
+    const paidMilestones = allMilestones.filter(m => m.status === "PAID").length;
+
+    // If all milestones are paid and project is still IN_PROGRESS, mark it as COMPLETED
+    if (totalMilestones > 0 && paidMilestones === totalMilestones && updatedMilestone.project.status === "IN_PROGRESS") {
+      await prisma.project.update({
+        where: { id: projectId },
+        data: {
+          status: "COMPLETED",
+        },
+      });
+
+      // Create notification for both customer and provider
+      await prisma.notification.createMany({
+        data: [
+          {
+            userId: dto.customerId,
+            type: "system",
+            content: `Project "${updatedMilestone.project.title}" has been completed. All milestones have been paid.`,
+          },
+          {
+            userId: milestone.project.providerId,
+            type: "system",
+            content: `Project "${updatedMilestone.project.title}" has been completed. All milestones have been paid.`,
+          },
+        ],
+      });
+    }
 
     return updatedMilestone;
   } catch (error) {

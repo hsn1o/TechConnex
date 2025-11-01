@@ -9,7 +9,8 @@ import {
   updateProjectDetails,
   approveIndividualMilestone,
   requestMilestoneChanges,
-  payMilestone
+  payMilestone,
+  getCompanyProjectStats
 } from "./service.js";
 import { CreateProjectDto, GetProjectsDto, UpdateProjectDto  } from "./dto.js";
 
@@ -344,6 +345,28 @@ export async function payMilestoneController(req, res) {
     });
   } catch (error) {
     console.error("Error in payMilestoneController:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+/**
+ * GET /api/company/projects/stats - Get project statistics
+ */
+export async function getCompanyProjectStatsController(req, res) {
+  try {
+    const customerId = req.user.userId;
+
+    const stats = await getCompanyProjectStats(customerId);
+
+    res.json({
+      success: true,
+      stats,
+    });
+  } catch (error) {
+    console.error("Error in getCompanyProjectStatsController:", error);
     res.status(400).json({
       success: false,
       message: error.message,

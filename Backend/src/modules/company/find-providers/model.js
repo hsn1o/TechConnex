@@ -19,6 +19,7 @@ export async function findProviders(filters) {
     availability,
     verified,
     topRated,
+    userId,
   } = filters;
 
   const skip = (page - 1) * limit;
@@ -179,8 +180,39 @@ export async function findProviders(filters) {
     prisma.user.count({ where }),
   ]);
 
+  // If userId is provided, check saved status for each provider
+  let providersWithSavedStatus = providers;
+  if (userId) {
+    // Get all saved providers for this user in one query
+    const savedProviderIds = await prisma.savedProvider.findMany({
+      where: {
+        userId: userId,
+        providerId: {
+          in: providers.map(p => p.id),
+        },
+      },
+      select: {
+        providerId: true,
+      },
+    });
+
+    const savedIdsSet = new Set(savedProviderIds.map(sp => sp.providerId));
+
+    // Add isSaved property to each provider
+    providersWithSavedStatus = providers.map(provider => ({
+      ...provider,
+      isSaved: savedIdsSet.has(provider.id),
+    }));
+  } else {
+    // If no userId, set isSaved to false for all
+    providersWithSavedStatus = providers.map(provider => ({
+      ...provider,
+      isSaved: false,
+    }));
+  }
+
   return {
-    providers,
+    providers: providersWithSavedStatus,
     total,
     page,
     limit,

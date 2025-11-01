@@ -4,6 +4,7 @@ import { CustomerLayout } from "@/components/customer-layout";
 import ProviderDetailClient from "@/components/customer/providers/ProviderDetailClient";
 import type { Provider, Review, PortfolioItem } from "@/components/customer/providers/types";
 import { notFound } from "next/navigation";
+import jwt from "jsonwebtoken";
 
 export default async function ProviderDetailPage({
   params,
@@ -12,24 +13,53 @@ export default async function ProviderDetailPage({
 }) {
   const { id } = await params;
 
-  // ✅ Read token from cookies
+  // ✅ Read token and user from cookies
   const cookieStore = cookies();
   const token = (await cookieStore).get("token")?.value;
+  const userCookie = (await cookieStore).get("user")?.value;
+
+  // Extract userId from user cookie first, then from token
+  let userId: string | null = null;
+  
+  // Try to get userId from user cookie
+  if (userCookie) {
+    try {
+      const user = JSON.parse(userCookie);
+      userId = user?.id || null;
+    } catch (error) {
+      // Ignore parsing errors
+    }
+  }
+
+  // If not found in cookie, try to decode from token
+  if (!userId && token) {
+    try {
+      const decoded = jwt.decode(token) as { userId?: string } | null;
+      userId = decoded?.userId || null;
+    } catch (error) {
+      console.error("Error decoding token:", error);
+    }
+  }
 
   let provider: Provider | null = null;
   let portfolio: PortfolioItem[] = [];
   let reviews: Review[] = [];
 
+  // Build URL with userId query parameter if available
+  const url = new URL(
+    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/providers/${id}`
+  );
+  if (userId) {
+    url.searchParams.append("userId", userId);
+  }
+
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/providers/${id}`,
-      {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(url.toString(), {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: "no-store",
+    });
 
     if (response.ok) {
       const data = await response.json();

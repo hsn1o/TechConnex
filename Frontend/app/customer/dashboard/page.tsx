@@ -27,6 +27,7 @@ import { CustomerLayout } from "@/components/customer-layout";
 import {
   getCompanyProjects,
   getProjectRequestStats,
+  getCompanyProjectStats,
   searchProviders,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -75,13 +76,13 @@ export default function CustomerDashboard() {
       try {
         setError(null);
 
-        // Fetch project requests stats
-        const statsResponse = await getProjectRequestStats();
+        // Fetch project stats (inspired by provider dashboard)
+        const statsResponse = await getCompanyProjectStats();
         if (statsResponse.success && statsResponse.stats) {
           setStats({
-            activeProjects: statsResponse.stats.openRequests || 0,
-            completedProjects: statsResponse.stats.matchedRequests || 0,
-            totalSpent: 0, // Not available in current API
+            activeProjects: statsResponse.stats.activeProjects || 0,
+            completedProjects: statsResponse.stats.completedProjects || 0,
+            totalSpent: statsResponse.stats.totalSpent || 0,
             rating: null, // Not available in current API
           });
         } else {

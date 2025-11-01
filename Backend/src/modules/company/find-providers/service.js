@@ -35,7 +35,7 @@ export async function searchProviders(filters) {
       languages: user.providerProfile?.languages || ["English"],
       verified: user.providerProfile?.isVerified || false,
       topRated: user.providerProfile?.isFeatured || false,
-      saved: false, // Will be set by frontend based on user context
+      saved: user.isSaved || false, // Use saved status from backend
     }));
 
     return {

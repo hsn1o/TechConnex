@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,6 +35,11 @@ export default function ProviderDetailClient({
   reviews: Review[];
 }) {
   const [saved, setSaved] = useState<boolean>(!!provider.saved);
+
+  // Update saved state when provider prop changes (e.g., after refresh)
+  useEffect(() => {
+    setSaved(!!provider.saved);
+  }, [provider.saved]);
 
   const getUserAndToken = () => {
     if (typeof window === "undefined") return { userId: "", token: "" };
@@ -93,10 +98,11 @@ export default function ProviderDetailClient({
         </Link>
         <div className="flex gap-2">
           <Button
-            variant={saved ? "secondary" : "outline"}
+            variant={saved ? "default" : "outline"}
             onClick={handleSaveToggle}
+            className={saved ? "bg-red-600 hover:bg-red-700 text-white" : ""}
           >
-            <Heart className="w-4 h-4 mr-2" /> {saved ? "Saved" : "Save"}
+            <Heart className={`w-4 h-4 mr-2 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}
           </Button>
           <Link
             href={`/customer/messages/new?to=${encodeURIComponent(provider.id)}`}

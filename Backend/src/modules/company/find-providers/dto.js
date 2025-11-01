@@ -15,6 +15,7 @@ export class FindProvidersDto {
     this.availability = data.availability || "all";
     this.verified = data.verified === "true";
     this.topRated = data.topRated === "true";
+    this.userId = data.userId || null; // For checking saved status
   }
 
   validate() {

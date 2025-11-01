@@ -1,25 +1,77 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Eye, MapPin, MessageSquare, Star } from "lucide-react";
+import { Eye, MapPin, MessageSquare, Star, Heart } from "lucide-react";
 import type { Provider } from "../types";
 import { useRouter } from "next/navigation";
 
 export default function ProviderCard({ provider }: { provider: Provider }) {
   const router = useRouter();
+  const [saved, setSaved] = useState<boolean>(!!provider.saved);
 
-const handleContact = () => {
-  // Navigate to chat with this provider
-  router.push(
-    `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
-      provider.name
-    )}&avatar=${encodeURIComponent(provider.avatar || "")}`
-  );
-};
+  // Update saved state when provider prop changes (e.g., after refresh)
+  useEffect(() => {
+    setSaved(!!provider.saved);
+  }, [provider.saved]);
+
+  const handleContact = () => {
+    // Navigate to chat with this provider
+    router.push(
+      `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
+        provider.name
+      )}&avatar=${encodeURIComponent(provider.avatar || "")}`
+    );
+  };
+
+  const getUserAndToken = () => {
+    if (typeof window === "undefined") return { userId: "", token: "" };
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const token = localStorage.getItem("token") || "";
+      return { userId: user?.id || "", token };
+    } catch {
+      return { userId: "", token: "" };
+    }
+  };
+
+  const handleSaveToggle = async () => {
+    try {
+      const { userId, token } = getUserAndToken();
+      if (!userId || !token) {
+        alert("Please login to save providers");
+        return;
+      }
+
+      const method = saved ? "DELETE" : "POST";
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
+        }/providers/${provider.id}/save?userId=${encodeURIComponent(userId)}`,
+        {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        setSaved(!saved);
+      } else {
+        const data = await response.json();
+        alert(data.message || "Failed to update saved status");
+      }
+    } catch (error) {
+      console.error("Error toggling save status:", error);
+      alert("Failed to update saved status");
+    }
+  };
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader className="pb-4">
@@ -124,7 +176,15 @@ const handleContact = () => {
             <MessageSquare className="w-4 h-4 mr-2" />
             Contact
           </Button>
-          <Link href={`/customer/providers/${provider.id}`}>
+          <Button
+            size="sm"
+            variant={saved ? "default" : "outline"}
+            onClick={handleSaveToggle}
+            className={saved ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+          >
+            <Heart className={`w-4 h-4 ${saved ? "fill-current" : ""}`} />
+          </Button>
+          <Link href={`/customer/providers/${provider.id}`} className="flex-1">
             <Button size="sm" variant="outline" className="w-full">
               <Eye className="w-4 h-4 mr-2" />
               View Profile
