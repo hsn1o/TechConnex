@@ -33,19 +33,22 @@ export class SendProposalDto {
       throw new Error("Maximum 3 attachments allowed");
     }
 
-    if (this.milestones.length > 0) {
-      // Tolerance ±2% or 1 unit, whichever is larger
-      const total = this.milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0);
-      const tolerance = Math.max(this.bidAmount * 0.02, 1); // adjust if you prefer
-      if (Math.abs(total - this.bidAmount) > tolerance) {
-        throw new Error("Total milestone amount must approximately match bid amount");
-      }
-      let prev = 0;
-      for (const m of this.milestones) {
-        if (!m.title || !m.amount) throw new Error("Each milestone must have title and amount");
-        if (m.sequence <= prev) throw new Error("Milestones must have increasing sequence numbers starting at 1");
-        prev = m.sequence;
-      }
+    // Milestones are REQUIRED
+    if (!Array.isArray(this.milestones) || this.milestones.length === 0) {
+      throw new Error("At least one milestone is required");
+    }
+
+    // Tolerance ±2% or 1 unit, whichever is larger
+    const total = this.milestones.reduce((s, m) => s + (Number(m.amount) || 0), 0);
+    const tolerance = Math.max(this.bidAmount * 0.02, 1); // adjust if you prefer
+    if (Math.abs(total - this.bidAmount) > tolerance) {
+      throw new Error("Total milestone amount must approximately match bid amount");
+    }
+    let prev = 0;
+    for (const m of this.milestones) {
+      if (!m.title || !m.amount) throw new Error("Each milestone must have title and amount");
+      if (m.sequence <= prev) throw new Error("Milestones must have increasing sequence numbers starting at 1");
+      prev = m.sequence;
     }
   }
   // ...

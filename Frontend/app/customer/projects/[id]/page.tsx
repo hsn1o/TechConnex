@@ -443,12 +443,23 @@ export default function ProjectDetailsPage({
   // Load project milestones
   useEffect(() => {
     (async () => {
-      if (project?.type !== "Project" || !project?.id) return;
+      if (!project?.id) return;
       try {
         const milestoneData = await getCompanyProjectMilestones(project.id);
         setProjectMilestones(
           Array.isArray(milestoneData.milestones)
-            ? milestoneData.milestones.map((m) => ({ ...m, sequence: m.order }))
+            ? milestoneData.milestones.map((m: any) => ({ 
+                ...m, 
+                sequence: m.order,
+                // Ensure all milestone fields are included
+                submissionAttachmentUrl: m.submissionAttachmentUrl,
+                submissionNote: m.submissionNote,
+                submittedAt: m.submittedAt,
+                startDeliverables: m.startDeliverables,
+                submitDeliverables: m.submitDeliverables,
+                revisionNumber: m.revisionNumber,
+                submissionHistory: m.submissionHistory,
+              }))
             : []
         );
         setMilestoneApprovalState({
@@ -461,7 +472,7 @@ export default function ProjectDetailsPage({
         console.warn("Failed to load project milestones:", e);
       }
     })();
-  }, [project?.id, project?.type]);
+  }, [project?.id]);
 
   if (loading) {
     return (
@@ -819,67 +830,23 @@ export default function ProjectDetailsPage({
 
   const handleAcceptProposal = async (proposal: any) => {
     try {
-      setProcessingId(proposal.id);
+      const proposalId = proposal.id || (proposal as any)?.id;
+      setProcessingId(proposalId);
+      const response = await acceptProjectRequest(proposalId, true);
 
-      const response = await acceptProjectRequest(proposal.id, true);
-      const newProjectId = response?.id || response?.project?.id;
+      // Get the created project ID from the response
+      const projectId = response?.id || response?.project?.id;
 
-      // 🔁 Instead of removing it, mark as ACCEPTED in local state (use lowercase to match ProviderRequest interface)
+      // Optimistic status update
       setProposals((prev: any[]) =>
         prev.map((p) =>
-          p.id === proposal.id ? { ...p, status: "accepted" } : p
+          p.id === proposalId ? { ...p, status: "accepted" as const } : p
         )
       );
 
-      // Refresh project data to get updated serviceRequestId (for Projects, backend now includes it)
-      let updatedProject = project;
-      if (resolvedId) {
-        try {
-          const updatedProjectRes = await getProjectById(resolvedId);
-          if (updatedProjectRes?.success && updatedProjectRes.project) {
-            updatedProject = updatedProjectRes.project;
-            setProject(updatedProject);
-          }
-        } catch (err) {
-          console.warn("Failed to refresh project after accept:", err);
-        }
-      }
-
-      // Refresh proposals from server to get updated statuses (especially other proposals that were auto-rejected)
-      // Get the service request ID to fetch proposals again
-      const serviceRequestId =
-        updatedProject?.type === "ServiceRequest"
-          ? updatedProject.id
-          : (updatedProject as any)?.serviceRequestId ||
-            (updatedProject as any)?.originalRequestId ||
-            resolvedId;
-
-      if (serviceRequestId) {
-        try {
-          const proposalsResponse = await getCompanyProjectRequests({
-            serviceRequestId,
-            sort: "newest",
-          });
-
-          const rawProposals = Array.isArray(proposalsResponse?.proposals)
-            ? proposalsResponse.proposals
-            : Array.isArray(proposalsResponse?.data)
-            ? proposalsResponse.data
-            : Array.isArray(proposalsResponse?.items)
-            ? proposalsResponse.items
-            : [];
-
-          const mappedProposals = mapProposalsToProviderRequests(rawProposals);
-          setProposals(mappedProposals);
-        } catch (err) {
-          console.warn("Failed to refresh proposals after accept:", err);
-        }
-      }
-
-      // Load milestones for that new project and open the milestone editing dialog
-      if (newProjectId) {
-        const milestoneData = await getCompanyProjectMilestones(newProjectId);
-
+      // Immediately load project milestones for edit
+      if (projectId) {
+        const milestoneData = await getCompanyProjectMilestones(projectId);
         setMilestonesDraft(
           Array.isArray(milestoneData.milestones)
             ? milestoneData.milestones.map((m: any) => ({
@@ -888,15 +855,13 @@ export default function ProjectDetailsPage({
               }))
             : []
         );
-
         setMilestoneApprovalStateModal({
           milestonesLocked: milestoneData.milestonesLocked,
           companyApproved: milestoneData.companyApproved,
           providerApproved: milestoneData.providerApproved,
           milestonesApprovedAt: milestoneData.milestonesApprovedAt,
         });
-
-        setActiveProjectId(newProjectId);
+        setActiveProjectId(projectId);
         setMilestonesOpen(true);
       }
 
@@ -1410,7 +1375,8 @@ export default function ProjectDetailsPage({
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {projectMilestones.map((milestone, index) => (
+                  {projectMilestones && projectMilestones.length > 0 ? (
+                    projectMilestones.map((milestone, index) => (
                     <div key={milestone.id} className="flex gap-4">
                       <div className="flex flex-col items-center">
                         {getMilestoneStatusIcon(milestone.status)}
@@ -1751,7 +1717,10 @@ export default function ProjectDetailsPage({
                         )}
                       </div>
                     </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-gray-600 text-center py-8">No milestones found</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1980,22 +1949,28 @@ export default function ProjectDetailsPage({
                                 size="sm"
                                 className="flex-1"
                                 onClick={() => {
-                                  // sync the dialog state you already have in this file:
+                                  // sync the dialog state to match requests page structure:
                                   setSelectedProposalDetails({
+                                    ...p, // Include all proposal data
                                     provider: {
                                       id: p.providerId,
                                       name: p.providerName,
                                       avatar: p.providerAvatar,
                                       rating: p.providerRating,
                                       location: p.providerLocation,
+                                      responseTime: p.providerResponseTime,
                                     },
+                                    projectTitle: p.projectTitle || project.title,
                                     bidAmount: p.bidAmount,
+                                    proposedTimeline: p.proposedTimeline,
                                     deliveryTime: p.proposedTimeline?.replace(
                                       " days",
                                       ""
-                                    ),
+                                    ) || p.proposedTimeline,
                                     coverLetter: p.coverLetter,
                                     createdAt: p.submittedAt,
+                                    submittedAt: p.submittedAt,
+                                    status: p.status,
                                     milestones: p.milestones.map(
                                       (m: {
                                         title: string;
@@ -2008,11 +1983,15 @@ export default function ProjectDetailsPage({
                                         amount: m.amount,
                                         dueDate: m.dueDate,
                                         sequence: m.order,
+                                        order: m.order,
                                         description: m.description,
                                       })
                                     ),
-
                                     attachmentUrls: p.attachments || [],
+                                    attachments: p.attachments || [],
+                                    skills: p.skills || [],
+                                    portfolio: p.portfolio || [],
+                                    experience: (p as any).experience || "",
                                   });
                                   setProposalDetailsOpen(true);
                                 }}
@@ -2619,49 +2598,55 @@ export default function ProjectDetailsPage({
         </DialogContent>
       </Dialog>
 
+      {/* Reject Dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Proposal</DialogTitle>
+            <DialogTitle>Reject Request</DialogTitle>
             <DialogDescription>
-              Let the provider know why you're rejecting.
+              Please provide a reason for rejecting this request. This will
+              help the provider improve their future proposals.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <Label htmlFor="rejectReason">Reason / message to provider</Label>
-            <Textarea
-              id="rejectReason"
-              placeholder="Example: Budget is too high, timeline not suitable..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
+            <div>
+              <Label htmlFor="rejectReason">Reason for rejection</Label>
+              <Textarea
+                id="rejectReason"
+                placeholder="Please explain why you're rejecting this request..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={4}
+              />
+            </div>
           </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
+          <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                setRejectDialogOpen(false);
-                setRejectReason("");
-                setSelectedProposalForAction(null);
-              }}
+              onClick={() => setRejectDialogOpen(false)}
             >
               Cancel
             </Button>
             <Button
-              variant="destructive"
-              onClick={handleConfirmRejectProposal}
-              disabled={processingId === selectedProposalForAction?.id}
+              onClick={() =>
+                selectedProposalForAction &&
+                handleConfirmRejectProposal()
+              }
+              className="bg-red-600 hover:bg-red-700"
+              disabled={
+                !rejectReason.trim() || processingId === selectedProposalForAction?.id
+              }
             >
               {processingId === selectedProposalForAction?.id ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Rejecting...
+                </>
               ) : (
-                <X className="w-4 h-4 mr-2" />
+                "Reject Request"
               )}
-              {processingId === selectedProposalForAction?.id
-                ? "Rejecting..."
-                : "Reject"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2677,28 +2662,30 @@ export default function ProjectDetailsPage({
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl">Proposal Details</DialogTitle>
+            <DialogTitle>Request Details</DialogTitle>
             <DialogDescription>
-              Full proposal from{" "}
-              {selectedProposalDetails?.provider?.name || "Provider"}
+              Detailed information about{" "}
+              {selectedProposalDetails?.provider?.name || "Provider"}'s
+              request
             </DialogDescription>
           </DialogHeader>
 
           {selectedProposalDetails && (
             <div className="space-y-6">
-              {/* Provider Header */}
+              {/* Provider Info */}
               <div className="flex items-start space-x-4">
                 <Avatar className="w-16 h-16">
                   <AvatarImage
                     src={
                       selectedProposalDetails.provider?.avatar ||
+                      selectedProposalDetails.providerAvatar ||
                       "/placeholder.svg"
                     }
                   />
                   <AvatarFallback>
-                    {(selectedProposalDetails.provider?.name || "P")
+                    {String(selectedProposalDetails.provider?.name || selectedProposalDetails.providerName || "P")
                       .split(" ")
                       .filter(Boolean)
                       .map((n: string) => n[0])
@@ -2707,107 +2694,180 @@ export default function ProjectDetailsPage({
                 </Avatar>
 
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold">
-                    {selectedProposalDetails.provider?.name || "Provider"}
-                  </h3>
+                  {/* Name + rating */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                        {selectedProposalDetails.provider?.name || selectedProposalDetails.providerName || "Provider"}
+                      </h3>
 
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mt-1 flex-wrap">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span>
-                        {selectedProposalDetails.provider?.rating ??
-                          "No rating"}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                          <span>
+                            {selectedProposalDetails.provider?.rating || selectedProposalDetails.providerRating || 0} rating
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          {selectedProposalDetails.provider?.location || selectedProposalDetails.providerLocation || "—"}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          {selectedProposalDetails.provider?.responseTime || selectedProposalDetails.providerResponseTime || "N/A"} response time
+                        </div>
+                      </div>
+
+                      {selectedProposalDetails.experience && (
+                        <p className="text-sm text-gray-600 mt-2">
+                          {selectedProposalDetails.experience} experience
+                        </p>
+                      )}
+
+                      {/* Skills inline preview */}
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {asArray<string>(selectedProposalDetails.skills || [])
+                          .slice(0, 4)
+                          .map((skill: string) => (
+                            <Badge
+                              key={skill}
+                              variant="secondary"
+                              className="text-[10px] leading-tight"
+                            >
+                              {skill}
+                            </Badge>
+                          ))}
+                        {asArray<string>(selectedProposalDetails.skills || []).length > 4 && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] leading-tight"
+                          >
+                            +{asArray<string>(selectedProposalDetails.skills || []).length - 4} more
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
-                    {selectedProposalDetails.provider?.location && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        <span>
-                          {selectedProposalDetails.provider?.location}
-                        </span>
-                      </div>
-                    )}
-
-                    {selectedProposalDetails.createdAt && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>
-                          Submitted{" "}
-                          {new Date(
-                            selectedProposalDetails.createdAt
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
+                    {/* View profile button */}
+                    <NextLink
+                      href={`/customer/providers/${selectedProposalDetails.provider?.id || selectedProposalDetails.providerId}`}
+                      className="self-start"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View Profile
+                      </Button>
+                    </NextLink>
                   </div>
                 </div>
               </div>
 
-              {/* Bid / Timeline / Attachments Summary */}
-              <Card>
-                <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <div className="text-gray-500">Bid Amount</div>
-                    <div className="text-lg font-semibold text-gray-900">
-                      RM{" "}
-                      {Number(
-                        selectedProposalDetails.bidAmount || 0
-                      ).toLocaleString()}
-                    </div>
-                  </div>
+              <Separator />
 
-                  <div>
-                    <div className="text-gray-500">Timeline</div>
-                    <div className="font-medium text-gray-900">
-                      {selectedProposalDetails.deliveryTime
-                        ? `${selectedProposalDetails.deliveryTime} days`
-                        : "—"}
-                    </div>
-                  </div>
+              {/* Project & Bid Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold mb-2">Project</h4>
+                  <p className="text-gray-900">
+                    {selectedProposalDetails.projectTitle || project.title}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Bid Amount</h4>
+                  <p className="text-2xl font-bold text-green-600">
+                    RM{fmt(selectedProposalDetails.bidAmount || 0)}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Proposed Timeline</h4>
+                  <p className="text-gray-900">
+                    {selectedProposalDetails.proposedTimeline || selectedProposalDetails.deliveryTime ? `${selectedProposalDetails.deliveryTime} days` : "—"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Status</h4>
+                  <Badge className={getStatusColor(selectedProposalDetails.status || "pending")}>
+                    {(selectedProposalDetails.status || "pending").charAt(0).toUpperCase() +
+                      (selectedProposalDetails.status || "pending").slice(1)}
+                  </Badge>
+                </div>
+              </div>
 
-                  <div>
-                    <div className="text-gray-500">Attachments</div>
-                    <div className="font-medium text-gray-900">
-                      {Array.isArray(selectedProposalDetails.attachmentUrls)
-                        ? `${selectedProposalDetails.attachmentUrls.length} file(s)`
-                        : "0 file(s)"}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <Separator />
 
               {/* Cover Letter */}
-              {selectedProposalDetails.coverLetter && (
-                <div>
-                  <h4 className="font-semibold mb-2">Cover Letter</h4>
-                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed text-sm">
+              <div>
+                <h4 className="font-semibold mb-2">Cover Letter</h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-gray-700 whitespace-pre-wrap">
                     {selectedProposalDetails.coverLetter}
                   </p>
                 </div>
-              )}
+              </div>
 
-              {/* Milestones */}
-              {Array.isArray(selectedProposalDetails.milestones) &&
+              {/* Skills */}
+              <div>
+                <h4 className="font-semibold mb-2">Skills</h4>
+                <div className="flex flex-wrap gap-2">
+                  {asArray<string>(selectedProposalDetails.skills || []).map((skill: string) => (
+                    <Badge key={skill} variant="secondary">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Portfolio */}
+              <div>
+                <h4 className="font-semibold mb-2">Portfolio</h4>
+                <div className="space-y-2">
+                  {asArray<string>(selectedProposalDetails.portfolio || []).map(
+                    (link: string, index: number) => (
+                      <a
+                        key={index}
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {link}
+                      </a>
+                    )
+                  )}
+                  {asArray<string>(selectedProposalDetails.portfolio || []).length === 0 && (
+                    <p className="text-sm text-gray-500">No portfolio links provided</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Proposed Milestones */}
+              {selectedProposalDetails.milestones &&
                 selectedProposalDetails.milestones.length > 0 && (
                   <div>
-                    <h4 className="font-semibold mb-2">Proposed Milestones</h4>
+                    <h4 className="font-semibold mb-2">
+                      Proposed Milestones
+                    </h4>
 
                     <div className="space-y-4">
                       {selectedProposalDetails.milestones
-                        .slice()
-                        .sort(
-                          (a: any, b: any) =>
-                            (a.sequence ?? a.order ?? 0) -
-                            (b.sequence ?? b.order ?? 0)
-                        )
+                        .sort((a: any, b: any) => (a.order || a.sequence || 0) - (b.order || b.sequence || 0))
                         .map((m: any, idx: number) => (
-                          <Card key={idx} className="border border-gray-200">
+                          <Card
+                            key={idx}
+                            className="border border-gray-200"
+                          >
                             <CardContent className="p-4 space-y-2 text-sm">
+                              {/* Top row: title + amount */}
                               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                                 <div className="flex items-center gap-2">
                                   <Badge variant="secondary">
-                                    #{m.sequence ?? m.order ?? idx + 1}
+                                    #{m.order || m.sequence || idx + 1}
                                   </Badge>
                                   <span className="font-medium text-gray-900">
                                     {m.title || "Untitled milestone"}
@@ -2815,28 +2875,34 @@ export default function ProjectDetailsPage({
                                 </div>
 
                                 <div className="text-right">
-                                  <div className="text-gray-500 text-xs">
+                                  <span className="text-sm text-gray-500 block">
                                     Amount
-                                  </div>
-                                  <div className="text-lg font-semibold text-gray-900">
-                                    RM {Number(m.amount || 0).toLocaleString()}
-                                  </div>
+                                  </span>
+                                  <span className="text-lg font-semibold text-gray-900">
+                                    RM{" "}
+                                    {Number(m.amount || 0).toLocaleString()}
+                                  </span>
                                 </div>
                               </div>
 
-                              {m.description && (
-                                <p className="text-gray-700 whitespace-pre-wrap">
-                                  {m.description}
-                                </p>
-                              )}
+                              {/* Description */}
+                              {m.description &&
+                                m.description.trim() !== "" && (
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                    {m.description}
+                                  </p>
+                                )}
 
-                              <div className="text-gray-600 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                              {/* Dates */}
+                              <div className="text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
                                 <div className="flex items-center gap-1">
-                                  <Calendar className="w-4 h-4" />
+                                  <Clock className="w-4 h-4" />
                                   <span>
                                     Due:{" "}
                                     {m.dueDate
-                                      ? new Date(m.dueDate).toLocaleDateString()
+                                      ? new Date(
+                                          m.dueDate
+                                        ).toLocaleDateString()
                                       : "—"}
                                   </span>
                                 </div>
@@ -2845,97 +2911,75 @@ export default function ProjectDetailsPage({
                           </Card>
                         ))}
                     </div>
-
-                    {/* Total vs Bid */}
-                    <div className="text-xs text-gray-700 font-medium pt-3 border-t">
-                      {(() => {
-                        const total = selectedProposalDetails.milestones.reduce(
-                          (sum: number, mm: any) =>
-                            sum + (Number(mm.amount) || 0),
-                          0
-                        );
-                        return (
-                          <>
-                            Milestones total: RM {total.toLocaleString()} <br />
-                            Provider bid: RM{" "}
-                            {Number(
-                              selectedProposalDetails.bidAmount || 0
-                            ).toLocaleString()}
-                          </>
-                        );
-                      })()}
-                    </div>
                   </div>
                 )}
 
               {/* Attachments */}
-              {Array.isArray(selectedProposalDetails?.attachmentUrls) &&
-                selectedProposalDetails.attachmentUrls.length > 0 && (
+              {Array.isArray(selectedProposalDetails.attachments) &&
+                selectedProposalDetails.attachments.length > 0 && (
                   <div className="mt-6">
                     <h4 className="font-semibold mb-3 flex items-center text-gray-900">
                       Attachments
                     </h4>
 
                     <div className="space-y-2">
-                      {selectedProposalDetails.attachmentUrls.map(
-                        (rawUrl: string, idx: number) => {
-                          // rawUrl can look like: "uploads\proposals\1761857633365_Screenshots.pdf"
-                          // We normalize slashes and extract filename.
-                          const normalized = rawUrl.replace(/\\/g, "/"); // -> "uploads/proposals/..."
-                          const fileName =
-                            normalized.split("/").pop() || `file-${idx + 1}`;
+                      {selectedProposalDetails.attachments.map((rawUrl: string, idx: number) => {
+                        // rawUrl can look like: "uploads\proposals\1761857633365_Screenshots.pdf"
+                        // We normalize slashes and extract filename.
+                        const normalized = rawUrl.replace(/\\/g, "/"); // -> "uploads/proposals/..."
+                        const fileName =
+                          normalized.split("/").pop() || `file-${idx + 1}`;
 
-                          // Build absolute URL to download
-                          const fullUrl = `${
-                            process.env.NEXT_PUBLIC_API_URL ||
-                            "http://localhost:4000"
-                          }/${normalized.replace(/^\//, "")}`;
+                        // Build absolute URL to download
+                        const fullUrl = `${
+                          process.env.NEXT_PUBLIC_API_URL ||
+                          "http://localhost:4000"
+                        }/${normalized.replace(/^\//, "")}`;
 
-                          return (
-                            <a
-                              key={idx}
-                              href={fullUrl}
-                              download={fileName}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
-                            >
-                              {/* Icon circle */}
-                              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
-                                {/* If you want, you can make this dynamic based on extension */}
-                                PDF
-                              </div>
+                        return (
+                          <a
+                            key={idx}
+                            href={fullUrl}
+                            download={fileName}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                          >
+                            {/* Icon circle */}
+                            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                              {/* If you want, you can make this dynamic based on extension */}
+                              PDF
+                            </div>
 
-                              {/* File info */}
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-sm font-medium text-gray-900 break-all leading-snug">
-                                  {fileName}
-                                </span>
-                                <span className="text-xs text-gray-500 leading-snug">
-                                  Click to preview / download
-                                </span>
-                              </div>
+                            {/* File info */}
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                {fileName}
+                              </span>
+                              <span className="text-xs text-gray-500 leading-snug">
+                                Click to preview / download
+                              </span>
+                            </div>
 
-                              {/* Download icon on the far right */}
-                              <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={2}
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                  <path d="M7 10l5 5 5-5" />
-                                  <path d="M12 15V3" />
-                                </svg>
-                              </div>
-                            </a>
-                          );
-                        }
-                      )}
+                            {/* Download icon on the far right */}
+                            <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <path d="M7 10l5 5 5-5" />
+                                <path d="M12 15V3" />
+                              </svg>
+                            </div>
+                          </a>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -2943,16 +2987,171 @@ export default function ProjectDetailsPage({
           )}
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setProposalDetailsOpen(false);
-                setSelectedProposalDetails(null);
-              }}
-            >
-              Close
-            </Button>
+            {selectedProposalDetails?.status === "pending" && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setRejectDialogOpen(true);
+                    setProposalDetailsOpen(false);
+                    setSelectedProposalForAction(selectedProposalDetails);
+                  }}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Reject
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleAcceptProposal(selectedProposalDetails);
+                    setProposalDetailsOpen(false);
+                  }}
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={processingId === selectedProposalDetails?.id}
+                >
+                  {processingId === selectedProposalDetails?.id ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  {processingId === selectedProposalDetails?.id
+                    ? "Accepting..."
+                    : "Accept Request"}
+                </Button>
+              </div>
+            )}
+            {selectedProposalDetails?.status !== "pending" && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setProposalDetailsOpen(false);
+                  setSelectedProposalDetails(null);
+                }}
+              >
+                Close
+              </Button>
+            )}
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Milestones Dialog (after accepting proposal) */}
+      <Dialog open={milestonesOpen} onOpenChange={setMilestonesOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit Milestones</DialogTitle>
+            <DialogDescription>
+              Company {milestoneApprovalStateModal.companyApproved ? "✓" : "✗"} ·
+              Provider {milestoneApprovalStateModal.providerApproved ? "✓" : "✗"}
+              {milestoneApprovalStateModal.milestonesLocked && " · LOCKED"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {milestonesDraft.map((m, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="grid md:grid-cols-12 gap-3">
+                    <div className="md:col-span-1">
+                      <Label>Seq</Label>
+                      <Input type="number" value={i + 1} disabled />
+                    </div>
+                    <div className="md:col-span-4">
+                      <Label>Title</Label>
+                      <Input
+                        value={m.title}
+                        onChange={(e) => {
+                          const updated = [...milestonesDraft];
+                          updated[i] = { ...updated[i], title: e.target.value };
+                          setMilestonesDraft(updated);
+                        }}
+                      />
+                    </div>
+                    <div className="md:col-span-3">
+                      <Label>Amount</Label>
+                      <Input
+                        type="number"
+                        value={String(m.amount ?? 0)}
+                        onChange={(e) => {
+                          const updated = [...milestonesDraft];
+                          updated[i] = { ...updated[i], amount: Number(e.target.value) };
+                          setMilestonesDraft(updated);
+                        }}
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <Label>Due Date</Label>
+                      <Input
+                        type="date"
+                        value={(m.dueDate || "").slice(0, 10)}
+                        onChange={(e) => {
+                          const updated = [...milestonesDraft];
+                          updated[i] = { ...updated[i], dueDate: e.target.value };
+                          setMilestonesDraft(updated);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Description</Label>
+                    <Textarea
+                      rows={2}
+                      value={m.description || ""}
+                      onChange={(e) => {
+                        const updated = [...milestonesDraft];
+                        updated[i] = { ...updated[i], description: e.target.value };
+                        setMilestonesDraft(updated);
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setMilestonesDraft(milestonesDraft.filter((_, idx) => idx !== i));
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            <div className="flex justify-between">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setMilestonesDraft([
+                    ...milestonesDraft,
+                    {
+                      sequence: milestonesDraft.length + 1,
+                      title: "",
+                      description: "",
+                      amount: 0,
+                      dueDate: new Date().toISOString().slice(0, 10),
+                    },
+                  ]);
+                }}
+              >
+                + Add Milestone
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleSaveAcceptedMilestones}
+                  disabled={savingMilestonesModal}
+                >
+                  {savingMilestonesModal ? "Saving..." : "Save Changes"}
+                </Button>
+                <Button onClick={handleApproveAcceptedMilestones}>
+                  Approve
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter />
         </DialogContent>
       </Dialog>
 

@@ -299,8 +299,11 @@ export default function ProviderOpportunitiesPage() {
       messages.push("Cover letter must be at least 20 characters.");
     }
 
-    // Milestones validation (only if user added any milestones)
-    if (form.milestones.length > 0) {
+    // Milestones validation (REQUIRED)
+    if (form.milestones.length === 0) {
+      newErrors.milestones = "At least one milestone is required.";
+      messages.push("At least one milestone is required.");
+    } else {
       // each milestone needs title, amount>0, dueDate
       form.milestones.forEach((m: Milestone, idx: number) => {
         if (!m.title || !m.title.trim()) {
@@ -1089,10 +1092,12 @@ export default function ProviderOpportunitiesPage() {
                 </p>
               </div>
 
-              {/* Project Milestones (Optional) */}
+              {/* Project Milestones (Required) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Project Milestones (Optional)</Label>
+                  <Label>
+                    Project Milestones <span className="text-red-500">*</span>
+                  </Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -1103,8 +1108,10 @@ export default function ProviderOpportunitiesPage() {
                 </div>
 
                 {proposalData.milestones.length === 0 && (
-                  <p className="text-sm text-gray-500">
-                    No milestones yet. Click “Add Milestone”.
+                  <p className={`text-sm ${
+                    proposalErrors.milestones ? "text-red-600 font-medium" : "text-gray-500"
+                  }`}>
+                    {proposalErrors.milestones || "At least one milestone is required. Click 'Add Milestone' to get started."}
                   </p>
                 )}
 
