@@ -50,6 +50,8 @@ model User {
   ReviewReply ReviewReply[]
 
   ReviewVote ReviewVote[]
+
+  settings Settings?
 }
 
 model Notification {
@@ -66,6 +68,7 @@ model ProviderProfile {
   id     String @id @default(uuid()) @db.Uuid
   user   User   @relation(fields: [userId], references: [id])
   userId String @unique @db.Uuid
+  stripeAccountId String? // Only for providers after onboarding
 
   // Profile
   bio             String?
@@ -104,6 +107,36 @@ model ProviderProfile {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("users")
+}
+
+model Settings {
+  id     Int    @id @default(autoincrement())
+  userId String @unique @db.Uuid // ✅ make it unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  // 🔔 Notifications
+  emailNotifications Boolean @default(true)
+  smsNotifications   Boolean @default(false)
+  projectUpdates     Boolean @default(true)
+  marketingEmails    Boolean @default(false)
+  weeklyReports      Boolean @default(true)
+
+  // 🛡️ Privacy
+  profileVisibility String  @default("public") // "public" | "verified" | "private"
+  showEmail         Boolean @default(false)
+  showPhone         Boolean @default(false)
+  allowMessages     Boolean @default(true)
+
+  // 💳 Billing
+  payments Payment[]
+
+  // 🔐 Security
+  twoFactorEnabled   Boolean   @default(false)
+  lastPasswordChange DateTime?
+  deletedAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CustomerProfile {
@@ -334,6 +367,7 @@ model Proposal {
   deliveryTime   Int // in days
   coverLetter    String         @db.Text
   attachmentUrls String[]       @default([]) // e.g., PDF proposal or portfolio
+  attachmentUrl String? // e.g., PDF proposal or portfolio
 
   // Provider-proposed milestones for this proposal
   milestones ProposalMilestone[]
@@ -507,6 +541,8 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   Dispute Dispute[]
+
+  Settings Settings[]
 }
 
 model Message {
@@ -668,10 +704,13 @@ enum PaymentMethod {
 }
 
 enum PaymentStatus {
+  PENDING
+  IN_PROGRESS   // 🆕 add this
   ESCROWED
   RELEASED
   REFUNDED
 }
+
 
 enum MessageType {
   text
@@ -684,4 +723,49 @@ enum MilestoneSource {
   COMPANY // milestones authored by the company on ServiceRequest
   PROVIDER // milestones authored by the provider on Proposal
   FINAL // milestones copied into Project after acceptance
+}
+
+model AdminSettings {
+  id Int @id @default(autoincrement())
+
+  // Platform Settings
+  platformName        String
+  platformDescription String?
+  supportEmail        String
+  contactPhone        String?
+  platformUrl         String?
+
+  // Financial Settings
+  platformCommission    Float @default(0)
+  withdrawalFee         Float @default(0)
+  minimumWithdrawal     Int   @default(0)
+  paymentProcessingTime Int   @default(0)
+
+  // Email (SMTP) Settings
+  smtpHost     String?
+  smtpPort     Int?    @default(587)
+  smtpUsername String?
+  smtpPassword String?
+
+  // Notification Settings
+  emailNotifications Boolean @default(true)
+  smsNotifications   Boolean @default(false)
+  pushNotifications  Boolean @default(true)
+  marketingEmails    Boolean @default(true)
+
+  // Security Settings
+  twoFactorRequired Boolean @default(false)
+  sessionTimeout    Int     @default(30)
+  passwordMinLength Int     @default(8)
+  maxLoginAttempts  Int     @default(5)
+
+  // Feature Flags
+  maintenanceMode   Boolean @default(false)
+  newRegistrations  Boolean @default(true)
+  projectCreation   Boolean @default(true)
+  paymentProcessing Boolean @default(true)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

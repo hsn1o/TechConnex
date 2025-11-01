@@ -16,7 +16,6 @@ import {
   MoreVertical,
   Loader2,
 } from "lucide-react";
-import { CustomerLayout } from "@/components/customer-layout";
 import io, { Socket } from "socket.io-client";
 import { useSearchParams } from "next/navigation";
 import { ProviderLayout } from "@/components/provider-layout";

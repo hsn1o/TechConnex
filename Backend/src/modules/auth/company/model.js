@@ -7,13 +7,14 @@ async function findUserById(id) {
 }
 
 async function createCompanyUser(dto) {
-  return prisma.user.create({
+  // 1️⃣ Create user (and optionally customerProfile)
+  const user = await prisma.user.create({
     data: {
       email: dto.email,
       password: dto.password,
       name: dto.name,
       phone: dto.phone,
-      role: { set: dto.role || ["CUSTOMER"] }, // must use { set: [...] }
+      role: { set: dto.role || ["CUSTOMER"] },
       kycStatus: dto.kycStatus || "pending_verification",
       isVerified: dto.isVerified ?? false,
       customerProfile: dto.customerProfile
@@ -32,7 +33,6 @@ async function createCompanyUser(dto) {
               annualRevenue: dto.customerProfile.annualRevenue
                 ? new Prisma.Decimal(dto.customerProfile.annualRevenue)
                 : null,
-
               fundingStage: dto.customerProfile.fundingStage || null,
               preferredContractTypes:
                 dto.customerProfile.preferredContractTypes || [],
@@ -62,6 +62,26 @@ async function createCompanyUser(dto) {
     },
     include: { customerProfile: true },
   });
+
+  // 2️⃣ Auto-create Settings for the new user
+  await prisma.settings.create({
+    data: {
+      userId: user.id,
+      // optional defaults, adjust as needed:
+      emailNotifications: true,
+      smsNotifications: false,
+      projectUpdates: true,
+      marketingEmails: false,
+      weeklyReports: true,
+      profileVisibility: "public",
+      showEmail: false,
+      showPhone: false,
+      allowMessages: true,
+    },
+  });
+
+  // 3️⃣ Return user (with profile if exists)
+  return user;
 }
 
 // Provider profile queries
@@ -100,8 +120,6 @@ async function updateCompanyUser(userId, updateData) {
     include: { customerProfile: true },
   });
 }
-
-
 
 export {
   findUserById,

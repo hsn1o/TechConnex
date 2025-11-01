@@ -30,6 +30,7 @@
     "pdf2json": "^4.0.0",
     "prisma": "^6.10.1",
     "socket.io": "^4.8.1",
+    "stripe": "^19.2.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {

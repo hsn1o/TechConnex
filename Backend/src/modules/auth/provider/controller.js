@@ -1,5 +1,5 @@
 // src/modules/auth/provider/controller.js
-import { registerProvider, becomeCustomer } from "./service.js";
+import { registerProvider, becomeCustomer, updatePassword } from "./service.js";
 import { RegisterProviderDto } from "./dto.js";
 
 async function register(req, res) {
@@ -33,8 +33,33 @@ async function becomeCustomerHandler(req, res) {
   }
 }
 
+async function updatePasswordHandler(req, res) {
+  try {
+    const userId = req.user.userId; // from authenticateToken
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Both old and new passwords are required",
+        });
+    }
+
+    await updatePassword(userId, oldPassword, newPassword);
+
+    res
+      .status(200)
+      .json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+
 export {
   register,
   // login,
   becomeCustomerHandler,
+  updatePasswordHandler
 };

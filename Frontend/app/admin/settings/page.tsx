@@ -1,66 +1,110 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
-import { Settings, Save, Shield, Bell, DollarSign, Mail, Globe, AlertTriangle } from "lucide-react"
-import { AdminLayout } from "@/components/admin-layout"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import {
+  Settings,
+  Save,
+  Shield,
+  Bell,
+  DollarSign,
+  Mail,
+  Globe,
+  AlertTriangle,
+} from "lucide-react";
+import { AdminLayout } from "@/components/admin-layout";
+import { toast } from "sonner";
 
 export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState({
-    // Platform Settings
-    platformName: "TechConnect",
-    platformDescription: "Malaysia's Premier ICT Service Platform",
-    supportEmail: "support@techconnect.my",
-    contactPhone: "+60312345678",
-    platformUrl: "https://techconnect.my",
+  const [settings, setSettings] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-    // Commission Settings
-    platformCommission: 5,
-    withdrawalFee: 0.5,
-    minimumWithdrawal: 100,
-    paymentProcessingTime: 3,
+  // ✅ Fetch settings from backend
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("http://localhost:4000/admin/settings");
+        const data = await res.json();
 
-    // Email Settings
-    smtpHost: "smtp.gmail.com",
-    smtpPort: 587,
-    smtpUsername: "noreply@techconnect.my",
-    smtpPassword: "",
+        if (data.success && data.data) {
+          setSettings(data.data);
+        } else {
+          console.error("Failed to load settings:", data.message);
+        }
+      } catch (err) {
+        console.error("Error fetching settings:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Notification Settings
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    marketingEmails: true,
+    fetchSettings();
+  }, []);
 
-    // Security Settings
-    twoFactorRequired: false,
-    sessionTimeout: 30,
-    passwordMinLength: 8,
-    maxLoginAttempts: 5,
-
-    // Feature Flags
-    maintenanceMode: false,
-    newRegistrations: true,
-    projectCreation: true,
-    paymentProcessing: true,
-  })
-
-  const handleSave = () => {
-    console.log("Saving settings:", settings)
-    // Here you would typically save to your backend
-  }
-
+  // ✅ Handle input updates
   const handleInputChange = (key: string, value: any) => {
-    setSettings((prev) => ({
+    setSettings((prev: any) => ({
       ...prev,
       [key]: value,
-    }))
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!settings) return;
+    setSaving(true);
+
+    try {
+      const res = await fetch("http://localhost:4000/admin/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(settings),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        toast.success("✅ Settings saved successfully!");
+      } else {
+        toast.error(result.message || "⚠️ Failed to save settings");
+      }
+    } catch (err) {
+      console.error("Error saving settings:", err);
+      toast.error("❌ Error saving settings. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="p-8 text-center text-gray-500">Loading settings...</div>
+      </AdminLayout>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <AdminLayout>
+        <div className="p-8 text-center text-red-500">
+          Failed to load settings from backend.
+        </div>
+      </AdminLayout>
+    );
   }
 
   return (
@@ -69,18 +113,18 @@ export default function AdminSettingsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Platform Settings</h1>
-            <p className="text-gray-600">Configure platform-wide settings and preferences</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Platform Settings
+            </h1>
+            <p className="text-gray-600">
+              Configure platform-wide settings and preferences
+            </p>
           </div>
-          <Button onClick={handleSave}>
-            <Save className="w-4 h-4 mr-2" />
-            Save Changes
-          </Button>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-2 gap-8">
           {/* Settings Navigation */}
-          <div className="lg:col-span-1">
+          {/* <div className="lg:col-span-1">
             <Card>
               <CardHeader>
                 <CardTitle>Settings Categories</CardTitle>
@@ -112,7 +156,7 @@ export default function AdminSettingsPage() {
                 </Button>
               </CardContent>
             </Card>
-          </div>
+          </div> */}
 
           {/* Settings Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -132,7 +176,9 @@ export default function AdminSettingsPage() {
                     <Input
                       id="platformName"
                       value={settings.platformName}
-                      onChange={(e) => handleInputChange("platformName", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("platformName", e.target.value)
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -140,16 +186,22 @@ export default function AdminSettingsPage() {
                     <Input
                       id="platformUrl"
                       value={settings.platformUrl}
-                      onChange={(e) => handleInputChange("platformUrl", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("platformUrl", e.target.value)
+                      }
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="platformDescription">Platform Description</Label>
+                  <Label htmlFor="platformDescription">
+                    Platform Description
+                  </Label>
                   <Textarea
                     id="platformDescription"
                     value={settings.platformDescription}
-                    onChange={(e) => handleInputChange("platformDescription", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("platformDescription", e.target.value)
+                    }
                   />
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
@@ -159,7 +211,9 @@ export default function AdminSettingsPage() {
                       id="supportEmail"
                       type="email"
                       value={settings.supportEmail}
-                      onChange={(e) => handleInputChange("supportEmail", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("supportEmail", e.target.value)
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -167,7 +221,9 @@ export default function AdminSettingsPage() {
                     <Input
                       id="contactPhone"
                       value={settings.contactPhone}
-                      onChange={(e) => handleInputChange("contactPhone", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("contactPhone", e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -181,12 +237,16 @@ export default function AdminSettingsPage() {
                   <DollarSign className="w-5 h-5" />
                   Financial Settings
                 </CardTitle>
-                <CardDescription>Commission rates and payment configuration</CardDescription>
+                <CardDescription>
+                  Commission rates and payment configuration
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="platformCommission">Platform Commission (%)</Label>
+                    <Label htmlFor="platformCommission">
+                      Platform Commission (%)
+                    </Label>
                     <Input
                       id="platformCommission"
                       type="number"
@@ -194,7 +254,12 @@ export default function AdminSettingsPage() {
                       max="20"
                       step="0.1"
                       value={settings.platformCommission}
-                      onChange={(e) => handleInputChange("platformCommission", Number.parseFloat(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "platformCommission",
+                          Number.parseFloat(e.target.value)
+                        )
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -206,30 +271,49 @@ export default function AdminSettingsPage() {
                       max="5"
                       step="0.1"
                       value={settings.withdrawalFee}
-                      onChange={(e) => handleInputChange("withdrawalFee", Number.parseFloat(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "withdrawalFee",
+                          Number.parseFloat(e.target.value)
+                        )
+                      }
                     />
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="minimumWithdrawal">Minimum Withdrawal (RM)</Label>
+                    <Label htmlFor="minimumWithdrawal">
+                      Minimum Withdrawal (RM)
+                    </Label>
                     <Input
                       id="minimumWithdrawal"
                       type="number"
                       min="50"
                       value={settings.minimumWithdrawal}
-                      onChange={(e) => handleInputChange("minimumWithdrawal", Number.parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "minimumWithdrawal",
+                          Number.parseInt(e.target.value)
+                        )
+                      }
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="paymentProcessingTime">Payment Processing (Days)</Label>
+                    <Label htmlFor="paymentProcessingTime">
+                      Payment Processing (Days)
+                    </Label>
                     <Input
                       id="paymentProcessingTime"
                       type="number"
                       min="1"
                       max="14"
                       value={settings.paymentProcessingTime}
-                      onChange={(e) => handleInputChange("paymentProcessingTime", Number.parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "paymentProcessingTime",
+                          Number.parseInt(e.target.value)
+                        )
+                      }
                     />
                   </div>
                 </div>
@@ -243,7 +327,9 @@ export default function AdminSettingsPage() {
                   <Mail className="w-5 h-5" />
                   Email Configuration
                 </CardTitle>
-                <CardDescription>SMTP settings for email delivery</CardDescription>
+                <CardDescription>
+                  SMTP settings for email delivery
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
@@ -252,7 +338,9 @@ export default function AdminSettingsPage() {
                     <Input
                       id="smtpHost"
                       value={settings.smtpHost}
-                      onChange={(e) => handleInputChange("smtpHost", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("smtpHost", e.target.value)
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -261,7 +349,12 @@ export default function AdminSettingsPage() {
                       id="smtpPort"
                       type="number"
                       value={settings.smtpPort}
-                      onChange={(e) => handleInputChange("smtpPort", Number.parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "smtpPort",
+                          Number.parseInt(e.target.value)
+                        )
+                      }
                     />
                   </div>
                 </div>
@@ -270,7 +363,9 @@ export default function AdminSettingsPage() {
                   <Input
                     id="smtpUsername"
                     value={settings.smtpUsername}
-                    onChange={(e) => handleInputChange("smtpUsername", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("smtpUsername", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -279,7 +374,9 @@ export default function AdminSettingsPage() {
                     id="smtpPassword"
                     type="password"
                     value={settings.smtpPassword}
-                    onChange={(e) => handleInputChange("smtpPassword", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("smtpPassword", e.target.value)
+                    }
                     placeholder="Enter SMTP password"
                   />
                 </div>
@@ -293,50 +390,68 @@ export default function AdminSettingsPage() {
                   <Bell className="w-5 h-5" />
                   Notification Settings
                 </CardTitle>
-                <CardDescription>Configure platform-wide notification preferences</CardDescription>
+                <CardDescription>
+                  Configure platform-wide notification preferences
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Email Notifications</Label>
-                    <p className="text-sm text-gray-500">Send email notifications to users</p>
+                    <p className="text-sm text-gray-500">
+                      Send email notifications to users
+                    </p>
                   </div>
                   <Switch
                     checked={settings.emailNotifications}
-                    onCheckedChange={(checked) => handleInputChange("emailNotifications", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("emailNotifications", checked)
+                    }
                   />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>SMS Notifications</Label>
-                    <p className="text-sm text-gray-500">Send SMS notifications for critical updates</p>
+                    <p className="text-sm text-gray-500">
+                      Send SMS notifications for critical updates
+                    </p>
                   </div>
                   <Switch
                     checked={settings.smsNotifications}
-                    onCheckedChange={(checked) => handleInputChange("smsNotifications", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("smsNotifications", checked)
+                    }
                   />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Push Notifications</Label>
-                    <p className="text-sm text-gray-500">Send browser push notifications</p>
+                    <p className="text-sm text-gray-500">
+                      Send browser push notifications
+                    </p>
                   </div>
                   <Switch
                     checked={settings.pushNotifications}
-                    onCheckedChange={(checked) => handleInputChange("pushNotifications", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("pushNotifications", checked)
+                    }
                   />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Marketing Emails</Label>
-                    <p className="text-sm text-gray-500">Send promotional and marketing emails</p>
+                    <p className="text-sm text-gray-500">
+                      Send promotional and marketing emails
+                    </p>
                   </div>
                   <Switch
                     checked={settings.marketingEmails}
-                    onCheckedChange={(checked) => handleInputChange("marketingEmails", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("marketingEmails", checked)
+                    }
                   />
                 </div>
               </CardContent>
@@ -349,41 +464,61 @@ export default function AdminSettingsPage() {
                   <Shield className="w-5 h-5" />
                   Security Settings
                 </CardTitle>
-                <CardDescription>Platform security and authentication settings</CardDescription>
+                <CardDescription>
+                  Platform security and authentication settings
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Require Two-Factor Authentication</Label>
-                    <p className="text-sm text-gray-500">Force 2FA for all admin accounts</p>
+                    <p className="text-sm text-gray-500">
+                      Force 2FA for all admin accounts
+                    </p>
                   </div>
                   <Switch
                     checked={settings.twoFactorRequired}
-                    onCheckedChange={(checked) => handleInputChange("twoFactorRequired", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("twoFactorRequired", checked)
+                    }
                   />
                 </div>
                 <Separator />
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
+                    <Label htmlFor="sessionTimeout">
+                      Session Timeout (minutes)
+                    </Label>
                     <Input
                       id="sessionTimeout"
                       type="number"
                       min="5"
                       max="480"
                       value={settings.sessionTimeout}
-                      onChange={(e) => handleInputChange("sessionTimeout", Number.parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "sessionTimeout",
+                          Number.parseInt(e.target.value)
+                        )
+                      }
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="passwordMinLength">Minimum Password Length</Label>
+                    <Label htmlFor="passwordMinLength">
+                      Minimum Password Length
+                    </Label>
                     <Input
                       id="passwordMinLength"
                       type="number"
                       min="6"
                       max="20"
                       value={settings.passwordMinLength}
-                      onChange={(e) => handleInputChange("passwordMinLength", Number.parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleInputChange(
+                          "passwordMinLength",
+                          Number.parseInt(e.target.value)
+                        )
+                      }
                     />
                   </div>
                 </div>
@@ -395,7 +530,12 @@ export default function AdminSettingsPage() {
                     min="3"
                     max="10"
                     value={settings.maxLoginAttempts}
-                    onChange={(e) => handleInputChange("maxLoginAttempts", Number.parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "maxLoginAttempts",
+                        Number.parseInt(e.target.value)
+                      )
+                    }
                   />
                 </div>
               </CardContent>
@@ -408,7 +548,9 @@ export default function AdminSettingsPage() {
                   <Globe className="w-5 h-5" />
                   Feature Management
                 </CardTitle>
-                <CardDescription>Enable or disable platform features</CardDescription>
+                <CardDescription>
+                  Enable or disable platform features
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -417,44 +559,60 @@ export default function AdminSettingsPage() {
                       Maintenance Mode
                       <AlertTriangle className="w-4 h-4 text-orange-500" />
                     </Label>
-                    <p className="text-sm text-gray-500">Put platform in maintenance mode</p>
+                    <p className="text-sm text-gray-500">
+                      Put platform in maintenance mode
+                    </p>
                   </div>
                   <Switch
                     checked={settings.maintenanceMode}
-                    onCheckedChange={(checked) => handleInputChange("maintenanceMode", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("maintenanceMode", checked)
+                    }
                   />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>New User Registrations</Label>
-                    <p className="text-sm text-gray-500">Allow new users to register</p>
+                    <p className="text-sm text-gray-500">
+                      Allow new users to register
+                    </p>
                   </div>
                   <Switch
                     checked={settings.newRegistrations}
-                    onCheckedChange={(checked) => handleInputChange("newRegistrations", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("newRegistrations", checked)
+                    }
                   />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Project Creation</Label>
-                    <p className="text-sm text-gray-500">Allow customers to create new projects</p>
+                    <p className="text-sm text-gray-500">
+                      Allow customers to create new projects
+                    </p>
                   </div>
                   <Switch
                     checked={settings.projectCreation}
-                    onCheckedChange={(checked) => handleInputChange("projectCreation", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("projectCreation", checked)
+                    }
                   />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Payment Processing</Label>
-                    <p className="text-sm text-gray-500">Enable payment processing and withdrawals</p>
+                    <p className="text-sm text-gray-500">
+                      Enable payment processing and withdrawals
+                    </p>
                   </div>
                   <Switch
                     checked={settings.paymentProcessing}
-                    onCheckedChange={(checked) => handleInputChange("paymentProcessing", checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("paymentProcessing", checked)
+                    }
                   />
                 </div>
               </CardContent>
@@ -462,14 +620,23 @@ export default function AdminSettingsPage() {
 
             {/* Save Button */}
             <div className="flex justify-end">
-              <Button onClick={handleSave} size="lg">
-                <Save className="w-4 h-4 mr-2" />
-                Save All Settings
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? (
+                  <>
+                    <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
               </Button>
             </div>
           </div>
         </div>
       </div>
     </AdminLayout>
-  )
+  );
 }

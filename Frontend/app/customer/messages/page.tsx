@@ -236,6 +236,7 @@ export default function CustomerMessagesPage() {
   // Fetch messages for a specific conversation
   const fetchMessages = async (otherUserId: string) => {
     if (!token || !otherUserId) return;
+    if (loading) return; // prevents re-fetching while still loading
 
     try {
       setLoading(true);
@@ -282,13 +283,10 @@ export default function CustomerMessagesPage() {
     if (userIdParam && chatName) {
       setSelectedChat(userIdParam);
 
-      // Check if this conversation already exists in the list
-      const existingConversation = conversations.find(
-        (c) => c.userId === userIdParam
-      );
-      if (!existingConversation) {
-        // Add to conversations list temporarily
-        setConversations((prev) => [
+      setConversations((prev) => {
+        const exists = prev.some((c) => c.userId === userIdParam);
+        if (exists) return prev;
+        return [
           ...prev,
           {
             userId: userIdParam,
@@ -299,12 +297,13 @@ export default function CustomerMessagesPage() {
             unreadCount: 0,
             online: true,
           },
-        ]);
-      }
+        ];
+      });
 
       fetchMessages(userIdParam);
     }
-  }, [userIdParam, chatName, chatAvatar, conversations]);
+    // 👇 only depend on URL params
+  }, [userIdParam, chatName, chatAvatar]);
 
   // Handle conversation selection
   const handleSelectConversation = (conversation: Conversation) => {

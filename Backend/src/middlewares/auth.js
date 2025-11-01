@@ -7,15 +7,26 @@ function authenticateToken(req, res, next) {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
     if (err) return res.status(403).json({ message: "Invalid token" });
-    // payload.roles should be an array
-    req.user = payload;
-    if (!Array.isArray(req.user.roles)) {
-      // backward compat: convert single role string to array
-      req.user.roles = req.user.role ? [req.user.role] : [];
+
+    // ✅ Normalize both possible token formats
+    if (payload.userId && !payload.id) {
+      payload.id = payload.userId;
     }
+
+    // ✅ Ensure roles array
+    if (Array.isArray(payload.role)) {
+      payload.roles = payload.role;
+    } else if (payload.role) {
+      payload.roles = [payload.role];
+    } else {
+      payload.roles = [];
+    }
+
+    req.user = payload;
     next();
   });
 }
+
 
 function authorizeRoles(...allowedRoles) {
   return (req, res, next) => {
@@ -45,5 +56,13 @@ export const authenticateSocket = async (socket, next) => {
     next();
   });
 }
+
+export const requireAdmin = (req, res, next) => {
+  const roles = req.user?.roles || [];
+  if (!roles.includes("ADMIN")) {
+    return res.status(403).json({ error: "Admin access only" });
+  }
+  next();
+};
 
 export { authenticateToken, authorizeRoles };

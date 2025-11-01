@@ -1,15 +1,40 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Home, Users, Briefcase, Shield, Settings, BarChart3, AlertTriangle, DollarSign, Menu, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-
+import type React from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Home,
+  Users,
+  Briefcase,
+  Shield,
+  Settings,
+  BarChart3,
+  AlertTriangle,
+  DollarSign,
+  Menu,
+  X,
+  Bell,
+  Badge,
+  User,
+  CreditCard,
+  LogOut,
+  Zap,
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 interface AdminLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 const NAV_ITEMS = [
@@ -21,18 +46,72 @@ const NAV_ITEMS = [
   { name: "Payments", href: "/admin/payments", icon: DollarSign },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
-]
+];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
-  const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+  // Profile state
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const handleLogout = () => {
+    // Clear user data from localStorage
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+    // Clear any other session data
+    sessionStorage.clear();
+
+    // Redirect to login page
+    router.push("/auth/login");
+  };
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
+
+  useEffect(() => {
+    const verifyAdmin = async () => {
+      if (typeof window === "undefined") return;
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        router.push("/auth/login");
+        return;
+      }
+
+      try {
+        console.log("🔑 Token from localStorage:", token);
+
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+        const res = await fetch(`${API_URL}/admin/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Unauthorized");
+
+        const data = await res.json();
+        setProfile(data);
+      } catch (err) {
+        // Token invalid or expired
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        router.push("/auth/login");
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    verifyAdmin();
+  }, [router]);
 
   const SidebarNav = (
     <nav className="flex-1 space-y-1 px-3 py-4">
       {NAV_ITEMS.map((item) => {
-        const Icon = item.icon
+        const Icon = item.icon;
         return (
           <Link
             key={item.name}
@@ -41,82 +120,235 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               isActive(item.href)
                 ? "bg-blue-100 text-blue-900 border-r-2 border-blue-600"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             )}
             onClick={() => setSidebarOpen(false)}
           >
             <Icon className="h-4 w-4 shrink-0" />
             <span className="truncate">{item.name}</span>
           </Link>
-        )
+        );
       })}
     </nav>
-  )
+  );
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-gray-600/75" onClick={() => setSidebarOpen(false)} />
-          <div className="fixed inset-y-0 left-0 flex w-full max-w-xs flex-col bg-white shadow-xl">
-            <div className="flex h-14 items-center justify-between border-b px-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-lg font-bold text-gray-900">Admin Panel</span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile sidebar */}
+      <div
+        className={`fixed inset-0 z-50 lg:hidden ${
+          sidebarOpen ? "block" : "hidden"
+        }`}
+      >
+        <div
+          className="fixed inset-0 bg-gray-600 bg-opacity-75"
+          onClick={() => setSidebarOpen(false)}
+        />
+        <div className="fixed inset-y-0 left-0 flex w-full max-w-xs flex-col bg-white">
+          <div className="flex h-16 items-center justify-between px-4 border-b">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Zap className="w-5 h-5 text-white" />
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
+              <span className="text-xl font-bold text-gray-900">
+                TechConnect
+              </span>
             </div>
-            {SidebarNav}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </Button>
           </div>
+          <nav className="flex-1 px-4 py-4 space-y-2">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  isActive(item.href)
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <item.icon className="w-5 h-5 mr-3" />
+                {item.name}
+              </Link>
+            ))}
+          </nav>
         </div>
-      )}
+      </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:w-56 lg:flex-col lg:fixed lg:inset-y-0">
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 overflow-y-auto">
-          <div className="flex items-center flex-shrink-0 px-4 py-4 border-b">
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
+        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
+          <div className="flex items-center h-16 px-4 border-b">
             <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Shield className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-900">Admin Panel</span>
+              <span className="text-xl font-bold text-gray-900">
+                TechConnect
+              </span>
             </div>
           </div>
-          {SidebarNav}
+          <nav className="flex-1 px-4 py-4 space-y-2">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  isActive(item.href)
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                <item.icon className="w-5 h-5 mr-3" />
+                {item.name}
+              </Link>
+            ))}
+          </nav>
+          {/* <div className="p-4 border-t">
+            <Link href="/customer/projects/new">
+              <Button className="w-full">
+                <Plus className="w-4 h-4 mr-2" />
+                New Project
+              </Button>
+            </Link>
+          </div> */}
+          <div className="p-4 border-t">
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 text-white">
+              <h3 className="text-sm font-medium mb-1">Need Help?</h3>
+              <p className="text-xs opacity-90 mb-3">
+                Contact our support team for assistance
+              </p>
+              <Button size="sm" variant="secondary" className="w-full">
+                Get Support
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex flex-col flex-1 lg:pl-56">
-        {/* Mobile header */}
-        <div className="sticky top-0 z-10 flex h-14 flex-shrink-0 bg-white shadow lg:hidden">
-          <button
-            type="button"
-            className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <span className="sr-only">Open sidebar</span>
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="flex flex-1 justify-between px-4">
-            <div className="flex flex-1 items-center">
-              <span className="text-lg font-semibold text-gray-900">Admin Panel</span>
+      <div className="lg:pl-64">
+        {/* Top header */}
+        <header className="bg-white border-b border-gray-200 px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden mr-2"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+              {/* <div className="hidden sm:block">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search projects, providers..."
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  />
+                </div>
+              </div> */}
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="sm" className="relative">
+                <Bell className="w-5 h-5" />
+                <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs bg-red-500">
+                  3
+                </Badge>
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 rounded-full"
+                  >
+                    <Avatar className="h-8 w-8">
+                      {profile && profile.resume && profile.resume.fileUrl ? (
+                        <AvatarImage
+                          src={`/${profile.resume.fileUrl.replace(/\\/g, "/")}`}
+                          alt={profile.name || "User"}
+                        />
+                      ) : (
+                        <AvatarImage
+                          src="/placeholder.svg?height=32&width=32"
+                          alt="User"
+                        />
+                      )}
+                      <AvatarFallback>
+                        {profile && profile.name
+                          ? profile.name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")
+                              .toUpperCase()
+                          : "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {profileLoading
+                          ? "Loading..."
+                          : profile?.name || "Unknown User"}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {profileLoading ? "Loading..." : profile?.email || "-"}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    <span>Billing</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Page content - No extra padding, content fills the space */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="h-full">
-            <div className="mx-auto max-w-full px-4 py-6 sm:px-6 lg:px-6">{children}</div>
-          </div>
+        {/* Page content */}
+        <main className="p-6">
+          {profileLoading ? (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading...</p>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>
-  )
+  );
 }

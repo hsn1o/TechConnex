@@ -24,6 +24,7 @@ import {
 import type { Provider, PortfolioItem, Review } from "./types";
 import PortfolioGrid from "./sections/PortfolioGrid";
 import ReviewsList from "./sections/ReviewsList";
+import { useRouter } from "next/navigation";
 
 export default function ProviderDetailClient({
   provider,
@@ -35,12 +36,20 @@ export default function ProviderDetailClient({
   reviews: Review[];
 }) {
   const [saved, setSaved] = useState<boolean>(!!provider.saved);
+  const router = useRouter();
 
   // Update saved state when provider prop changes (e.g., after refresh)
   useEffect(() => {
     setSaved(!!provider.saved);
   }, [provider.saved]);
 
+  const handleContact = (provider: any) => {
+    router.push(
+      `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
+        provider.name
+      )}&avatar=${encodeURIComponent(provider.avatar || "")}`
+    );
+  };
   const getUserAndToken = () => {
     if (typeof window === "undefined") return { userId: "", token: "" };
     try {
@@ -104,14 +113,16 @@ export default function ProviderDetailClient({
           >
             <Heart className={`w-4 h-4 mr-2 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}
           </Button>
-          <Link
-            href={`/customer/messages/new?to=${encodeURIComponent(provider.id)}`}
+
+          <Button
+            onClick={(e) => {
+              e.preventDefault(); // prevents Link from triggering navigation
+              handleContact(provider);
+            }}
           >
-            <Button>
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Contact
-            </Button>
-          </Link>
+            <MessageSquare className="w-4 h-4 mr-2" />
+            Contact
+          </Button>
         </div>
       </div>
 
@@ -155,11 +166,7 @@ export default function ProviderDetailClient({
                 <span>Responds in {provider.responseTime}</span>
                 <span className="flex items-center gap-2">
                   {provider.languages?.map((l) => (
-                    <Badge
-                      key={l}
-                      variant="secondary"
-                      className="text-xs"
-                    >
+                    <Badge key={l} variant="secondary" className="text-xs">
                       {l}
                     </Badge>
                   ))}
@@ -208,7 +215,9 @@ export default function ProviderDetailClient({
           <Card>
             <CardHeader>
               <CardTitle>Hire {provider.name.split(" ")[0]}</CardTitle>
-              <CardDescription>Start a project or send a message</CardDescription>
+              <CardDescription>
+                Start a project or send a message
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Link

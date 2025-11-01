@@ -35,45 +35,52 @@ export default function LoginPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL; // e.g., http://localhost:4000
 
   const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setError("");
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
-  const form = e.target as HTMLFormElement;
-  const email = (form.elements.namedItem("email") as HTMLInputElement)?.value;
-  const password = (form.elements.namedItem("password") as HTMLInputElement)?.value;
+    const form = e.target as HTMLFormElement;
+    const email = (form.elements.namedItem("email") as HTMLInputElement)?.value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement)
+      ?.value;
 
-  try {
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Login failed");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Login failed");
 
-    // ✅ Save token to both localStorage and cookies
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    Cookies.set("token", data.token, { path: "/", secure: true, sameSite: "lax" });
+      // ✅ Save token to both localStorage and cookies
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      Cookies.set("token", data.token, {
+        path: "/",
+        secure: true,
+        sameSite: "lax",
+      });
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const roles: string[] = data.user?.role || [];
-    if (roles.includes("CUSTOMER")) {
-      router.push("/customer/dashboard");
-    } else if (roles.includes("PROVIDER")) {
-      router.push("/provider/dashboard");
-    } else {
-      setError("Invalid user role");
+      const roles: string[] = data.user?.role || [];
+      if (roles.includes("CUSTOMER")) {
+        router.push("/customer/dashboard");
+      } else if (roles.includes("PROVIDER")) {
+        router.push("/provider/dashboard");
+      } else if (roles.includes("ADMIN")) {
+        router.push("/admin/dashboard");
+      } else {
+        setError("Invalid user role");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err) {
-    setError(err instanceof Error ? err.message : "Login failed");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center p-6 relative">

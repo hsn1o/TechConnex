@@ -7,6 +7,9 @@ const prisma = new PrismaClient();
 async function findUserByEmail(email) {
   return prisma.user.findUnique({
     where: { email },
+    include: {
+      settings: true, // ✅ lowercase 'settings'
+    },
   });
 }
 

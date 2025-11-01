@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { createKyc, getAllKyc, getKycById } from "./controller.js";
+import { createKyc, getAllKyc, reviewKycDocument } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 
 const router = express.Router();
@@ -23,6 +23,6 @@ const upload = multer({ storage });
 // The "fileUrl" field from FormData will map to this multer field name
 router.post("/", upload.single("file"), createKyc);
 router.get("/", authenticateToken, getAllKyc);
-router.put("/:userId", authenticateToken, getKycById);
+router.put("/:userId", authenticateToken, reviewKycDocument);
 
 export default router;

@@ -1,0 +1,33 @@
+-- CreateTable
+CREATE TABLE "AdminSettings" (
+    "id" SERIAL NOT NULL,
+    "platformName" TEXT NOT NULL,
+    "platformDescription" TEXT,
+    "supportEmail" TEXT NOT NULL,
+    "contactPhone" TEXT,
+    "platformUrl" TEXT,
+    "platformCommission" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "withdrawalFee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "minimumWithdrawal" INTEGER NOT NULL DEFAULT 0,
+    "paymentProcessingTime" INTEGER NOT NULL DEFAULT 0,
+    "smtpHost" TEXT,
+    "smtpPort" INTEGER DEFAULT 587,
+    "smtpUsername" TEXT,
+    "smtpPassword" TEXT,
+    "emailNotifications" BOOLEAN NOT NULL DEFAULT true,
+    "smsNotifications" BOOLEAN NOT NULL DEFAULT false,
+    "pushNotifications" BOOLEAN NOT NULL DEFAULT true,
+    "marketingEmails" BOOLEAN NOT NULL DEFAULT true,
+    "twoFactorRequired" BOOLEAN NOT NULL DEFAULT false,
+    "sessionTimeout" INTEGER NOT NULL DEFAULT 30,
+    "passwordMinLength" INTEGER NOT NULL DEFAULT 8,
+    "maxLoginAttempts" INTEGER NOT NULL DEFAULT 5,
+    "maintenanceMode" BOOLEAN NOT NULL DEFAULT false,
+    "newRegistrations" BOOLEAN NOT NULL DEFAULT true,
+    "projectCreation" BOOLEAN NOT NULL DEFAULT true,
+    "paymentProcessing" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AdminSettings_pkey" PRIMARY KEY ("id")
+);

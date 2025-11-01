@@ -15,7 +15,13 @@ import resumeRouter from "../modules/resume/index.js";
 import certificationsRouter from "../modules/certifications/index.js";
 import klcRoutes from "../modules/auth/KYC/index.js";
 import providerProfileRouter from "../modules/provider/profile/index.js";
+import providerEarningsRouter from "../modules/provider/billing/index.js";
 import messagesRouter from "../modules/messages/index.js";
+import settingsRouter from "../modules/settings/index.js";
+import adminRouter from "../modules/auth/admin/index.js";
+import adminSettingsRouter from "../modules/settings/admin/index.js";
+import paymentRouter from "../modules/payment/index.js";
+
 // import providerCertificateRouter from "../modules/certifications/index.js";
 
 const router = express.Router();
@@ -34,12 +40,18 @@ router.use("/provider/proposals", providerSendProposalRouter);
 router.use("/provider/opportunities", providerOpportunitiesRouter);
 router.use("/provider/milestones", providerMilestonesRouter);
 router.use("/provider/projects", providerProjectsRouter);
+router.use("/provider/earnings", providerEarningsRouter);
 // router.use("/provider/certificate", providerCertificateRouter);
 router.use("/resume", resumeRouter);
 router.use("/certifications", certificationsRouter);
 router.use("/provider/profile", providerProfileRouter);
 router.use("/messages", messagesRouter);
 router.use("/uploads", express.static("uploads"));
+router.use("/settings", settingsRouter);
+router.use("/admin", adminRouter);
+router.use("/admin/settings", adminSettingsRouter);
+router.use("/payments", paymentRouter);
+
 // Mount check-email under /api so frontend using NEXT_PUBLIC_API_BASE_URL that
 // points to http://host:PORT/api will be able to call `${API_BASE}/check-email`
 // Simple user endpoint for CustomerLayout

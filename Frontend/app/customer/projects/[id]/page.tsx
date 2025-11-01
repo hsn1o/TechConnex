@@ -1,5 +1,6 @@
 "use client";
-
+import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,6 +69,7 @@ import {
   type Milestone,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { createPaymentIntentAPI, finalizePaymentAPI } from "@/lib/api-payment";
 
 export default function ProjectDetailsPage({
   params,
@@ -827,6 +829,8 @@ export default function ProjectDetailsPage({
       setPaymentDialogOpen(true);
     }
   };
+  const stripe = useStripe();
+  const elements = useElements();
 
   const handleAcceptProposal = async (proposal: any) => {
     try {
@@ -1037,11 +1041,69 @@ export default function ProjectDetailsPage({
   // Process milestone payment
   const handleProcessPayment = async () => {
     if (!selectedMilestoneForPayment) return;
+    if (!stripe || !elements) {
+      toast({
+        title: "Payment failed",
+        description: "Stripe is not loaded yet. Try again.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setProcessingPayment(true);
-      await payMilestone(selectedMilestoneForPayment.id);
 
+      // 1) Create PaymentIntent on backend
+      // Make sure milestone object contains projectId (fallback to project?.id)
+      const projectId = selectedMilestoneForPayment.projectId ?? project?.id;
+      if (!projectId) throw new Error("Missing project id for payment");
+
+      const createResp = await createPaymentIntentAPI({
+        projectId,
+        milestoneId: selectedMilestoneForPayment.id,
+        amount: Number(selectedMilestoneForPayment.amount),
+        currency: project?.currency ?? "MYR",
+      });
+
+      const { clientSecret, paymentId } = createResp;
+
+      if (!clientSecret || !paymentId) {
+        throw new Error("Missing clientSecret or paymentId from server");
+      }
+
+      // 2) Confirm PaymentIntent with CardElement (collects card data from customer)
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error("Could not find card input");
+
+      const confirmResult = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+        // optional: receipt_email: customerEmail,
+      });
+
+      if (confirmResult.error) {
+        // Payment failed or requires action
+        // Notify server that payment failed (optional)
+        try {
+          await finalizePaymentAPI({ paymentId, success: false });
+        } catch (err) {
+          console.warn("Failed to finalize failed payment in backend:", err);
+        }
+
+        throw new Error(confirmResult.error.message || "Payment failed");
+      }
+
+      const paymentIntent = confirmResult.paymentIntent;
+      if (paymentIntent?.status !== "succeeded") {
+        // If status is requires_action, you may need to handle 3DS flow. confirmCardPayment handles that automatically.
+        throw new Error(`Payment not completed: ${paymentIntent?.status}`);
+      }
+
+      // 3) Tell backend to mark payment as completed (and optionally transfer to provider)
+      await finalizePaymentAPI({ paymentId, success: true });
+
+      // Success UI
       toast({
         title: "Payment processed",
         description: `Payment of RM ${selectedMilestoneForPayment.amount} has been processed successfully.`,
@@ -1050,13 +1112,14 @@ export default function ProjectDetailsPage({
       setPaymentDialogOpen(false);
       setSelectedMilestoneForPayment(null);
 
-      // Reload project data to reflect the change
+      // Refresh data
       window.location.reload();
-    } catch (e) {
+    } catch (err) {
+      console.error("Payment error:", err);
       toast({
         title: "Payment failed",
         description:
-          e instanceof Error ? e.message : "Could not process payment",
+          err instanceof Error ? err.message : "Could not process payment",
         variant: "destructive",
       });
     } finally {
@@ -2527,7 +2590,7 @@ export default function ProjectDetailsPage({
       </Dialog>
 
       {/* Payment Dialog */}
-      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+      {/* <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Process Milestone Payment</DialogTitle>
@@ -2593,6 +2656,71 @@ export default function ProjectDetailsPage({
                   Process Payment
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog> */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Payment</DialogTitle>
+            <DialogDescription>
+              You are about to process payment for milestone:{" "}
+              <strong>{selectedMilestoneForPayment?.title}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedMilestoneForPayment && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">
+                  {selectedMilestoneForPayment.title}
+                </h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  {selectedMilestoneForPayment.description}
+                </p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">Amount to pay:</span>
+                  <span className="text-lg font-semibold text-green-600">
+                    RM {selectedMilestoneForPayment.amount}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg border">
+                <p className="text-sm mb-2">Enter card details</p>
+                <div className="p-3 border rounded">
+                  <CardElement
+                    options={{
+                      style: {
+                        base: { fontSize: "16px", color: "#111827" },
+                        invalid: { color: "#ef4444" },
+                      },
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Use Stripe test card <code>4242 4242 4242 4242</code> with any
+                  future expiry & CVC to simulate a successful payment.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPaymentDialogOpen(false)}
+              disabled={processingPayment}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleProcessPayment}
+              disabled={processingPayment}
+            >
+              {processingPayment ? "Processing..." : "Confirm Payment"}
             </Button>
           </DialogFooter>
         </DialogContent>

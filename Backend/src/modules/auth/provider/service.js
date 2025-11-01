@@ -19,6 +19,7 @@ async function registerProvider(dto) {
 
   // Pass entire DTO, but overwrite the password
   return createProviderUser({ ...dto, password: hashedPassword });
+  
 }
 
 
@@ -49,8 +50,25 @@ async function becomeCustomer(userId, { description = "", industry = "" }) {
 
   return { alreadyCustomer: false, profile };
 }
+async function updatePassword(userId, oldPassword, newPassword) {
+  const user = await findUserById(userId);
+  if (!user) throw new Error("User not found");
+
+  // Verify old password
+  const match = await bcrypt.compare(oldPassword, user.password);
+  if (!match) throw new Error("Old password is incorrect");
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  // Update password
+  const updatedUser = await updateCompanyUser(userId, { password: hashedPassword });
+  return updatedUser;
+}
+
 
 export {
   registerProvider,
   becomeCustomer,
+  updatePassword
 };
