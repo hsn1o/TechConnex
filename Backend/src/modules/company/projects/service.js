@@ -206,10 +206,22 @@ export async function getProjects(dto) {
       type: "ServiceRequest",
     }));
 
-    const projectsWithType = projects.map(item => ({
-      ...item,
-      type: "Project",
-    }));
+    // Calculate progress, completedMilestones, and totalMilestones for each project (like provider side)
+    const projectsWithType = projects.map(item => {
+      const totalMilestones = item.milestones?.length || 0;
+      const completedMilestones = item.milestones?.filter(
+        (m) => m.status === "APPROVED" || m.status === "PAID"
+      ).length || 0;
+      const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+      
+      return {
+        ...item,
+        type: "Project",
+        progress,
+        completedMilestones,
+        totalMilestones,
+      };
+    });
 
     // Combine and sort by creation date
     const combinedItems = [...serviceRequestsWithType, ...projectsWithType]
@@ -385,9 +397,21 @@ export async function getProjectById(projectId, customerId) {
       throw new Error("Project or ServiceRequest not found");
     }
 
+    // Find the original ServiceRequest that created this Project
+    const originalServiceRequest = await prisma.serviceRequest.findFirst({
+      where: {
+        projectId: project.id,
+        customerId: customerId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
     return {
       ...project,
       type: "Project",
+      serviceRequestId: originalServiceRequest?.id || null, // Include the original ServiceRequest ID for fetching proposals
     };
   } catch (error) {
     console.error("Error fetching project:", error);
@@ -563,6 +587,110 @@ export async function updateProjectDetails(id, customerId, dto) {
 /**
  * Approve individual milestone (company can approve submitted milestones)
  */
+/**
+ * Request changes for a submitted milestone (reject and send back for revision)
+ */
+export async function requestMilestoneChanges(dto) {
+  try {
+    // Verify milestone belongs to company's project
+    const milestone = await prisma.milestone.findFirst({
+      where: {
+        id: dto.milestoneId,
+        project: {
+          customerId: dto.customerId,
+        },
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            title: true,
+            providerId: true,
+          },
+        },
+      },
+    });
+
+    if (!milestone) {
+      throw new Error("Milestone not found or you don't have permission to request changes");
+    }
+
+    // Check if milestone is in SUBMITTED status
+    if (milestone.status !== "SUBMITTED") {
+      throw new Error("Milestone must be in SUBMITTED status to request changes");
+    }
+
+    // Prepare current submission to save to history
+    // Revision number should represent which submission this is (1, 2, 3...)
+    // Current milestone.revisionNumber is the number BEFORE this submission (0, 1, 2...)
+    // So the submission number is (revisionNumber + 1)
+    const currentSubmissionRevisionNumber = (milestone.revisionNumber || 0) + 1;
+    
+    const currentSubmission = {
+      revisionNumber: currentSubmissionRevisionNumber, // Save as submission number (1, 2, 3...)
+      submitDeliverables: milestone.submitDeliverables,
+      submissionNote: milestone.submissionNote,
+      submissionAttachmentUrl: milestone.submissionAttachmentUrl,
+      submittedAt: milestone.submittedAt,
+      requestedChangesAt: new Date(),
+      requestedChangesBy: dto.customerId,
+      requestedChangesReason: dto.reason || null,
+    };
+
+    // Get existing submission history
+    const existingHistory = Array.isArray(milestone.submissionHistory) 
+      ? milestone.submissionHistory 
+      : [];
+
+    // Add current submission to history
+    const updatedHistory = [...existingHistory, currentSubmission];
+
+    // Update milestone: reset status to IN_PROGRESS, save to history, increment revision
+    const updatedMilestone = await prisma.milestone.update({
+      where: { id: dto.milestoneId },
+      data: {
+        status: "IN_PROGRESS",
+        revisionNumber: (milestone.revisionNumber || 0) + 1,
+        submissionHistory: updatedHistory,
+        // Clear current submission fields (provider will submit again)
+        submitDeliverables: null,
+        submissionNote: null,
+        submissionAttachmentUrl: null,
+        submittedAt: null,
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            title: true,
+            provider: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Create notification for provider
+    await prisma.notification.create({
+      data: {
+        userId: milestone.project.providerId,
+        type: "milestone",
+        content: `Changes requested for milestone "${milestone.title}". Please review and resubmit.${dto.reason ? ` Reason: ${dto.reason}` : ""}`,
+      },
+    });
+
+    return updatedMilestone;
+  } catch (error) {
+    console.error("Error requesting milestone changes:", error);
+    throw error;
+  }
+}
+
 export async function approveIndividualMilestone(dto) {
   try {
     // Verify milestone belongs to company's project

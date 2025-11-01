@@ -473,9 +473,15 @@ model Milestone {
   Proposal     Proposal? @relation(fields: [proposalId], references: [id])
   proposalId   String?   @db.Uuid
   deliverables Json?
+  startDeliverables Json? @map("start_deliverables") // When status changes from LOCKED to IN_PROGRESS
+  submitDeliverables Json? @map("submit_deliverables") // When status changes from IN_PROGRESS to SUBMITTED
   approvedAt   DateTime?
   approvedBy   String?   @db.Uuid
   submittedAt  DateTime?
+  submissionAttachmentUrl String? @map("submission_attachment_url")
+  submissionNote          String? @db.Text @map("submission_note")
+  revisionNumber          Int      @default(0) @map("revision_number") // Track submission iterations
+  submissionHistory       Json?   @map("submission_history") // Array of previous submissions
 }
 
 model Payment {

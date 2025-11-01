@@ -40,7 +40,14 @@ export async function getProjectMilestones(projectId, providerId) {
         amount: m.amount,
         dueDate: m.dueDate,
         order: m.order,
-        status: m.status
+        status: m.status,
+        startDeliverables: m.startDeliverables,
+        submitDeliverables: m.submitDeliverables,
+        submissionAttachmentUrl: m.submissionAttachmentUrl,
+        submissionNote: m.submissionNote,
+        submittedAt: m.submittedAt,
+        revisionNumber: m.revisionNumber,
+        submissionHistory: m.submissionHistory
       })),
       milestonesLocked: project.milestonesLocked,
       companyApproved: project.companyApproved,

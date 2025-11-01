@@ -8,6 +8,7 @@ import {
   getProjectStatsController,
 } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { uploadMilestoneAttachment } from "../../../middlewares/uploadMilestoneAttachment.js";
 
 const router = express.Router();
 
@@ -21,6 +22,6 @@ router.get("/:id", getProjectController);
 router.put("/:id/status", updateProjectStatusController);
 
 // Milestone management routes
-router.put("/milestones/:id/status", updateMilestoneStatusController);
+router.put("/milestones/:id/status", uploadMilestoneAttachment, updateMilestoneStatusController);
 
 export default router;

@@ -8,6 +8,7 @@ import {
   updateServiceRequestMilestones,
   updateProjectDetails,
   approveIndividualMilestone,
+  requestMilestoneChanges,
   payMilestone
 } from "./service.js";
 import { CreateProjectDto, GetProjectsDto, UpdateProjectDto  } from "./dto.js";
@@ -243,6 +244,44 @@ export async function updateProjectDetailsController(req, res) {
 /**
  * POST /api/company/projects/milestones/:id/approve - Approve individual milestone
  */
+/**
+ * POST /api/company/projects/milestones/:id/request-changes - Request changes for a submitted milestone
+ */
+export async function requestMilestoneChangesController(req, res) {
+  try {
+    const milestoneId = req.params.id;
+    const customerId = req.user.userId;
+    const { reason } = req.body;
+
+    if (!milestoneId) {
+      return res.status(400).json({
+        success: false,
+        message: "Milestone ID is required",
+      });
+    }
+
+    const dto = {
+      milestoneId,
+      customerId,
+      reason,
+    };
+
+    const milestone = await requestMilestoneChanges(dto);
+
+    res.json({
+      success: true,
+      message: "Changes requested successfully. Provider will be notified.",
+      milestone,
+    });
+  } catch (error) {
+    console.error("Error in requestMilestoneChangesController:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 export async function approveIndividualMilestoneController(req, res) {
   try {
     const milestoneId = req.params.id;

@@ -498,17 +498,46 @@ export async function updateProviderProjectStatus(id: string, status: string) {
   return data;
 }
 
-export async function updateProviderMilestoneStatus(milestoneId: string, status: string, deliverables?: any) {
+export async function updateProviderMilestoneStatus(
+  milestoneId: string, 
+  status: string, 
+  deliverables?: any,
+  submissionNote?: string,
+  attachment?: File
+) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
 
+  // Use FormData if there's an attachment, otherwise use JSON
+  const useFormData = attachment !== undefined;
+
+  let body: FormData | string;
+  let headers: HeadersInit = {
+    "Authorization": `Bearer ${token}`,
+  };
+
+  if (useFormData) {
+    body = new FormData();
+    body.append("status", status);
+    if (deliverables) {
+      body.append("deliverables", JSON.stringify(deliverables));
+    }
+    if (submissionNote) {
+      body.append("submissionNote", submissionNote);
+    }
+    if (attachment) {
+      body.append("attachment", attachment);
+    }
+    // Don't set Content-Type for FormData - browser will set it with boundary
+  } else {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify({ status, deliverables, submissionNote });
+  }
+
   const res = await fetch(`${API_BASE}/provider/projects/milestones/${milestoneId}/status`, {
     method: "PUT",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status, deliverables }),
+    headers,
+    body,
   });
   
   const data = await res.json();
@@ -581,6 +610,13 @@ export type Milestone = {
   order?: number;
   completedAt?: string;
   progress?: number;
+  startDeliverables?: any; // When starting work (LOCKED -> IN_PROGRESS)
+  submitDeliverables?: any; // When submitting work (IN_PROGRESS -> SUBMITTED)
+  submissionAttachmentUrl?: string;
+  submissionNote?: string;
+  submittedAt?: string;
+  revisionNumber?: number; // Track submission iterations
+  submissionHistory?: any[]; // Array of previous submissions
 };
 
 function getToken() {
@@ -606,6 +642,13 @@ export async function getCompanyProjectMilestones(projectId: string) {
       dueDate: string;
       order: number;
       status: string;
+      startDeliverables?: any;
+      submitDeliverables?: any;
+      submissionAttachmentUrl?: string;
+      submissionNote?: string;
+      submittedAt?: string;
+      revisionNumber?: number;
+      submissionHistory?: any[];
     }>;
     milestonesLocked: boolean;
     companyApproved: boolean;
@@ -654,6 +697,21 @@ export async function approveIndividualMilestone(milestoneId: string) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "Failed to approve milestone");
+  return data;
+}
+
+export async function requestMilestoneChanges(milestoneId: string, reason?: string) {
+  const token = getToken(); if (!token) throw new Error("Not authenticated");
+  const res = await fetch(`${API_BASE}/company/projects/milestones/${milestoneId}/request-changes`, {
+    method: "POST",
+    headers: { 
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to request milestone changes");
   return data;
 }
 

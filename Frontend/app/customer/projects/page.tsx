@@ -174,11 +174,9 @@ export default function CustomerProjectsPage() {
         }
         return 0
       case "progress":
-        // For projects, calculate progress based on milestones
-        const aProgress = a.type === "Project" && a.milestones ? 
-          (a.milestones.filter((m: any) => m.status === "APPROVED").length / a.milestones.length) * 100 : 0
-        const bProgress = b.type === "Project" && b.milestones ? 
-          (b.milestones.filter((m: any) => m.status === "APPROVED").length / b.milestones.length) * 100 : 0
+        // For projects, use the progress field (already calculated by backend)
+        const aProgress = a.type === "Project" ? (a.progress || 0) : 0
+        const bProgress = b.type === "Project" ? (b.progress || 0) : 0
         return bProgress - aProgress
       default:
         return 0
@@ -563,16 +561,16 @@ const handleSaveProject = async () => {
                       </div>
                     </div>
 
-                    {project.type === "Project" && project.status === "IN_PROGRESS" && project.milestones && (
+                    {project.type === "Project" && project.status === "IN_PROGRESS" && (
                       <div>
                         <div className="flex justify-between text-sm mb-1">
-                          <span>Progress</span>
+                          <span>Progress: {project.progress || 0}%</span>
                           <span>
-                            {Math.round((project.milestones.filter((m: any) => m.status === "APPROVED").length / project.milestones.length) * 100)}%
+                            {project.completedMilestones || 0}/{project.totalMilestones || 0} milestones
                           </span>
                         </div>
                         <Progress 
-                          value={(project.milestones.filter((m: any) => m.status === "APPROVED").length / project.milestones.length) * 100} 
+                          value={project.progress || 0} 
                           className="h-2" 
                         />
                       </div>
@@ -596,9 +594,9 @@ const handleSaveProject = async () => {
                         <Calendar className="w-4 h-4 mr-1" />
                         Created: {new Date(project.createdAt).toLocaleDateString()}
                       </div>
-                      {project.type === "Project" && project.milestones && (
+                      {project.type === "Project" && (
                         <span>
-                          {project.milestones.filter((m: any) => m.status === "APPROVED").length}/{project.milestones.length} milestones
+                          {project.completedMilestones || 0}/{project.totalMilestones || 0} milestones
                         </span>
                       )}
                     </div>
@@ -693,16 +691,16 @@ const handleSaveProject = async () => {
                               RM{project.budgetMin.toLocaleString()} - RM{project.budgetMax.toLocaleString()}
                             </p>
                           </div>
-                          {project.type === "Project" && project.status === "IN_PROGRESS" && project.milestones && (
+                          {project.type === "Project" && project.status === "IN_PROGRESS" && (
                             <div className="w-24">
                               <div className="flex justify-between text-xs mb-1">
-                                <span>Progress</span>
+                                <span>Progress: {project.progress || 0}%</span>
                                 <span>
-                                  {Math.round((project.milestones.filter((m: any) => m.status === "APPROVED").length / project.milestones.length) * 100)}%
+                                  {project.completedMilestones || 0}/{project.totalMilestones || 0}
                                 </span>
                               </div>
                               <Progress 
-                                value={(project.milestones.filter((m: any) => m.status === "APPROVED").length / project.milestones.length) * 100} 
+                                value={project.progress || 0} 
                                 className="h-2" 
                               />
                             </div>

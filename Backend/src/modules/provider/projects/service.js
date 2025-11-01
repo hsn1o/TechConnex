@@ -176,6 +176,33 @@ export async function getProviderProjectById(projectId, providerId) {
       throw new Error("Project not found or you don't have permission to access it");
     }
 
+    // Find the ServiceRequest that created this Project to get the proposal
+    const serviceRequest = await prisma.serviceRequest.findFirst({
+      where: {
+        projectId: project.id,
+      },
+      select: {
+        id: true,
+        acceptedProposalId: true,
+      },
+    });
+
+    // Find the proposal that was accepted to create this project
+    let proposal = null;
+    if (serviceRequest?.acceptedProposalId) {
+      proposal = await prisma.proposal.findFirst({
+        where: {
+          id: serviceRequest.acceptedProposalId,
+          providerId: providerId, // Ensure it's the provider's proposal
+        },
+        select: {
+          id: true,
+          attachmentUrls: true,
+          createdAt: true, // Use createdAt instead of submittedAt
+        },
+      });
+    }
+
     // Calculate progress
     const totalMilestones = project.milestones.length;
     const completedMilestones = project.milestones.filter(
@@ -188,6 +215,7 @@ export async function getProviderProjectById(projectId, providerId) {
       progress,
       completedMilestones,
       totalMilestones,
+      proposal: proposal, // Include proposal with attachments
     };
   } catch (error) {
     console.error("Error fetching provider project:", error);
@@ -276,14 +304,43 @@ export async function updateMilestoneStatus(dto) {
       throw new Error("Milestone not found or you don't have permission to update it");
     }
 
+    // Prepare update data
+    const updateData = {
+      status: dto.status,
+      submittedAt: dto.status === "SUBMITTED" ? new Date() : null,
+    };
+
+    // Save deliverables to appropriate field based on status transition
+    if (dto.status === "IN_PROGRESS" && milestone.status === "LOCKED") {
+      // Starting work - save to startDeliverables
+      if (dto.deliverables) {
+        updateData.startDeliverables = dto.deliverables;
+      }
+    } else if (dto.status === "SUBMITTED" && milestone.status === "IN_PROGRESS") {
+      // Submitting work - save to submitDeliverables
+      if (dto.deliverables) {
+        updateData.submitDeliverables = dto.deliverables;
+      }
+      // Add attachment and note when submitting (these persist even if status changes)
+      if (dto.submissionAttachmentUrl) {
+        updateData.submissionAttachmentUrl = dto.submissionAttachmentUrl;
+      }
+      if (dto.submissionNote) {
+        updateData.submissionNote = dto.submissionNote;
+      }
+      // Note: revisionNumber is incremented when company requests changes, not when provider submits
+    } else if (dto.deliverables) {
+      // For other status changes, keep deliverables in legacy field for backward compatibility
+      updateData.deliverables = dto.deliverables;
+    }
+    
+    // Note: We don't clear submissionAttachmentUrl, submissionNote, startDeliverables, or submitDeliverables
+    // once set, they persist for reference even after status changes (unless company requests changes)
+
     // Update milestone
     const updatedMilestone = await prisma.milestone.update({
       where: { id: dto.milestoneId },
-      data: {
-        status: dto.status,
-        deliverables: dto.deliverables,
-        submittedAt: dto.status === "SUBMITTED" ? new Date() : null,
-      },
+      data: updateData,
       include: {
         project: {
           select: {
@@ -307,12 +364,30 @@ export async function updateMilestoneStatus(dto) {
         data: {
           userId: milestone.project.customerId,
           type: "milestone",
-          content: `Milestone "${milestone.title}" has been submitted for review`,
+          content: `Milestone "${milestone.title}" has been submitted for review${dto.submissionAttachmentUrl ? " with attachment" : ""}`,
         },
       });
     }
 
-    return updatedMilestone;
+    // Return milestone with all relevant fields including attachment info
+    return {
+      id: updatedMilestone.id,
+      title: updatedMilestone.title,
+      description: updatedMilestone.description,
+      amount: updatedMilestone.amount,
+      dueDate: updatedMilestone.dueDate,
+      order: updatedMilestone.order,
+      status: updatedMilestone.status,
+      startDeliverables: updatedMilestone.startDeliverables,
+      submitDeliverables: updatedMilestone.submitDeliverables,
+      submissionAttachmentUrl: updatedMilestone.submissionAttachmentUrl,
+      submissionNote: updatedMilestone.submissionNote,
+      submittedAt: updatedMilestone.submittedAt,
+      revisionNumber: updatedMilestone.revisionNumber,
+      submissionHistory: updatedMilestone.submissionHistory,
+      deliverables: updatedMilestone.deliverables,
+      project: updatedMilestone.project,
+    };
   } catch (error) {
     console.error("Error updating milestone status:", error);
     throw error;

@@ -73,6 +73,8 @@ export class UpdateMilestoneStatusDto {
     this.providerId = data.providerId;
     this.status = data.status;
     this.deliverables = data.deliverables;
+    this.submissionNote = data.submissionNote; // Optional note when submitting
+    this.submissionAttachmentUrl = data.submissionAttachmentUrl; // Attachment file path
   }
 
   validate() {
@@ -94,9 +96,8 @@ export class UpdateMilestoneStatusDto {
       errors.push("Invalid status. Must be LOCKED, IN_PROGRESS, SUBMITTED, or CANCELLED");
     }
 
-    if (this.status === "SUBMITTED" && !this.deliverables) {
-      errors.push("Deliverables are required when submitting a milestone");
-    }
+    // Note and attachment are optional, but if status is SUBMITTED, we encourage them
+    // (not required, but helpful)
 
     if (errors.length > 0) {
       throw new Error(errors.join(", "));

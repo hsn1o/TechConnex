@@ -27,7 +27,10 @@ import {
   AlertCircle,
   Loader2,
   Upload,
-  Send
+  Send,
+  Paperclip,
+  Download,
+  FileText
 } from "lucide-react"
 import { ProviderLayout } from "@/components/provider-layout"
 import { getProviderProjectById, updateProviderProjectStatus, updateProviderMilestoneStatus, getProviderProjectMilestones, updateProviderProjectMilestones, approveProviderMilestones, type Milestone } from "@/lib/api"
@@ -42,6 +45,9 @@ export default function ProviderProjectDetailsPage() {
   const [isMilestoneDialogOpen, setIsMilestoneDialogOpen] = useState(false)
   const [selectedMilestone, setSelectedMilestone] = useState<any>(null)
   const [milestoneDeliverables, setMilestoneDeliverables] = useState("")
+  const [submitDeliverables, setSubmitDeliverables] = useState("")
+  const [submissionNote, setSubmissionNote] = useState("")
+  const [submissionAttachment, setSubmissionAttachment] = useState<File | null>(null)
   const [updating, setUpdating] = useState(false)
   
   // Project milestone management
@@ -88,7 +94,18 @@ export default function ProviderProjectDetailsPage() {
         const milestoneData = await getProviderProjectMilestones(project.id);
         setProjectMilestones(
           Array.isArray(milestoneData.milestones) 
-            ? milestoneData.milestones.map(m => ({ ...m, sequence: m.order }))
+            ? milestoneData.milestones.map((m: any) => ({ 
+                ...m, 
+                sequence: m.order,
+                // Ensure all milestone fields are included
+                submissionAttachmentUrl: m.submissionAttachmentUrl,
+                submissionNote: m.submissionNote,
+                submittedAt: m.submittedAt,
+                startDeliverables: m.startDeliverables,
+                submitDeliverables: m.submitDeliverables,
+                revisionNumber: m.revisionNumber,
+                submissionHistory: m.submissionHistory,
+              }))
             : []
         );
         setMilestoneApprovalState({
@@ -232,10 +249,25 @@ export default function ProviderProjectDetailsPage() {
   const handleMilestoneUpdate = async (status: string) => {
     try {
       setUpdating(true)
+      // Determine which deliverables to use based on status transition
+      let deliverables = undefined;
+      if (status === "IN_PROGRESS" && selectedMilestone?.status === "LOCKED") {
+        // Starting work - use milestoneDeliverables (start deliverables)
+        deliverables = milestoneDeliverables ? { description: milestoneDeliverables } : undefined;
+      } else if (status === "SUBMITTED" && selectedMilestone?.status === "IN_PROGRESS") {
+        // Submitting work - use submitDeliverables
+        deliverables = submitDeliverables ? { description: submitDeliverables } : undefined;
+      } else {
+        // Fallback to milestoneDeliverables for other cases
+        deliverables = milestoneDeliverables ? { description: milestoneDeliverables } : undefined;
+      }
+      
       const response = await updateProviderMilestoneStatus(
         selectedMilestone.id, 
         status, 
-        milestoneDeliverables ? { description: milestoneDeliverables } : undefined
+        deliverables,
+        submissionNote || undefined,
+        submissionAttachment || undefined
       )
       
       if (response.success) {
@@ -251,6 +283,9 @@ export default function ProviderProjectDetailsPage() {
         setIsMilestoneDialogOpen(false)
         setSelectedMilestone(null)
         setMilestoneDeliverables("")
+        setSubmitDeliverables("")
+        setSubmissionNote("")
+        setSubmissionAttachment(null)
       }
     } catch (err) {
       toast({
@@ -418,6 +453,7 @@ export default function ProviderProjectDetailsPage() {
               <TabsList>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="milestones">Milestones</TabsTrigger>
+                <TabsTrigger value="files">Files</TabsTrigger>
                 <TabsTrigger value="messages">Messages</TabsTrigger>
               </TabsList>
 
@@ -540,8 +576,8 @@ export default function ProviderProjectDetailsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {project.milestones && project.milestones.length > 0 ? (
-                        project.milestones.map((milestone: any, index: number) => (
+                      {projectMilestones && projectMilestones.length > 0 ? (
+                        projectMilestones.map((milestone: any, index: number) => (
                           <div key={milestone.id} className="border rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-3">
@@ -595,12 +631,391 @@ export default function ProviderProjectDetailsPage() {
                                 )}
                               </div>
                             </div>
+                            
+                            {/* Show start deliverables if available (persists even after status changes) */}
+                            {milestone.startDeliverables && (
+                              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <p className="text-sm font-medium text-green-900 mb-1">
+                                  📋 Plan / Deliverables (When Starting Work):
+                                </p>
+                                <p className="text-sm text-green-800 whitespace-pre-wrap">
+                                  {typeof milestone.startDeliverables === 'object' && milestone.startDeliverables.description
+                                    ? milestone.startDeliverables.description
+                                    : JSON.stringify(milestone.startDeliverables)}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Show submit deliverables if available (persists even after status changes) */}
+                            {milestone.submitDeliverables && (
+                              <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                <p className="text-sm font-medium text-purple-900 mb-1">
+                                  ✅ Deliverables / Completion Notes (When Submitting):
+                                </p>
+                                <p className="text-sm text-purple-800 whitespace-pre-wrap">
+                                  {typeof milestone.submitDeliverables === 'object' && milestone.submitDeliverables.description
+                                    ? milestone.submitDeliverables.description
+                                    : JSON.stringify(milestone.submitDeliverables)}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Show submission note if available (persists even after status changes) */}
+                            {milestone.submissionNote && (
+                              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm font-medium text-blue-900 mb-1">
+                                  📝 Submission Note:
+                                </p>
+                                <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                                  {milestone.submissionNote}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {/* Show latest requested changes reason if available (persists even after status changes) */}
+                            {milestone.submissionHistory && Array.isArray(milestone.submissionHistory) && milestone.submissionHistory.length > 0 && (
+                              (() => {
+                                const latestRequest = milestone.submissionHistory[milestone.submissionHistory.length - 1];
+                                if (latestRequest?.requestedChangesReason) {
+                                  return (
+                                    <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                      <p className="text-sm font-medium text-orange-900 mb-1">
+                                        🔄 Latest Request for Changes (Revision #{latestRequest.revisionNumber || milestone.submissionHistory.length}):
+                                      </p>
+                                      <p className="text-sm text-orange-800 whitespace-pre-wrap">
+                                        {latestRequest.requestedChangesReason}
+                                      </p>
+                                      {latestRequest.requestedChangesAt && (
+                                        <p className="text-xs text-orange-600 mt-2">
+                                          Requested on: {new Date(latestRequest.requestedChangesAt).toLocaleString()}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()
+                            )}
+                            
+                            {/* Show attachment if available (persists even after status changes) */}
+                            {milestone.submissionAttachmentUrl && (
+                              <div className="mt-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Paperclip className="w-4 h-4 text-gray-600" />
+                                  <span className="text-sm font-medium text-gray-900">
+                                    📎 Submission Attachment
+                                  </span>
+                                </div>
+                                <a
+                                  href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/${milestone.submissionAttachmentUrl.replace(/\\/g, "/").replace(/^\//, "")}`}
+                                  download={(() => {
+                                    const normalized = milestone.submissionAttachmentUrl.replace(/\\/g, "/");
+                                    return normalized.split("/").pop() || "attachment";
+                                  })()}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                                >
+                                  {/* Icon circle */}
+                                  <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                                    PDF
+                                  </div>
+                                  
+                                  {/* File info */}
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                      {(() => {
+                                        const normalized = milestone.submissionAttachmentUrl.replace(/\\/g, "/");
+                                        return normalized.split("/").pop() || "attachment";
+                                      })()}
+                                    </span>
+                                    <span className="text-xs text-gray-500 leading-snug">
+                                      Click to preview / download
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Download icon */}
+                                  <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth={2}
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                      <path d="M7 10l5 5 5-5" />
+                                      <path d="M12 15V3" />
+                                    </svg>
+                                  </div>
+                                </a>
+                              </div>
+                            )}
+                            
+                            {/* Show submission history if available (persists even after status changes) */}
+                            {milestone.submissionHistory && Array.isArray(milestone.submissionHistory) && milestone.submissionHistory.length > 0 && (
+                              <div className="mt-4 border-t pt-4">
+                                <p className="text-sm font-semibold text-gray-900 mb-3">
+                                  📚 Previous Submission History:
+                                </p>
+                                <div className="space-y-3">
+                                  {milestone.submissionHistory.map((history: any, idx: number) => {
+                                    // Calculate revision number: first submission is revision 1, then 2, 3, etc.
+                                    // The revision number in history is the one BEFORE it was rejected
+                                    const revisionNumber = history.revisionNumber !== undefined && history.revisionNumber !== null
+                                      ? history.revisionNumber
+                                      : idx + 1;
+                                    
+                                    return (
+                                    <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <p className="text-sm font-medium text-gray-900">
+                                          Revision #{revisionNumber}
+                                        </p>
+                                        {history.requestedChangesAt && (
+                                          <span className="text-xs text-gray-500">
+                                            Changes requested: {new Date(history.requestedChangesAt).toLocaleDateString()}
+                                          </span>
+                                        )}
+                                      </div>
+                                      
+                                      {history.requestedChangesReason && (
+                                        <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
+                                          <p className="text-xs font-medium text-red-900 mb-1">Reason for Changes:</p>
+                                          <p className="text-xs text-red-800">{history.requestedChangesReason}</p>
+                                        </div>
+                                      )}
+                                      
+                                      {history.submitDeliverables && (
+                                        <div className="mb-2">
+                                          <p className="text-xs font-medium text-gray-700 mb-1">Deliverables:</p>
+                                          <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                            {typeof history.submitDeliverables === 'object' && history.submitDeliverables.description
+                                              ? history.submitDeliverables.description
+                                              : JSON.stringify(history.submitDeliverables)}
+                                          </p>
+                                        </div>
+                                      )}
+                                      
+                                      {history.submissionNote && (
+                                        <div className="mb-2">
+                                          <p className="text-xs font-medium text-gray-700 mb-1">Note:</p>
+                                          <p className="text-xs text-gray-600 whitespace-pre-wrap">{history.submissionNote}</p>
+                                        </div>
+                                      )}
+                                      
+                                      {history.submissionAttachmentUrl && (
+                                        <div>
+                                          <p className="text-xs font-medium text-gray-700 mb-1">Attachment:</p>
+                                          <a
+                                            href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/${history.submissionAttachmentUrl.replace(/\\/g, "/").replace(/^\//, "")}`}
+                                            download
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                          >
+                                            {(() => {
+                                              const normalized = history.submissionAttachmentUrl.replace(/\\/g, "/");
+                                              return normalized.split("/").pop() || "attachment";
+                                            })()}
+                                          </a>
+                                        </div>
+                                      )}
+                                      
+                                      {history.submittedAt && (
+                                        <p className="text-xs text-gray-500 mt-2">
+                                          Submitted: {new Date(history.submittedAt).toLocaleString()}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))
                       ) : (
                         <p className="text-gray-600 text-center py-8">No milestones found</p>
                       )}
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="files" className="space-y-6">
+                {/* Proposal Attachments Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Proposal Attachments</CardTitle>
+                    <CardDescription>
+                      Files attached to your accepted proposal
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      // Get attachments from the provider's proposal
+                      const proposalAttachments: string[] = [];
+                      
+                      // Get attachments from project.proposal or project.Proposal (backend returns it as proposal)
+                      if (project?.proposal?.attachmentUrls && Array.isArray(project.proposal.attachmentUrls)) {
+                        proposalAttachments.push(...project.proposal.attachmentUrls);
+                      } else if (project?.Proposal?.attachmentUrls && Array.isArray(project.Proposal.attachmentUrls)) {
+                        proposalAttachments.push(...project.Proposal.attachmentUrls);
+                      }
+                      
+                      if (proposalAttachments.length === 0) {
+                        return (
+                          <p className="text-sm text-gray-500 text-center py-8">
+                            No proposal attachments found
+                          </p>
+                        );
+                      }
+                      
+                      return (
+                        <div className="space-y-2">
+                          {proposalAttachments.map((url, idx) => {
+                            const normalized = url.replace(/\\/g, "/");
+                            const fileName = normalized.split("/").pop() || `file-${idx + 1}`;
+                            const fullUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/${normalized.replace(/^\//, "")}`;
+                            
+                            return (
+                              <a
+                                key={idx}
+                                href={fullUrl}
+                                download={fileName}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                              >
+                                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                                  PDF
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                    {fileName}
+                                  </span>
+                                  <span className="text-xs text-gray-500 leading-snug">
+                                    From your proposal
+                                    {project?.proposal?.createdAt && ` • Submitted: ${new Date(project.proposal.createdAt).toLocaleDateString()}`}
+                                    {project?.proposal?.submittedAt && ` • Submitted: ${new Date(project.proposal.submittedAt).toLocaleDateString()}`}
+                                    <span className="block mt-0.5">Click to preview / download</span>
+                                  </span>
+                                </div>
+                                <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                                  <Download className="w-4 h-4" />
+                                </div>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Milestone Attachments Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Milestone Attachments</CardTitle>
+                    <CardDescription>
+                      Files attached to milestone submissions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      // Get attachments from milestones
+                      const milestoneAttachments: Array<{ url: string; milestoneTitle: string; milestoneId: string; submittedAt?: string }> = [];
+                      
+                      projectMilestones.forEach(milestone => {
+                        // Current submission attachment
+                        if (milestone.submissionAttachmentUrl) {
+                          milestoneAttachments.push({
+                            url: milestone.submissionAttachmentUrl,
+                            milestoneTitle: milestone.title,
+                            milestoneId: milestone.id,
+                            submittedAt: milestone.submittedAt,
+                          });
+                        }
+                        
+                        // History submission attachments
+                        if (milestone.submissionHistory && Array.isArray(milestone.submissionHistory)) {
+                          milestone.submissionHistory.forEach((history: any) => {
+                            if (history.submissionAttachmentUrl) {
+                              milestoneAttachments.push({
+                                url: history.submissionAttachmentUrl,
+                                milestoneTitle: `${milestone.title} (Revision ${history.revisionNumber || "N/A"})`,
+                                milestoneId: milestone.id,
+                                submittedAt: history.submittedAt,
+                              });
+                            }
+                          });
+                        }
+                      });
+                      
+                      if (milestoneAttachments.length === 0) {
+                        return (
+                          <p className="text-sm text-gray-500 text-center py-8">
+                            No milestone attachments found
+                          </p>
+                        );
+                      }
+                      
+                      return (
+                        <div className="space-y-2">
+                          {milestoneAttachments.map((attachment, idx) => {
+                            const normalized = attachment.url.replace(/\\/g, "/");
+                            const fileName = normalized.split("/").pop() || `file-${idx + 1}`;
+                            const fullUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/${normalized.replace(/^\//, "")}`;
+                            
+                            return (
+                              <a
+                                key={idx}
+                                href={fullUrl}
+                                download={fileName}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                              >
+                                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                                  PDF
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                    {fileName}
+                                  </span>
+                                  <span className="text-xs text-gray-500 leading-snug">
+                                    From: {attachment.milestoneTitle}
+                                    {attachment.submittedAt && ` • Submitted: ${new Date(attachment.submittedAt).toLocaleDateString()}`}
+                                    <span className="block mt-0.5">Click to preview / download</span>
+                                  </span>
+                                </div>
+                                <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                                  <Download className="w-4 h-4" />
+                                </div>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Message Attachments Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Message Attachments</CardTitle>
+                    <CardDescription>
+                      Files attached to project messages
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-500 text-center py-8">
+                      Message attachments will be available here once implemented
+                    </p>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -772,16 +1187,68 @@ export default function ProviderProjectDetailsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="deliverables">Deliverables / Notes</Label>
-                <Textarea
-                  id="deliverables"
-                  placeholder="Describe what you've completed or any notes..."
-                  value={milestoneDeliverables}
-                  onChange={(e) => setMilestoneDeliverables(e.target.value)}
-                  rows={4}
-                />
-              </div>
+              {selectedMilestone?.status === "LOCKED" && (
+                <div>
+                  <Label htmlFor="startDeliverables">Deliverables / Plan (When Starting Work)</Label>
+                  <Textarea
+                    id="startDeliverables"
+                    placeholder="Describe your plan and deliverables when starting this milestone..."
+                    value={milestoneDeliverables}
+                    onChange={(e) => setMilestoneDeliverables(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+              )}
+              
+              {selectedMilestone?.status === "IN_PROGRESS" && (
+                <>
+                  <div>
+                    <Label htmlFor="submitDeliverables">Deliverables / Notes (When Submitting)</Label>
+                    <Textarea
+                      id="submitDeliverables"
+                      placeholder="Describe what you've completed and your deliverables when submitting..."
+                      value={submitDeliverables}
+                      onChange={(e) => setSubmitDeliverables(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="submissionNote">Submission Note (Optional)</Label>
+                    <Textarea
+                      id="submissionNote"
+                      placeholder="Add any additional notes about your submission..."
+                      value={submissionNote}
+                      onChange={(e) => setSubmissionNote(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="attachment">Attachment (Optional)</Label>
+                    <Input
+                      id="attachment"
+                      type="file"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSubmissionAttachment(file);
+                        }
+                      }}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.jpg,.jpeg,.png"
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT, JPG, PNG (Max 10MB)
+                    </p>
+                    {submissionAttachment && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        Selected: {submissionAttachment.name}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsMilestoneDialogOpen(false)}>

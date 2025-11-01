@@ -102,7 +102,24 @@ export async function updateMilestoneStatusController(req, res) {
   try {
     const milestoneId = req.params.id;
     const providerId = req.user.userId;
-    const { status, deliverables } = req.body;
+    let { status, deliverables, submissionNote } = req.body;
+    
+    // Parse deliverables if it's a string (from FormData)
+    if (typeof deliverables === 'string') {
+      try {
+        deliverables = JSON.parse(deliverables);
+      } catch (e) {
+        // If parsing fails, treat as plain string or object
+        deliverables = deliverables;
+      }
+    }
+
+    // Handle file upload - if file was uploaded, use its path
+    let submissionAttachmentUrl = null;
+    if (req.file) {
+      // Convert backslash to forward slash for URLs
+      submissionAttachmentUrl = req.file.path.replace(/\\/g, "/");
+    }
 
     if (!milestoneId) {
       return res.status(400).json({
@@ -116,6 +133,8 @@ export async function updateMilestoneStatusController(req, res) {
       providerId,
       status,
       deliverables,
+      submissionNote,
+      submissionAttachmentUrl,
     });
     dto.validate();
 

@@ -9,6 +9,7 @@ import {
   updateServiceRequestMilestonesController,
   updateProjectDetailsController,
   approveIndividualMilestoneController,
+  requestMilestoneChangesController,
   payMilestoneController,
 } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
@@ -31,6 +32,9 @@ router.post("/:id/milestones", updateServiceRequestMilestonesController);
 
 // Individual milestone approval route
 router.post("/milestones/:id/approve", approveIndividualMilestoneController);
+
+// Individual milestone request changes route
+router.post("/milestones/:id/request-changes", requestMilestoneChangesController);
 
 // Individual milestone payment route
 router.post("/milestones/:id/pay", payMilestoneController);
