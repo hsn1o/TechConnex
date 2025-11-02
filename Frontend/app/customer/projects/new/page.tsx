@@ -37,6 +37,7 @@ import { CustomerLayout } from "@/components/customer-layout";
 import { createProject } from "@/lib/api";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { buildTimelineData } from "@/lib/timeline-utils";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -47,7 +48,8 @@ export default function NewProjectPage() {
     category: "",
     budgetMin: "",
     budgetMax: "",
-    timeline: "",
+    timelineAmount: "",
+    timelineUnit: "" as "day" | "week" | "month" | "",
     skills: [] as string[],
     ndaSigned: false,
     priority: "medium",
@@ -72,7 +74,8 @@ export default function NewProjectPage() {
     description?: string;
     budgetMin?: string;
     budgetMax?: string;
-    timeline?: string;
+    timelineAmount?: string;
+    timelineUnit?: string;
   }>({});
 
   const categories = [
@@ -201,9 +204,16 @@ export default function NewProjectPage() {
       }
     }
 
-    // Timeline check (if you want timeline to be required; remove this block if it's optional)
-    if (!formData.timeline.trim()) {
-      newErrors.timeline = "Timeline is required.";
+    // Timeline check
+    const timelineAmountNum = Number(formData.timelineAmount);
+    if (!formData.timelineAmount) {
+      newErrors.timelineAmount = "Timeline amount is required.";
+    } else if (isNaN(timelineAmountNum) || timelineAmountNum <= 0) {
+      newErrors.timelineAmount = "Timeline amount must be greater than 0.";
+    }
+    
+    if (!formData.timelineUnit) {
+      newErrors.timelineUnit = "Timeline unit is required.";
     }
 
     setErrors(newErrors);
@@ -233,13 +243,20 @@ export default function NewProjectPage() {
     try {
       setLoading(true);
 
+      // Build timeline data from amount and unit
+      const { timeline, timelineInDays } = buildTimelineData(
+        Number(formData.timelineAmount),
+        formData.timelineUnit
+      );
+
       const projectData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category,
         budgetMin: Number(formData.budgetMin),
         budgetMax: Number(formData.budgetMax),
-        timeline: formData.timeline.trim(),
+        timeline,
+        timelineInDays,
         priority: formData.priority,
         skills: formData.skills,
         ndaSigned: formData.ndaSigned,
@@ -417,23 +434,50 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="timeline">Project Timeline</Label>
-                  <Input
-                    id="timeline"
-                    type="text"
-                    placeholder="Enter expected timeline (e.g., 2 weeks, 1 month)"
-                    value={formData.timeline}
-                    onChange={(e) =>
-                      handleInputChange("timeline", e.target.value)
-                    }
-                    className={
-                      errors.timeline
-                        ? "border-red-500 focus-visible:ring-red-500"
-                        : ""
-                    }
-                  />
-                  {errors.timeline && (
-                    <p className="text-xs text-red-600">{errors.timeline}</p>
+                  <Label htmlFor="timeline">Project Timeline *</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="timelineAmount"
+                      type="number"
+                      placeholder="e.g. 2"
+                      min="1"
+                      value={formData.timelineAmount}
+                      onChange={(e) =>
+                        handleInputChange("timelineAmount", e.target.value)
+                      }
+                      className={
+                        errors.timelineAmount
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }
+                    />
+                    <Select
+                      value={formData.timelineUnit}
+                      onValueChange={(value: "day" | "week" | "month") =>
+                        handleInputChange("timelineUnit", value)
+                      }
+                    >
+                      <SelectTrigger
+                        className={
+                          errors.timelineUnit
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }
+                      >
+                        <SelectValue placeholder="Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Day(s)</SelectItem>
+                        <SelectItem value="week">Week(s)</SelectItem>
+                        <SelectItem value="month">Month(s)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {errors.timelineAmount && (
+                    <p className="text-xs text-red-600">{errors.timelineAmount}</p>
+                  )}
+                  {errors.timelineUnit && (
+                    <p className="text-xs text-red-600">{errors.timelineUnit}</p>
                   )}
                 </div>
 

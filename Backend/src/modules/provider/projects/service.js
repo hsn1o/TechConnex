@@ -176,13 +176,14 @@ export async function getProviderProjectById(projectId, providerId) {
       throw new Error("Project not found or you don't have permission to access it");
     }
 
-    // Find the ServiceRequest that created this Project to get the proposal
+    // Find the ServiceRequest that created this Project to get the proposal and original timeline
     const serviceRequest = await prisma.serviceRequest.findFirst({
       where: {
         projectId: project.id,
       },
       select: {
         id: true,
+        timeline: true, // Original company timeline
         acceptedProposalId: true,
       },
     });
@@ -199,6 +200,7 @@ export async function getProviderProjectById(projectId, providerId) {
           id: true,
           attachmentUrls: true,
           createdAt: true, // Use createdAt instead of submittedAt
+          deliveryTime: true, // Provider's proposed timeline in days
         },
       });
     }
@@ -216,6 +218,8 @@ export async function getProviderProjectById(projectId, providerId) {
       completedMilestones,
       totalMilestones,
       proposal: proposal, // Include proposal with attachments
+      originalTimeline: serviceRequest?.timeline || null, // Original company timeline (string)
+      providerProposedTimeline: proposal?.deliveryTime || null, // Provider's proposed timeline in days (number, frontend will format)
     };
   } catch (error) {
     console.error("Error fetching provider project:", error);

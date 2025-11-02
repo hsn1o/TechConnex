@@ -34,6 +34,7 @@ import {
 } from "lucide-react"
 import { ProviderLayout } from "@/components/provider-layout"
 import { getProviderProjectById, updateProviderProjectStatus, updateProviderMilestoneStatus, getProviderProjectMilestones, updateProviderProjectMilestones, approveProviderMilestones, type Milestone } from "@/lib/api"
+import { formatTimeline } from "@/lib/timeline-utils"
 
 export default function ProviderProjectDetailsPage() {
   const params = useParams()
@@ -481,7 +482,27 @@ export default function ProviderProjectDetailsPage() {
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-500">Timeline</Label>
-                        <p className="text-lg">{project.timeline || "Not specified"}</p>
+                        <div className="space-y-2">
+                          {project.originalTimeline && (
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">Original Timeline (Company):</p>
+                              <p className="text-sm text-gray-900 font-medium">
+                                {formatTimeline(project.originalTimeline)}
+                              </p>
+                            </div>
+                          )}
+                          {project.providerProposedTimeline && (
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">Your Proposed Timeline:</p>
+                              <p className="text-sm text-gray-900 font-medium">
+                                {formatTimeline(project.providerProposedTimeline, "day")}
+                              </p>
+                            </div>
+                          )}
+                          {!project.originalTimeline && !project.providerProposedTimeline && (
+                            <p className="text-sm text-gray-600">Not specified</p>
+                          )}
+                        </div>
                       </div>
                     </div>
 
