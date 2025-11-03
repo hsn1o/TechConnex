@@ -6,7 +6,7 @@ export const authController = {
   async register(req, res) {
     try {
       const { name, email, password } = req.body;
-      const { token, user } = await authServiceervice.register({ name, email, password });
+      const { token, user } = await authService.register({ name, email, password });
 
       res.status(201).json({
         message: "Admin registered successfully",
