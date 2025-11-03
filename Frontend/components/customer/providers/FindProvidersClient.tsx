@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,17 +12,11 @@ import type { Provider, Option } from "./types";
 
 /** Props come from the server page */
 export default function FindProvidersClient({
-  categories,
-  locations,
   ratings,
 }: {
-  categories: Option[];
-  locations: Option[];
   ratings: Option[];
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState(categories[0]?.value ?? "all");
-  const [locationFilter, setLocationFilter] = useState(locations[0]?.value ?? "all");
   const [ratingFilter, setRatingFilter] = useState(ratings[0]?.value ?? "all");
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,19 +31,15 @@ export default function FindProvidersClient({
       }
     })();
 
-    // Build query parameters
     const params = new URLSearchParams();
-    if (userId) params.append('userId', userId);
-    if (searchQuery) params.append('search', searchQuery);
-    if (categoryFilter !== 'all') params.append('category', categoryFilter);
-    if (locationFilter !== 'all') params.append('location', locationFilter);
-    if (ratingFilter !== 'all') params.append('rating', ratingFilter);
-      const token = localStorage.getItem("token");
+    if (userId) params.append("userId", userId);
+    if (searchQuery) params.append("search", searchQuery);
+    if (ratingFilter !== "all") params.append("rating", ratingFilter);
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/providers?${params.toString()}`,{
-      headers: {
-              Authorization: `Bearer ${token}`,
-            },
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/providers?${params.toString()}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((res) => res.json())
       .then((data) => {
@@ -62,10 +52,9 @@ export default function FindProvidersClient({
       })
       .catch((err) => console.error("Failed to fetch providers:", err))
       .finally(() => setLoading(false));
-  }, [searchQuery, categoryFilter, locationFilter, ratingFilter]);
+  }, [searchQuery, ratingFilter]);
 
-  // No need for client-side filtering since backend handles it
-  const filteredProviders = providers;
+  const filteredProviders = providers; // backend handles filtering
 
   return (
     <div className="space-y-8">
@@ -91,10 +80,10 @@ export default function FindProvidersClient({
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters (Search + Rating only) */}
       <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -105,32 +94,19 @@ export default function FindProvidersClient({
               />
             </div>
 
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger><SelectValue placeholder="All Categories" /></SelectTrigger>
-              <SelectContent>
-                {categories.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger><SelectValue placeholder="All Locations" /></SelectTrigger>
-              <SelectContent>
-                {locations.map((l) => (
-                  <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
               <SelectTrigger><SelectValue placeholder="All Ratings" /></SelectTrigger>
               <SelectContent>
                 {ratings.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            {/* spacer to keep grid nice on large screens */}
+            <div className="hidden lg:block" />
           </div>
         </CardContent>
       </Card>
