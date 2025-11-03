@@ -14,6 +14,7 @@ class ProviderProfileDto {
     this.preferredProjectDuration = data.preferredProjectDuration;
     this.workPreference = data.workPreference;
     this.teamSize = data.teamSize;
+    this.portfolioUrls = data.portfolioUrls || [];
   }
 
   validate() {
@@ -32,13 +33,27 @@ class ProviderProfileDto {
       errors.push("At least one skill is required");
     }
 
-    // Optional field validations
-    if (this.website && !this.isValidUrl(this.website)) {
-      errors.push("Website must be a valid URL");
+    // Optional field validations (normalize URLs before validation)
+    if (this.website && this.website.trim()) {
+      const normalizedWebsite = this.normalizeUrl(this.website);
+      if (!this.isValidUrl(normalizedWebsite)) {
+        errors.push("Website must be a valid URL");
+      } else {
+        this.website = normalizedWebsite;
+      }
+    } else {
+      this.website = null; // Set to null if empty
     }
 
-    if (this.profileVideoUrl && !this.isValidUrl(this.profileVideoUrl)) {
-      errors.push("Profile video URL must be a valid URL");
+    if (this.profileVideoUrl && this.profileVideoUrl.trim()) {
+      const normalizedProfileVideoUrl = this.normalizeUrl(this.profileVideoUrl);
+      if (!this.isValidUrl(normalizedProfileVideoUrl)) {
+        errors.push("Profile video URL must be a valid URL");
+      } else {
+        this.profileVideoUrl = normalizedProfileVideoUrl;
+      }
+    } else {
+      this.profileVideoUrl = null; // Set to null if empty
     }
 
     if (this.hourlyRate && (this.hourlyRate < 0 || this.hourlyRate > 10000)) {
@@ -82,17 +97,35 @@ class ProviderProfileDto {
   validatePartial() {
     const errors = [];
 
-    // Only validate provided fields
+    // Only validate provided fields (normalize URLs before validation)
     if (this.bio !== undefined && this.bio.trim().length < 10) {
       errors.push("Bio must be at least 10 characters long");
     }
 
-    if (this.website && !this.isValidUrl(this.website)) {
-      errors.push("Website must be a valid URL");
+    if (this.website !== undefined) {
+      if (this.website && this.website.trim()) {
+        const normalizedWebsite = this.normalizeUrl(this.website);
+        if (!this.isValidUrl(normalizedWebsite)) {
+          errors.push("Website must be a valid URL");
+        } else {
+          this.website = normalizedWebsite;
+        }
+      } else {
+        this.website = null; // Set to null if empty
+      }
     }
 
-    if (this.profileVideoUrl && !this.isValidUrl(this.profileVideoUrl)) {
-      errors.push("Profile video URL must be a valid URL");
+    if (this.profileVideoUrl !== undefined) {
+      if (this.profileVideoUrl && this.profileVideoUrl.trim()) {
+        const normalizedProfileVideoUrl = this.normalizeUrl(this.profileVideoUrl);
+        if (!this.isValidUrl(normalizedProfileVideoUrl)) {
+          errors.push("Profile video URL must be a valid URL");
+        } else {
+          this.profileVideoUrl = normalizedProfileVideoUrl;
+        }
+      } else {
+        this.profileVideoUrl = null; // Set to null if empty
+      }
     }
 
     if (this.hourlyRate !== undefined && (this.hourlyRate < 0 || this.hourlyRate > 10000)) {
@@ -134,14 +167,16 @@ class ProviderProfileDto {
   }
 
   toUpdateData() {
-    return {
+    // Remove portfolioUrls as it's not a direct field in Prisma
+    // The portfolios relation (ProjectPortfolio[]) is separate and requires full portfolio objects
+    const updateData = {
       bio: this.bio,
       location: this.location,
       hourlyRate: this.hourlyRate,
       availability: this.availability,
       languages: this.languages,
-      website: this.website,
-      profileVideoUrl: this.profileVideoUrl,
+      website: this.website ? this.normalizeUrl(this.website) : this.website,
+      profileVideoUrl: this.profileVideoUrl ? this.normalizeUrl(this.profileVideoUrl) : this.profileVideoUrl,
       skills: this.skills,
       yearsExperience: this.yearsExperience,
       minimumProjectBudget: this.minimumProjectBudget,
@@ -150,15 +185,54 @@ class ProviderProfileDto {
       workPreference: this.workPreference,
       teamSize: this.teamSize,
     };
+    
+    // Remove any undefined/null values to avoid Prisma errors
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined || updateData[key] === null) {
+        delete updateData[key];
+      }
+    });
+    
+    return updateData;
   }
 
   isValidUrl(string) {
+    if (!string || typeof string !== 'string') {
+      return false;
+    }
+    
     try {
+      // Try with the URL as-is first
       new URL(string);
       return true;
     } catch (_) {
-      return false;
+      // If it fails, try prepending https://
+      try {
+        new URL(`https://${string}`);
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
+  }
+
+  normalizeUrl(string) {
+    if (!string || typeof string !== 'string') {
+      return string;
+    }
+    
+    const trimmed = string.trim();
+    if (!trimmed) {
+      return trimmed;
+    }
+    
+    // If it already has a protocol, return as-is
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    
+    // Otherwise, prepend https://
+    return `https://${trimmed}`;
   }
 }
 

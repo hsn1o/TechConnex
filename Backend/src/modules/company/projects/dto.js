@@ -19,11 +19,44 @@ export class CreateProjectDto {
   constructor(data) {
     this.title = data.title;
     this.description = data.description;
-    this.category = this.mapCategory(data.category);
+    // Category is now a string, no need to map
+    this.category = data.category || "";
     this.budgetMin = data.budgetMin;
     this.budgetMax = data.budgetMax;
     this.skills = data.skills || [];
-    this.timeline = data.timeline;
+    
+    // Support both old format (timeline string) and new format (timelineAmount + timelineUnit or timelineInDays)
+    if (data.timeline) {
+      // Already has timeline string (backward compatibility)
+      this.timeline = data.timeline;
+      this.timelineInDays = data.timelineInDays || null;
+    } else if (data.timelineAmount && data.timelineUnit) {
+      // Build timeline from amount and unit
+      const amount = Number(data.timelineAmount);
+      let days = 0;
+      switch (data.timelineUnit) {
+        case "day":
+          days = amount;
+          break;
+        case "week":
+          days = amount * 7;
+          break;
+        case "month":
+          days = amount * 30; // Approximate: 30 days per month
+          break;
+      }
+      const plural = amount > 1 ? "s" : "";
+      this.timeline = `${amount} ${data.timelineUnit}${plural}`;
+      this.timelineInDays = days;
+    } else if (data.timelineInDays) {
+      // Only timelineInDays provided, estimate timeline string
+      this.timelineInDays = Number(data.timelineInDays);
+      this.timeline = data.timeline || `${this.timelineInDays} day${this.timelineInDays > 1 ? "s" : ""}`;
+    } else {
+      this.timeline = data.timeline || null;
+      this.timelineInDays = data.timelineInDays || null;
+    }
+    
     this.priority = data.priority;
     this.ndaSigned = data.ndaSigned || false;
     this.requirements = ensureStringArray(data.requirements);   // <— changed
@@ -31,22 +64,7 @@ export class CreateProjectDto {
     this.customerId = data.customerId;
   }
 
-  mapCategory(category) {
-    const categoryMap = {
-      "Mobile Development": "MOBILE_APP_DEVELOPMENT",
-      "Web Development": "WEB_DEVELOPMENT",
-      "Cloud Services": "CLOUD_SERVICES",
-      "IoT Solutions": "IOT_SOLUTIONS",
-      "Data Analytics": "DATA_ANALYTICS",
-      "Cybersecurity": "CYBERSECURITY",
-      "UI/UX Design": "UI_UX_DESIGN",
-      "DevOps": "DEVOPS",
-      "AI/ML Solutions": "AI_ML_SOLUTIONS",
-      "System Integration": "SYSTEM_INTEGRATION",
-    };
-    
-    return categoryMap[category] || category;
-  }
+  // mapCategory method removed - categories are now strings, no mapping needed
 
 validate() {
     // existing checks...
@@ -114,10 +132,43 @@ export class UpdateProjectDto {
     this.customerId   = data.customerId;
     this.title        = data.title;
     this.description  = data.description;
+    // Category is now a string, accept it as-is
     this.category     = data.category;
     this.budgetMin    = data.budgetMin;
     this.budgetMax    = data.budgetMax;
-    this.timeline     = data.timeline;
+    
+    // Support both old format (timeline string) and new format (timelineAmount + timelineUnit or timelineInDays)
+    if (data.timeline) {
+      // Already has timeline string (backward compatibility)
+      this.timeline = data.timeline;
+      this.timelineInDays = data.timelineInDays || undefined;
+    } else if (data.timelineAmount && data.timelineUnit) {
+      // Build timeline from amount and unit
+      const amount = Number(data.timelineAmount);
+      let days = 0;
+      switch (data.timelineUnit) {
+        case "day":
+          days = amount;
+          break;
+        case "week":
+          days = amount * 7;
+          break;
+        case "month":
+          days = amount * 30; // Approximate: 30 days per month
+          break;
+      }
+      const plural = amount > 1 ? "s" : "";
+      this.timeline = `${amount} ${data.timelineUnit}${plural}`;
+      this.timelineInDays = days;
+    } else if (data.timelineInDays) {
+      // Only timelineInDays provided, estimate timeline string
+      this.timelineInDays = Number(data.timelineInDays);
+      this.timeline = data.timeline || `${this.timelineInDays} day${this.timelineInDays > 1 ? "s" : ""}`;
+    } else {
+      this.timeline = data.timeline;
+      this.timelineInDays = data.timelineInDays;
+    }
+    
     this.priority     = data.priority;
     this.skills       = Array.isArray(data.skills) ? data.skills : undefined;
     this.ndaSigned    = typeof data.ndaSigned === "boolean" ? data.ndaSigned : undefined;

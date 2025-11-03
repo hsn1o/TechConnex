@@ -405,13 +405,31 @@ export async function getProjectById(projectId, customerId) {
       },
       select: {
         id: true,
+        timeline: true, // Original company timeline
+        acceptedProposalId: true, // To get the accepted proposal
       },
     });
+
+    // Get the accepted proposal to get provider's proposed timeline
+    let acceptedProposal = null;
+    if (originalServiceRequest?.acceptedProposalId) {
+      acceptedProposal = await prisma.proposal.findFirst({
+        where: {
+          id: originalServiceRequest.acceptedProposalId,
+        },
+        select: {
+          id: true,
+          deliveryTime: true, // Provider's proposed timeline in days
+        },
+      });
+    }
 
     return {
       ...project,
       type: "Project",
       serviceRequestId: originalServiceRequest?.id || null, // Include the original ServiceRequest ID for fetching proposals
+      originalTimeline: originalServiceRequest?.timeline || null, // Original company timeline (string)
+      providerProposedTimeline: acceptedProposal?.deliveryTime || null, // Provider's proposed timeline in days (number, frontend will format)
     };
   } catch (error) {
     console.error("Error fetching project:", error);

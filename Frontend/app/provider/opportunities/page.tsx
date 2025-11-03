@@ -52,6 +52,7 @@ import {
 import { ProviderLayout } from "@/components/provider-layout";
 import { toast } from "sonner";
 import { getProviderOpportunities, sendProposal } from "@/lib/api";
+import { formatTimeline, buildTimelineData } from "@/lib/timeline-utils";
 
 export default function ProviderOpportunitiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,7 +71,8 @@ export default function ProviderOpportunitiesPage() {
   type ProposalFormData = {
     coverLetter: string;
     bidAmount: string;
-    timeline: string;
+    timelineAmount: string;
+    timelineUnit: "day" | "week" | "month" | "";
     milestones: Milestone[];
     attachments: File[];
   };
@@ -78,7 +80,8 @@ export default function ProviderOpportunitiesPage() {
   const [proposalData, setProposalData] = useState({
     coverLetter: "",
     bidAmount: "",
-    timeline: "",
+    timelineAmount: "",
+    timelineUnit: "" as "day" | "week" | "month" | "",
     milestones: [] as Milestone[],
     attachments: [] as File[],
   });
@@ -90,7 +93,8 @@ export default function ProviderOpportunitiesPage() {
   const [submittingProposal, setSubmittingProposal] = useState(false);
   const [proposalErrors, setProposalErrors] = useState<{
     bidAmount?: string;
-    timeline?: string;
+    timelineAmount?: string;
+    timelineUnit?: string;
     coverLetter?: string;
     milestones?: string;
     attachments?: string;
@@ -121,7 +125,7 @@ export default function ProviderOpportunitiesPage() {
               client: opportunity.customer?.name || "Unknown Client",
               budget: `RM ${opportunity.budgetMin?.toLocaleString()} - RM ${opportunity.budgetMax?.toLocaleString()}`,
               budgetType: "fixed",
-              timeline: opportunity.timeline || "Not specified",
+              timeline: formatTimeline(opportunity.timeline) || "Not specified",
               skills: opportunity.skills || [],
               postedTime: new Date(opportunity.createdAt).toLocaleDateString(),
               matchScore: 85, // Default match score
@@ -260,7 +264,8 @@ export default function ProviderOpportunitiesPage() {
     setProposalData({
       coverLetter: "",
       bidAmount: "",
-      timeline: "",
+      timelineAmount: "",
+      timelineUnit: "",
       milestones: [],
       attachments: [],
     });
@@ -270,7 +275,8 @@ export default function ProviderOpportunitiesPage() {
   function validateProposal(form: ProposalFormData) {
     const newErrors: {
       bidAmount?: string;
-      timeline?: string;
+      timelineAmount?: string;
+      timelineUnit?: string;
       coverLetter?: string;
       milestones?: string;
     } = {};
@@ -288,9 +294,18 @@ export default function ProviderOpportunitiesPage() {
     }
 
     // Timeline: required
-    if (!form.timeline) {
-      newErrors.timeline = "Delivery timeline is required.";
-      messages.push("Delivery timeline is required.");
+    const timelineAmountNum = Number(form.timelineAmount);
+    if (!form.timelineAmount) {
+      newErrors.timelineAmount = "Timeline amount is required.";
+      messages.push("Timeline amount is required.");
+    } else if (isNaN(timelineAmountNum) || timelineAmountNum <= 0) {
+      newErrors.timelineAmount = "Timeline amount must be greater than 0.";
+      messages.push("Timeline amount must be greater than 0.");
+    }
+    
+    if (!form.timelineUnit) {
+      newErrors.timelineUnit = "Timeline unit is required.";
+      messages.push("Timeline unit is required.");
     }
 
     // Cover letter: required, min length 20
@@ -403,11 +418,15 @@ export default function ProviderOpportunitiesPage() {
         parseFloat(proposalData.bidAmount).toString()
       );
 
-      // timeline like "1-2 weeks" → parseInt -> 1
-      formDataToSend.append(
-        "deliveryTime",
-        parseInt(proposalData.timeline).toString()
+      // Build timeline data from amount and unit
+      const { timeline, timelineInDays } = buildTimelineData(
+        Number(proposalData.timelineAmount),
+        proposalData.timelineUnit
       );
+      
+      formDataToSend.append("deliveryTime", timelineInDays.toString());
+      formDataToSend.append("timeline", timeline);
+      formDataToSend.append("timelineInDays", timelineInDays.toString());
 
       formDataToSend.append("coverLetter", proposalData.coverLetter);
 
@@ -451,7 +470,8 @@ export default function ProviderOpportunitiesPage() {
         setProposalData({
           coverLetter: "",
           bidAmount: "",
-          timeline: "",
+          timelineAmount: "",
+          timelineUnit: "",
           milestones: [],
           attachments: [],
         });
@@ -717,7 +737,7 @@ export default function ProviderOpportunitiesPage() {
                             {opportunity.budget}
                           </div>
                           <p className="text-sm text-gray-500">
-                            {opportunity.timeline}
+                            {formatTimeline(opportunity.timeline)}
                           </p>
                         </div>
                       </div>
@@ -865,7 +885,7 @@ export default function ProviderOpportunitiesPage() {
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600">Timeline:</span>
                           <span className="font-semibold">
-                            {selectedProject.timeline}
+                            {formatTimeline(selectedProject?.timeline)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -1038,26 +1058,63 @@ export default function ProviderOpportunitiesPage() {
                 </div>
                 <div>
                   <Label htmlFor="timeline">Delivery Timeline *</Label>
-                  <Input
-                    id="timeline"
-                    type="text"
-                    placeholder="e.g. 2 weeks, 10 days, or custom duration"
-                    value={proposalData.timeline}
-                    onChange={(e) =>
-                      setProposalData((prev) => ({
-                        ...prev,
-                        timeline: e.target.value,
-                      }))
-                    }
-                    className={
-                      proposalErrors.timeline
-                        ? "border-red-500 focus-visible:ring-red-500"
-                        : ""
-                    }
-                  />
-                  {proposalErrors.timeline && (
+                  <div className="flex gap-2">
+                    <Input
+                      id="timelineAmount"
+                      type="number"
+                      placeholder="e.g. 2"
+                      min="1"
+                      value={proposalData.timelineAmount}
+                      onChange={(e) =>
+                        setProposalData((prev) => ({
+                          ...prev,
+                          timelineAmount: e.target.value,
+                        }))
+                      }
+                      className={
+                        proposalErrors.timelineAmount
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }
+                    />
+                    <Select
+                      value={proposalData.timelineUnit}
+                      onValueChange={(value: "day" | "week" | "month") =>
+                        setProposalData((prev) => ({
+                          ...prev,
+                          timelineUnit: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger
+                        className={
+                          proposalErrors.timelineUnit
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }
+                      >
+                        <SelectValue placeholder="Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Day(s)</SelectItem>
+                        <SelectItem value="week">Week(s)</SelectItem>
+                        <SelectItem value="month">Month(s)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {proposalErrors.timelineAmount && (
                     <p className="text-xs text-red-600 mt-1">
-                      {proposalErrors.timeline}
+                      {proposalErrors.timelineAmount}
+                    </p>
+                  )}
+                  {proposalErrors.timelineUnit && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {proposalErrors.timelineUnit}
+                    </p>
+                  )}
+                  {proposalData.timelineAmount && proposalData.timelineUnit && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatTimeline(proposalData.timelineAmount, proposalData.timelineUnit)}
                     </p>
                   )}
                 </div>
@@ -1312,7 +1369,7 @@ export default function ProviderOpportunitiesPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>Timeline:</span>
-                      <span>{proposalData.timeline || "Not specified"}</span>
+                      <span>{formatTimeline(proposalData.timelineAmount, proposalData.timelineUnit) || "Not specified"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Attachments:</span>

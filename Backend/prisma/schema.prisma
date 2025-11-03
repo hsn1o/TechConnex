@@ -291,7 +291,7 @@ model ServiceRequest {
   id           String          @id @default(uuid()) @db.Uuid
   title        String
   description  String
-  category     ServiceCategory
+  category     String
   budgetMin    Float
   budgetMax    Float
   skills       String[]
@@ -412,7 +412,7 @@ model Project {
   id           String          @id @default(uuid()) @db.Uuid
   title        String
   description  String
-  category     ServiceCategory
+  category     String
   budgetMin    Float
   budgetMax    Float
   skills       String[]

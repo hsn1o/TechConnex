@@ -37,6 +37,7 @@ import { CustomerLayout } from "@/components/customer-layout";
 import { createProject } from "@/lib/api";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { buildTimelineData } from "@/lib/timeline-utils";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -47,7 +48,8 @@ export default function NewProjectPage() {
     category: "",
     budgetMin: "",
     budgetMax: "",
-    timeline: "",
+    timelineAmount: "",
+    timelineUnit: "" as "day" | "week" | "month" | "",
     skills: [] as string[],
     ndaSigned: false,
     priority: "medium",
@@ -72,10 +74,12 @@ export default function NewProjectPage() {
     description?: string;
     budgetMin?: string;
     budgetMax?: string;
-    timeline?: string;
+    timelineAmount?: string;
+    timelineUnit?: string;
   }>({});
 
-  const categories = [
+  // categories the user can pick from
+  const [categories, setCategories] = useState([
     { value: "WEB_DEVELOPMENT", label: "Web Development" },
     { value: "MOBILE_APP_DEVELOPMENT", label: "Mobile App Development" },
     { value: "CLOUD_SERVICES", label: "Cloud Services" },
@@ -86,7 +90,10 @@ export default function NewProjectPage() {
     { value: "DEVOPS", label: "DevOps" },
     { value: "AI_ML_SOLUTIONS", label: "AI/ML Solutions" },
     { value: "SYSTEM_INTEGRATION", label: "System Integration" },
-  ];
+  ]);
+
+  // temporary text field for custom category
+  const [newCategory, setNewCategory] = useState("");
 
   const skillOptions = [
     "React",
@@ -147,6 +154,36 @@ export default function NewProjectPage() {
     setNewSkill("");
   };
 
+  const handleAddCustomCategory = () => {
+    const cleaned = newCategory.trim();
+    if (!cleaned) return;
+
+    // We'll store custom category using the raw text as both value and label.
+    // Why? Because backend already falls back to using the provided string
+    // if it doesn't match a known map. :contentReference[oaicite:2]{index=2}
+    const newOption = {
+      value: cleaned,
+      label: cleaned,
+    };
+
+    // Check if it already exists (case-insensitive compare on label)
+    const exists = categories.some(
+      (c) => c.label.toLowerCase() === cleaned.toLowerCase()
+    );
+    if (!exists) {
+      setCategories((prev) => [...prev, newOption]);
+    }
+
+    // Also set this as the active form category
+    setFormData((prev) => ({
+      ...prev,
+      category: newOption.value,
+    }));
+
+    // Clear the input
+    setNewCategory("");
+  };
+
   const generateAiSuggestions = () => {
     // Simulate AI suggestions based on form data
     setAiSuggestions({
@@ -201,9 +238,16 @@ export default function NewProjectPage() {
       }
     }
 
-    // Timeline check (if you want timeline to be required; remove this block if it's optional)
-    if (!formData.timeline.trim()) {
-      newErrors.timeline = "Timeline is required.";
+    // Timeline check
+    const timelineAmountNum = Number(formData.timelineAmount);
+    if (!formData.timelineAmount) {
+      newErrors.timelineAmount = "Timeline amount is required.";
+    } else if (isNaN(timelineAmountNum) || timelineAmountNum <= 0) {
+      newErrors.timelineAmount = "Timeline amount must be greater than 0.";
+    }
+
+    if (!formData.timelineUnit) {
+      newErrors.timelineUnit = "Timeline unit is required.";
     }
 
     setErrors(newErrors);
@@ -233,13 +277,20 @@ export default function NewProjectPage() {
     try {
       setLoading(true);
 
+      // Build timeline data from amount and unit
+      const { timeline, timelineInDays } = buildTimelineData(
+        Number(formData.timelineAmount),
+        formData.timelineUnit
+      );
+
       const projectData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         category: formData.category,
         budgetMin: Number(formData.budgetMin),
         budgetMax: Number(formData.budgetMax),
-        timeline: formData.timeline.trim(),
+        timeline,
+        timelineInDays,
         priority: formData.priority,
         skills: formData.skills,
         ndaSigned: formData.ndaSigned,
@@ -323,9 +374,12 @@ export default function NewProjectPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="category">Category</Label>
+
+                  {/* 1) Pick an existing category */}
                   <Select
+                    value={formData.category}
                     onValueChange={(value) =>
                       handleInputChange("category", value)
                     }
@@ -340,16 +394,51 @@ export default function NewProjectPage() {
                       <SelectValue placeholder="Select project category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          {category.label}
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+
+                  <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span>or create your own</span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                  </div>
+
+                  {/* 2) Add a new custom category */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. POS Integration for Retail"
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomCategory();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddCustomCategory}
+                    >
+                      Add
+                    </Button>
+                  </div>
+
                   {errors.category && (
                     <p className="text-xs text-red-600">{errors.category}</p>
                   )}
+
+                  <p className="text-xs text-gray-500">
+                    Choose a category OR type a new one. This helps us match you
+                    with the right providers.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -417,23 +506,54 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="timeline">Project Timeline</Label>
-                  <Input
-                    id="timeline"
-                    type="text"
-                    placeholder="Enter expected timeline (e.g., 2 weeks, 1 month)"
-                    value={formData.timeline}
-                    onChange={(e) =>
-                      handleInputChange("timeline", e.target.value)
-                    }
-                    className={
-                      errors.timeline
-                        ? "border-red-500 focus-visible:ring-red-500"
-                        : ""
-                    }
-                  />
-                  {errors.timeline && (
-                    <p className="text-xs text-red-600">{errors.timeline}</p>
+                  <Label htmlFor="timeline">Project Timeline *</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="timelineAmount"
+                      type="number"
+                      placeholder="e.g. 2"
+                      min="1"
+                      value={formData.timelineAmount}
+                      onChange={(e) =>
+                        handleInputChange("timelineAmount", e.target.value)
+                      }
+                      className={
+                        errors.timelineAmount
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }
+                    />
+                    <Select
+                      value={formData.timelineUnit}
+                      onValueChange={(value: "day" | "week" | "month") =>
+                        handleInputChange("timelineUnit", value)
+                      }
+                    >
+                      <SelectTrigger
+                        className={
+                          errors.timelineUnit
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }
+                      >
+                        <SelectValue placeholder="Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Day(s)</SelectItem>
+                        <SelectItem value="week">Week(s)</SelectItem>
+                        <SelectItem value="month">Month(s)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {errors.timelineAmount && (
+                    <p className="text-xs text-red-600">
+                      {errors.timelineAmount}
+                    </p>
+                  )}
+                  {errors.timelineUnit && (
+                    <p className="text-xs text-red-600">
+                      {errors.timelineUnit}
+                    </p>
                   )}
                 </div>
 

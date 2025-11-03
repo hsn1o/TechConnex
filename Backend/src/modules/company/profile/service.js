@@ -72,11 +72,14 @@ class CompanyProfileService {
 
       // Update completion percentage
       const completion = await CompanyProfileModel.updateProfileCompletion(userId);
-
-      return {
+      
+      // Format response using DTO to ensure consistent structure
+      const responseDto = new CompanyProfileResponseDto({
         ...profile,
         completion,
-      };
+      });
+      
+      return responseDto.toResponse();
     } catch (error) {
       throw new Error(`Failed to update company profile: ${error.message}`);
     }

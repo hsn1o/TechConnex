@@ -4,7 +4,34 @@ export class SendProposalDto {
     this.providerId = data.providerId;
     this.serviceRequestId = data.serviceRequestId;
     this.bidAmount = Number(data.bidAmount);
-    this.deliveryTime = Number(data.deliveryTime);
+    
+    // Support both old format (deliveryTime) and new format (timelineAmount + timelineUnit or timelineInDays)
+    if (data.timelineInDays !== undefined) {
+      this.deliveryTime = Number(data.timelineInDays);
+      this.timeline = data.timeline || this.buildTimelineString(data.timelineAmount, data.timelineUnit);
+    } else if (data.timelineAmount && data.timelineUnit) {
+      // Calculate days from amount and unit
+      const amount = Number(data.timelineAmount);
+      let days = 0;
+      switch (data.timelineUnit) {
+        case "day":
+          days = amount;
+          break;
+        case "week":
+          days = amount * 7;
+          break;
+        case "month":
+          days = amount * 30; // Approximate: 30 days per month
+          break;
+      }
+      this.deliveryTime = days;
+      this.timeline = data.timeline || this.buildTimelineString(data.timelineAmount, data.timelineUnit);
+    } else {
+      // Fallback to old format
+      this.deliveryTime = Number(data.deliveryTime);
+      this.timeline = data.timeline || null;
+    }
+    
     this.coverLetter = (data.coverLetter || "").toString();
     // map uploaded files -> relative URLs
     // if controller passes req.files, we collect their paths
@@ -18,6 +45,14 @@ export class SendProposalDto {
       amount: Number(m.amount),
       dueDate: m.dueDate ? new Date(m.dueDate).toISOString() : null,
     })) : [];
+  }
+
+  buildTimelineString(amount, unit) {
+    if (!amount || !unit) return null;
+    const num = Number(amount);
+    if (isNaN(num) || num <= 0) return null;
+    const plural = num > 1 ? "s" : "";
+    return `${num} ${unit}${plural}`;
   }
 
   validate() {

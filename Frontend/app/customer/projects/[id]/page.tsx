@@ -69,6 +69,7 @@ import {
   type Milestone,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { formatTimeline } from "@/lib/timeline-utils";
 import { createPaymentIntentAPI, finalizePaymentAPI } from "@/lib/api-payment";
 
 export default function ProjectDetailsPage({
@@ -323,7 +324,7 @@ export default function ProjectDetailsPage({
               projectId: p.serviceRequest?.id,
               projectTitle: p.serviceRequest?.title,
               bidAmount: p.bidAmount,
-              proposedTimeline: p.deliveryTime ? `${p.deliveryTime} days` : "",
+              proposedTimeline: formatTimeline(p.deliveryTime, "day") || "",
               coverLetter: p.coverLetter,
               status: p.status
           ? (p.status.toLowerCase() as "pending" | "accepted" | "rejected")
@@ -1163,7 +1164,8 @@ export default function ProjectDetailsPage({
                 <Users className="w-4 h-4" />
                 {bidCount} bids
               </div>
-              {startDate && endDate && (
+              {/* Date range only shown if startDate and endDate exist */}
+              {project.startDate && project.endDate && startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime()) && (
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   {startDate.toLocaleDateString()} -{" "}
@@ -1232,6 +1234,7 @@ export default function ProjectDetailsPage({
               </div>
             </CardContent>
           </Card>
+          {project.endDate ? (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -1249,6 +1252,7 @@ export default function ProjectDetailsPage({
               </div>
             </CardContent>
           </Card>
+          ) : null}
         </div>
 
         {/* Progress Bar */}
@@ -1347,10 +1351,26 @@ export default function ProjectDetailsPage({
                   </div>
                   <div>
                     <h4 className="font-medium mb-2">Timeline</h4>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      {new Date(project.startDate).toLocaleDateString()} -{" "}
-                      {new Date(project.endDate).toLocaleDateString()}
+                    <div className="space-y-2">
+                      {project.originalTimeline && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Original Timeline (Company):</p>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {formatTimeline(project.originalTimeline)}
+                          </p>
+                        </div>
+                      )}
+                      {project.providerProposedTimeline && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Provider's Proposed Timeline:</p>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {formatTimeline(project.providerProposedTimeline, "day")}
+                          </p>
+                        </div>
+                      )}
+                      {!project.originalTimeline && !project.providerProposedTimeline && (
+                        <p className="text-sm text-gray-600">Not specified</p>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -2245,7 +2265,7 @@ export default function ProjectDetailsPage({
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
                               PDF
-                            </div>
+                        </div>
                             <div className="flex flex-col min-w-0 flex-1">
                               <span className="text-sm font-medium text-gray-900 break-all leading-snug">
                                 {fileName}
@@ -2255,14 +2275,14 @@ export default function ProjectDetailsPage({
                                 {attachment.submittedAt && ` • Submitted: ${new Date(attachment.submittedAt).toLocaleDateString()}`}
                                 <span className="block mt-0.5">Click to preview / download</span>
                               </span>
-                            </div>
+                      </div>
                             <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
                               <Download className="w-4 h-4" />
-                            </div>
+                    </div>
                           </a>
                         );
                       })}
-                    </div>
+                </div>
                   );
                 })()}
               </CardContent>
@@ -2740,13 +2760,13 @@ export default function ProjectDetailsPage({
           <div className="space-y-4">
             <div>
               <Label htmlFor="rejectReason">Reason for rejection</Label>
-              <Textarea
-                id="rejectReason"
+            <Textarea
+              id="rejectReason"
                 placeholder="Please explain why you're rejecting this request..."
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
                 rows={4}
-              />
+            />
             </div>
           </div>
 
@@ -2769,7 +2789,7 @@ export default function ProjectDetailsPage({
             >
               {processingId === selectedProposalForAction?.id ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Rejecting...
                 </>
               ) : (
@@ -2825,27 +2845,27 @@ export default function ProjectDetailsPage({
                   {/* Name + rating */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                      <h3 className="text-xl font-semibold">
+                  <h3 className="text-xl font-semibold">
                         {selectedProposalDetails.provider?.name || selectedProposalDetails.providerName || "Provider"}
-                      </h3>
+                  </h3>
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span>
                             {selectedProposalDetails.provider?.rating || selectedProposalDetails.providerRating || 0} rating
-                          </span>
-                        </div>
+                      </span>
+                    </div>
 
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
                           {selectedProposalDetails.provider?.location || selectedProposalDetails.providerLocation || "—"}
-                        </div>
+                      </div>
 
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
                           {selectedProposalDetails.provider?.responseTime || selectedProposalDetails.providerResponseTime || "N/A"} response time
-                        </div>
+                      </div>
                       </div>
 
                       {selectedProposalDetails.experience && (
@@ -2875,8 +2895,8 @@ export default function ProjectDetailsPage({
                             +{asArray<string>(selectedProposalDetails.skills || []).length - 4} more
                           </Badge>
                         )}
-                      </div>
-                    </div>
+                </div>
+              </div>
 
                     {/* View profile button */}
                     <NextLink
@@ -2893,45 +2913,45 @@ export default function ProjectDetailsPage({
                       </Button>
                     </NextLink>
                   </div>
-                </div>
-              </div>
+                    </div>
+                  </div>
 
               <Separator />
 
               {/* Project & Bid Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+                  <div>
                   <h4 className="font-semibold mb-2">Project</h4>
                   <p className="text-gray-900">
                     {selectedProposalDetails.projectTitle || project.title}
                   </p>
-                </div>
+                    </div>
                 <div>
                   <h4 className="font-semibold mb-2">Bid Amount</h4>
                   <p className="text-2xl font-bold text-green-600">
                     RM{fmt(selectedProposalDetails.bidAmount || 0)}
                   </p>
-                </div>
-                <div>
+                  </div>
+                  <div>
                   <h4 className="font-semibold mb-2">Proposed Timeline</h4>
                   <p className="text-gray-900">
-                    {selectedProposalDetails.proposedTimeline || selectedProposalDetails.deliveryTime ? `${selectedProposalDetails.deliveryTime} days` : "—"}
+                    {formatTimeline(selectedProposalDetails.proposedTimeline) || formatTimeline(selectedProposalDetails.deliveryTime, "day") || "—"}
                   </p>
-                </div>
+                    </div>
                 <div>
                   <h4 className="font-semibold mb-2">Status</h4>
                   <Badge className={getStatusColor(selectedProposalDetails.status || "pending")}>
                     {(selectedProposalDetails.status || "pending").charAt(0).toUpperCase() +
                       (selectedProposalDetails.status || "pending").slice(1)}
                   </Badge>
-                </div>
+                  </div>
               </div>
 
               <Separator />
 
               {/* Cover Letter */}
-              <div>
-                <h4 className="font-semibold mb-2">Cover Letter</h4>
+                <div>
+                  <h4 className="font-semibold mb-2">Cover Letter</h4>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-gray-700 whitespace-pre-wrap">
                     {selectedProposalDetails.coverLetter}
@@ -3017,9 +3037,9 @@ export default function ProjectDetailsPage({
                               {m.description &&
                                 m.description.trim() !== "" && (
                                   <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                    {m.description}
-                                  </p>
-                                )}
+                                  {m.description}
+                                </p>
+                              )}
 
                               {/* Dates */}
                               <div className="text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
@@ -3055,7 +3075,7 @@ export default function ProjectDetailsPage({
                         // rawUrl can look like: "uploads\proposals\1761857633365_Screenshots.pdf"
                         // We normalize slashes and extract filename.
                         const normalized = rawUrl.replace(/\\/g, "/"); // -> "uploads/proposals/..."
-                        const fileName =
+                          const fileName =
                           normalized.split("/").pop() || `file-${idx + 1}`;
 
                         // Build absolute URL to download
@@ -3064,13 +3084,13 @@ export default function ProjectDetailsPage({
                           "http://localhost:4000"
                         }/${normalized.replace(/^\//, "")}`;
 
-                        return (
+                          return (
                           <a
                             key={idx}
                             href={fullUrl}
                             download={fileName}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                                target="_blank"
+                                rel="noopener noreferrer"
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             {/* Icon circle */}
@@ -3149,15 +3169,15 @@ export default function ProjectDetailsPage({
               </div>
             )}
             {selectedProposalDetails?.status !== "pending" && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setProposalDetailsOpen(false);
-                  setSelectedProposalDetails(null);
-                }}
-              >
-                Close
-              </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setProposalDetailsOpen(false);
+                setSelectedProposalDetails(null);
+              }}
+            >
+              Close
+            </Button>
             )}
           </DialogFooter>
         </DialogContent>
