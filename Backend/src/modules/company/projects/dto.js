@@ -19,7 +19,8 @@ export class CreateProjectDto {
   constructor(data) {
     this.title = data.title;
     this.description = data.description;
-    this.category = this.mapCategory(data.category);
+    // Category is now a string, no need to map
+    this.category = data.category || "";
     this.budgetMin = data.budgetMin;
     this.budgetMax = data.budgetMax;
     this.skills = data.skills || [];
@@ -63,22 +64,7 @@ export class CreateProjectDto {
     this.customerId = data.customerId;
   }
 
-  mapCategory(category) {
-    const categoryMap = {
-      "Mobile Development": "MOBILE_APP_DEVELOPMENT",
-      "Web Development": "WEB_DEVELOPMENT",
-      "Cloud Services": "CLOUD_SERVICES",
-      "IoT Solutions": "IOT_SOLUTIONS",
-      "Data Analytics": "DATA_ANALYTICS",
-      "Cybersecurity": "CYBERSECURITY",
-      "UI/UX Design": "UI_UX_DESIGN",
-      "DevOps": "DEVOPS",
-      "AI/ML Solutions": "AI_ML_SOLUTIONS",
-      "System Integration": "SYSTEM_INTEGRATION",
-    };
-    
-    return categoryMap[category] || category;
-  }
+  // mapCategory method removed - categories are now strings, no mapping needed
 
 validate() {
     // existing checks...
@@ -146,6 +132,7 @@ export class UpdateProjectDto {
     this.customerId   = data.customerId;
     this.title        = data.title;
     this.description  = data.description;
+    // Category is now a string, accept it as-is
     this.category     = data.category;
     this.budgetMin    = data.budgetMin;
     this.budgetMax    = data.budgetMax;

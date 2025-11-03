@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle, Loader2 } from "lucide-react"
+import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle, Loader2, X, Globe } from "lucide-react"
 import { ProviderLayout } from "@/components/provider-layout"
 import { getProviderProfile, upsertProviderProfile, getProviderProfileStats, getProviderProfileCompletion } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -51,6 +51,12 @@ export default function ProviderProfilePage() {
   })
   const [profileCompletion, setProfileCompletion] = useState(0)
   const { toast } = useToast()
+  
+  // State for input fields (similar to registration form)
+  const [customSkill, setCustomSkill] = useState("")
+  const [customLanguage, setCustomLanguage] = useState("")
+  const [newPortfolioUrl, setNewPortfolioUrl] = useState("")
+  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([])
 
   // Load profile data on component mount
   useEffect(() => {
@@ -84,6 +90,14 @@ export default function ProviderProfilePage() {
             workPreference: profile.workPreference || "remote",
             teamSize: profile.teamSize || 1,
           })
+          
+          // Load portfolio URLs if available
+          if (profile.portfolioUrls) {
+            setPortfolioUrls(profile.portfolioUrls)
+          } else if (profile.portfolio && Array.isArray(profile.portfolio)) {
+            // Fallback for portfolio array structure
+            setPortfolioUrls(profile.portfolio)
+          }
         }
 
         if (statsResponse.success) {
@@ -121,6 +135,7 @@ export default function ProviderProfilePage() {
         website: profileData.website,
         profileVideoUrl: profileData.profileVideoUrl,
         skills: profileData.skills,
+        portfolioUrls: portfolioUrls,
         yearsExperience: profileData.yearsExperience,
         minimumProjectBudget: profileData.minimumProjectBudget,
         maximumProjectBudget: profileData.maximumProjectBudget,
@@ -175,6 +190,107 @@ export default function ProviderProfilePage() {
       ...prev,
       languages
     }))
+  }
+
+  // Popular skills and languages (same as registration form)
+  const popularSkills = [
+    "React",
+    "Next.js",
+    "Vue.js",
+    "Angular",
+    "Node.js",
+    "Python",
+    "Java",
+    "PHP",
+    "Mobile Development",
+    "iOS",
+    "Android",
+    "Flutter",
+    "React Native",
+    "Cloud Computing",
+    "AWS",
+    "Azure",
+    "Google Cloud",
+    "DevOps",
+    "Database",
+    "MySQL",
+    "PostgreSQL",
+    "MongoDB",
+    "Redis",
+    "UI/UX Design",
+    "Figma",
+    "Adobe XD",
+    "Photoshop",
+    "Cybersecurity",
+    "Blockchain",
+    "IoT",
+    "AI/ML",
+    "Data Science",
+  ]
+
+  const commonLanguages = [
+    "English",
+    "Bahasa Malaysia",
+    "Mandarin",
+    "Tamil",
+    "Cantonese",
+    "Hokkien",
+    "Hindi",
+    "Arabic",
+    "Japanese",
+    "Korean",
+    "French",
+    "German",
+  ]
+
+  // Handler functions for adding/removing items
+  const handleAddCustomSkill = () => {
+    if (customSkill.trim() && !profileData.skills.includes(customSkill.trim())) {
+      handleSkillsChange([...profileData.skills, customSkill.trim()])
+      setCustomSkill("")
+    }
+  }
+
+  const handleRemoveSkill = (skill: string) => {
+    handleSkillsChange(profileData.skills.filter(s => s !== skill))
+  }
+
+  const handleSkillToggle = (skill: string) => {
+    if (profileData.skills.includes(skill)) {
+      handleRemoveSkill(skill)
+    } else {
+      handleSkillsChange([...profileData.skills, skill])
+    }
+  }
+
+  const handleAddCustomLanguage = () => {
+    if (customLanguage.trim() && !profileData.languages.includes(customLanguage.trim())) {
+      handleLanguagesChange([...profileData.languages, customLanguage.trim()])
+      setCustomLanguage("")
+    }
+  }
+
+  const handleRemoveLanguage = (language: string) => {
+    handleLanguagesChange(profileData.languages.filter(l => l !== language))
+  }
+
+  const handleLanguageToggle = (language: string) => {
+    if (profileData.languages.includes(language)) {
+      handleRemoveLanguage(language)
+    } else {
+      handleLanguagesChange([...profileData.languages, language])
+    }
+  }
+
+  const handleAddPortfolioUrl = () => {
+    if (newPortfolioUrl.trim() && !portfolioUrls.includes(newPortfolioUrl.trim())) {
+      setPortfolioUrls([...portfolioUrls, newPortfolioUrl.trim()])
+      setNewPortfolioUrl("")
+    }
+  }
+
+  const handleRemovePortfolioUrl = (url: string) => {
+    setPortfolioUrls(portfolioUrls.filter(u => u !== url))
   }
 
   if (loading) {
@@ -597,17 +713,75 @@ export default function ProviderProfilePage() {
                             onChange={(e) => handleInputChange('website', e.target.value)}
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="sidebar-languages">Languages (comma-separated)</Label>
-                          <Input
-                            id="sidebar-languages"
-                            value={profileData.languages.join(', ')}
-                            onChange={(e) => {
-                              const languages = e.target.value.split(',').map(l => l.trim()).filter(l => l.length > 0)
-                              handleLanguagesChange(languages)
-                            }}
-                            placeholder="English, Bahasa Malaysia, Mandarin..."
-                          />
+                        <div className="space-y-4">
+                          <Label>Languages *</Label>
+                          <p className="text-sm text-gray-600">
+                            Add languages you can communicate in
+                          </p>
+                          
+                          <div className="flex gap-2">
+                            <Input
+                              value={customLanguage}
+                              onChange={(e) => setCustomLanguage(e.target.value)}
+                              placeholder="Type a language and press Add"
+                              onKeyPress={(e) =>
+                                e.key === "Enter" &&
+                                (e.preventDefault(), handleAddCustomLanguage())
+                              }
+                            />
+                            <Button
+                              type="button"
+                              onClick={handleAddCustomLanguage}
+                              variant="outline"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          {profileData.languages.length > 0 && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">
+                                Selected Languages ({profileData.languages.length})
+                              </Label>
+                              <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-gray-50">
+                                {profileData.languages.map((language) => (
+                                  <Badge
+                                    key={language}
+                                    className="bg-green-600 hover:bg-green-700 text-white pr-1"
+                                  >
+                                    {language}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveLanguage(language)}
+                                      className="ml-1 hover:bg-green-800 rounded-full p-0.5"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">
+                              Common Languages (click to add)
+                            </Label>
+                            <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-gray-50">
+                              {commonLanguages
+                                .filter((language) => !profileData.languages.includes(language))
+                                .map((language) => (
+                                  <Badge
+                                    key={language}
+                                    variant="outline"
+                                    className="cursor-pointer hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+                                    onClick={() => handleLanguageToggle(language)}
+                                  >
+                                    {language}
+                                  </Badge>
+                                ))}
+                            </div>
+                          </div>
                         </div>
                       </>
                     ) : (
@@ -652,25 +826,99 @@ export default function ProviderProfilePage() {
                   </CardContent>
                 </Card>
 
-                {/* Languages */}
+                {/* Portfolio URLs */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Languages</CardTitle>
+                    <CardTitle>Portfolio URLs</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {profileData.languages.map((language, index) => (
-                        <Badge key={index} variant="secondary">
-                          {language}
-                        </Badge>
-                      ))}
-                      {isEditing && (
-                        <Button variant="outline" size="sm">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Language
-                        </Button>
-                      )}
-                    </div>
+                  <CardContent className="space-y-4">
+                    {isEditing ? (
+                      <>
+                        <p className="text-sm text-gray-600">
+                          Add links to your GitHub, LinkedIn, or other professional profiles
+                        </p>
+                        <div className="flex gap-2">
+                          <Input
+                            value={newPortfolioUrl}
+                            onChange={(e) => setNewPortfolioUrl(e.target.value)}
+                            placeholder="https://github.com/yourusername"
+                            type="url"
+                            onKeyPress={(e) =>
+                              e.key === "Enter" &&
+                              (e.preventDefault(), handleAddPortfolioUrl())
+                            }
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleAddPortfolioUrl}
+                            variant="outline"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        {portfolioUrls.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">
+                              Portfolio Links ({portfolioUrls.length})
+                            </Label>
+                            <div className="space-y-2">
+                              {portfolioUrls.map((url, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-3 bg-gray-50 border rounded-lg"
+                                >
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-700 text-sm truncate flex-1"
+                                  >
+                                    {url}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePortfolioUrl(url)}
+                                    className="ml-2 text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {portfolioUrls.length === 0 && (
+                          <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                            <Globe className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                            <p>No portfolio links added yet</p>
+                            <p className="text-sm">
+                              Add links to showcase your work and professional profiles
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="space-y-2">
+                        {portfolioUrls.length > 0 ? (
+                          portfolioUrls.map((url, index) => (
+                            <a
+                              key={index}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-blue-600 hover:underline"
+                            >
+                              {url}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-sm">No portfolio links added</p>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -747,18 +995,76 @@ export default function ProviderProfilePage() {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                        <div>
-                        <Label htmlFor="skills">Skills (comma-separated)</Label>
-                        <Input
-                          id="skills"
-                          value={profileData.skills.join(', ')}
-                          onChange={(e) => {
-                            const skills = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0)
-                            handleSkillsChange(skills)
-                          }}
-                          placeholder="React, Node.js, TypeScript, AWS..."
-                        />
+                      <div className="space-y-4">
+                        <Label>Technical Skills *</Label>
+                        <p className="text-sm text-gray-600">
+                          Add your technical skills and expertise
+                        </p>
+                        
+                        <div className="flex gap-2">
+                          <Input
+                            value={customSkill}
+                            onChange={(e) => setCustomSkill(e.target.value)}
+                            placeholder="Type a skill and press Add"
+                            onKeyPress={(e) =>
+                              e.key === "Enter" &&
+                              (e.preventDefault(), handleAddCustomSkill())
+                            }
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleAddCustomSkill}
+                            variant="outline"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
                         </div>
+
+                        {profileData.skills.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">
+                              Selected Skills ({profileData.skills.length})
+                            </Label>
+                            <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-gray-50 max-h-32 overflow-y-auto">
+                              {profileData.skills.map((skill) => (
+                                <Badge
+                                  key={skill}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white pr-1"
+                                >
+                                  {skill}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSkill(skill)}
+                                    className="ml-1 hover:bg-blue-800 rounded-full p-0.5"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">
+                            Popular Skills (click to add)
+                          </Label>
+                          <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-3 border rounded-lg bg-gray-50">
+                            {popularSkills
+                              .filter((skill) => !profileData.skills.includes(skill))
+                              .map((skill) => (
+                                <Badge
+                                  key={skill}
+                                  variant="outline"
+                                  className="cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+                                  onClick={() => handleSkillToggle(skill)}
+                                >
+                                  {skill}
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="yearsExperience">Years of Experience</Label>

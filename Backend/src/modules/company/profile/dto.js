@@ -68,12 +68,38 @@ class CompanyProfileDto {
   }
 
   isValidUrl(string) {
+    if (!string || typeof string !== 'string') return false;
     try {
-      new URL(string);
+      // Normalize URL: add https:// if no protocol is present
+      const normalized = string.trim();
+      if (!normalized) return false;
+      
+      // If it already has a protocol, validate as-is
+      if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+        new URL(normalized);
+        return true;
+      }
+      
+      // Otherwise, try with https:// prefix
+      new URL(`https://${normalized}`);
       return true;
     } catch (_) {
       return false;
     }
+  }
+
+  normalizeUrl(string) {
+    if (!string || typeof string !== 'string') return string;
+    const trimmed = string.trim();
+    if (!trimmed) return trimmed;
+    
+    // If it already has a protocol, return as-is
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    
+    // Otherwise, add https:// prefix
+    return `https://${trimmed}`;
   }
 
   toUpdateData() {
@@ -81,9 +107,9 @@ class CompanyProfileDto {
       description: this.description,
       industry: this.industry,
       location: this.location,
-      website: this.website,
-      logoUrl: this.logoUrl,
-      socialLinks: this.socialLinks,
+      website: this.website ? this.normalizeUrl(this.website) : this.website,
+      logoUrl: this.logoUrl ? this.normalizeUrl(this.logoUrl) : this.logoUrl,
+      socialLinks: this.socialLinks?.map(link => this.normalizeUrl(link)) || this.socialLinks,
       languages: this.languages,
       companySize: this.companySize,
       employeeCount: this.employeeCount,
@@ -149,19 +175,54 @@ class CompanyProfileUpdateDto {
   }
 
   isValidUrl(string) {
+    if (!string || typeof string !== 'string') return false;
     try {
-      new URL(string);
+      // Normalize URL: add https:// if no protocol is present
+      const normalized = string.trim();
+      if (!normalized) return false;
+      
+      // If it already has a protocol, validate as-is
+      if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+        new URL(normalized);
+        return true;
+      }
+      
+      // Otherwise, try with https:// prefix
+      new URL(`https://${normalized}`);
       return true;
     } catch (_) {
       return false;
     }
   }
 
+  normalizeUrl(string) {
+    if (!string || typeof string !== 'string') return string;
+    const trimmed = string.trim();
+    if (!trimmed) return trimmed;
+    
+    // If it already has a protocol, return as-is
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    
+    // Otherwise, add https:// prefix
+    return `https://${trimmed}`;
+  }
+
   toUpdateData() {
     const updateData = {};
     Object.keys(this).forEach(key => {
       if (this[key] !== undefined && this[key] !== null) {
-        updateData[key] = this[key];
+        // Normalize URLs before saving
+        if (key === 'website' || key === 'logoUrl') {
+          updateData[key] = typeof this[key] === 'string' ? this.normalizeUrl(this[key]) : this[key];
+        } else if (key === 'socialLinks' && Array.isArray(this[key])) {
+          updateData[key] = this[key].map(link => typeof link === 'string' ? this.normalizeUrl(link) : link);
+        } else if (key === 'mediaGallery' && Array.isArray(this[key])) {
+          updateData[key] = this[key].map(url => typeof url === 'string' ? this.normalizeUrl(url) : url);
+        } else {
+          updateData[key] = this[key];
+        }
       }
     });
     return updateData;

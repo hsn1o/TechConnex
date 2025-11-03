@@ -1235,23 +1235,23 @@ export default function ProjectDetailsPage({
             </CardContent>
           </Card>
           {project.endDate ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Days Left</p>
-                    <p className="text-2xl font-bold">
-                      {Math.ceil(
-                        (new Date(project.endDate).getTime() -
-                          new Date().getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )}
-                    </p>
-                  </div>
-                  <Calendar className="w-8 h-8 text-orange-600" />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Days Left</p>
+                  <p className="text-2xl font-bold">
+                    {Math.ceil(
+                      (new Date(project.endDate).getTime() -
+                        new Date().getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <Calendar className="w-8 h-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
           ) : null}
         </div>
 

@@ -86,11 +86,14 @@ class ProviderProfileService {
   // Upsert provider profile (create or update)
   static async upsertProfile(userId, profileData) {
     try {
+      // Extract portfolioUrls if present (not stored in ProviderProfile directly)
+      const { portfolioUrls, ...restProfileData } = profileData;
+      
       // Validate input data (partial validation for upsert)
-      const dto = new ProviderProfileDto(profileData);
+      const dto = new ProviderProfileDto(restProfileData);
       dto.validatePartial();
 
-      // Upsert profile
+      // Upsert profile (portfolioUrls is handled separately via portfolios relation if needed)
       const profile = await ProviderProfileModel.upsertProfile(userId, dto.toUpdateData());
 
       // Update completion percentage
