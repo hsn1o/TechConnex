@@ -1,18 +1,32 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { toast } from "@/components/ui/use-toast"
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
 import { 
   ArrowLeft, 
   MessageSquare, 
@@ -30,62 +44,105 @@ import {
   Send,
   Paperclip,
   Download,
-  FileText
-} from "lucide-react"
-import { ProviderLayout } from "@/components/provider-layout"
-import { getProviderProjectById, updateProviderProjectStatus, updateProviderMilestoneStatus, getProviderProjectMilestones, updateProviderProjectMilestones, approveProviderMilestones, type Milestone } from "@/lib/api"
-import { formatTimeline } from "@/lib/timeline-utils"
+  FileText,
+  Eye,
+  X,
+} from "lucide-react";
+import { ProviderLayout } from "@/components/provider-layout";
+import {
+  getProviderProjectById,
+  updateProviderProjectStatus,
+  updateProviderMilestoneStatus,
+  getProviderProjectMilestones,
+  updateProviderProjectMilestones,
+  approveProviderMilestones,
+  createDispute,
+  getDisputeByProject,
+  updateDispute,
+  type Milestone,
+} from "@/lib/api";
+import { formatTimeline } from "@/lib/timeline-utils";
 
 export default function ProviderProjectDetailsPage() {
-  const params = useParams()
-  const router = useRouter()
-  const [project, setProject] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
-  const [isMilestoneDialogOpen, setIsMilestoneDialogOpen] = useState(false)
-  const [selectedMilestone, setSelectedMilestone] = useState<any>(null)
-  const [milestoneDeliverables, setMilestoneDeliverables] = useState("")
-  const [submitDeliverables, setSubmitDeliverables] = useState("")
-  const [submissionNote, setSubmissionNote] = useState("")
-  const [submissionAttachment, setSubmissionAttachment] = useState<File | null>(null)
-  const [updating, setUpdating] = useState(false)
+  const params = useParams();
+  const router = useRouter();
+  const [project, setProject] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [isMilestoneDialogOpen, setIsMilestoneDialogOpen] = useState(false);
+  const [selectedMilestone, setSelectedMilestone] = useState<any>(null);
+  const [milestoneDeliverables, setMilestoneDeliverables] = useState("");
+  const [submitDeliverables, setSubmitDeliverables] = useState("");
+  const [submissionNote, setSubmissionNote] = useState("");
+  const [submissionAttachment, setSubmissionAttachment] = useState<File | null>(
+    null
+  );
+  const [updating, setUpdating] = useState(false);
   
   // Project milestone management
-  const [milestoneEditorOpen, setMilestoneEditorOpen] = useState(false)
-  const [projectMilestones, setProjectMilestones] = useState<Milestone[]>([])
-  const [savingMilestones, setSavingMilestones] = useState(false)
+  const [milestoneEditorOpen, setMilestoneEditorOpen] = useState(false);
+  const [projectMilestones, setProjectMilestones] = useState<Milestone[]>([]);
+  const [savingMilestones, setSavingMilestones] = useState(false);
   const [milestoneApprovalState, setMilestoneApprovalState] = useState({
     milestonesLocked: false,
     companyApproved: false,
     providerApproved: false,
     milestonesApprovedAt: null as string | null,
-  })
+  });
+
+  // Dispute creation state
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+  const [viewDisputeDialogOpen, setViewDisputeDialogOpen] = useState(false);
+  const [currentDispute, setCurrentDispute] = useState<any>(null);
+  const [disputeReason, setDisputeReason] = useState("");
+  const [disputeDescription, setDisputeDescription] = useState("");
+  const [disputeContestedAmount, setDisputeContestedAmount] = useState("");
+  const [disputeSuggestedResolution, setDisputeSuggestedResolution] = useState("");
+  const [disputeAttachments, setDisputeAttachments] = useState<File[]>([]);
+  const [selectedMilestoneForDispute, setSelectedMilestoneForDispute] = useState<string | null>(null);
+  const [creatingDispute, setCreatingDispute] = useState(false);
+  const [updatingDispute, setUpdatingDispute] = useState(false);
+  const [disputeAdditionalNotes, setDisputeAdditionalNotes] = useState("");
+  const [disputeUpdateAttachments, setDisputeUpdateAttachments] = useState<File[]>([]);
 
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        setLoading(true)
-        setError(null)
-        const response = await getProviderProjectById(params.id as string)
+        setLoading(true);
+        setError(null);
+        const response = await getProviderProjectById(params.id as string);
         
         if (response.success) {
-          setProject(response.project)
+          setProject(response.project);
+          
+          // Fetch dispute for this project
+          try {
+            const disputeRes = await getDisputeByProject(response.project.id);
+            if (disputeRes.success && disputeRes.data) {
+              setCurrentDispute(disputeRes.data);
+            }
+          } catch (err) {
+            // No dispute exists yet, which is fine
+            console.log("No dispute found for project");
+          }
         } else {
-          setError("Failed to fetch project details")
+          setError("Failed to fetch project details");
         }
       } catch (err) {
-        console.error("Error fetching project:", err)
-        setError(err instanceof Error ? err.message : "Failed to fetch project")
+        console.error("Error fetching project:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch project"
+        );
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (params.id) {
-      fetchProject()
+      fetchProject();
     }
-  }, [params.id])
+  }, [params.id]);
 
   // Load project milestones
   useEffect(() => {
@@ -95,8 +152,8 @@ export default function ProviderProjectDetailsPage() {
         const milestoneData = await getProviderProjectMilestones(project.id);
         setProjectMilestones(
           Array.isArray(milestoneData.milestones) 
-            ? milestoneData.milestones.map((m: any) => ({ 
-                ...m, 
+            ? milestoneData.milestones.map((m: any) => ({
+                ...m,
                 sequence: m.order,
                 // Ensure all milestone fields are included
                 submissionAttachmentUrl: m.submissionAttachmentUrl,
@@ -161,11 +218,13 @@ export default function ProviderProjectDetailsPage() {
     if (!project?.id) return;
     try {
       setSavingMilestones(true);
-      const payload = normalizeMilestoneSequences(projectMilestones).map((m) => ({
+      const payload = normalizeMilestoneSequences(projectMilestones).map(
+        (m) => ({
         ...m,
         amount: Number(m.amount),
         dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
-      }));
+        })
+      );
       const res = await updateProviderProjectMilestones(project.id, payload);
       setMilestoneApprovalState({
         milestonesLocked: res.milestonesLocked,
@@ -225,167 +284,352 @@ export default function ProviderProjectDetailsPage() {
 
   const handleStatusUpdate = async (newStatus: string) => {
     try {
-      setUpdating(true)
-      const response = await updateProviderProjectStatus(params.id as string, newStatus)
+      setUpdating(true);
+      const response = await updateProviderProjectStatus(
+        params.id as string,
+        newStatus
+      );
       
       if (response.success) {
-        setProject(response.project)
+        setProject(response.project);
         toast({
           title: "Success",
           description: "Project status updated successfully",
-        })
-        setIsStatusDialogOpen(false)
+        });
+        setIsStatusDialogOpen(false);
       }
     } catch (err) {
       toast({
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to update status",
-        variant: "destructive"
-      })
+        description:
+          err instanceof Error ? err.message : "Failed to update status",
+        variant: "destructive",
+      });
     } finally {
-      setUpdating(false)
+      setUpdating(false);
     }
-  }
+  };
 
   const handleMilestoneUpdate = async (status: string) => {
     try {
-      setUpdating(true)
+      setUpdating(true);
       // Determine which deliverables to use based on status transition
       let deliverables = undefined;
       if (status === "IN_PROGRESS" && selectedMilestone?.status === "LOCKED") {
         // Starting work - use milestoneDeliverables (start deliverables)
-        deliverables = milestoneDeliverables ? { description: milestoneDeliverables } : undefined;
-      } else if (status === "SUBMITTED" && selectedMilestone?.status === "IN_PROGRESS") {
+        deliverables = milestoneDeliverables
+          ? { description: milestoneDeliverables }
+          : undefined;
+      } else if (
+        status === "SUBMITTED" &&
+        selectedMilestone?.status === "IN_PROGRESS"
+      ) {
         // Submitting work - use submitDeliverables
-        deliverables = submitDeliverables ? { description: submitDeliverables } : undefined;
+        deliverables = submitDeliverables
+          ? { description: submitDeliverables }
+          : undefined;
       } else {
         // Fallback to milestoneDeliverables for other cases
-        deliverables = milestoneDeliverables ? { description: milestoneDeliverables } : undefined;
+        deliverables = milestoneDeliverables
+          ? { description: milestoneDeliverables }
+          : undefined;
       }
-      
+
       const response = await updateProviderMilestoneStatus(
         selectedMilestone.id, 
         status, 
         deliverables,
         submissionNote || undefined,
         submissionAttachment || undefined
-      )
+      );
       
       if (response.success) {
         // Refresh project data
-        const projectResponse = await getProviderProjectById(params.id as string)
+        const projectResponse = await getProviderProjectById(
+          params.id as string
+        );
         if (projectResponse.success) {
-          setProject(projectResponse.project)
+          setProject(projectResponse.project);
         }
         toast({
           title: "Success",
           description: "Milestone updated successfully",
-        })
-        setIsMilestoneDialogOpen(false)
-        setSelectedMilestone(null)
-        setMilestoneDeliverables("")
-        setSubmitDeliverables("")
-        setSubmissionNote("")
-        setSubmissionAttachment(null)
+        });
+        setIsMilestoneDialogOpen(false);
+        setSelectedMilestone(null);
+        setMilestoneDeliverables("");
+        setSubmitDeliverables("");
+        setSubmissionNote("");
+        setSubmissionAttachment(null);
       }
     } catch (err) {
       toast({
         title: "Error",
-        description: err instanceof Error ? err.message : "Failed to update milestone",
-        variant: "destructive"
-      })
+        description:
+          err instanceof Error ? err.message : "Failed to update milestone",
+        variant: "destructive",
+      });
     } finally {
-      setUpdating(false)
+      setUpdating(false);
     }
-  }
+  };
+
+  // Handle dispute creation/update
+  const handleCreateDispute = async () => {
+    if (!disputeReason.trim() || !disputeDescription.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Reason and description are required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!project?.id) {
+      toast({
+        title: "Error",
+        description: "Project ID is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setCreatingDispute(true);
+      const response = await createDispute({
+        projectId: project.id,
+        milestoneId: selectedMilestoneForDispute || undefined,
+        reason: disputeReason.trim(),
+        description: disputeDescription.trim(),
+        contestedAmount: disputeContestedAmount ? parseFloat(disputeContestedAmount) : undefined,
+        suggestedResolution: disputeSuggestedResolution.trim() || undefined,
+        attachments: disputeAttachments.length > 0 ? disputeAttachments : undefined,
+      });
+
+      toast({
+        title: currentDispute ? "Dispute Updated" : "Dispute Created",
+        description: currentDispute 
+          ? "Your dispute has been updated successfully."
+          : "Your dispute has been submitted successfully. The milestone has been frozen.",
+      });
+
+      // Reload dispute
+      const disputeRes = await getDisputeByProject(project.id);
+      if (disputeRes.success && disputeRes.data) {
+        setCurrentDispute(disputeRes.data);
+      }
+
+      // Reset form
+      setDisputeDialogOpen(false);
+      setDisputeReason("");
+      setDisputeDescription("");
+      setDisputeContestedAmount("");
+      setDisputeSuggestedResolution("");
+      setDisputeAttachments([]);
+      setSelectedMilestoneForDispute(null);
+
+      // Reload project to reflect new status
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create/update dispute",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingDispute(false);
+    }
+  };
+
+  const handleViewDispute = async () => {
+    if (!project?.id) return;
+    try {
+      const disputeRes = await getDisputeByProject(project.id);
+      if (disputeRes.success && disputeRes.data) {
+        setCurrentDispute(disputeRes.data);
+        setViewDisputeDialogOpen(true);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load dispute",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateDispute = async () => {
+    if (!currentDispute?.id) return;
+    if (!disputeAdditionalNotes.trim() && disputeUpdateAttachments.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please add notes or attachments to update the dispute",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setUpdatingDispute(true);
+      await updateDispute(currentDispute.id, {
+        additionalNotes: disputeAdditionalNotes.trim() || undefined,
+        attachments: disputeUpdateAttachments.length > 0 ? disputeUpdateAttachments : undefined,
+        projectId: project?.id,
+      });
+
+      toast({
+        title: "Dispute Updated",
+        description: "Your update has been added to the dispute.",
+      });
+
+      // Reload dispute
+      const disputeRes = await getDisputeByProject(project.id);
+      if (disputeRes.success && disputeRes.data) {
+        setCurrentDispute(disputeRes.data);
+      }
+
+      // Reset form
+      setDisputeAdditionalNotes("");
+      setDisputeUpdateAttachments([]);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update dispute",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingDispute(false);
+    }
+  };
+
+  const handleDisputeAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const fileArray = Array.from(files);
+      setDisputeAttachments((prev) => [...prev, ...fileArray]);
+    }
+  };
+
+  const handleDisputeUpdateAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const fileArray = Array.from(files);
+      setDisputeUpdateAttachments((prev) => [...prev, ...fileArray]);
+    }
+  };
+
+  const removeDisputeAttachment = (index: number) => {
+    setDisputeAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeDisputeUpdateAttachment = (index: number) => {
+    setDisputeUpdateAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getDisputeStatusColor = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "OPEN":
+        return "bg-red-100 text-red-800";
+      case "UNDER_REVIEW":
+        return "bg-yellow-100 text-yellow-800";
+      case "RESOLVED":
+        return "bg-green-100 text-green-800";
+      case "CLOSED":
+        return "bg-gray-100 text-gray-800";
+      case "REJECTED":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "COMPLETED":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "IN_PROGRESS":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "DISPUTED":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getStatusText = (status: string) => {
     switch (status) {
       case "COMPLETED":
-        return "Completed"
+        return "Completed";
       case "IN_PROGRESS":
-        return "In Progress"
+        return "In Progress";
       case "DISPUTED":
-        return "Disputed"
+        return "Disputed";
       default:
-        return status
+        return status;
     }
-  }
+  };
 
   const getMilestoneStatusColor = (status: string) => {
     switch (status) {
       case "PAID":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "APPROVED":
-        return "bg-green-100 text-green-700"
+        return "bg-green-100 text-green-700";
       case "SUBMITTED":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "IN_PROGRESS":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "LOCKED":
-        return "bg-purple-100 text-purple-800"
+        return "bg-purple-100 text-purple-800";
       case "PENDING":
       case "DRAFT":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       case "REJECTED":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getMilestoneStatusText = (status: string) => {
     switch (status) {
       case "PAID":
-        return "Paid"
+        return "Paid";
       case "APPROVED":
-        return "Approved"
+        return "Approved";
       case "SUBMITTED":
-        return "Submitted"
+        return "Submitted";
       case "IN_PROGRESS":
-        return "In Progress"
+        return "In Progress";
       case "LOCKED":
-        return "Locked"
+        return "Locked";
       case "PENDING":
-        return "Pending"
+        return "Pending";
       case "DRAFT":
-        return "Draft"
+        return "Draft";
       case "REJECTED":
-        return "Rejected"
+        return "Rejected";
       default:
-        return status
+        return status;
     }
-  }
+  };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-MY', {
-      style: 'currency',
-      currency: 'MYR',
+    return new Intl.NumberFormat("en-MY", {
+      style: "currency",
+      currency: "MYR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-MY', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
+    return new Date(dateString).toLocaleDateString("en-MY", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   if (loading) {
     return (
@@ -393,12 +637,16 @@ export default function ProviderProjectDetailsPage() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading project...</h3>
-            <p className="text-gray-600">Please wait while we fetch the project details.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Loading project...
+            </h3>
+            <p className="text-gray-600">
+              Please wait while we fetch the project details.
+            </p>
           </div>
         </div>
       </ProviderLayout>
-    )
+    );
   }
 
   if (error || !project) {
@@ -409,7 +657,9 @@ export default function ProviderProjectDetailsPage() {
             <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error loading project</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Error loading project
+            </h3>
             <p className="text-gray-600 mb-4">{error || "Project not found"}</p>
             <Button onClick={() => router.back()} variant="outline">
               Go Back
@@ -417,7 +667,7 @@ export default function ProviderProjectDetailsPage() {
           </div>
         </div>
       </ProviderLayout>
-    )
+    );
   }
 
   return (
@@ -430,7 +680,9 @@ export default function ProviderProjectDetailsPage() {
             Back
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900">{project.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {project.title}
+            </h1>
             <p className="text-gray-600">{project.description}</p>
           </div>
           <div className="flex gap-3">
@@ -438,10 +690,30 @@ export default function ProviderProjectDetailsPage() {
               <MessageSquare className="w-4 h-4 mr-2" />
               Message Client
             </Button>
-            {project.status === "IN_PROGRESS" && (
-              <Button onClick={() => setIsStatusDialogOpen(true)}>
-                Update Status
+            {currentDispute ? (
+              <Button
+                variant="outline"
+                className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-300"
+                onClick={handleViewDispute}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View Dispute
               </Button>
+            ) : (
+              project.status === "IN_PROGRESS" && (
+                <Button
+                  onClick={() => setDisputeDialogOpen(true)}
+                  disabled={creatingDispute || (project?.status === "DISPUTED" && currentDispute?.status === "CLOSED")}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {creatingDispute ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Report Dispute
+                </Button>
+              )
             )}
           </div>
         </div>
@@ -467,25 +739,38 @@ export default function ProviderProjectDetailsPage() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Category</Label>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Category
+                        </Label>
                         <p className="text-lg">{project.category}</p>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Status</Label>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Status
+                        </Label>
                         <Badge className={getStatusColor(project.status)}>
                           {getStatusText(project.status)}
                         </Badge>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Budget Range</Label>
-                        <p className="text-lg">{formatCurrency(project.budgetMin)} - {formatCurrency(project.budgetMax)}</p>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Budget Range
+                        </Label>
+                        <p className="text-lg">
+                          {formatCurrency(project.budgetMin)} -{" "}
+                          {formatCurrency(project.budgetMax)}
+                        </p>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Timeline</Label>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Timeline
+                        </Label>
                         <div className="space-y-2">
                           {project.originalTimeline && (
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Original Timeline (Company):</p>
+                              <p className="text-xs text-gray-500 mb-1">
+                                Original Timeline (Company):
+                              </p>
                               <p className="text-sm text-gray-900 font-medium">
                                 {formatTimeline(project.originalTimeline)}
                               </p>
@@ -493,48 +778,76 @@ export default function ProviderProjectDetailsPage() {
                           )}
                           {project.providerProposedTimeline && (
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Your Proposed Timeline:</p>
+                              <p className="text-xs text-gray-500 mb-1">
+                                Your Proposed Timeline:
+                              </p>
                               <p className="text-sm text-gray-900 font-medium">
-                                {formatTimeline(project.providerProposedTimeline, "day")}
+                                {formatTimeline(
+                                  project.providerProposedTimeline,
+                                  "day"
+                                )}
                               </p>
                             </div>
                           )}
-                          {!project.originalTimeline && !project.providerProposedTimeline && (
-                            <p className="text-sm text-gray-600">Not specified</p>
-                          )}
+                          {!project.originalTimeline &&
+                            !project.providerProposedTimeline && (
+                              <p className="text-sm text-gray-600">
+                                Not specified
+                              </p>
+                            )}
                         </div>
                       </div>
                     </div>
 
                     {project.skills && project.skills.length > 0 && (
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Required Skills</Label>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Required Skills
+                        </Label>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {project.skills.map((skill: string, index: number) => (
-                            <Badge key={index} variant="secondary">{skill}</Badge>
-                          ))}
+                          {project.skills.map(
+                            (skill: string, index: number) => (
+                              <Badge key={index} variant="secondary">
+                                {skill}
+                              </Badge>
+                            )
+                          )}
                         </div>
                       </div>
                     )}
 
-                    {project.requirements && project.requirements.length > 0 && (
+                    {project.requirements &&
+                      project.requirements.length > 0 && (
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Requirements</Label>
+                          <Label className="text-sm font-medium text-gray-500">
+                            Requirements
+                          </Label>
                         <ul className="list-disc list-inside mt-2 space-y-1">
-                          {project.requirements.map((req: string, index: number) => (
-                            <li key={index} className="text-gray-700">{req}</li>
-                          ))}
+                            {project.requirements.map(
+                              (req: string, index: number) => (
+                                <li key={index} className="text-gray-700">
+                                  {req}
+                                </li>
+                              )
+                            )}
                         </ul>
                       </div>
                     )}
 
-                    {project.deliverables && project.deliverables.length > 0 && (
+                    {project.deliverables &&
+                      project.deliverables.length > 0 && (
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Deliverables</Label>
+                          <Label className="text-sm font-medium text-gray-500">
+                            Deliverables
+                          </Label>
                         <ul className="list-disc list-inside mt-2 space-y-1">
-                          {project.deliverables.map((del: string, index: number) => (
-                            <li key={index} className="text-gray-700">{del}</li>
-                          ))}
+                            {project.deliverables.map(
+                              (del: string, index: number) => (
+                                <li key={index} className="text-gray-700">
+                                  {del}
+                                </li>
+                              )
+                            )}
                         </ul>
                       </div>
                     )}
@@ -553,9 +866,15 @@ export default function ProviderProjectDetailsPage() {
                           <span>Overall Progress</span>
                           <span>{project.progress || 0}%</span>
                         </div>
-                        <Progress value={project.progress || 0} className="h-3" />
+                        <Progress
+                          value={project.progress || 0}
+                          className="h-3"
+                        />
                         <div className="flex justify-between text-sm text-gray-600">
-                          <span>{project.completedMilestones || 0} of {project.totalMilestones || 0} milestones completed</span>
+                          <span>
+                            {project.completedMilestones || 0} of{" "}
+                            {project.totalMilestones || 0} milestones completed
+                          </span>
                         </div>
                       </div>
                     </CardContent>
@@ -572,8 +891,10 @@ export default function ProviderProjectDetailsPage() {
                     </CardDescription>
                     <div className="flex flex-wrap items-center gap-2 mt-4">
                       <Badge variant="outline">
-                        Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} · 
-                        Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
+                        Company{" "}
+                        {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
+                        Provider{" "}
+                        {milestoneApprovalState.providerApproved ? "✓" : "✗"}
                         {milestoneApprovalState.milestonesLocked && " · LOCKED"}
                       </Badge>
                       {!milestoneApprovalState.milestonesLocked && (
@@ -598,20 +919,32 @@ export default function ProviderProjectDetailsPage() {
                   <CardContent>
                     <div className="space-y-4">
                       {projectMilestones && projectMilestones.length > 0 ? (
-                        projectMilestones.map((milestone: any, index: number) => (
-                          <div key={milestone.id} className="border rounded-lg p-4">
+                        projectMilestones.map(
+                          (milestone: any, index: number) => (
+                            <div
+                              key={milestone.id}
+                              className="border rounded-lg p-4"
+                            >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
                                   {milestone.order}
                                 </div>
                                 <div>
-                                  <h4 className="font-medium">{milestone.title}</h4>
-                                  <p className="text-sm text-gray-600">{milestone.description}</p>
+                                    <h4 className="font-medium">
+                                      {milestone.title}
+                                    </h4>
+                                    <p className="text-sm text-gray-600">
+                                      {milestone.description}
+                                    </p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <Badge className={getMilestoneStatusColor(milestone.status)}>
+                                  <Badge
+                                    className={getMilestoneStatusColor(
+                                      milestone.status
+                                    )}
+                                  >
                                   {getMilestoneStatusText(milestone.status)}
                                 </Badge>
                                 <span className="text-sm font-medium">
@@ -620,20 +953,25 @@ export default function ProviderProjectDetailsPage() {
                               </div>
                             </div>
                             <div className="flex items-center justify-between text-sm text-gray-600">
-                              <span>Due: {formatDate(milestone.dueDate)}</span>
+                                <span>
+                                  Due: {formatDate(milestone.dueDate)}
+                                </span>
                               <div className="flex items-center gap-2">
                                 {milestone.status === "PAID" && (
                                   <div className="flex items-center gap-1 text-green-600">
                                     <DollarSign className="w-4 h-4" />
-                                    <span className="text-sm font-medium">Paid</span>
+                                      <span className="text-sm font-medium">
+                                        Paid
+                                      </span>
                                   </div>
                                 )}
-                                {milestone.status === "LOCKED" && project.status === "IN_PROGRESS" && (
+                                  {milestone.status === "LOCKED" &&
+                                    project.status === "IN_PROGRESS" && (
                                   <Button 
                                     size="sm" 
                                     onClick={() => {
-                                      setSelectedMilestone(milestone)
-                                      setIsMilestoneDialogOpen(true)
+                                          setSelectedMilestone(milestone);
+                                          setIsMilestoneDialogOpen(true);
                                     }}
                                   >
                                     Start Work
@@ -643,8 +981,8 @@ export default function ProviderProjectDetailsPage() {
                                   <Button 
                                     size="sm" 
                                     onClick={() => {
-                                      setSelectedMilestone(milestone)
-                                      setIsMilestoneDialogOpen(true)
+                                        setSelectedMilestone(milestone);
+                                        setIsMilestoneDialogOpen(true);
                                     }}
                                   >
                                     Submit
@@ -652,214 +990,307 @@ export default function ProviderProjectDetailsPage() {
                                 )}
                               </div>
                             </div>
-                            
-                            {/* Show start deliverables if available (persists even after status changes) */}
-                            {milestone.startDeliverables && (
-                              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <p className="text-sm font-medium text-green-900 mb-1">
-                                  📋 Plan / Deliverables (When Starting Work):
-                                </p>
-                                <p className="text-sm text-green-800 whitespace-pre-wrap">
-                                  {typeof milestone.startDeliverables === 'object' && milestone.startDeliverables.description
-                                    ? milestone.startDeliverables.description
-                                    : JSON.stringify(milestone.startDeliverables)}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Show submit deliverables if available (persists even after status changes) */}
-                            {milestone.submitDeliverables && (
-                              <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                                <p className="text-sm font-medium text-purple-900 mb-1">
-                                  ✅ Deliverables / Completion Notes (When Submitting):
-                                </p>
-                                <p className="text-sm text-purple-800 whitespace-pre-wrap">
-                                  {typeof milestone.submitDeliverables === 'object' && milestone.submitDeliverables.description
-                                    ? milestone.submitDeliverables.description
-                                    : JSON.stringify(milestone.submitDeliverables)}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Show submission note if available (persists even after status changes) */}
-                            {milestone.submissionNote && (
-                              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                <p className="text-sm font-medium text-blue-900 mb-1">
-                                  📝 Submission Note:
-                                </p>
-                                <p className="text-sm text-blue-800 whitespace-pre-wrap">
-                                  {milestone.submissionNote}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Show latest requested changes reason if available (persists even after status changes) */}
-                            {milestone.submissionHistory && Array.isArray(milestone.submissionHistory) && milestone.submissionHistory.length > 0 && (
-                              (() => {
-                                const latestRequest = milestone.submissionHistory[milestone.submissionHistory.length - 1];
-                                if (latestRequest?.requestedChangesReason) {
-                                  return (
-                                    <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                      <p className="text-sm font-medium text-orange-900 mb-1">
-                                        🔄 Latest Request for Changes (Revision #{latestRequest.revisionNumber || milestone.submissionHistory.length}):
-                                      </p>
-                                      <p className="text-sm text-orange-800 whitespace-pre-wrap">
-                                        {latestRequest.requestedChangesReason}
-                                      </p>
-                                      {latestRequest.requestedChangesAt && (
-                                        <p className="text-xs text-orange-600 mt-2">
-                                          Requested on: {new Date(latestRequest.requestedChangesAt).toLocaleString()}
-                                        </p>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()
-                            )}
-                            
-                            {/* Show attachment if available (persists even after status changes) */}
-                            {milestone.submissionAttachmentUrl && (
-                              <div className="mt-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Paperclip className="w-4 h-4 text-gray-600" />
-                                  <span className="text-sm font-medium text-gray-900">
-                                    📎 Submission Attachment
-                                  </span>
+
+                              {/* Show start deliverables if available (persists even after status changes) */}
+                              {milestone.startDeliverables && (
+                                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                  <p className="text-sm font-medium text-green-900 mb-1">
+                                    📋 Plan / Deliverables (When Starting Work):
+                                  </p>
+                                  <p className="text-sm text-green-800 whitespace-pre-wrap">
+                                    {typeof milestone.startDeliverables ===
+                                      "object" &&
+                                    milestone.startDeliverables.description
+                                      ? milestone.startDeliverables.description
+                                      : JSON.stringify(
+                                          milestone.startDeliverables
+                                        )}
+                                  </p>
+                          </div>
+                              )}
+
+                              {/* Show submit deliverables if available (persists even after status changes) */}
+                              {milestone.submitDeliverables && (
+                                <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                  <p className="text-sm font-medium text-purple-900 mb-1">
+                                    ✅ Deliverables / Completion Notes (When
+                                    Submitting):
+                                  </p>
+                                  <p className="text-sm text-purple-800 whitespace-pre-wrap">
+                                    {typeof milestone.submitDeliverables ===
+                                      "object" &&
+                                    milestone.submitDeliverables.description
+                                      ? milestone.submitDeliverables.description
+                                      : JSON.stringify(
+                                          milestone.submitDeliverables
+                                        )}
+                                  </p>
                                 </div>
-                                <a
-                                  href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/${milestone.submissionAttachmentUrl.replace(/\\/g, "/").replace(/^\//, "")}`}
-                                  download={(() => {
-                                    const normalized = milestone.submissionAttachmentUrl.replace(/\\/g, "/");
-                                    return normalized.split("/").pop() || "attachment";
-                                  })()}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
-                                >
-                                  {/* Icon circle */}
-                                  <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
-                                    PDF
-                                  </div>
-                                  
-                                  {/* File info */}
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-medium text-gray-900 break-all leading-snug">
-                                      {(() => {
-                                        const normalized = milestone.submissionAttachmentUrl.replace(/\\/g, "/");
-                                        return normalized.split("/").pop() || "attachment";
-                                      })()}
-                                    </span>
-                                    <span className="text-xs text-gray-500 leading-snug">
-                                      Click to preview / download
-                                    </span>
-                                  </div>
-                                  
-                                  {/* Download icon */}
-                                  <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth={2}
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                      <path d="M7 10l5 5 5-5" />
-                                      <path d="M12 15V3" />
-                                    </svg>
-                                  </div>
-                                </a>
-                              </div>
-                            )}
-                            
-                            {/* Show submission history if available (persists even after status changes) */}
-                            {milestone.submissionHistory && Array.isArray(milestone.submissionHistory) && milestone.submissionHistory.length > 0 && (
-                              <div className="mt-4 border-t pt-4">
-                                <p className="text-sm font-semibold text-gray-900 mb-3">
-                                  📚 Previous Submission History:
-                                </p>
-                                <div className="space-y-3">
-                                  {milestone.submissionHistory.map((history: any, idx: number) => {
-                                    // Calculate revision number: first submission is revision 1, then 2, 3, etc.
-                                    // The revision number in history is the one BEFORE it was rejected
-                                    const revisionNumber = history.revisionNumber !== undefined && history.revisionNumber !== null
-                                      ? history.revisionNumber
-                                      : idx + 1;
-                                    
+                              )}
+
+                              {/* Show submission note if available (persists even after status changes) */}
+                              {milestone.submissionNote && (
+                                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                  <p className="text-sm font-medium text-blue-900 mb-1">
+                                    📝 Submission Note:
+                                  </p>
+                                  <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                                    {milestone.submissionNote}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Show latest requested changes reason if available (persists even after status changes) */}
+                              {milestone.submissionHistory &&
+                                Array.isArray(milestone.submissionHistory) &&
+                                milestone.submissionHistory.length > 0 &&
+                                (() => {
+                                  const latestRequest =
+                                    milestone.submissionHistory[
+                                      milestone.submissionHistory.length - 1
+                                    ];
+                                  if (latestRequest?.requestedChangesReason) {
                                     return (
-                                    <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <p className="text-sm font-medium text-gray-900">
-                                          Revision #{revisionNumber}
+                                      <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                        <p className="text-sm font-medium text-orange-900 mb-1">
+                                          🔄 Latest Request for Changes
+                                          (Revision #
+                                          {latestRequest.revisionNumber ||
+                                            milestone.submissionHistory.length}
+                                          ):
                                         </p>
-                                        {history.requestedChangesAt && (
-                                          <span className="text-xs text-gray-500">
-                                            Changes requested: {new Date(history.requestedChangesAt).toLocaleDateString()}
-                                          </span>
+                                        <p className="text-sm text-orange-800 whitespace-pre-wrap">
+                                          {latestRequest.requestedChangesReason}
+                                        </p>
+                                        {latestRequest.requestedChangesAt && (
+                                          <p className="text-xs text-orange-600 mt-2">
+                                            Requested on:{" "}
+                                            {new Date(
+                                              latestRequest.requestedChangesAt
+                                            ).toLocaleString()}
+                                          </p>
                                         )}
                                       </div>
-                                      
-                                      {history.requestedChangesReason && (
-                                        <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
-                                          <p className="text-xs font-medium text-red-900 mb-1">Reason for Changes:</p>
-                                          <p className="text-xs text-red-800">{history.requestedChangesReason}</p>
-                                        </div>
-                                      )}
-                                      
-                                      {history.submitDeliverables && (
-                                        <div className="mb-2">
-                                          <p className="text-xs font-medium text-gray-700 mb-1">Deliverables:</p>
-                                          <p className="text-xs text-gray-600 whitespace-pre-wrap">
-                                            {typeof history.submitDeliverables === 'object' && history.submitDeliverables.description
-                                              ? history.submitDeliverables.description
-                                              : JSON.stringify(history.submitDeliverables)}
-                                          </p>
-                                        </div>
-                                      )}
-                                      
-                                      {history.submissionNote && (
-                                        <div className="mb-2">
-                                          <p className="text-xs font-medium text-gray-700 mb-1">Note:</p>
-                                          <p className="text-xs text-gray-600 whitespace-pre-wrap">{history.submissionNote}</p>
-                                        </div>
-                                      )}
-                                      
-                                      {history.submissionAttachmentUrl && (
-                                        <div>
-                                          <p className="text-xs font-medium text-gray-700 mb-1">Attachment:</p>
-                                          <a
-                                            href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/${history.submissionAttachmentUrl.replace(/\\/g, "/").replace(/^\//, "")}`}
-                                            download
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                          >
-                                            {(() => {
-                                              const normalized = history.submissionAttachmentUrl.replace(/\\/g, "/");
-                                              return normalized.split("/").pop() || "attachment";
-                                            })()}
-                                          </a>
-                                        </div>
-                                      )}
-                                      
-                                      {history.submittedAt && (
-                                        <p className="text-xs text-gray-500 mt-2">
-                                          Submitted: {new Date(history.submittedAt).toLocaleString()}
-                                        </p>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+
+                              {/* Show attachment if available (persists even after status changes) */}
+                              {milestone.submissionAttachmentUrl && (
+                                <div className="mt-3">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Paperclip className="w-4 h-4 text-gray-600" />
+                                    <span className="text-sm font-medium text-gray-900">
+                                      📎 Submission Attachment
+                                    </span>
+                                  </div>
+                                  <a
+                                    href={`${
+                                      process.env.NEXT_PUBLIC_API_URL ||
+                                      "http://localhost:4000"
+                                    }/${milestone.submissionAttachmentUrl
+                                      .replace(/\\/g, "/")
+                                      .replace(/^\//, "")}`}
+                                    download={(() => {
+                                      const normalized =
+                                        milestone.submissionAttachmentUrl.replace(
+                                          /\\/g,
+                                          "/"
+                                        );
+                                      return (
+                                        normalized.split("/").pop() ||
+                                        "attachment"
+                                      );
+                                    })()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                                  >
+                                    {/* Icon circle */}
+                                    <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                                      PDF
+                                    </div>
+
+                                    {/* File info */}
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                        {(() => {
+                                          const normalized =
+                                            milestone.submissionAttachmentUrl.replace(
+                                              /\\/g,
+                                              "/"
+                                            );
+                                          return (
+                                            normalized.split("/").pop() ||
+                                            "attachment"
+                                          );
+                                        })()}
+                                      </span>
+                                      <span className="text-xs text-gray-500 leading-snug">
+                                        Click to preview / download
+                                      </span>
+                                    </div>
+
+                                    {/* Download icon */}
+                                    <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                                      <svg
+                                        className="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth={2}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <path d="M7 10l5 5 5-5" />
+                                        <path d="M12 15V3" />
+                                      </svg>
+                                    </div>
+                                  </a>
+                                </div>
+                              )}
+
+                              {/* Show submission history if available (persists even after status changes) */}
+                              {milestone.submissionHistory &&
+                                Array.isArray(milestone.submissionHistory) &&
+                                milestone.submissionHistory.length > 0 && (
+                                  <div className="mt-4 border-t pt-4">
+                                    <p className="text-sm font-semibold text-gray-900 mb-3">
+                                      📚 Previous Submission History:
+                                    </p>
+                                    <div className="space-y-3">
+                                      {milestone.submissionHistory.map(
+                                        (history: any, idx: number) => {
+                                          // Calculate revision number: first submission is revision 1, then 2, 3, etc.
+                                          // The revision number in history is the one BEFORE it was rejected
+                                          const revisionNumber =
+                                            history.revisionNumber !==
+                                              undefined &&
+                                            history.revisionNumber !== null
+                                              ? history.revisionNumber
+                                              : idx + 1;
+
+                                          return (
+                                            <div
+                                              key={idx}
+                                              className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                                            >
+                                              <div className="flex items-center justify-between mb-2">
+                                                <p className="text-sm font-medium text-gray-900">
+                                                  Revision #{revisionNumber}
+                                                </p>
+                                                {history.requestedChangesAt && (
+                                                  <span className="text-xs text-gray-500">
+                                                    Changes requested:{" "}
+                                                    {new Date(
+                                                      history.requestedChangesAt
+                                                    ).toLocaleDateString()}
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              {history.requestedChangesReason && (
+                                                <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
+                                                  <p className="text-xs font-medium text-red-900 mb-1">
+                                                    Reason for Changes:
+                                                  </p>
+                                                  <p className="text-xs text-red-800">
+                                                    {
+                                                      history.requestedChangesReason
+                                                    }
+                                                  </p>
+                                                </div>
+                                              )}
+
+                                              {history.submitDeliverables && (
+                                                <div className="mb-2">
+                                                  <p className="text-xs font-medium text-gray-700 mb-1">
+                                                    Deliverables:
+                                                  </p>
+                                                  <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                                    {typeof history.submitDeliverables ===
+                                                      "object" &&
+                                                    history.submitDeliverables
+                                                      .description
+                                                      ? history
+                                                          .submitDeliverables
+                                                          .description
+                                                      : JSON.stringify(
+                                                          history.submitDeliverables
+                                                        )}
+                                                  </p>
+                                                </div>
+                                              )}
+
+                                              {history.submissionNote && (
+                                                <div className="mb-2">
+                                                  <p className="text-xs font-medium text-gray-700 mb-1">
+                                                    Note:
+                                                  </p>
+                                                  <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                                    {history.submissionNote}
+                                                  </p>
+                                                </div>
+                                              )}
+
+                                              {history.submissionAttachmentUrl && (
+                                                <div>
+                                                  <p className="text-xs font-medium text-gray-700 mb-1">
+                                                    Attachment:
+                                                  </p>
+                                                  <a
+                                                    href={`${
+                                                      process.env
+                                                        .NEXT_PUBLIC_API_URL ||
+                                                      "http://localhost:4000"
+                                                    }/${history.submissionAttachmentUrl
+                                                      .replace(/\\/g, "/")
+                                                      .replace(/^\//, "")}`}
+                                                    download
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                  >
+                                                    {(() => {
+                                                      const normalized =
+                                                        history.submissionAttachmentUrl.replace(
+                                                          /\\/g,
+                                                          "/"
+                                                        );
+                                                      return (
+                                                        normalized
+                                                          .split("/")
+                                                          .pop() || "attachment"
+                                                      );
+                                                    })()}
+                                                  </a>
+                                                </div>
+                                              )}
+
+                                              {history.submittedAt && (
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                  Submitted:{" "}
+                                                  {new Date(
+                                                    history.submittedAt
+                                                  ).toLocaleString()}
+                                                </p>
+                                              )}
+                                            </div>
+                                          );
+                                        }
                                       )}
                                     </div>
-                                  );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))
+                                  </div>
+                                )}
+                            </div>
+                          )
+                        )
                       ) : (
-                        <p className="text-gray-600 text-center py-8">No milestones found</p>
+                        <p className="text-gray-600 text-center py-8">
+                          No milestones found
+                        </p>
                       )}
                     </div>
                   </CardContent>
@@ -879,14 +1310,24 @@ export default function ProviderProjectDetailsPage() {
                     {(() => {
                       // Get attachments from the provider's proposal
                       const proposalAttachments: string[] = [];
-                      
+
                       // Get attachments from project.proposal or project.Proposal (backend returns it as proposal)
-                      if (project?.proposal?.attachmentUrls && Array.isArray(project.proposal.attachmentUrls)) {
-                        proposalAttachments.push(...project.proposal.attachmentUrls);
-                      } else if (project?.Proposal?.attachmentUrls && Array.isArray(project.Proposal.attachmentUrls)) {
-                        proposalAttachments.push(...project.Proposal.attachmentUrls);
+                      if (
+                        project?.proposal?.attachmentUrls &&
+                        Array.isArray(project.proposal.attachmentUrls)
+                      ) {
+                        proposalAttachments.push(
+                          ...project.proposal.attachmentUrls
+                        );
+                      } else if (
+                        project?.Proposal?.attachmentUrls &&
+                        Array.isArray(project.Proposal.attachmentUrls)
+                      ) {
+                        proposalAttachments.push(
+                          ...project.Proposal.attachmentUrls
+                        );
                       }
-                      
+
                       if (proposalAttachments.length === 0) {
                         return (
                           <p className="text-sm text-gray-500 text-center py-8">
@@ -894,14 +1335,18 @@ export default function ProviderProjectDetailsPage() {
                           </p>
                         );
                       }
-                      
+
                       return (
                         <div className="space-y-2">
                           {proposalAttachments.map((url, idx) => {
                             const normalized = url.replace(/\\/g, "/");
-                            const fileName = normalized.split("/").pop() || `file-${idx + 1}`;
-                            const fullUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/${normalized.replace(/^\//, "")}`;
-                            
+                            const fileName =
+                              normalized.split("/").pop() || `file-${idx + 1}`;
+                            const fullUrl = `${
+                              process.env.NEXT_PUBLIC_API_URL ||
+                              "http://localhost:4000"
+                            }/${normalized.replace(/^\//, "")}`;
+
                             return (
                               <a
                                 key={idx}
@@ -920,9 +1365,17 @@ export default function ProviderProjectDetailsPage() {
                                   </span>
                                   <span className="text-xs text-gray-500 leading-snug">
                                     From your proposal
-                                    {project?.proposal?.createdAt && ` • Submitted: ${new Date(project.proposal.createdAt).toLocaleDateString()}`}
-                                    {project?.proposal?.submittedAt && ` • Submitted: ${new Date(project.proposal.submittedAt).toLocaleDateString()}`}
-                                    <span className="block mt-0.5">Click to preview / download</span>
+                                    {project?.proposal?.createdAt &&
+                                      ` • Submitted: ${new Date(
+                                        project.proposal.createdAt
+                                      ).toLocaleDateString()}`}
+                                    {project?.proposal?.submittedAt &&
+                                      ` • Submitted: ${new Date(
+                                        project.proposal.submittedAt
+                                      ).toLocaleDateString()}`}
+                                    <span className="block mt-0.5">
+                                      Click to preview / download
+                                    </span>
                                   </span>
                                 </div>
                                 <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
@@ -948,9 +1401,14 @@ export default function ProviderProjectDetailsPage() {
                   <CardContent>
                     {(() => {
                       // Get attachments from milestones
-                      const milestoneAttachments: Array<{ url: string; milestoneTitle: string; milestoneId: string; submittedAt?: string }> = [];
-                      
-                      projectMilestones.forEach(milestone => {
+                      const milestoneAttachments: Array<{
+                        url: string;
+                        milestoneTitle: string;
+                        milestoneId: string;
+                        submittedAt?: string;
+                      }> = [];
+
+                      projectMilestones.forEach((milestone) => {
                         // Current submission attachment
                         if (milestone.submissionAttachmentUrl) {
                           milestoneAttachments.push({
@@ -960,22 +1418,31 @@ export default function ProviderProjectDetailsPage() {
                             submittedAt: milestone.submittedAt,
                           });
                         }
-                        
+
                         // History submission attachments
-                        if (milestone.submissionHistory && Array.isArray(milestone.submissionHistory)) {
-                          milestone.submissionHistory.forEach((history: any) => {
-                            if (history.submissionAttachmentUrl) {
-                              milestoneAttachments.push({
-                                url: history.submissionAttachmentUrl,
-                                milestoneTitle: `${milestone.title} (Revision ${history.revisionNumber || "N/A"})`,
-                                milestoneId: milestone.id,
-                                submittedAt: history.submittedAt,
-                              });
+                        if (
+                          milestone.submissionHistory &&
+                          Array.isArray(milestone.submissionHistory)
+                        ) {
+                          milestone.submissionHistory.forEach(
+                            (history: any) => {
+                              if (history.submissionAttachmentUrl) {
+                                milestoneAttachments.push({
+                                  url: history.submissionAttachmentUrl,
+                                  milestoneTitle: `${
+                                    milestone.title
+                                  } (Revision ${
+                                    history.revisionNumber || "N/A"
+                                  })`,
+                                  milestoneId: milestone.id,
+                                  submittedAt: history.submittedAt,
+                                });
+                              }
                             }
-                          });
+                          );
                         }
                       });
-                      
+
                       if (milestoneAttachments.length === 0) {
                         return (
                           <p className="text-sm text-gray-500 text-center py-8">
@@ -983,14 +1450,21 @@ export default function ProviderProjectDetailsPage() {
                           </p>
                         );
                       }
-                      
+
                       return (
                         <div className="space-y-2">
                           {milestoneAttachments.map((attachment, idx) => {
-                            const normalized = attachment.url.replace(/\\/g, "/");
-                            const fileName = normalized.split("/").pop() || `file-${idx + 1}`;
-                            const fullUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/${normalized.replace(/^\//, "")}`;
-                            
+                            const normalized = attachment.url.replace(
+                              /\\/g,
+                              "/"
+                            );
+                            const fileName =
+                              normalized.split("/").pop() || `file-${idx + 1}`;
+                            const fullUrl = `${
+                              process.env.NEXT_PUBLIC_API_URL ||
+                              "http://localhost:4000"
+                            }/${normalized.replace(/^\//, "")}`;
+
                             return (
                               <a
                                 key={idx}
@@ -1009,8 +1483,13 @@ export default function ProviderProjectDetailsPage() {
                                   </span>
                                   <span className="text-xs text-gray-500 leading-snug">
                                     From: {attachment.milestoneTitle}
-                                    {attachment.submittedAt && ` • Submitted: ${new Date(attachment.submittedAt).toLocaleDateString()}`}
-                                    <span className="block mt-0.5">Click to preview / download</span>
+                                    {attachment.submittedAt &&
+                                      ` • Submitted: ${new Date(
+                                        attachment.submittedAt
+                                      ).toLocaleDateString()}`}
+                                    <span className="block mt-0.5">
+                                      Click to preview / download
+                                    </span>
                                   </span>
                                 </div>
                                 <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
@@ -1035,7 +1514,8 @@ export default function ProviderProjectDetailsPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-gray-500 text-center py-8">
-                      Message attachments will be available here once implemented
+                      Message attachments will be available here once
+                      implemented
                     </p>
                   </CardContent>
                 </Card>
@@ -1055,14 +1535,24 @@ export default function ProviderProjectDetailsPage() {
                         {project.messages.map((message: any, index: number) => (
                           <div key={message.id} className="flex gap-3">
                             <Avatar>
-                              <AvatarImage src={message.sender?.avatar || "/placeholder.svg"} />
-                              <AvatarFallback>{message.sender?.name?.charAt(0) || "U"}</AvatarFallback>
+                              <AvatarImage
+                                src={
+                                  message.sender?.avatar || "/placeholder.svg"
+                                }
+                              />
+                              <AvatarFallback>
+                                {message.sender?.name?.charAt(0) || "U"}
+                              </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">{message.sender?.name}</span>
+                                <span className="font-medium">
+                                  {message.sender?.name}
+                                </span>
                                 <span className="text-sm text-gray-500">
-                                  {new Date(message.createdAt).toLocaleDateString()}
+                                  {new Date(
+                                    message.createdAt
+                                  ).toLocaleDateString()}
                                 </span>
                               </div>
                               <p className="text-gray-700">{message.content}</p>
@@ -1071,7 +1561,9 @@ export default function ProviderProjectDetailsPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-600 text-center py-8">No messages yet</p>
+                      <p className="text-gray-600 text-center py-8">
+                        No messages yet
+                      </p>
                     )}
                   </CardContent>
                 </Card>
@@ -1089,12 +1581,21 @@ export default function ProviderProjectDetailsPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Avatar>
-                    <AvatarImage src={project.customer?.customerProfile?.logoUrl || "/placeholder.svg"} />
-                    <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
+                    <AvatarImage
+                      src={
+                        project.customer?.customerProfile?.logoUrl ||
+                        "/placeholder.svg"
+                      }
+                    />
+                    <AvatarFallback>
+                      {project.customer?.name?.charAt(0) || "C"}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium">{project.customer?.name}</p>
-                    <p className="text-sm text-gray-600">{project.customer?.email}</p>
+                    <p className="text-sm text-gray-600">
+                      {project.customer?.email}
+                    </p>
                   </div>
                 </div>
                 
@@ -1137,12 +1638,18 @@ export default function ProviderProjectDetailsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Total Milestones</span>
-                  <span className="font-medium">{project.totalMilestones || 0}</span>
+                  <span className="text-sm text-gray-600">
+                    Total Milestones
+                  </span>
+                  <span className="font-medium">
+                    {project.totalMilestones || 0}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Completed</span>
-                  <span className="font-medium text-green-600">{project.completedMilestones || 0}</span>
+                  <span className="font-medium text-green-600">
+                    {project.completedMilestones || 0}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Progress</span>
@@ -1150,56 +1657,28 @@ export default function ProviderProjectDetailsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Created</span>
-                  <span className="font-medium">{formatDate(project.createdAt)}</span>
+                  <span className="font-medium">
+                    {formatDate(project.createdAt)}
+                  </span>
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Status Update Dialog */}
-        <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Update Project Status</DialogTitle>
-              <DialogDescription>
-                Update the current status of this project
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Button 
-                  onClick={() => handleStatusUpdate("COMPLETED")}
-                  disabled={updating}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {updating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                  Mark as Completed
-                </Button>
-                <Button 
-                  onClick={() => handleStatusUpdate("DISPUTED")}
-                  disabled={updating}
-                  variant="destructive"
-                >
-                  {updating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <AlertCircle className="w-4 h-4 mr-2" />}
-                  Report Dispute
-                </Button>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>
-                Cancel
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        
 
         {/* Milestone Update Dialog */}
-        <Dialog open={isMilestoneDialogOpen} onOpenChange={setIsMilestoneDialogOpen}>
+        <Dialog
+          open={isMilestoneDialogOpen}
+          onOpenChange={setIsMilestoneDialogOpen}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {selectedMilestone?.status === "LOCKED" ? "Start Milestone Work" : "Submit Milestone"}
+                {selectedMilestone?.status === "LOCKED"
+                  ? "Start Milestone Work"
+                  : "Submit Milestone"}
               </DialogTitle>
               <DialogDescription>
                 {selectedMilestone?.status === "LOCKED" 
@@ -1209,22 +1688,26 @@ export default function ProviderProjectDetailsPage() {
             </DialogHeader>
             <div className="space-y-4">
               {selectedMilestone?.status === "LOCKED" && (
-                <div>
-                  <Label htmlFor="startDeliverables">Deliverables / Plan (When Starting Work)</Label>
-                  <Textarea
+              <div>
+                  <Label htmlFor="startDeliverables">
+                    Deliverables / Plan (When Starting Work)
+                  </Label>
+                <Textarea
                     id="startDeliverables"
                     placeholder="Describe your plan and deliverables when starting this milestone..."
-                    value={milestoneDeliverables}
-                    onChange={(e) => setMilestoneDeliverables(e.target.value)}
-                    rows={4}
-                  />
-                </div>
+                  value={milestoneDeliverables}
+                  onChange={(e) => setMilestoneDeliverables(e.target.value)}
+                  rows={4}
+                />
+              </div>
               )}
-              
+
               {selectedMilestone?.status === "IN_PROGRESS" && (
                 <>
                   <div>
-                    <Label htmlFor="submitDeliverables">Deliverables / Notes (When Submitting)</Label>
+                    <Label htmlFor="submitDeliverables">
+                      Deliverables / Notes (When Submitting)
+                    </Label>
                     <Textarea
                       id="submitDeliverables"
                       placeholder="Describe what you've completed and your deliverables when submitting..."
@@ -1233,9 +1716,11 @@ export default function ProviderProjectDetailsPage() {
                       rows={4}
                     />
                   </div>
-                  
+
                   <div>
-                    <Label htmlFor="submissionNote">Submission Note (Optional)</Label>
+                    <Label htmlFor="submissionNote">
+                      Submission Note (Optional)
+                    </Label>
                     <Textarea
                       id="submissionNote"
                       placeholder="Add any additional notes about your submission..."
@@ -1244,7 +1729,7 @@ export default function ProviderProjectDetailsPage() {
                       rows={3}
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="attachment">Attachment (Optional)</Label>
                     <Input
@@ -1260,7 +1745,8 @@ export default function ProviderProjectDetailsPage() {
                       className="mt-1"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT, JPG, PNG (Max 10MB)
+                      Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT, JPG, PNG
+                      (Max 10MB)
                     </p>
                     {submissionAttachment && (
                       <div className="mt-2 text-sm text-gray-600">
@@ -1272,11 +1758,20 @@ export default function ProviderProjectDetailsPage() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsMilestoneDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsMilestoneDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button 
-                onClick={() => handleMilestoneUpdate(selectedMilestone?.status === "LOCKED" ? "IN_PROGRESS" : "SUBMITTED")}
+                onClick={() =>
+                  handleMilestoneUpdate(
+                    selectedMilestone?.status === "LOCKED"
+                      ? "IN_PROGRESS"
+                      : "SUBMITTED"
+                  )
+                }
                 disabled={updating}
               >
                 {updating ? (
@@ -1284,14 +1779,19 @@ export default function ProviderProjectDetailsPage() {
                 ) : (
                   <Send className="w-4 h-4 mr-2" />
                 )}
-                {selectedMilestone?.status === "LOCKED" ? "Start Work" : "Submit"}
+                {selectedMilestone?.status === "LOCKED"
+                  ? "Start Work"
+                  : "Submit"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         {/* Milestone Editor Dialog */}
-        <Dialog open={milestoneEditorOpen} onOpenChange={setMilestoneEditorOpen}>
+        <Dialog
+          open={milestoneEditorOpen}
+          onOpenChange={setMilestoneEditorOpen}
+        >
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>Edit Milestones</DialogTitle>
@@ -1338,7 +1838,9 @@ export default function ProviderProjectDetailsPage() {
                           type="date"
                           value={(m.dueDate || "").slice(0, 10)}
                           onChange={(e) =>
-                            updateProjectMilestone(i, { dueDate: e.target.value })
+                            updateProjectMilestone(i, {
+                              dueDate: e.target.value,
+                            })
                           }
                         />
                       </div>
@@ -1350,7 +1852,9 @@ export default function ProviderProjectDetailsPage() {
                         rows={2}
                         value={m.description || ""}
                         onChange={(e) =>
-                          updateProjectMilestone(i, { description: e.target.value })
+                          updateProjectMilestone(i, {
+                            description: e.target.value,
+                          })
                         }
                       />
                     </div>
@@ -1379,7 +1883,9 @@ export default function ProviderProjectDetailsPage() {
                   >
                     {savingMilestones ? "Saving..." : "Save Changes"}
                   </Button>
-                  <Button onClick={handleApproveProjectMilestones}>Approve</Button>
+                  <Button onClick={handleApproveProjectMilestones}>
+                    Approve
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1387,7 +1893,541 @@ export default function ProviderProjectDetailsPage() {
             <DialogFooter />
           </DialogContent>
         </Dialog>
+
+        {/* Dispute Creation Dialog */}
+        <Dialog open={disputeDialogOpen} onOpenChange={setDisputeDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Report Dispute</DialogTitle>
+              <DialogDescription>
+                Report a dispute related to this project. The associated milestone will be frozen until the dispute is resolved.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Milestone Selection (if applicable) */}
+              {projectMilestones && projectMilestones.length > 0 && (
+                <div>
+                  <Label htmlFor="disputeMilestone">Related Milestone (Optional)</Label>
+                  <Select
+                    value={selectedMilestoneForDispute || undefined}
+                    onValueChange={(value) => setSelectedMilestoneForDispute(value || null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a milestone (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projectMilestones.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.title} - RM{m.amount?.toLocaleString() || 0}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    If selected, this milestone will be frozen until the dispute is resolved.
+                  </p>
+                </div>
+              )}
+
+              {/* Reason */}
+              <div>
+                <Label htmlFor="disputeReason">
+                  Reason for Dispute <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={disputeReason}
+                  onValueChange={setDisputeReason}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Missed deadline">Missed deadline</SelectItem>
+                    <SelectItem value="Low quality">Low quality</SelectItem>
+                    <SelectItem value="Payment not released">Payment not released</SelectItem>
+                    <SelectItem value="Work not completed">Work not completed</SelectItem>
+                    <SelectItem value="Communication issues">Communication issues</SelectItem>
+                    <SelectItem value="Scope change">Scope change</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <Label htmlFor="disputeDescription">
+                  Detailed Description <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="disputeDescription"
+                  placeholder="Please provide a detailed description of the dispute..."
+                  value={disputeDescription}
+                  onChange={(e) => setDisputeDescription(e.target.value)}
+                  rows={6}
+                  required
+                />
+              </div>
+
+              {/* Contested Amount */}
+              <div>
+                <Label htmlFor="disputeContestedAmount">Contested Amount (RM)</Label>
+                <Input
+                  id="disputeContestedAmount"
+                  type="number"
+                  placeholder="0.00"
+                  value={disputeContestedAmount}
+                  onChange={(e) => setDisputeContestedAmount(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Optional: Specify the amount in dispute if applicable.
+                </p>
+              </div>
+
+              {/* Suggested Resolution */}
+              <div>
+                <Label htmlFor="disputeSuggestedResolution">Suggested Resolution</Label>
+                <Textarea
+                  id="disputeSuggestedResolution"
+                  placeholder="What resolution would you like to see? (Optional)"
+                  value={disputeSuggestedResolution}
+                  onChange={(e) => setDisputeSuggestedResolution(e.target.value)}
+                  rows={4}
+                />
+              </div>
+
+              {/* Attachments */}
+              <div>
+                <Label htmlFor="disputeAttachments">Attachments (Optional)</Label>
+                <Input
+                  id="disputeAttachments"
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.jpg,.jpeg,.png"
+                  onChange={handleDisputeAttachmentChange}
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT, JPG, PNG (Max 10MB per file)
+                </p>
+                {disputeAttachments.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {disputeAttachments.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded border"
+                      >
+                        <span className="text-sm text-gray-700 truncate flex-1">
+                          {file.name}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeDisputeAttachment(index)}
+                          className="ml-2"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDisputeDialogOpen(false);
+                  setDisputeReason("");
+                  setDisputeDescription("");
+                  setDisputeContestedAmount("");
+                  setDisputeSuggestedResolution("");
+                  setDisputeAttachments([]);
+                  setSelectedMilestoneForDispute(null);
+                }}
+                disabled={creatingDispute}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateDispute}
+                disabled={creatingDispute || !disputeReason.trim() || !disputeDescription.trim()}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {creatingDispute ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4 mr-2" />
+                    Submit Dispute
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Dispute Dialog */}
+        <Dialog open={viewDisputeDialogOpen} onOpenChange={setViewDisputeDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Dispute Details</DialogTitle>
+              <DialogDescription>
+                View dispute information and status
+              </DialogDescription>
+            </DialogHeader>
+
+            {currentDispute && (
+              <div className="space-y-6">
+                {/* Dispute Status */}
+                <div className="flex items-center justify-between">
+                  <Badge className={getDisputeStatusColor(currentDispute.status)}>
+                    {currentDispute.status?.replace("_", " ")}
+                  </Badge>
+                  <div className="text-sm text-gray-500">
+                    Created: {new Date(currentDispute.createdAt).toLocaleDateString()}
+                    {currentDispute.updatedAt !== currentDispute.createdAt && (
+                      <> • Updated: {new Date(currentDispute.updatedAt).toLocaleDateString()}</>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dispute Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Dispute Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Reason</Label>
+                      <p className="mt-1">{currentDispute.reason}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Description & Updates</Label>
+                      <div className="mt-2 space-y-3">
+                        {(() => {
+                          // Parse description to show original and updates separately
+                          const description = currentDispute.description || "";
+                          const parts = description.split(/\n---\n/);
+                          const originalDescription = parts[0]?.trim() || "";
+                          const updates = parts.slice(1);
+
+                          return (
+                            <>
+                              {/* Original Description */}
+                              <div className="bg-gray-50 p-3 rounded-lg border-l-4 border-blue-500">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Avatar className="w-6 h-6">
+                                    <AvatarFallback>
+                                      {currentDispute.raisedBy?.name?.charAt(0) || "U"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-900">
+                                      {currentDispute.raisedBy?.name || "Unknown User"}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Original dispute • {new Date(currentDispute.createdAt).toLocaleString()}
+                                    </p>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
+                                  {originalDescription}
+                                </p>
+                              </div>
+
+                              {/* Updates */}
+                              {updates.map((update: string, idx: number) => {
+                                // Parse update format: [Update by Name on Date]: content
+                                // Also handle old format: [Update by userId]: content
+                                let match = update.match(/^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/);
+                                let userName = "";
+                                let updateDate = "";
+                                let updateContent = "";
+                                
+                                if (match) {
+                                  [, userName, updateDate, updateContent] = match;
+                                } else {
+                                  // Try old format: [Update by userId]: content
+                                  const oldMatch = update.match(/^\[Update by (.+?)\]:\s*([\s\S]+)$/);
+                                  if (oldMatch) {
+                                    const [, userIdOrName, content] = oldMatch;
+                                    // Check if it's a UUID (old format)
+                                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                                    if (uuidRegex.test(userIdOrName)) {
+                                      // It's a UUID, try to match with customer or provider
+                                      if (project?.customer?.id === userIdOrName) {
+                                        userName = project?.customer?.name || "Customer";
+                                      } else if (project?.provider?.id === userIdOrName) {
+                                        userName = project?.provider?.name || "Provider";
+                                      } else if (currentDispute?.raisedBy?.id === userIdOrName) {
+                                        userName = currentDispute?.raisedBy?.name || "Unknown User";
+                                      } else {
+                                        userName = "Unknown User";
+                                      }
+                                      updateDate = "Unknown Date";
+                                      updateContent = content;
+                                    } else {
+                                      userName = userIdOrName;
+                                      updateDate = "Unknown Date";
+                                      updateContent = content;
+                                    }
+                                  } else {
+                                    // Fallback: treat entire update as content
+                                    updateContent = update;
+                                    userName = "Unknown User";
+                                    updateDate = "Unknown Date";
+                                  }
+                                }
+                                
+                                const isCustomer = project?.customer?.name === userName;
+                                const isProvider = project?.provider?.name === userName;
+                                
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`p-3 rounded-lg border-l-4 ${
+                                      isCustomer
+                                        ? "bg-blue-50 border-blue-400"
+                                        : isProvider
+                                        ? "bg-green-50 border-green-400"
+                                        : "bg-yellow-50 border-yellow-400"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Avatar className="w-5 h-5">
+                                        <AvatarFallback className="text-xs">
+                                          {userName.charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-xs font-semibold text-gray-900">
+                                            {userName}
+                                          </p>
+                                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                            {isCustomer ? "Customer" : isProvider ? "Provider" : "User"}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                          Update #{idx + 1} • {updateDate}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
+                                      {updateContent.trim()}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    {currentDispute.contestedAmount && (
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Contested Amount</Label>
+                        <p className="mt-1 font-medium">RM{currentDispute.contestedAmount.toLocaleString()}</p>
+                      </div>
+                    )}
+                    {currentDispute.suggestedResolution && (
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Suggested Resolution</Label>
+                        <p className="mt-1 whitespace-pre-wrap">{currentDispute.suggestedResolution}</p>
+                      </div>
+                    )}
+                    {currentDispute.milestone && (
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Related Milestone</Label>
+                        <p className="mt-1">{currentDispute.milestone.title} - RM{currentDispute.milestone.amount.toLocaleString()}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Admin Resolution */}
+                {currentDispute.resolution && (
+                  <Card className="border-green-200 bg-green-50">
+                    <CardHeader>
+                      <CardTitle className="text-green-800">Admin Resolution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-green-700 whitespace-pre-wrap">{currentDispute.resolution}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Attachments */}
+                {currentDispute.attachments && currentDispute.attachments.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Attachments</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {currentDispute.attachments.map((url: string, index: number) => {
+                          // Extract filename from path
+                          const normalized = url.replace(/\\/g, "/");
+                          const filename = normalized.split("/").pop() || `Attachment ${index + 1}`;
+                          // Remove timestamp prefix if present (format: timestamp_filename.ext)
+                          const cleanFilename = filename.replace(/^\d+_/, "");
+                          
+                          // Try to find attachment metadata in description
+                          const attachmentMetadataMatch = currentDispute.description?.match(
+                            new RegExp(`\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`, "g")
+                          );
+                          let uploadedBy = "Unknown User";
+                          let uploadedAt = "Unknown Date";
+                          
+                          if (attachmentMetadataMatch) {
+                            // Find matching metadata for this file
+                            for (const meta of attachmentMetadataMatch) {
+                              const metaMatch = meta.match(/\[Attachment: (.+?) uploaded by (.+?) on (.+?)\]/);
+                              if (metaMatch && metaMatch[1] === filename) {
+                                uploadedBy = metaMatch[2];
+                                uploadedAt = metaMatch[3];
+                                break;
+                              }
+                            }
+                          }
+                          
+                          // Also check if it's from the original dispute creator
+                          if (uploadedBy === "Unknown User" && index === 0 && currentDispute.attachments.length === 1) {
+                            uploadedBy = currentDispute.raisedBy?.name || "Unknown User";
+                            uploadedAt = new Date(currentDispute.createdAt).toLocaleString();
+                          }
+                          
+                          return (
+                            <div key={index} className="flex items-center justify-between p-2 border rounded">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {cleanFilename}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Uploaded by {uploadedBy} • {uploadedAt}
+                                  </p>
+                                </div>
+                              </div>
+                              <a
+                                href={`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${url.startsWith("/") ? url : `/${url}`}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button variant="outline" size="sm">
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Download
+                                </Button>
+                              </a>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Update Dispute (if not CLOSED and not RESOLVED) */}
+                {currentDispute.status !== "CLOSED" && currentDispute.status !== "RESOLVED" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Add Update</CardTitle>
+                      <CardDescription>
+                        Add additional notes or evidence to your dispute
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="disputeAdditionalNotes">Additional Notes</Label>
+                        <Textarea
+                          id="disputeAdditionalNotes"
+                          placeholder="Add any additional information or updates..."
+                          value={disputeAdditionalNotes}
+                          onChange={(e) => setDisputeAdditionalNotes(e.target.value)}
+                          rows={4}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="disputeUpdateAttachments">Additional Attachments</Label>
+                        <Input
+                          id="disputeUpdateAttachments"
+                          type="file"
+                          multiple
+                          onChange={handleDisputeUpdateAttachmentChange}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.jpg,.png"
+                        />
+                        {disputeUpdateAttachments.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {disputeUpdateAttachments.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                                <span>{file.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeDisputeUpdateAttachment(index)}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        onClick={handleUpdateDispute}
+                        disabled={updatingDispute || (!disputeAdditionalNotes.trim() && disputeUpdateAttachments.length === 0)}
+                        className="w-full"
+                      >
+                        {updatingDispute ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Add Update
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* CLOSED or RESOLVED Dispute Notice */}
+                {(currentDispute.status === "CLOSED" || currentDispute.status === "RESOLVED") && (
+                  <Card className="border-red-200 bg-red-50">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 text-red-800">
+                        <AlertCircle className="w-5 h-5" />
+                        <p className="font-medium">
+                          {currentDispute.status === "CLOSED" 
+                            ? "This dispute is closed. Project work has been frozen and no further updates are allowed."
+                            : "This dispute has been resolved. Project completed peacefully. No further updates are allowed."}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewDisputeDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ProviderLayout>
-  )
+  );
 }

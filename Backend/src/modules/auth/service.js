@@ -14,8 +14,8 @@ async function loginProvider({ email, password }) {
   }
 
   // ⚠️ Check if account is suspended
-  if (user.kycStatus === "suspended") {
-    throw new Error("Your account has been banned. Please contact support.");
+  if (user.status === "SUSPENDED") {
+    throw new Error("Your account has been suspended. Please contact support.");
   }
 
   // ✅ Verify password

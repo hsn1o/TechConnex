@@ -983,3 +983,434 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   return data;
 }
+
+// Admin User Management API
+export async function getAdminUsers(filters?: { role?: string; status?: string; search?: string }) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (filters?.role) params.append("role", filters.role);
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.search) params.append("search", filters.search);
+
+  const res = await fetch(`${API_BASE}/admin/users?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch users");
+  return data;
+}
+
+export async function getAdminUserStats() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/users/stats`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch user stats");
+  return data;
+}
+
+export async function getAdminUserById(userId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch user");
+  return data;
+}
+
+export async function suspendUser(userId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/suspend`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to suspend user");
+  return data;
+}
+
+export async function activateUser(userId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/activate`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to activate user");
+  return data;
+}
+
+export async function updateAdminUser(userId: string, updateData: any) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updateData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to update user");
+  return data;
+}
+
+// Dispute API functions
+export async function createDispute(disputeData: {
+  projectId: string;
+  milestoneId?: string;
+  paymentId?: string;
+  reason: string;
+  description: string;
+  contestedAmount?: number;
+  suggestedResolution?: string;
+  attachments?: File[];
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  // Create FormData for file uploads
+  const formData = new FormData();
+  formData.append("projectId", disputeData.projectId);
+  formData.append("reason", disputeData.reason);
+  formData.append("description", disputeData.description);
+  
+  if (disputeData.milestoneId) {
+    formData.append("milestoneId", disputeData.milestoneId);
+  }
+  if (disputeData.paymentId) {
+    formData.append("paymentId", disputeData.paymentId);
+  }
+  if (disputeData.contestedAmount !== undefined) {
+    formData.append("contestedAmount", disputeData.contestedAmount.toString());
+  }
+  if (disputeData.suggestedResolution) {
+    formData.append("suggestedResolution", disputeData.suggestedResolution);
+  }
+  
+  // Append files
+  if (disputeData.attachments && disputeData.attachments.length > 0) {
+    disputeData.attachments.forEach((file) => {
+      formData.append("attachments", file);
+    });
+  }
+
+  const res = await fetch(`${API_BASE}/disputes`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      // Don't set Content-Type - let browser set it with boundary for FormData
+    },
+    body: formData,
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to create dispute");
+  return data;
+}
+
+export async function getDisputeByProject(projectId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/disputes/project/${projectId}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch dispute");
+  return data;
+}
+
+export async function updateDispute(disputeId: string, updateData: {
+  reason?: string;
+  description?: string;
+  contestedAmount?: number;
+  suggestedResolution?: string;
+  additionalNotes?: string;
+  attachments?: File[];
+  projectId?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  // Create FormData for file uploads
+  const formData = new FormData();
+  
+  if (updateData.reason) formData.append("reason", updateData.reason);
+  if (updateData.description) formData.append("description", updateData.description);
+  if (updateData.contestedAmount !== undefined) {
+    formData.append("contestedAmount", updateData.contestedAmount.toString());
+  }
+  if (updateData.suggestedResolution) {
+    formData.append("suggestedResolution", updateData.suggestedResolution);
+  }
+  if (updateData.additionalNotes) {
+    formData.append("additionalNotes", updateData.additionalNotes);
+  }
+  if (updateData.projectId) {
+    formData.append("projectId", updateData.projectId);
+  }
+  
+  // Append files
+  if (updateData.attachments && updateData.attachments.length > 0) {
+    updateData.attachments.forEach((file) => {
+      formData.append("attachments", file);
+    });
+  }
+
+  const res = await fetch(`${API_BASE}/disputes/${disputeId}`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      // Don't set Content-Type - let browser set it with boundary for FormData
+    },
+    body: formData,
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to update dispute");
+  return data;
+}
+
+export async function getDisputesByProject(projectId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/disputes/project/${projectId}/all`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch disputes");
+  return data;
+}
+
+// Admin Disputes API
+export async function getAdminDisputes(filters?: { status?: string; search?: string }) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.search) params.append("search", filters.search);
+
+  const res = await fetch(`${API_BASE}/admin/disputes?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch disputes");
+  return data;
+}
+
+export async function getAdminDisputeStats() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/disputes/stats`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch dispute stats");
+  return data;
+}
+
+export async function getAdminDisputeById(disputeId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/disputes/${disputeId}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch dispute");
+  return data;
+}
+
+export async function resolveDispute(disputeId: string, status: string, resolution?: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/disputes/${disputeId}/resolve`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status, resolution }),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to resolve dispute");
+  return data;
+}
+
+export async function simulateDisputePayout(disputeId: string, refundAmount: number, releaseAmount: number) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/disputes/${disputeId}/payout`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refundAmount, releaseAmount }),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to simulate payout");
+  return data;
+}
+
+export async function redoMilestone(disputeId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/disputes/${disputeId}/redo-milestone`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to redo milestone");
+  return data;
+}
+
+// Admin Projects API
+export async function getAdminProjects(filters?: { status?: string; search?: string }) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.search) params.append("search", filters.search);
+
+  const res = await fetch(`${API_BASE}/admin/projects?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch projects");
+  return data;
+}
+
+export async function getAdminProjectStats() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/projects/stats`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch project stats");
+  return data;
+}
+
+export async function getAdminProjectById(projectId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/projects/${projectId}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch project");
+  return data;
+}
+
+export async function updateAdminProject(projectId: string, updateData: any) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/projects/${projectId}`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updateData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to update project");
+  return data;
+}

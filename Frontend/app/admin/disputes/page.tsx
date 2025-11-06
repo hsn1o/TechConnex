@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
@@ -16,186 +18,203 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Search,
-  Filter,
   Eye,
-  MessageSquare,
   AlertTriangle,
   Clock,
   CheckCircle,
   XCircle,
   DollarSign,
   FileText,
+  Loader2,
+  ArrowLeft,
+  RefreshCw,
+  Ban,
 } from "lucide-react"
 import { AdminLayout } from "@/components/admin-layout"
+import { useToast } from "@/hooks/use-toast"
+import {
+  getAdminDisputes,
+  getAdminDisputeStats,
+  getAdminDisputeById,
+  simulateDisputePayout,
+  redoMilestone,
+  resolveDispute,
+} from "@/lib/api"
+import Link from "next/link"
 
 export default function AdminDisputesPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [disputes, setDisputes] = useState<any[]>([])
+  const [stats, setStats] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [priorityFilter, setPriorityFilter] = useState("all")
   const [selectedDispute, setSelectedDispute] = useState<any>(null)
   const [resolutionNotes, setResolutionNotes] = useState("")
+  const [refundAmount, setRefundAmount] = useState("")
+  const [releaseAmount, setReleaseAmount] = useState("")
+  const [actionLoading, setActionLoading] = useState(false)
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false)
 
-  const disputes = [
-    {
-      id: 1,
-      title: "Payment not released after project completion",
-      projectTitle: "E-commerce Mobile App",
-      customer: "TechStart Sdn Bhd",
-      provider: "Ahmad Tech Solutions",
-      status: "open",
-      priority: "high",
-      amount: 15000,
-      createdDate: "2024-01-25",
-      lastUpdate: "2024-01-26",
-      description:
-        "Project was completed and delivered on time, but payment has not been released for over 2 weeks despite multiple follow-ups.",
-      customerAvatar: "/placeholder.svg?height=32&width=32",
-      providerAvatar: "/placeholder.svg?height=32&width=32",
-      evidence: [
-        { type: "screenshot", name: "Project Delivery Confirmation", url: "#" },
-        { type: "email", name: "Client Approval Email", url: "#" },
-        { type: "document", name: "Project Completion Report", url: "#" },
-      ],
-      messages: [
-        {
-          id: 1,
-          sender: "provider",
-          name: "Ahmad Tech Solutions",
-          message:
-            "I have completed all project requirements and received approval from the client. Payment should be released.",
-          timestamp: "2024-01-25 10:30 AM",
-        },
-        {
-          id: 2,
-          sender: "customer",
-          name: "TechStart Sdn Bhd",
-          message: "There are some minor issues that need to be addressed before we can release payment.",
-          timestamp: "2024-01-25 2:15 PM",
-        },
-      ],
-    },
-    {
-      id: 2,
-      title: "Scope creep without additional compensation",
-      projectTitle: "Company Website Redesign",
-      customer: "Legal Firm KL",
-      provider: "Digital Craft Studio",
-      status: "in_review",
-      priority: "medium",
-      amount: 8000,
-      createdDate: "2024-01-22",
-      lastUpdate: "2024-01-24",
-      description:
-        "Client is requesting additional features beyond the original scope without agreeing to additional payment.",
-      customerAvatar: "/placeholder.svg?height=32&width=32",
-      providerAvatar: "/placeholder.svg?height=32&width=32",
-      evidence: [
-        { type: "document", name: "Original Project Scope", url: "#" },
-        { type: "email", name: "Additional Requirements Email", url: "#" },
-      ],
-      messages: [
-        {
-          id: 1,
-          sender: "provider",
-          name: "Digital Craft Studio",
-          message:
-            "The client is requesting features that were not in the original scope. This requires additional payment.",
-          timestamp: "2024-01-22 9:00 AM",
-        },
-      ],
-    },
-    {
-      id: 3,
-      title: "Quality of work not meeting standards",
-      projectTitle: "Cloud Migration Services",
-      customer: "Manufacturing Corp",
-      provider: "CloudTech Malaysia",
-      status: "resolved",
-      priority: "high",
-      amount: 22000,
-      createdDate: "2024-01-15",
-      lastUpdate: "2024-01-20",
-      resolution: "Partial refund of RM 5,000 provided. Provider agreed to fix issues at no additional cost.",
-      description: "The cloud migration was not completed properly, causing system downtime and data access issues.",
-      customerAvatar: "/placeholder.svg?height=32&width=32",
-      providerAvatar: "/placeholder.svg?height=32&width=32",
-      evidence: [
-        { type: "report", name: "System Downtime Report", url: "#" },
-        { type: "screenshot", name: "Error Screenshots", url: "#" },
-      ],
-      messages: [
-        {
-          id: 1,
-          sender: "customer",
-          name: "Manufacturing Corp",
-          message: "The migration caused significant downtime and we're experiencing data access issues.",
-          timestamp: "2024-01-15 11:00 AM",
-        },
-        {
-          id: 2,
-          sender: "admin",
-          name: "TechConnect Admin",
-          message: "After review, we've determined that a partial refund and remediation work is appropriate.",
-          timestamp: "2024-01-20 3:30 PM",
-        },
-      ],
-    },
-  ]
+  useEffect(() => {
+    loadDisputes()
+    loadStats()
+  }, [statusFilter])
+
+  useEffect(() => {
+    // Debounce search
+    const timer = setTimeout(() => {
+      if (searchQuery || statusFilter !== "all") {
+        loadDisputes()
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const loadDisputes = async () => {
+    try {
+      setLoading(true)
+      const response = await getAdminDisputes({
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        search: searchQuery || undefined,
+      })
+      if (response.success) {
+        setDisputes(response.data || [])
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load disputes",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadStats = async () => {
+    try {
+      const response = await getAdminDisputeStats()
+      if (response.success) {
+        setStats(response.data)
+      }
+    } catch (error: any) {
+      console.error("Failed to load stats:", error)
+    }
+  }
+
+  const handleViewDispute = async (disputeId: string) => {
+    try {
+      const response = await getAdminDisputeById(disputeId)
+      if (response.success) {
+        setSelectedDispute(response.data)
+        setViewDialogOpen(true)
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load dispute details",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleResolve = async (action: "refund" | "release" | "partial" | "redo" | "cancel") => {
+    if (!selectedDispute) return
+
+    try {
+      setActionLoading(true)
+
+      if (action === "refund") {
+        const amount = selectedDispute.payment?.amount || selectedDispute.contestedAmount || 0
+        await simulateDisputePayout(selectedDispute.id, amount, 0)
+        toast({
+          title: "Success",
+          description: `Refund of RM${amount} processed successfully`,
+        })
+      } else if (action === "release") {
+        const amount = selectedDispute.payment?.amount || selectedDispute.contestedAmount || 0
+        await simulateDisputePayout(selectedDispute.id, 0, amount)
+        toast({
+          title: "Success",
+          description: `Release of RM${amount} processed successfully`,
+        })
+      } else if (action === "partial") {
+        const refund = parseFloat(refundAmount) || 0
+        const release = parseFloat(releaseAmount) || 0
+        if (refund === 0 && release === 0) {
+          toast({
+            title: "Error",
+            description: "Please specify refund or release amount",
+            variant: "destructive",
+          })
+          return
+        }
+        await simulateDisputePayout(selectedDispute.id, refund, release)
+        toast({
+          title: "Success",
+          description: `Partial payout processed: Refund RM${refund}, Release RM${release}`,
+        })
+      } else if (action === "redo") {
+        await redoMilestone(selectedDispute.id)
+        toast({
+          title: "Success",
+          description: "Milestone returned to IN_PROGRESS",
+        })
+      } else if (action === "cancel") {
+        await resolveDispute(selectedDispute.id, "REJECTED", resolutionNotes || "Dispute rejected")
+        toast({
+          title: "Success",
+          description: "Dispute rejected",
+        })
+      }
+
+      setViewDialogOpen(false)
+      setPayoutDialogOpen(false)
+      setSelectedDispute(null)
+      setResolutionNotes("")
+      setRefundAmount("")
+      setReleaseAmount("")
+      loadDisputes()
+      loadStats()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process action",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "open":
+    switch (status?.toUpperCase()) {
+      case "OPEN":
         return "bg-red-100 text-red-800"
-      case "in_review":
+      case "UNDER_REVIEW":
         return "bg-yellow-100 text-yellow-800"
-      case "resolved":
+      case "RESOLVED":
         return "bg-green-100 text-green-800"
-      case "closed":
+      case "CLOSED":
+        return "bg-gray-100 text-gray-800"
+      case "REJECTED":
         return "bg-gray-100 text-gray-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "low":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
+  const filteredDisputes = disputes // Backend handles filtering now
 
-  const filteredDisputes = disputes.filter((dispute) => {
-    const matchesSearch =
-      dispute.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dispute.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dispute.provider.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || dispute.status === statusFilter
-    const matchesPriority = priorityFilter === "all" || dispute.priority === priorityFilter
-    return matchesSearch && matchesStatus && matchesPriority
-  })
-
-  const stats = {
-    totalDisputes: disputes.length,
-    openDisputes: disputes.filter((d) => d.status === "open").length,
-    inReviewDisputes: disputes.filter((d) => d.status === "in_review").length,
-    resolvedDisputes: disputes.filter((d) => d.status === "resolved").length,
-    totalAmount: disputes.reduce((sum, d) => sum + d.amount, 0),
-  }
-
-  const handleResolve = (id: number) => {
-    console.log("Resolving dispute:", id, "Notes:", resolutionNotes)
-    setSelectedDispute(null)
-    setResolutionNotes("")
+  const disputeAmount = (dispute: any) => {
+    return dispute.payment?.amount || dispute.contestedAmount || dispute.milestone?.amount || 0
   }
 
   return (
@@ -207,80 +226,74 @@ export default function AdminDisputesPage() {
             <h1 className="text-3xl font-bold text-gray-900">Dispute Management</h1>
             <p className="text-gray-600">Resolve conflicts between customers and providers</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              Export Report
-            </Button>
-            <Button>
-              <FileText className="w-4 h-4 mr-2" />
-              Dispute Guidelines
-            </Button>
-          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Disputes</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalDisputes}</p>
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Disputes</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalDisputes || 0}</p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-orange-600" />
                 </div>
-                <AlertTriangle className="w-8 h-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Open</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.openDisputes}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Open</p>
+                    <p className="text-2xl font-bold text-red-600">{stats.openDisputes || 0}</p>
+                  </div>
+                  <XCircle className="w-8 h-8 text-red-600" />
                 </div>
-                <XCircle className="w-8 h-8 text-red-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">In Review</p>
-                  <p className="text-2xl font-bold text-yellow-600">{stats.inReviewDisputes}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">In Review</p>
+                    <p className="text-2xl font-bold text-yellow-600">{stats.inReviewDisputes || 0}</p>
+                  </div>
+                  <Clock className="w-8 h-8 text-yellow-600" />
                 </div>
-                <Clock className="w-8 h-8 text-yellow-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Resolved</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.resolvedDisputes}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Resolved</p>
+                    <p className="text-2xl font-bold text-green-600">{stats.resolvedDisputes || 0}</p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Value</p>
-                  <p className="text-2xl font-bold text-purple-600">RM{(stats.totalAmount / 1000).toFixed(0)}K</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Value</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      RM{((stats.totalAmount || 0) / 1000).toFixed(0)}K
+                    </p>
+                  </div>
+                  <DollarSign className="w-8 h-8 text-purple-600" />
                 </div>
-                <DollarSign className="w-8 h-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Filters */}
         <Card>
@@ -297,29 +310,23 @@ export default function AdminDisputesPage() {
                   />
                 </div>
               </div>
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="All Priorities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Priorities</SelectItem>
-                  <SelectItem value="high">High Priority</SelectItem>
-                  <SelectItem value="medium">Medium Priority</SelectItem>
-                  <SelectItem value="low">Low Priority</SelectItem>
-                </SelectContent>
-              </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="in_review">In Review</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="UNDER_REVIEW">In Review</SelectItem>
+                  <SelectItem value="RESOLVED">Resolved</SelectItem>
+                  <SelectItem value="CLOSED">Closed</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
                 </SelectContent>
               </Select>
+              <Button variant="outline" onClick={loadDisputes}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -331,257 +338,548 @@ export default function AdminDisputesPage() {
             <CardDescription>Review and resolve platform disputes</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Dispute</TableHead>
-                  <TableHead>Participants</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDisputes.map((dispute) => (
-                  <TableRow key={dispute.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{dispute.title}</p>
-                        <p className="text-sm text-gray-500">{dispute.projectTitle}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Avatar className="w-6 h-6">
-                            <AvatarImage src={dispute.customerAvatar || "/placeholder.svg"} />
-                            <AvatarFallback>{dispute.customer.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{dispute.customer}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Avatar className="w-6 h-6">
-                            <AvatarImage src={dispute.providerAvatar || "/placeholder.svg"} />
-                            <AvatarFallback>{dispute.provider.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{dispute.provider}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(dispute.status)}>
-                        {dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1).replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getPriorityColor(dispute.priority)}>
-                        {dispute.priority.charAt(0).toUpperCase() + dispute.priority.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium">RM{dispute.amount.toLocaleString()}</p>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="text-sm">{dispute.createdDate}</p>
-                        <p className="text-xs text-gray-500">Updated: {dispute.lastUpdate}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setSelectedDispute(dispute)}>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Dispute</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Participants</TableHead>
+                    <TableHead>Raised By</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredDisputes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                        No disputes found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredDisputes.map((dispute) => (
+                      <TableRow key={dispute.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{dispute.reason}</p>
+                            <p className="text-sm text-gray-500 line-clamp-2">{dispute.description}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{dispute.project?.title || "N/A"}</p>
+                            <Link href={`/admin/projects/${dispute.projectId}`}>
+                              <Button variant="link" size="sm" className="p-0 h-auto">
+                                View Project
+                              </Button>
+                            </Link>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Avatar className="w-6 h-6">
+                                <AvatarFallback>
+                                  {dispute.project?.customer?.name?.charAt(0) || "C"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">{dispute.project?.customer?.name || "N/A"}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Avatar className="w-6 h-6">
+                                <AvatarFallback>
+                                  {dispute.project?.provider?.name?.charAt(0) || "P"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">{dispute.project?.provider?.name || "N/A"}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Avatar className="w-6 h-6">
+                              <AvatarFallback>{dispute.raisedBy?.name?.charAt(0) || "U"}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm">{dispute.raisedBy?.name || "N/A"}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(dispute.status)}>
+                            {dispute.status?.replace("_", " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">RM{disputeAmount(dispute).toLocaleString()}</p>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="text-sm">{new Date(dispute.createdAt).toLocaleDateString()}</p>
+                            <p className="text-xs text-gray-500">
+                              Updated: {new Date(dispute.updatedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDispute(dispute.id)}
+                          >
                             <Eye className="w-4 h-4 mr-2" />
                             Review
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle>Dispute Review - {dispute.title}</DialogTitle>
-                            <DialogDescription>Review dispute details and provide resolution</DialogDescription>
-                          </DialogHeader>
-
-                          {selectedDispute && (
-                            <div className="space-y-6">
-                              {/* Dispute Overview */}
-                              <div className="grid md:grid-cols-2 gap-6">
-                                <Card>
-                                  <CardHeader>
-                                    <CardTitle className="text-lg">Dispute Details</CardTitle>
-                                  </CardHeader>
-                                  <CardContent className="space-y-3">
-                                    <div>
-                                      <p className="font-medium">{selectedDispute.title}</p>
-                                      <p className="text-sm text-gray-500">Project: {selectedDispute.projectTitle}</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Badge className={getStatusColor(selectedDispute.status)}>
-                                        {selectedDispute.status.charAt(0).toUpperCase() +
-                                          selectedDispute.status.slice(1).replace("_", " ")}
-                                      </Badge>
-                                      <Badge className={getPriorityColor(selectedDispute.priority)}>
-                                        {selectedDispute.priority.charAt(0).toUpperCase() +
-                                          selectedDispute.priority.slice(1)}
-                                      </Badge>
-                                    </div>
-                                    <div className="text-sm space-y-1">
-                                      <p>
-                                        <span className="font-medium">Amount:</span> RM
-                                        {selectedDispute.amount.toLocaleString()}
-                                      </p>
-                                      <p>
-                                        <span className="font-medium">Created:</span> {selectedDispute.createdDate}
-                                      </p>
-                                      <p>
-                                        <span className="font-medium">Last Update:</span> {selectedDispute.lastUpdate}
-                                      </p>
-                                    </div>
-                                    <div className="mt-3">
-                                      <p className="font-medium mb-2">Description:</p>
-                                      <p className="text-sm text-gray-700">{selectedDispute.description}</p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-
-                                <Card>
-                                  <CardHeader>
-                                    <CardTitle className="text-lg">Participants</CardTitle>
-                                  </CardHeader>
-                                  <CardContent className="space-y-4">
-                                    <div className="flex items-center gap-3 p-3 border rounded-lg">
-                                      <Avatar>
-                                        <AvatarImage src={selectedDispute.customerAvatar || "/placeholder.svg"} />
-                                        <AvatarFallback>{selectedDispute.customer.charAt(0)}</AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                                        <p className="font-medium">{selectedDispute.customer}</p>
-                                        <p className="text-sm text-gray-500">Customer</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-3 border rounded-lg">
-                                      <Avatar>
-                                        <AvatarImage src={selectedDispute.providerAvatar || "/placeholder.svg"} />
-                                        <AvatarFallback>{selectedDispute.provider.charAt(0)}</AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                                        <p className="font-medium">{selectedDispute.provider}</p>
-                                        <p className="text-sm text-gray-500">Provider</p>
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              </div>
-
-                              {/* Evidence */}
-                              <Card>
-                                <CardHeader>
-                                  <CardTitle className="text-lg">Evidence & Documents</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                  <div className="grid md:grid-cols-2 gap-4">
-                                    {selectedDispute.evidence.map((item, index) => (
-                                      <div key={index} className="border rounded-lg p-4">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <FileText className="w-4 h-4 text-blue-600" />
-                                          <span className="font-medium">{item.name}</span>
-                                        </div>
-                                        <p className="text-sm text-gray-500 mb-3">Type: {item.type}</p>
-                                        <Button variant="outline" size="sm" className="w-full bg-transparent">
-                                          <Eye className="w-4 h-4 mr-2" />
-                                          View
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              {/* Messages */}
-                              <Card>
-                                <CardHeader>
-                                  <CardTitle className="text-lg">Communication History</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                  <div className="space-y-4">
-                                    {selectedDispute.messages.map((message) => (
-                                      <div key={message.id} className="border rounded-lg p-4">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <Badge variant="outline">
-                                            {message.sender === "admin"
-                                              ? "Admin"
-                                              : message.sender === "customer"
-                                                ? "Customer"
-                                                : "Provider"}
-                                          </Badge>
-                                          <span className="font-medium">{message.name}</span>
-                                          <span className="text-sm text-gray-500">{message.timestamp}</span>
-                                        </div>
-                                        <p className="text-sm">{message.message}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </CardContent>
-                              </Card>
-
-                              {/* Resolution */}
-                              {selectedDispute.status === "resolved" && selectedDispute.resolution && (
-                                <Card className="border-green-200 bg-green-50">
-                                  <CardHeader>
-                                    <CardTitle className="text-lg text-green-800">Resolution</CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <p className="text-green-700">{selectedDispute.resolution}</p>
-                                  </CardContent>
-                                </Card>
-                              )}
-
-                              {/* Resolution Form */}
-                              {selectedDispute.status !== "resolved" && (
-                                <Card>
-                                  <CardHeader>
-                                    <CardTitle className="text-lg">Resolution Notes</CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <Textarea
-                                      placeholder="Enter your resolution decision and reasoning..."
-                                      value={resolutionNotes}
-                                      onChange={(e) => setResolutionNotes(e.target.value)}
-                                      className="min-h-[120px]"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              )}
-                            </div>
-                          )}
-
-                          <DialogFooter>
-                            {selectedDispute?.status !== "resolved" && (
-                              <div className="flex gap-3">
-                                <Button variant="outline">
-                                  <MessageSquare className="w-4 h-4 mr-2" />
-                                  Request More Info
-                                </Button>
-                                <Button
-                                  onClick={() => handleResolve(selectedDispute.id)}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Resolve Dispute
-                                </Button>
-                              </div>
-                            )}
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
+
+        {/* View Dispute Dialog */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Dispute Review - {selectedDispute?.reason}</DialogTitle>
+              <DialogDescription>Review dispute details and provide resolution</DialogDescription>
+            </DialogHeader>
+
+            {selectedDispute && (
+              <div className="space-y-6">
+                {/* Dispute Overview */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Dispute Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <p className="font-medium">{selectedDispute.reason}</p>
+                        <p className="text-sm text-gray-500">Project: {selectedDispute.project?.title}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge className={getStatusColor(selectedDispute.status)}>
+                          {selectedDispute.status?.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p>
+                          <span className="font-medium">Amount:</span> RM
+                          {disputeAmount(selectedDispute).toLocaleString()}
+                        </p>
+                        <p>
+                          <span className="font-medium">Created:</span>{" "}
+                          {new Date(selectedDispute.createdAt).toLocaleDateString()}
+                        </p>
+                        {selectedDispute.contestedAmount && (
+                          <p>
+                            <span className="font-medium">Contested Amount:</span> RM
+                            {selectedDispute.contestedAmount.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="mt-3">
+                        <p className="font-medium mb-3">Description & Updates:</p>
+                        <div className="space-y-4">
+                          {(() => {
+                            // Parse description to show original and updates separately
+                            const description = selectedDispute.description || "";
+                            const parts = description.split(/\n---\n/);
+                            const originalDescription = parts[0]?.trim() || "";
+                            const updates = parts.slice(1);
+
+                            return (
+                              <>
+                                {/* Original Description */}
+                                <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Avatar className="w-6 h-6">
+                                      <AvatarFallback>
+                                        {selectedDispute.raisedBy?.name?.charAt(0) || "U"}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-900">
+                                        {selectedDispute.raisedBy?.name || "Unknown User"}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        Original dispute • {new Date(selectedDispute.createdAt).toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
+                                    {originalDescription}
+                                  </p>
+                                </div>
+
+                                {/* Updates */}
+                                {updates.map((update: string, idx: number) => {
+                                  // Parse update format: [Update by Name on Date]: content
+                                  // Also handle old format: [Update by userId]: content
+                                  let match = update.match(/^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/);
+                                  let userName = "";
+                                  let updateDate = "";
+                                  let updateContent = "";
+                                  
+                                  if (match) {
+                                    [, userName, updateDate, updateContent] = match;
+                                  } else {
+                                    // Try old format: [Update by userId]: content
+                                    const oldMatch = update.match(/^\[Update by (.+?)\]:\s*([\s\S]+)$/);
+                                    if (oldMatch) {
+                                      const [, userIdOrName, content] = oldMatch;
+                                      // Check if it's a UUID (old format)
+                                      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                                      if (uuidRegex.test(userIdOrName)) {
+                                        // It's a UUID, try to match with customer or provider
+                                        if (selectedDispute.project?.customer?.id === userIdOrName) {
+                                          userName = selectedDispute.project?.customer?.name || "Customer";
+                                        } else if (selectedDispute.project?.provider?.id === userIdOrName) {
+                                          userName = selectedDispute.project?.provider?.name || "Provider";
+                                        } else if (selectedDispute.raisedBy?.id === userIdOrName) {
+                                          userName = selectedDispute.raisedBy?.name || "Unknown User";
+                                        } else {
+                                          userName = "Unknown User";
+                                        }
+                                        updateDate = "Unknown Date";
+                                        updateContent = content;
+                                      } else {
+                                        userName = userIdOrName;
+                                        updateDate = "Unknown Date";
+                                        updateContent = content;
+                                      }
+                                    } else {
+                                      // Fallback: treat entire update as content
+                                      updateContent = update;
+                                      userName = "Unknown User";
+                                      updateDate = "Unknown Date";
+                                    }
+                                  }
+                                  
+                                  // Determine if update is from customer or provider
+                                  const isCustomer = selectedDispute.project?.customer?.name === userName;
+                                  const isProvider = selectedDispute.project?.provider?.name === userName;
+                                  
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className={`p-4 rounded-lg border-l-4 ${
+                                        isCustomer
+                                          ? "bg-blue-50 border-blue-400"
+                                          : isProvider
+                                          ? "bg-green-50 border-green-400"
+                                          : "bg-yellow-50 border-yellow-400"
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Avatar className="w-6 h-6">
+                                          <AvatarFallback>
+                                            {userName.charAt(0).toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <p className="text-sm font-semibold text-gray-900">
+                                              {userName}
+                                            </p>
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                            >
+                                              {isCustomer
+                                                ? "Customer"
+                                                : isProvider
+                                                ? "Provider"
+                                                : "User"}
+                                            </Badge>
+                                          </div>
+                                          <p className="text-xs text-gray-500">
+                                            Update #{idx + 1} • {updateDate}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
+                                        {updateContent.trim()}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      {selectedDispute.suggestedResolution && (
+                        <div className="mt-3">
+                          <p className="font-medium mb-2">Suggested Resolution:</p>
+                          <p className="text-sm text-gray-700">{selectedDispute.suggestedResolution}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Participants</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Avatar>
+                          <AvatarFallback>
+                            {selectedDispute.project?.customer?.name?.charAt(0) || "C"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{selectedDispute.project?.customer?.name || "N/A"}</p>
+                          <p className="text-sm text-gray-500">Customer</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Avatar>
+                          <AvatarFallback>
+                            {selectedDispute.project?.provider?.name?.charAt(0) || "P"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{selectedDispute.project?.provider?.name || "N/A"}</p>
+                          <p className="text-sm text-gray-500">Provider</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Avatar>
+                          <AvatarFallback>{selectedDispute.raisedBy?.name?.charAt(0) || "U"}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{selectedDispute.raisedBy?.name || "N/A"}</p>
+                          <p className="text-sm text-gray-500">Raised By</p>
+                        </div>
+                      </div>
+                      <Link href={`/admin/projects/${selectedDispute.projectId}`}>
+                        <Button variant="outline" className="w-full">
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Project Details
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Evidence */}
+                {selectedDispute.attachments && selectedDispute.attachments.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Evidence & Documents</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {selectedDispute.attachments.map((url: string, index: number) => {
+                          // Extract filename from path
+                          const normalized = url.replace(/\\/g, "/");
+                          const filename = normalized.split("/").pop() || `Attachment ${index + 1}`;
+                          // Remove timestamp prefix if present (format: timestamp_filename.ext)
+                          const cleanFilename = filename.replace(/^\d+_/, "");
+                          
+                          // Try to find attachment metadata in description
+                          const attachmentMetadataMatch = selectedDispute.description?.match(
+                            new RegExp(`\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`, "g")
+                          );
+                          let uploadedBy = "Unknown User";
+                          let uploadedAt = "Unknown Date";
+                          
+                          if (attachmentMetadataMatch) {
+                            // Find matching metadata for this file
+                            for (const meta of attachmentMetadataMatch) {
+                              const metaMatch = meta.match(/\[Attachment: (.+?) uploaded by (.+?) on (.+?)\]/);
+                              if (metaMatch && metaMatch[1] === filename) {
+                                uploadedBy = metaMatch[2];
+                                uploadedAt = metaMatch[3];
+                                break;
+                              }
+                            }
+                          }
+                          
+                          // Also check if it's from the original dispute creator
+                          if (uploadedBy === "Unknown User" && index === 0 && selectedDispute.attachments.length === 1) {
+                            uploadedBy = selectedDispute.raisedBy?.name || "Unknown User";
+                            uploadedAt = new Date(selectedDispute.createdAt).toLocaleString();
+                          }
+                          
+                          return (
+                            <div key={index} className="border rounded-lg p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm text-gray-900 truncate">
+                                      {cleanFilename}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Uploaded by {uploadedBy} • {uploadedAt}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              <a
+                                href={`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${url.startsWith("/") ? url : `/${url}`}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button variant="outline" size="sm" className="w-full bg-transparent">
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View
+                                </Button>
+                              </a>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Resolution */}
+                {selectedDispute.status === "RESOLVED" && selectedDispute.resolution && (
+                  <Card className="border-green-200 bg-green-50">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-green-800">Resolution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-green-700">{selectedDispute.resolution}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Resolution Form */}
+                {selectedDispute.status !== "RESOLVED" && selectedDispute.status !== "CLOSED" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Resolution Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleResolve("refund")}
+                          disabled={actionLoading}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          Refund (Company Wins)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleResolve("release")}
+                          disabled={actionLoading}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Release (Provider Wins)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setPayoutDialogOpen(true)}
+                          disabled={actionLoading}
+                        >
+                          <DollarSign className="w-4 h-4 mr-2" />
+                          Partial Split
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleResolve("redo")}
+                          disabled={actionLoading}
+                          className="text-yellow-600 hover:text-yellow-700"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Redo Milestone
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="resolution-notes">Resolution Notes (Optional)</Label>
+                        <Textarea
+                          id="resolution-notes"
+                          placeholder="Enter resolution notes..."
+                          value={resolutionNotes}
+                          onChange={(e) => setResolutionNotes(e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleResolve("cancel")}
+                        disabled={actionLoading}
+                      >
+                        <Ban className="w-4 h-4 mr-2" />
+                        Reject Dispute
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Partial Payout Dialog */}
+        <Dialog open={payoutDialogOpen} onOpenChange={setPayoutDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Partial Payout</DialogTitle>
+              <DialogDescription>Specify refund and release amounts</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="refund-amount">Refund Amount (RM)</Label>
+                <Input
+                  id="refund-amount"
+                  type="number"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="release-amount">Release Amount (RM)</Label>
+                <Input
+                  id="release-amount"
+                  type="number"
+                  value={releaseAmount}
+                  onChange={(e) => setReleaseAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayoutDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleResolve("partial")} disabled={actionLoading}>
+                {actionLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Process Payout"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   )

@@ -505,6 +505,17 @@ export async function updateProjectStatus(projectId, customerId, status) {
       },
     });
 
+    // Auto-resolve any UNDER_REVIEW disputes if project is completed
+    if (status === "COMPLETED") {
+      try {
+        const { disputeService } = await import("../../disputes/service.js");
+        await disputeService.autoResolveDisputeOnProjectCompletion(projectId);
+      } catch (error) {
+        console.error("Error auto-resolving dispute:", error);
+        // Don't fail the update if dispute resolution fails
+      }
+    }
+
     return project;
   } catch (error) {
     console.error("Error updating project status:", error);
@@ -917,6 +928,15 @@ export async function payMilestone(dto) {
           status: "COMPLETED",
         },
       });
+
+      // Auto-resolve any UNDER_REVIEW disputes for this project
+      try {
+        const { disputeService } = await import("../../disputes/service.js");
+        await disputeService.autoResolveDisputeOnProjectCompletion(projectId);
+      } catch (error) {
+        console.error("Error auto-resolving dispute:", error);
+        // Don't fail the payment if dispute resolution fails
+      }
 
       // Create notification for both customer and provider
       await prisma.notification.createMany({

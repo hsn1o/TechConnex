@@ -36,6 +36,11 @@ export const authService = {
 
     if (!user.role.includes("ADMIN")) throw new Error("Access denied: not an admin");
 
+    // Check if account is suspended
+    if (user.status === "SUSPENDED") {
+      throw new Error("Your account has been suspended. Please contact support.");
+    }
+
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,

@@ -264,6 +264,17 @@ export async function updateProjectStatus(dto) {
       },
     });
 
+    // Auto-resolve any UNDER_REVIEW disputes if project is completed
+    if (dto.status === "COMPLETED") {
+      try {
+        const { disputeService } = await import("../../disputes/service.js");
+        await disputeService.autoResolveDisputeOnProjectCompletion(dto.projectId);
+      } catch (error) {
+        console.error("Error auto-resolving dispute:", error);
+        // Don't fail the update if dispute resolution fails
+      }
+    }
+
     // Create notification for customer
     await prisma.notification.create({
       data: {

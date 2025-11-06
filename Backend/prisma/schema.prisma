@@ -10,15 +10,16 @@ datasource db {
 }
 
 model User {
-  id         String    @id @default(uuid()) @db.Uuid
-  email      String    @unique
+  id         String     @id @default(uuid()) @db.Uuid
+  email      String     @unique
   password   String // 🔐 new
   role       Role[]
   name       String
   phone      String? // ☎️ optional
-  kycStatus  KycStatus @default(pending_verification)
-  isVerified Boolean   @default(false)
-  createdAt  DateTime  @default(now())
+  kycStatus  KycStatus  @default(pending_verification)
+  isVerified Boolean    @default(false)
+  status     UserStatus @default(ACTIVE) // 🆕 Admin-controlled status
+  createdAt  DateTime   @default(now())
 
   //Profiles
   providerProfile ProviderProfile?
@@ -65,9 +66,9 @@ model Notification {
 }
 
 model ProviderProfile {
-  id     String @id @default(uuid()) @db.Uuid
-  user   User   @relation(fields: [userId], references: [id])
-  userId String @unique @db.Uuid
+  id              String  @id @default(uuid()) @db.Uuid
+  user            User    @relation(fields: [userId], references: [id])
+  userId          String  @unique @db.Uuid
   stripeAccountId String? // Only for providers after onboarding
 
   // Profile
@@ -288,7 +289,7 @@ model Resume {
 }
 
 model ServiceRequest {
-  id           String          @id @default(uuid()) @db.Uuid
+  id           String   @id @default(uuid()) @db.Uuid
   title        String
   description  String
   category     String
@@ -297,9 +298,9 @@ model ServiceRequest {
   skills       String[]
   timeline     String?
   priority     String?
-  ndaSigned    Boolean         @default(false)
-  requirements String[]        @default([]) // was: Json
-  deliverables String[]        @default([]) // was: Json
+  ndaSigned    Boolean  @default(false)
+  requirements String[] @default([]) // was: Json
+  deliverables String[] @default([]) // was: Json
 
   status RequestStatus @default(OPEN)
 
@@ -367,7 +368,7 @@ model Proposal {
   deliveryTime   Int // in days
   coverLetter    String         @db.Text
   attachmentUrls String[]       @default([]) // e.g., PDF proposal or portfolio
-  attachmentUrl String? // e.g., PDF proposal or portfolio
+  attachmentUrl  String? // e.g., PDF proposal or portfolio
 
   // Provider-proposed milestones for this proposal
   milestones ProposalMilestone[]
@@ -409,7 +410,7 @@ model AiMatch {
 }
 
 model Project {
-  id           String          @id @default(uuid()) @db.Uuid
+  id           String   @id @default(uuid()) @db.Uuid
   title        String
   description  String
   category     String
@@ -418,9 +419,9 @@ model Project {
   skills       String[]
   timeline     String?
   priority     String?
-  ndaSigned    Boolean         @default(false)
-  requirements String[]        @default([]) // was: Json
-  deliverables String[]        @default([]) // was: Json
+  ndaSigned    Boolean  @default(false)
+  requirements String[] @default([]) // was: Json
+  deliverables String[] @default([]) // was: Json
 
   status ProjectStatus
 
@@ -503,19 +504,20 @@ model Milestone {
   isPaid   Boolean   @default(false)
   paidAt   DateTime?
   payments Payment[]
+  disputes Dispute[] // Disputes related to this milestone
 
-  Proposal     Proposal? @relation(fields: [proposalId], references: [id])
-  proposalId   String?   @db.Uuid
-  deliverables Json?
-  startDeliverables Json? @map("start_deliverables") // When status changes from LOCKED to IN_PROGRESS
-  submitDeliverables Json? @map("submit_deliverables") // When status changes from IN_PROGRESS to SUBMITTED
-  approvedAt   DateTime?
-  approvedBy   String?   @db.Uuid
-  submittedAt  DateTime?
-  submissionAttachmentUrl String? @map("submission_attachment_url")
-  submissionNote          String? @db.Text @map("submission_note")
-  revisionNumber          Int      @default(0) @map("revision_number") // Track submission iterations
-  submissionHistory       Json?   @map("submission_history") // Array of previous submissions
+  Proposal                Proposal? @relation(fields: [proposalId], references: [id])
+  proposalId              String?   @db.Uuid
+  deliverables            Json?
+  startDeliverables       Json?     @map("start_deliverables") // When status changes from LOCKED to IN_PROGRESS
+  submitDeliverables      Json?     @map("submit_deliverables") // When status changes from IN_PROGRESS to SUBMITTED
+  approvedAt              DateTime?
+  approvedBy              String?   @db.Uuid
+  submittedAt             DateTime?
+  submissionAttachmentUrl String?   @map("submission_attachment_url")
+  submissionNote          String?   @map("submission_note") @db.Text
+  revisionNumber          Int       @default(0) @map("revision_number") // Track submission iterations
+  submissionHistory       Json?     @map("submission_history") // Array of previous submissions
 }
 
 model Payment {
@@ -626,18 +628,24 @@ model KycDocument {
 }
 
 model Dispute {
-  id         String        @id @default(uuid()) @db.Uuid
-  payment    Payment       @relation(fields: [paymentId], references: [id])
-  paymentId  String        @db.Uuid
-  project    Project       @relation(fields: [projectId], references: [id])
-  projectId  String        @db.Uuid // ✅ fix
-  raisedBy   User          @relation(fields: [raisedById], references: [id])
-  raisedById String        @db.Uuid // ✅ fix
-  reason     String // e.g. "Missed deadline", "Low quality", "Payment not released"
-  status     DisputeStatus @default(OPEN)
-  resolution String? // decision or admin notes
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id                  String        @id @default(uuid()) @db.Uuid
+  payment             Payment?      @relation(fields: [paymentId], references: [id])
+  paymentId           String?       @db.Uuid
+  project             Project       @relation(fields: [projectId], references: [id])
+  projectId           String        @db.Uuid
+  raisedBy            User          @relation(fields: [raisedById], references: [id])
+  raisedById          String        @db.Uuid
+  milestoneId         String?       @db.Uuid // Optional milestone reference
+  milestone           Milestone?    @relation(fields: [milestoneId], references: [id])
+  reason              String // e.g. "Missed deadline", "Low quality", "Payment not released"
+  description         String        @db.Text // Detailed description of the dispute
+  contestedAmount     Float? // Amount in dispute (optional)
+  suggestedResolution String?       @db.Text // Suggested resolution from reporter
+  attachments         String[]      @default([]) // URLs to attachment files
+  status              DisputeStatus @default(OPEN)
+  resolution          String?       @db.Text // decision or admin notes
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 }
 
 enum DisputeStatus {
@@ -645,6 +653,7 @@ enum DisputeStatus {
   UNDER_REVIEW // Admin/platform investigating
   RESOLVED // Agreement reached
   REJECTED // Dispute not accepted
+  CLOSED // Dispute closed
 }
 
 enum Role {
@@ -658,6 +667,11 @@ enum KycStatus {
   inactive
   suspended
   pending_verification
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
 }
 
 enum ServiceCategory {
@@ -695,6 +709,7 @@ enum MilestoneStatus {
   PAID // milestone payment completed
   REJECTED
   CANCELLED
+  DISPUTED // milestone is under dispute
 }
 
 enum PaymentMethod {
@@ -705,12 +720,11 @@ enum PaymentMethod {
 
 enum PaymentStatus {
   PENDING
-  IN_PROGRESS   // 🆕 add this
+  IN_PROGRESS // 🆕 add this
   ESCROWED
   RELEASED
   REFUNDED
 }
-
 
 enum MessageType {
   text

@@ -21,6 +21,10 @@ import messagesRouter from "../modules/messages/index.js";
 import settingsRouter from "../modules/settings/index.js";
 import adminRouter from "../modules/auth/admin/index.js";
 import adminSettingsRouter from "../modules/settings/admin/index.js";
+import adminUsersRouter from "../modules/admin/users/index.js";
+import adminDisputesRouter from "../modules/admin/disputes/index.js";
+import adminProjectsRouter from "../modules/admin/projects/index.js";
+import disputesRouter from "../modules/disputes/index.js";
 import paymentRouter from "../modules/payment/index.js";
 
 // import providerCertificateRouter from "../modules/certifications/index.js";
@@ -52,6 +56,10 @@ router.use("/uploads", express.static("uploads"));
 router.use("/settings", settingsRouter);
 router.use("/admin", adminRouter);
 router.use("/admin/settings", adminSettingsRouter);
+router.use("/admin/users", adminUsersRouter);
+router.use("/admin/disputes", adminDisputesRouter);
+router.use("/admin/projects", adminProjectsRouter);
+router.use("/disputes", disputesRouter);
 router.use("/payments", paymentRouter);
 
 // Mount check-email under /api so frontend using NEXT_PUBLIC_API_BASE_URL that

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +18,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Search,
   Filter,
   MoreHorizontal,
@@ -27,140 +36,175 @@ import {
   AlertTriangle,
   Users,
   Building,
+  Loader2,
 } from "lucide-react"
 import { AdminLayout } from "@/components/admin-layout"
+import { getAdminUsers, getAdminUserStats, suspendUser, activateUser } from "@/lib/api"
+import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 export default function AdminUsersPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [users, setUsers] = useState<any[]>([])
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    suspendedUsers: 0,
+    providers: 0,
+    customers: 0,
+  })
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [roleFilter, setRoleFilter] = useState("all")
+  const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false)
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
 
-  const users = [
-    {
-      id: 1,
-      name: "Ahmad Rahman",
-      email: "ahmad@techexpert.com",
-      role: "provider",
-      status: "active",
-      verified: true,
-      joinDate: "2024-01-15",
-      lastActive: "2 hours ago",
-      projects: 12,
-      rating: 4.9,
-      earnings: 85000,
-      avatar: "/placeholder.svg?height=40&width=40",
-      location: "Kuala Lumpur",
-      phone: "+60123456789",
-    },
-    {
-      id: 2,
-      name: "Sarah Lim",
-      email: "sarah@digitalcraft.com",
-      role: "provider",
-      status: "active",
-      verified: true,
-      joinDate: "2023-11-20",
-      lastActive: "1 day ago",
-      projects: 45,
-      rating: 4.8,
-      earnings: 125000,
-      avatar: "/placeholder.svg?height=40&width=40",
-      location: "Selangor",
-      phone: "+60198765432",
-    },
-    {
-      id: 3,
-      name: "TechStart Sdn Bhd",
-      email: "contact@techstart.com.my",
-      role: "customer",
-      status: "active",
-      verified: true,
-      joinDate: "2024-01-10",
-      lastActive: "5 hours ago",
-      projects: 8,
-      rating: 4.7,
-      spent: 65000,
-      avatar: "/placeholder.svg?height=40&width=40",
-      location: "Kuala Lumpur",
-      phone: "+60312345678",
-    },
-    {
-      id: 4,
-      name: "Digital Solutions",
-      email: "info@digitalsolutions.my",
-      role: "customer",
-      status: "pending",
-      verified: false,
-      joinDate: "2024-01-25",
-      lastActive: "1 hour ago",
-      projects: 0,
-      rating: 0,
-      spent: 0,
-      avatar: "/placeholder.svg?height=40&width=40",
-      location: "Penang",
-      phone: "+60412345678",
-    },
-    {
-      id: 5,
-      name: "CloudTech Malaysia",
-      email: "admin@cloudtech.my",
-      role: "provider",
-      status: "suspended",
-      verified: true,
-      joinDate: "2023-08-15",
-      lastActive: "1 week ago",
-      projects: 23,
-      rating: 4.2,
-      earnings: 95000,
-      avatar: "/placeholder.svg?height=40&width=40",
-      location: "Johor",
-      phone: "+60712345678",
-    },
-  ]
+  useEffect(() => {
+    loadUsers()
+    loadStats()
+  }, [])
+
+  useEffect(() => {
+    loadUsers()
+  }, [searchQuery, statusFilter, roleFilter])
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      const filters: any = {}
+      if (statusFilter !== "all") filters.status = statusFilter
+      if (roleFilter !== "all") filters.role = roleFilter
+      if (searchQuery) filters.search = searchQuery
+
+      const response = await getAdminUsers(filters)
+      if (response.success) {
+        setUsers(response.data || [])
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load users",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadStats = async () => {
+    try {
+      const response = await getAdminUserStats()
+      if (response.success) {
+        setStats(response.data)
+      }
+    } catch (error: any) {
+      console.error("Failed to load stats:", error)
+    }
+  }
+
+  const handleSuspendClick = (user: any) => {
+    setSelectedUser(user)
+    setSuspendDialogOpen(true)
+  }
+
+  const handleActivateClick = (user: any) => {
+    setSelectedUser(user)
+    setActivateDialogOpen(true)
+  }
+
+  const confirmSuspend = async () => {
+    if (!selectedUser) return
+
+    try {
+      setActionLoading(true)
+      const response = await suspendUser(selectedUser.id)
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "User suspended successfully",
+        })
+        setSuspendDialogOpen(false)
+        setSelectedUser(null)
+        loadUsers()
+        loadStats()
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to suspend user",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const confirmActivate = async () => {
+    if (!selectedUser) return
+
+    try {
+      setActionLoading(true)
+      const response = await activateUser(selectedUser.id)
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "User activated successfully",
+        })
+        setActivateDialogOpen(false)
+        setSelectedUser(null)
+        loadUsers()
+        loadStats()
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to activate user",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
+    switch (status?.toUpperCase()) {
+      case "ACTIVE":
         return "bg-green-100 text-green-800"
-      case "pending":
-        return "bg-yellow-100 text-yellow-800"
-      case "suspended":
-        return "bg-red-100 text-red-800"
-      case "inactive":
-        return "bg-gray-100 text-gray-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case "provider":
-        return "bg-blue-100 text-blue-800"
-      case "customer":
-        return "bg-purple-100 text-purple-800"
-      case "admin":
+      case "SUSPENDED":
         return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
   }
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter
-    const matchesRole = roleFilter === "all" || user.role === roleFilter
-    return matchesSearch && matchesStatus && matchesRole
-  })
+  const getRoleColor = (roles: string[]) => {
+    if (!roles || !Array.isArray(roles)) return "bg-gray-100 text-gray-800"
+    if (roles.includes("PROVIDER")) return "bg-blue-100 text-blue-800"
+    if (roles.includes("CUSTOMER")) return "bg-purple-100 text-purple-800"
+    if (roles.includes("ADMIN")) return "bg-red-100 text-red-800"
+    return "bg-gray-100 text-gray-800"
+  }
 
-  const stats = {
-    totalUsers: users.length,
-    activeUsers: users.filter((u) => u.status === "active").length,
-    pendingUsers: users.filter((u) => u.status === "pending").length,
-    providers: users.filter((u) => u.role === "provider").length,
-    customers: users.filter((u) => u.role === "customer").length,
+  const getPrimaryRole = (roles: string[]) => {
+    if (!roles || !Array.isArray(roles)) return "Unknown"
+    if (roles.includes("PROVIDER")) return "Provider"
+    if (roles.includes("CUSTOMER")) return "Customer"
+    if (roles.includes("ADMIN")) return "Admin"
+    return roles[0] || "Unknown"
+  }
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "—"
+    try {
+      return new Date(dateString).toLocaleDateString()
+    } catch {
+      return dateString
+    }
   }
 
   return (
@@ -214,10 +258,10 @@ export default function AdminUsersPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">{stats.pendingUsers}</p>
+                  <p className="text-sm font-medium text-gray-600">Suspended</p>
+                  <p className="text-2xl font-bold text-red-600">{stats.suspendedUsers || 0}</p>
                 </div>
-                <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
             </CardContent>
           </Card>
@@ -268,22 +312,20 @@ export default function AdminUsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="provider">Providers</SelectItem>
-                  <SelectItem value="customer">Customers</SelectItem>
-                  <SelectItem value="admin">Admins</SelectItem>
+                  <SelectItem value="PROVIDER">Providers</SelectItem>
+                  <SelectItem value="CUSTOMER">Customers</SelectItem>
+                  <SelectItem value="ADMIN">Admins</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                  </SelectContent>
               </Select>
             </div>
           </CardContent>
@@ -292,113 +334,216 @@ export default function AdminUsersPage() {
         {/* Users Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Users ({filteredUsers.length})</CardTitle>
+            <CardTitle>Users ({users.length})</CardTitle>
             <CardDescription>Manage user accounts and permissions</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Projects/Spent</TableHead>
-                  <TableHead>Rating</TableHead>
-                  <TableHead>Last Active</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarImage src={user.avatar || "/placeholder.svg"} />
-                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{user.name}</p>
-                            {user.verified && <CheckCircle className="w-4 h-4 text-green-500" />}
-                          </div>
-                          <p className="text-sm text-gray-500">{user.email}</p>
-                          <p className="text-xs text-gray-400">{user.location}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getRoleColor(user.role)}>
-                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(user.status)}>
-                        {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{user.projects} projects</p>
-                        <p className="text-sm text-gray-500">
-                          {user.role === "provider"
-                            ? `RM${user.earnings?.toLocaleString()} earned`
-                            : `RM${user.spent?.toLocaleString()} spent`}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.rating > 0 ? (
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">★</span>
-                          <span className="ml-1 font-medium">{user.rating}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">No rating</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{user.lastActive}</p>
-                      <p className="text-xs text-gray-500">Joined {user.joinDate}</p>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Profile
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit User
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {user.status === "active" ? (
-                            <DropdownMenuItem className="text-red-600">
-                              <Ban className="mr-2 h-4 w-4" />
-                              Suspend User
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem className="text-green-600">
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Activate User
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Loading users...</span>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Projects/Stats</TableHead>
+                    <TableHead>Rating</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                        No users found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.map((user) => {
+                      const isProvider = user.role?.includes("PROVIDER")
+                      const isCustomer = user.role?.includes("CUSTOMER")
+                      const profile = isProvider ? user.providerProfile : user.customerProfile
+                      
+                      return (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <Avatar>
+                                <AvatarImage src="/placeholder.svg" />
+                                <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{user.name}</p>
+                                  {user.isVerified && <CheckCircle className="w-4 h-4 text-green-500" />}
+                                </div>
+                                <p className="text-sm text-gray-500">{user.email}</p>
+                                {profile?.location && (
+                                  <p className="text-xs text-gray-400">{profile.location}</p>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getRoleColor(user.role)}>
+                              {getPrimaryRole(user.role)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(user.status)}>
+                              {user.status || "ACTIVE"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {isProvider ? (
+                              <div>
+                                <p className="font-medium">{profile?.totalProjects || 0} projects</p>
+                                <p className="text-sm text-gray-500">
+                                  RM {Number(profile?.totalEarnings || 0).toLocaleString()} earned
+                                </p>
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="font-medium">{profile?.projectsPosted || 0} posted</p>
+                                <p className="text-sm text-gray-500">
+                                  RM {Number(profile?.totalSpend || 0).toLocaleString()} spent
+                                </p>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {profile?.rating ? (
+                              <div className="flex items-center">
+                                <span className="text-yellow-400">★</span>
+                                <span className="ml-1 font-medium">{Number(profile.rating).toFixed(1)}</span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">No rating</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <p className="text-sm">{formatDate(user.createdAt)}</p>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/admin/users/${user.id}`}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Profile
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {user.status === "ACTIVE" ? (
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => handleSuspendClick(user)}
+                                  >
+                                    <Ban className="mr-2 h-4 w-4" />
+                                    Suspend User
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    className="text-green-600"
+                                    onClick={() => handleActivateClick(user)}
+                                  >
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Activate User
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
+
+        {/* Suspend Dialog */}
+        <Dialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Suspend User</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to suspend {selectedUser?.name}? They will not be able to login until activated.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setSuspendDialogOpen(false)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmSuspend}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Suspending...
+                  </>
+                ) : (
+                  "Suspend User"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Activate Dialog */}
+        <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Activate User</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to activate {selectedUser?.name}? They will be able to login again.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setActivateDialogOpen(false)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmActivate}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Activating...
+                  </>
+                ) : (
+                  "Activate User"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </AdminLayout>
   )
