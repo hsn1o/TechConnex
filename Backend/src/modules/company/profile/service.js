@@ -57,7 +57,20 @@ class CompanyProfileService {
   // Update company profile
   static async updateProfile(userId, updateData) {
     try {
-      // Validate input data
+      // If only profileImageUrl is provided, update directly without validation
+      if (Object.keys(updateData).length === 1 && updateData.profileImageUrl) {
+        const profile = await CompanyProfileModel.updateProfile(userId, {
+          profileImageUrl: updateData.profileImageUrl,
+        });
+        const completion = await CompanyProfileModel.getProfileCompletion(userId);
+        const responseDto = new CompanyProfileResponseDto({
+          ...profile,
+          completion,
+        });
+        return responseDto.toResponse();
+      }
+
+      // Validate input data for full updates
       const dto = new CompanyProfileUpdateDto(updateData);
       dto.validate();
 

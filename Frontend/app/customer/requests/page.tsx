@@ -230,10 +230,9 @@ export default function CustomerRequestsPage() {
               id: proposal.id,
               providerId: provider.id,
               providerName: provider.name,
-              providerAvatar:
-                provider.avatarUrl ||
-                profile.avatarUrl ||
-                "/placeholder.svg?height=40&width=40",
+              providerAvatar: profile.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg"
+                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
+                : "/placeholder.svg?height=40&width=40",
               providerRating: profile.rating ?? provider.rating ?? 0,
               providerLocation: profile.location ?? provider.location ?? "",
               providerResponseTime:
@@ -716,7 +715,13 @@ export default function CustomerRequestsPage() {
                     <div className="flex items-start space-x-4 flex-1">
                       <Avatar className="w-12 h-12">
                         <AvatarImage
-                          src={request.providerAvatar || "/placeholder.svg"}
+                          src={
+                            request.providerAvatar && 
+                            request.providerAvatar !== "/placeholder.svg?height=40&width=40" &&
+                            !request.providerAvatar.includes("/placeholder.svg")
+                              ? request.providerAvatar
+                              : "/placeholder.svg"
+                          }
                         />
                         <AvatarFallback>
                           {String(request.providerName || "")
@@ -931,7 +936,11 @@ export default function CustomerRequestsPage() {
                     <Avatar className="w-16 h-16">
                       <AvatarImage
                         src={
-                          selectedRequest.providerAvatar || "/placeholder.svg"
+                          selectedRequest.providerAvatar && 
+                          selectedRequest.providerAvatar !== "/placeholder.svg?height=40&width=40" &&
+                          !selectedRequest.providerAvatar.includes("/placeholder.svg")
+                            ? selectedRequest.providerAvatar
+                            : "/placeholder.svg"
                         }
                       />
                       <AvatarFallback>

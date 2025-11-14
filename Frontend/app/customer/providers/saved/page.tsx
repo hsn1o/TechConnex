@@ -126,7 +126,13 @@ export default function SavedProvidersPage() {
                   <div className="flex items-start space-x-4">
                     <Avatar className="w-16 h-16">
                       <AvatarImage
-                        src={provider.avatar || "/placeholder.svg"}
+                        src={
+                          provider.avatar && 
+                          provider.avatar !== "/placeholder.svg" &&
+                          !provider.avatar.includes("/placeholder.svg")
+                            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+                            : "/placeholder.svg"
+                        }
                       />
                       <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
                     </Avatar>

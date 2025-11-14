@@ -52,7 +52,17 @@ router.use("/resume", resumeRouter);
 router.use("/certifications", certificationsRouter);
 router.use("/provider/profile", providerProfileRouter);
 router.use("/messages", messagesRouter);
-router.use("/uploads", express.static("uploads"));
+// Serve static files from uploads directory with proper headers
+router.use("/uploads", express.static("uploads", {
+  setHeaders: (res, path) => {
+    // Set CORS headers for image files
+    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || 
+        path.endsWith('.gif') || path.endsWith('.webp')) {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+  }
+}));
 router.use("/settings", settingsRouter);
 router.use("/admin", adminRouter);
 router.use("/admin/settings", adminSettingsRouter);

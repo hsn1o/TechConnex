@@ -312,6 +312,43 @@ async function getComprehensiveProfile(req, res) {
   }
 }
 
+// Upload profile image
+async function uploadProfileImage(req, res) {
+  try {
+    const userId = req.user.userId;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided",
+      });
+    }
+
+    // Get the file path (normalize slashes for cross-platform compatibility)
+    const imagePath = req.file.path.replace(/\\/g, "/");
+    
+    // Update profile with image URL
+    const profile = await CompanyProfileService.updateProfile(userId, {
+      profileImageUrl: imagePath,
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: "Profile image uploaded successfully",
+      data: {
+        profileImageUrl: imagePath,
+        profile,
+      },
+    });
+  } catch (error) {
+    console.error("Upload profile image error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 export {
   getProfile,
   createProfile,
@@ -327,4 +364,5 @@ export {
   getKycDocumentById,
   getUserWithKycData,
   getComprehensiveProfile,
+  uploadProfileImage,
 };

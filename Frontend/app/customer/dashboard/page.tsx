@@ -111,9 +111,9 @@ export default function CustomerDashboard() {
             progress: project.progress || 0,
             budget: project.budgetMax,
             deadline: project.timeline,
-            avatar:
-              project.provider?.avatarUrl ||
-              "/placeholder.svg?height=40&width=40",
+            avatar: project.provider?.providerProfile?.profileImageUrl
+              ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.provider.providerProfile.profileImageUrl}`
+              : "/placeholder.svg?height=40&width=40",
             createdAt: project.createdAt,
             category: project.category,
             description: project.description,
@@ -144,8 +144,9 @@ export default function CustomerDashboard() {
                 completedJobs: provider.completedJobs || 0,
                 hourlyRate: provider.hourlyRate || 0,
                 location: provider.location || "Malaysia",
-                avatar:
-                  provider.avatar || "/placeholder.svg?height=60&width=60",
+                avatar: provider.avatar && provider.avatar !== "/placeholder.svg"
+                  ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+                  : "/placeholder.svg?height=60&width=60",
                 skills: provider.skills || [],
                 verified: provider.verified || false,
                 topRated: provider.topRated || false,

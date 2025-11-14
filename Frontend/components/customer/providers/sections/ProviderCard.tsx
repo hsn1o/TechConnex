@@ -21,10 +21,15 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
 
   const handleContact = () => {
     // Navigate to chat with this provider
+    const avatarUrl = provider.avatar && 
+      provider.avatar !== "/placeholder.svg" &&
+      !provider.avatar.includes("/placeholder.svg")
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+        : "";
     router.push(
       `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
         provider.name
-      )}&avatar=${encodeURIComponent(provider.avatar || "")}`
+      )}&avatar=${encodeURIComponent(avatarUrl)}`
     );
   };
 
@@ -78,7 +83,15 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
         <div className="flex items-start space-x-4">
           <div className="relative">
             <Avatar className="w-16 h-16">
-              <AvatarImage src={provider.avatar || "/placeholder.svg"} />
+              <AvatarImage 
+                src={
+                  provider.avatar && 
+                  provider.avatar !== "/placeholder.svg" &&
+                  !provider.avatar.includes("/placeholder.svg")
+                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+                    : "/placeholder.svg"
+                } 
+              />
               <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
             </Avatar>
             {provider.verified && (
@@ -129,7 +142,7 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
           </div>
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-2">{provider.bio}</p>
+        <p className="text-sm text-gray-600 line-clamp-3">{provider.bio}</p>
 
         <div className="flex flex-wrap gap-1">
           {provider.skills.slice(0, 4).map((skill) => (

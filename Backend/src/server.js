@@ -9,10 +9,16 @@ import { io } from "./index.js"; // Import the io instance
 const app = express();
 
 // Security middlewares
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 
 // Enable CORS for all routes
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  credentials: true,
+}));
 
 // Parse incoming JSON
 app.use(express.json({ limit: "1mb" }));

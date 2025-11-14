@@ -1,6 +1,7 @@
 import express from "express";
 import ProviderProfileController from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { uploadProfileImage as uploadProfileImageMiddleware } from "../../../middlewares/uploadProfileImage.js";
 
 const router = express.Router();
 
@@ -12,6 +13,7 @@ router.get("/", ProviderProfileController.getProfile);
 router.post("/", ProviderProfileController.createProfile);
 router.put("/", ProviderProfileController.updateProfile);
 router.patch("/", ProviderProfileController.upsertProfile);
+router.post("/upload-image", uploadProfileImageMiddleware, ProviderProfileController.uploadProfileImage);
 router.get("/stats", ProviderProfileController.getProfileStats);
 router.get("/completion", ProviderProfileController.getProfileCompletion);
 

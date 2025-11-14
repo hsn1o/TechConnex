@@ -77,6 +77,7 @@ export default function ProfileClient(props: Props = {}) {
       location: "",
       website: "",
       logoUrl: "",
+      profileImageUrl: "",
       socialLinks: [],
       languages: [],
       companySize: "",

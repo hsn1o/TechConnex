@@ -73,6 +73,27 @@ export async function upsertCompanyProfile(profileData: any) {
   return data;
 }
 
+export async function uploadCompanyProfileImage(imageFile: File) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const formData = new FormData();
+  formData.append("profileImage", imageFile);
+
+  const res = await fetch(`${API_BASE_URL}/company/profile/upload-image`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      // Don't set Content-Type - let browser set it with boundary for FormData
+    },
+    body: formData,
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to upload profile image");
+  return data;
+}
+
 export async function getKycDocuments() {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
@@ -922,6 +943,27 @@ export async function upsertProviderProfile(profileData: any) {
   
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "Failed to save provider profile");
+  return data;
+}
+
+export async function uploadProviderProfileImage(imageFile: File) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const formData = new FormData();
+  formData.append("profileImage", imageFile);
+
+  const res = await fetch(`${API_BASE}/provider/profile/upload-image`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      // Don't set Content-Type - let browser set it with boundary for FormData
+    },
+    body: formData,
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to upload profile image");
   return data;
 }
 

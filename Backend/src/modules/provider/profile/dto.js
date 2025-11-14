@@ -7,6 +7,7 @@ class ProviderProfileDto {
     this.languages = data.languages || [];
     this.website = data.website;
     this.profileVideoUrl = data.profileVideoUrl;
+    this.profileImageUrl = data.profileImageUrl; // 🆕 Profile image
     this.skills = data.skills || [];
     this.yearsExperience = data.yearsExperience;
     this.minimumProjectBudget = data.minimumProjectBudget;
@@ -177,6 +178,7 @@ class ProviderProfileDto {
       languages: this.languages,
       website: this.website ? this.normalizeUrl(this.website) : this.website,
       profileVideoUrl: this.profileVideoUrl ? this.normalizeUrl(this.profileVideoUrl) : this.profileVideoUrl,
+      profileImageUrl: this.profileImageUrl, // 🆕 Profile image (don't normalize as it's a file path, not a URL)
       skills: this.skills,
       yearsExperience: this.yearsExperience,
       minimumProjectBudget: this.minimumProjectBudget,
@@ -247,6 +249,7 @@ class ProviderProfileResponseDto {
     this.languages = data.languages;
     this.website = data.website;
     this.profileVideoUrl = data.profileVideoUrl;
+    this.profileImageUrl = data.profileImageUrl; // 🆕 Profile image
     this.rating = data.rating;
     this.totalReviews = data.totalReviews;
     this.totalProjects = data.totalProjects;
@@ -283,6 +286,7 @@ class ProviderProfileResponseDto {
       languages: this.languages,
       website: this.website,
       profileVideoUrl: this.profileVideoUrl,
+      profileImageUrl: this.profileImageUrl, // 🆕 Profile image
       rating: this.rating,
       totalReviews: this.totalReviews,
       totalProjects: this.totalProjects,

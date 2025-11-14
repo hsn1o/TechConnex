@@ -58,15 +58,26 @@ class ProviderProfileService {
   // Update provider profile
   static async updateProfile(userId, profileData) {
     try {
-      // Validate input data
-      const dto = new ProviderProfileDto(profileData);
-      dto.validate();
-
       // Check if profile exists
       const exists = await ProviderProfileModel.profileExists(userId);
       if (!exists) {
         throw new Error("Provider profile not found");
       }
+
+      // If only profileImageUrl is provided, update directly without full validation
+      if (Object.keys(profileData).length === 1 && profileData.profileImageUrl) {
+        const profile = await ProviderProfileModel.updateProfile(userId, {
+          profileImageUrl: profileData.profileImageUrl,
+        });
+        return {
+          ...profile,
+          completion: await ProviderProfileModel.getProfileCompletion(userId),
+        };
+      }
+
+      // Validate input data for full updates
+      const dto = new ProviderProfileDto(profileData);
+      dto.validate();
 
       // Update profile
       const profile = await ProviderProfileModel.updateProfile(userId, dto.toUpdateData());

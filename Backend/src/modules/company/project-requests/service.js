@@ -56,6 +56,7 @@ export async function getProjectRequests(dto) {
                   yearsExperience: true,
                   successRate: true,
                   responseTime: true,
+                  profileImageUrl: true, // 🆕 Profile image
                 },
               },
             },
@@ -350,13 +351,14 @@ export async function acceptProposal(dto) {
               id: true,
               name: true, 
               email: true,
-              providerProfile: {
-                select: {
-                  rating: true,
-                  totalProjects: true,
-                  location: true,
-                },
+            providerProfile: {
+              select: {
+                rating: true,
+                totalProjects: true,
+                location: true,
+                profileImageUrl: true, // 🆕 Profile image
               },
+            },
             } 
           },
           milestones: {

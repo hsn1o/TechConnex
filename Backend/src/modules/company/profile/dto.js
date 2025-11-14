@@ -5,6 +5,7 @@ class CompanyProfileDto {
     this.location = data.location;
     this.website = data.website;
     this.logoUrl = data.logoUrl;
+    this.profileImageUrl = data.profileImageUrl; // 🆕 Profile image
     this.socialLinks = data.socialLinks;
     this.languages = data.languages || [];
     this.companySize = data.companySize;
@@ -109,6 +110,7 @@ class CompanyProfileDto {
       location: this.location,
       website: this.website ? this.normalizeUrl(this.website) : this.website,
       logoUrl: this.logoUrl ? this.normalizeUrl(this.logoUrl) : this.logoUrl,
+      profileImageUrl: this.profileImageUrl, // 🆕 Profile image (don't normalize as it's a file path, not a URL)
       socialLinks: this.socialLinks?.map(link => this.normalizeUrl(link)) || this.socialLinks,
       languages: this.languages,
       companySize: this.companySize,
@@ -154,6 +156,9 @@ class CompanyProfileUpdateDto {
     if (this.logoUrl && !this.isValidUrl(this.logoUrl)) {
       errors.push("Logo URL must be a valid URL");
     }
+
+    // profileImageUrl is a file path, not a URL, so skip URL validation
+    // It will be validated by the upload middleware
 
     if (this.employeeCount !== undefined && (this.employeeCount < 1 || this.employeeCount > 1000000)) {
       errors.push("Employee count must be between 1 and 1,000,000");
@@ -213,9 +218,12 @@ class CompanyProfileUpdateDto {
     const updateData = {};
     Object.keys(this).forEach(key => {
       if (this[key] !== undefined && this[key] !== null) {
-        // Normalize URLs before saving
+        // Normalize URLs before saving (but not profileImageUrl as it's a file path, not a URL)
         if (key === 'website' || key === 'logoUrl') {
           updateData[key] = typeof this[key] === 'string' ? this.normalizeUrl(this[key]) : this[key];
+        } else if (key === 'profileImageUrl') {
+          // Don't normalize profileImageUrl - it's a file path, not a URL
+          updateData[key] = this[key];
         } else if (key === 'socialLinks' && Array.isArray(this[key])) {
           updateData[key] = this[key].map(link => typeof link === 'string' ? this.normalizeUrl(link) : link);
         } else if (key === 'mediaGallery' && Array.isArray(this[key])) {
@@ -254,6 +262,7 @@ class CompanyProfileResponseDto {
         location: this.profileData.location,
         website: this.profileData.website,
         logoUrl: this.profileData.logoUrl,
+        profileImageUrl: this.profileData.profileImageUrl, // 🆕 Profile image
         socialLinks: this.profileData.socialLinks || [],
         languages: this.profileData.languages || [],
         companySize: this.profileData.companySize,

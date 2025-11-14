@@ -554,7 +554,9 @@ const handleSaveProject = async () => {
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-8 h-8">
                         <AvatarImage
-                          src={project.provider?.avatar || "/placeholder.svg"}
+                          src={project.provider?.providerProfile?.profileImageUrl
+                            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.provider.providerProfile.profileImageUrl}`
+                            : "/placeholder.svg"}
                         />
                         <AvatarFallback>
                           {project.provider?.name
@@ -693,7 +695,9 @@ const handleSaveProject = async () => {
                           <Avatar className="flex-shrink-0">
                             <AvatarImage
                               src={
-                                project.provider?.avatar || "/placeholder.svg"
+                                project.provider?.providerProfile?.profileImageUrl
+                                  ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.provider.providerProfile.profileImageUrl}`
+                                  : "/placeholder.svg"
                               }
                             />
                             <AvatarFallback>

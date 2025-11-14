@@ -11,16 +11,38 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle, Loader2, X, Globe } from "lucide-react"
+import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle, Loader2, X, Globe, Camera } from "lucide-react"
 import { ProviderLayout } from "@/components/provider-layout"
-import { getProviderProfile, upsertProviderProfile, getProviderProfileStats, getProviderProfileCompletion } from "@/lib/api"
+import { getProviderProfile, upsertProviderProfile, getProviderProfileStats, getProviderProfileCompletion, uploadProviderProfileImage } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { useRef } from "react"
 
 export default function ProviderProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [profileData, setProfileData] = useState({
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [profileData, setProfileData] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    bio: string;
+    location: string;
+    hourlyRate: number;
+    website: string;
+    profileVideoUrl: string;
+    profileImageUrl: string;
+    languages: string[];
+    availability: string;
+    skills: string[];
+    yearsExperience: number;
+    minimumProjectBudget: number;
+    maximumProjectBudget: number;
+    preferredProjectDuration: string;
+    workPreference: string;
+    teamSize: number;
+  }>({
     name: "",
     email: "",
     phone: "",
@@ -29,6 +51,7 @@ export default function ProviderProfilePage() {
     hourlyRate: 0,
     website: "",
     profileVideoUrl: "",
+    profileImageUrl: "",
     languages: [],
     availability: "available",
     skills: [],
@@ -80,6 +103,7 @@ export default function ProviderProfilePage() {
             hourlyRate: profile.hourlyRate || 0,
             website: profile.website || "",
             profileVideoUrl: profile.profileVideoUrl || "",
+            profileImageUrl: profile.profileImageUrl || "",
             languages: profile.languages || [],
             availability: profile.availability || "available",
             skills: profile.skills || [],
@@ -293,6 +317,60 @@ export default function ProviderProfilePage() {
     setPortfolioUrls(portfolioUrls.filter(u => u !== url))
   }
 
+  const handleImageClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file (JPEG, PNG, GIF, or WebP)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setUploadingImage(true)
+    try {
+      const result = await uploadProviderProfileImage(file)
+      setProfileData(prev => ({
+        ...prev,
+        profileImageUrl: result.data.profileImageUrl,
+      }))
+      toast({
+        title: "Success",
+        description: "Profile image uploaded successfully",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload profile image",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingImage(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
   if (loading) {
     return (
       <ProviderLayout>
@@ -479,13 +557,39 @@ export default function ProviderProfilePage() {
                     <div className="flex items-start space-x-6">
                       <div className="relative">
                         <Avatar className="w-24 h-24">
-                          <AvatarImage src="/placeholder.svg?height=96&width=96" />
-                          <AvatarFallback className="text-lg">AR</AvatarFallback>
+                          <AvatarImage 
+                            src={
+                              profileData.profileImageUrl
+                                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profileData.profileImageUrl.startsWith("/") ? "" : "/"}${profileData.profileImageUrl}`
+                                : "/placeholder.svg?height=96&width=96"
+                            }
+                          />
+                          <AvatarFallback className="text-lg">
+                            {profileData.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'PR'}
+                          </AvatarFallback>
                         </Avatar>
                         {isEditing && (
-                          <Button size="sm" className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0">
-                            <Upload className="w-4 h-4" />
-                          </Button>
+                          <>
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                              onChange={handleImageChange}
+                              className="hidden"
+                            />
+                            <Button 
+                              size="sm" 
+                              className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
+                              onClick={handleImageClick}
+                              disabled={uploadingImage}
+                            >
+                              {uploadingImage ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Camera className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </>
                         )}
                       </div>
                       <div className="flex-1 space-y-4">

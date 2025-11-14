@@ -79,6 +79,7 @@ model ProviderProfile {
   languages       String[] // 🆕 Spoken languages
   website         String? // 🆕 Personal or company site
   profileVideoUrl String? // 🆕 Profile video
+  profileImageUrl String?  @map("profile_image_url") // 🆕 Profile image
 
   //Performance Metrics
   rating        Decimal @default(0.00) @db.Decimal(3, 2)
@@ -151,6 +152,7 @@ model CustomerProfile {
   location    String?
   website     String? // 🆕 Personal or company site
   logoUrl     String?  @map("logo_url")
+  profileImageUrl String? @map("profile_image_url") // 🆕 Profile image
   socialLinks Json? // LinkedIn, Twitter, etc.
   languages   String[] // 🆕 Spoken languages
 

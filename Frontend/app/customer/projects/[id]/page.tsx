@@ -335,10 +335,9 @@ export default function ProjectDetailsPage({
               id: p.id,
               providerId: provider.id,
               providerName: provider.name,
-              providerAvatar:
-                provider.avatarUrl ||
-                profile.avatarUrl ||
-                "/placeholder.svg?height=40&width=40",
+              providerAvatar: profile.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg"
+                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
+                : "/placeholder.svg?height=40&width=40",
               providerRating: profile.rating ?? provider.rating ?? 0,
               providerLocation: profile.location ?? provider.location ?? "",
               providerResponseTime:
@@ -1518,7 +1517,9 @@ export default function ProjectDetailsPage({
                   <Avatar className="w-12 h-12">
                     <AvatarImage
                       src={
-                        project.assignedProvider.avatar || "/placeholder.svg"
+                        project.assignedProvider?.providerProfile?.profileImageUrl
+                          ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.assignedProvider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.assignedProvider.providerProfile.profileImageUrl}`
+                          : project.assignedProvider?.avatar || "/placeholder.svg"
                       }
                     />
                     <AvatarFallback>
@@ -2191,7 +2192,13 @@ export default function ProjectDetailsPage({
                           <div className="flex items-start space-x-4 flex-1">
                             <Avatar className="w-12 h-12">
                               <AvatarImage
-                                src={p.providerAvatar || "/placeholder.svg"}
+                                src={
+                                  p.providerAvatar && 
+                                  p.providerAvatar !== "/placeholder.svg?height=40&width=40" &&
+                                  !p.providerAvatar.includes("/placeholder.svg")
+                                    ? p.providerAvatar
+                                    : "/placeholder.svg"
+                                }
                               />
                               <AvatarFallback>
                                 {String(p.providerName || "P")
@@ -3207,9 +3214,12 @@ export default function ProjectDetailsPage({
                 <Avatar className="w-16 h-16">
                   <AvatarImage
                     src={
-                      selectedProposalDetails.provider?.avatar ||
-                      selectedProposalDetails.providerAvatar ||
-                      "/placeholder.svg"
+                      (selectedProposalDetails.providerAvatar && 
+                       selectedProposalDetails.providerAvatar !== "/placeholder.svg?height=40&width=40")
+                        ? selectedProposalDetails.providerAvatar
+                        : selectedProposalDetails.provider?.providerProfile?.profileImageUrl
+                        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${selectedProposalDetails.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${selectedProposalDetails.provider.providerProfile.profileImageUrl}`
+                        : "/placeholder.svg"
                     }
                   />
                   <AvatarFallback>

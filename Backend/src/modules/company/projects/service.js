@@ -47,6 +47,7 @@ export async function createProject(dto) {
                     rating: true,
                     totalProjects: true,
                     location: true,
+                    profileImageUrl: true, // 🆕 Profile image
                   },
                 },
               },
@@ -175,6 +176,7 @@ export async function getProjects(dto) {
                   rating: true,
                   totalProjects: true,
                   location: true,
+                  profileImageUrl: true, // 🆕 Profile image
                 },
               },
             },
@@ -288,6 +290,7 @@ export async function getProjectById(projectId, customerId) {
                     location: true,
                     bio: true,
                     skills: true,
+                    profileImageUrl: true, // 🆕 Profile image
                   },
                 },
               },

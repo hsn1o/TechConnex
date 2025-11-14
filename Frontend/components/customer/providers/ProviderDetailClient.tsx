@@ -44,10 +44,15 @@ export default function ProviderDetailClient({
   }, [provider.saved]);
 
   const handleContact = (provider: any) => {
+    const avatarUrl = provider.avatar && 
+      provider.avatar !== "/placeholder.svg" &&
+      !provider.avatar.includes("/placeholder.svg")
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+        : "";
     router.push(
       `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
         provider.name
-      )}&avatar=${encodeURIComponent(provider.avatar || "")}`
+      )}&avatar=${encodeURIComponent(avatarUrl)}`
     );
   };
   const getUserAndToken = () => {
@@ -131,7 +136,15 @@ export default function ProviderDetailClient({
         <CardContent className="p-6">
           <div className="flex items-start gap-5">
             <Avatar className="w-20 h-20">
-              <AvatarImage src={provider.avatar || "/placeholder.svg"} />
+              <AvatarImage 
+                src={
+                  provider.avatar && 
+                  provider.avatar !== "/placeholder.svg" &&
+                  !provider.avatar.includes("/placeholder.svg")
+                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+                    : "/placeholder.svg"
+                } 
+              />
               <AvatarFallback>{provider.name?.[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1">

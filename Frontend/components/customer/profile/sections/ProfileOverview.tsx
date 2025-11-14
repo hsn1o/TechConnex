@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, MapPin, Camera, Globe, X, Plus } from "lucide-react";
+import { Mail, Phone, MapPin, Camera, Globe, X, Plus, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { ProfileData } from "../types";
+import { uploadCompanyProfileImage } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 type Props = {
   value: ProfileData;
@@ -21,6 +23,9 @@ type Props = {
 export default function ProfileOverview({ value, onChange, isEditing }: Props) {
   const [newSocialUrl, setNewSocialUrl] = useState("");
   const [newLanguage, setNewLanguage] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   // Helper to handle array inputs (socialLinks, languages)
   const handleArrayInput = (field: "socialLinks" | "languages", newValue: string[]) => {
@@ -61,6 +66,63 @@ export default function ProfileOverview({ value, onChange, isEditing }: Props) {
     }
   };
 
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file (JPEG, PNG, GIF, or WebP)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const result = await uploadCompanyProfileImage(file);
+      onChange({
+        ...value,
+        customerProfile: {
+          ...value.customerProfile || {},
+          profileImageUrl: result.data.profileImageUrl,
+        } as any,
+      });
+      toast({
+        title: "Success",
+        description: "Profile image uploaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload profile image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -73,15 +135,39 @@ export default function ProfileOverview({ value, onChange, isEditing }: Props) {
           <div className="flex items-start gap-6">
             <div className="relative">
               <Avatar className="w-24 h-24">
-                <AvatarImage src={value.customerProfile?.logoUrl || "/placeholder.svg?height=96&width=96"} />
+                <AvatarImage 
+                  src={
+                    value.customerProfile?.profileImageUrl 
+                      ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${value.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${value.customerProfile.profileImageUrl}`
+                      : value.customerProfile?.logoUrl || "/placeholder.svg?height=96&width=96"
+                  } 
+                />
                 <AvatarFallback className="text-lg">
                   {value.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'CO'}
                 </AvatarFallback>
               </Avatar>
               {isEditing && (
-                <Button size="sm" className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0">
-                  <Camera className="w-4 h-4" />
-                </Button>
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  <Button 
+                    size="sm" 
+                    className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
+                    onClick={handleImageClick}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
+                  </Button>
+                </>
               )}
             </div>
             <div className="flex-1 space-y-4">
