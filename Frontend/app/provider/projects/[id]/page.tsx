@@ -1410,7 +1410,7 @@ export default function ProviderProjectDetailsPage() {
 
                       projectMilestones.forEach((milestone) => {
                         // Current submission attachment
-                        if (milestone.submissionAttachmentUrl) {
+                        if (milestone.submissionAttachmentUrl && milestone.id) {
                           milestoneAttachments.push({
                             url: milestone.submissionAttachmentUrl,
                             milestoneTitle: milestone.title,
@@ -1422,8 +1422,10 @@ export default function ProviderProjectDetailsPage() {
                         // History submission attachments
                         if (
                           milestone.submissionHistory &&
-                          Array.isArray(milestone.submissionHistory)
+                          Array.isArray(milestone.submissionHistory) &&
+                          milestone.id
                         ) {
+                          const milestoneId = milestone.id; // Store in const for type narrowing
                           milestone.submissionHistory.forEach(
                             (history: any) => {
                               if (history.submissionAttachmentUrl) {
@@ -1434,7 +1436,7 @@ export default function ProviderProjectDetailsPage() {
                                   } (Revision ${
                                     history.revisionNumber || "N/A"
                                   })`,
-                                  milestoneId: milestone.id,
+                                  milestoneId: milestoneId,
                                   submittedAt: history.submittedAt,
                                 });
                               }
@@ -1583,8 +1585,13 @@ export default function ProviderProjectDetailsPage() {
                   <Avatar>
                     <AvatarImage
                       src={
-                        project.customer?.customerProfile?.logoUrl ||
-                        "/placeholder.svg"
+                        (project.customer?.customerProfile?.profileImageUrl && 
+                         project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
+                          ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
+                          : (project.customer?.customerProfile?.logoUrl && 
+                              project.customer.customerProfile.logoUrl !== "/placeholder.svg")
+                            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.logoUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.logoUrl}`
+                            : "/placeholder.svg"
                       }
                     />
                     <AvatarFallback>

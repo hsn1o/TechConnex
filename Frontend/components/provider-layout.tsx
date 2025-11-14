@@ -31,6 +31,7 @@ import {
   X,
   Star,
   Plus,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -150,6 +151,7 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
     { name: "Dashboard", href: "/provider/dashboard", icon: Home },
     { name: "My Projects", href: "/provider/projects", icon: Briefcase },
     { name: "Opportunities", href: "/provider/opportunities", icon: Target },
+    { name: "Find Companies", href: "/provider/companies", icon: Building2 },
     { name: "Messages", href: "/provider/messages", icon: MessageSquare },
     { name: "Earnings", href: "/provider/earnings", icon: DollarSign },
     { name: "Profile", href: "/provider/profile", icon: User },

@@ -43,6 +43,8 @@ export async function getProviderProjects(dto) {
                   companySize: true,
                   industry: true,
                   location: true,
+                  logoUrl: true,
+                  profileImageUrl: true, // 🆕 Profile image
                 },
               },
             },
@@ -124,6 +126,8 @@ export async function getProviderProjectById(projectId, providerId) {
                 location: true,
                 website: true,
                 description: true,
+                logoUrl: true,
+                profileImageUrl: true, // 🆕 Profile image
               },
             },
           },

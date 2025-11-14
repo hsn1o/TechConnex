@@ -48,6 +48,8 @@ export async function getOpportunities(dto) {
                   industry: true,
                   location: true,
                   website: true,
+                  logoUrl: true,
+                  profileImageUrl: true, // 🆕 Profile image
                 },
               },
             },
@@ -137,6 +139,7 @@ export async function getOpportunityById(opportunityId, providerId) {
                 website: true,
                 description: true,
                 logoUrl: true,
+                profileImageUrl: true, // 🆕 Profile image
               },
             },
           },

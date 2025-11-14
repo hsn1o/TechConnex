@@ -42,6 +42,9 @@ model User {
   // Saved providers relations
   savedProviders     SavedProvider[]  @relation("UserSavedProviders")
   savedByUsers       SavedProvider[]  @relation("ProviderSavedByUsers")
+  // Saved companies relations
+  savedCompanies     SavedCompany[]   @relation("UserSavedCompanies")
+  savedByProviders   SavedCompany[]   @relation("CompanySavedByProviders")
 
   //Notifications
   notifications Notification[]
@@ -588,6 +591,19 @@ model SavedProvider {
 
   @@unique([userId, providerId])
   @@map("saved_providers")
+}
+
+// NEW: Saved companies/bookmarks
+model SavedCompany {
+  id         String   @id @default(uuid()) @db.Uuid
+  user       User     @relation("UserSavedCompanies", fields: [userId], references: [id], onDelete: Cascade)
+  userId     String   @db.Uuid
+  company    User     @relation("CompanySavedByProviders", fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String   @db.Uuid
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, companyId])
+  @@map("saved_companies")
 }
 
 enum ProposalStatus {

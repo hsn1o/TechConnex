@@ -273,7 +273,17 @@ export default function ProviderProjectsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <Avatar>
-                            <AvatarImage src={project.customer?.customerProfile?.logoUrl || "/placeholder.svg"} />
+                            <AvatarImage
+                              src={
+                                (project.customer?.customerProfile?.profileImageUrl && 
+                                 project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
+                                  ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
+                                  : (project.customer?.customerProfile?.logoUrl && 
+                                      project.customer.customerProfile.logoUrl !== "/placeholder.svg")
+                                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.logoUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.logoUrl}`
+                                    : "/placeholder.svg"
+                              }
+                            />
                             <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
                           </Avatar>
                           <div>
@@ -501,7 +511,17 @@ export default function ProviderProjectsPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <Avatar>
-                            <AvatarImage src={project.customer?.customerProfile?.logoUrl || "/placeholder.svg"} />
+                            <AvatarImage
+                              src={
+                                (project.customer?.customerProfile?.profileImageUrl && 
+                                 project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
+                                  ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
+                                  : (project.customer?.customerProfile?.logoUrl && 
+                                      project.customer.customerProfile.logoUrl !== "/placeholder.svg")
+                                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.logoUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.logoUrl}`
+                                    : "/placeholder.svg"
+                              }
+                            />
                             <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
                           </Avatar>
                           <div>

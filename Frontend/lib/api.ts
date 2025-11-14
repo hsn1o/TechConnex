@@ -892,6 +892,133 @@ export async function getProviderFilters() {
   return data;
 }
 
+// Company search API functions (for providers)
+export async function searchCompanies(params?: {
+  search?: string;
+  industry?: string;
+  location?: string;
+  companySize?: string;
+  rating?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const queryParams = new URLSearchParams();
+  if (params?.search) queryParams.append("search", params.search);
+  if (params?.industry) queryParams.append("industry", params.industry);
+  if (params?.location) queryParams.append("location", params.location);
+  if (params?.companySize) queryParams.append("companySize", params.companySize);
+  if (params?.rating) queryParams.append("rating", params.rating);
+  if (params?.page) queryParams.append("page", params.page.toString());
+  if (params?.limit) queryParams.append("limit", params.limit.toString());
+
+  const res = await fetch(`${API_BASE}/companies?${queryParams}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to search companies");
+  return data;
+}
+
+export async function getCompanyById(companyId: string, userId?: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const queryParams = new URLSearchParams();
+  if (userId) queryParams.append("userId", userId);
+
+  const res = await fetch(`${API_BASE}/companies/${companyId}?${queryParams}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch company");
+  return data;
+}
+
+export async function getCompanyFilters() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/companies/filters`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch filters");
+  return data;
+}
+
+export async function saveCompany(companyId: string, userId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/companies/${companyId}/save?userId=${encodeURIComponent(userId)}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to save company");
+  return data;
+}
+
+export async function unsaveCompany(companyId: string, userId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/companies/${companyId}/save?userId=${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to unsave company");
+  return data;
+}
+
+export async function getSavedCompanies(userId: string, page?: number, limit?: number) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const queryParams = new URLSearchParams();
+  if (page) queryParams.append("page", page.toString());
+  if (limit) queryParams.append("limit", limit.toString());
+
+  const res = await fetch(`${API_BASE}/companies/users/${userId}/saved-companies?${queryParams}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch saved companies");
+  return data;
+}
+
 // Provider Profile API functions
 export async function getProviderProfile() {
   const token = getToken();

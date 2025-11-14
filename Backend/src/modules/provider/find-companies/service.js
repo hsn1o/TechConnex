@@ -1,0 +1,323 @@
+// src/modules/provider/find-companies/service.js
+import {
+  findCompanies,
+  getCompanyById,
+  getCompanyReviews,
+  saveCompany,
+  unsaveCompany,
+  getSavedCompanies,
+  getCompanyStats,
+} from "./model.js";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+// Find companies with filtering
+export async function searchCompanies(filters) {
+  try {
+    const result = await findCompanies(filters);
+    
+    // Transform data for frontend
+    const transformedCompanies = result.companies.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.customerProfile?.profileImageUrl || user.customerProfile?.logoUrl || "/placeholder.svg",
+      industry: user.customerProfile?.industry || "Not specified",
+      location: user.customerProfile?.location || "Not specified",
+      companySize: user.customerProfile?.companySize || "Not specified",
+      rating: parseFloat(user.customerProfile?.rating || 0),
+      reviewCount: user.customerProfile?.reviewCount || 0,
+      totalSpend: parseFloat(user.customerProfile?.totalSpend || 0),
+      projectsPosted: user.customerProfile?.projectsPosted || 0,
+      description: user.customerProfile?.description || "No description available",
+      website: user.customerProfile?.website || null,
+      memberSince: new Date(user.createdAt).getFullYear().toString(),
+      verified: user.isVerified || false,
+      saved: user.isSaved || false, // Use saved status from backend
+    }));
+
+    return {
+      companies: transformedCompanies,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      },
+    };
+  } catch (error) {
+    console.error("Error searching companies:", error);
+    throw new Error("Failed to search companies");
+  }
+}
+
+// Get company details
+export async function getCompanyDetails(companyId, userId = null) {
+  try {
+    const company = await getCompanyById(companyId, userId);
+    
+    // Transform for frontend
+    const transformedCompany = {
+      id: company.id,
+      name: company.name,
+      email: company.email,
+      avatar: company.customerProfile?.profileImageUrl || company.customerProfile?.logoUrl || "/placeholder.svg",
+      industry: company.customerProfile?.industry || "Not specified",
+      location: company.customerProfile?.location || "Not specified",
+      companySize: company.customerProfile?.companySize || "Not specified",
+      rating: parseFloat(company.customerProfile?.rating || 0),
+      reviewCount: company.customerProfile?.reviewCount || 0,
+      totalSpend: parseFloat(company.customerProfile?.totalSpend || 0),
+      projectsPosted: company.customerProfile?.projectsPosted || 0,
+      description: company.customerProfile?.description || "No description available",
+      website: company.customerProfile?.website || null,
+      memberSince: new Date(company.createdAt).getFullYear().toString(),
+      verified: company.isVerified || false,
+      saved: company.isSaved || false,
+      // Additional fields
+      employeeCount: company.customerProfile?.employeeCount || null,
+      establishedYear: company.customerProfile?.establishedYear || null,
+      annualRevenue: company.customerProfile?.annualRevenue || null,
+      fundingStage: company.customerProfile?.fundingStage || null,
+      mission: company.customerProfile?.mission || null,
+      values: company.customerProfile?.values || [],
+      languages: company.customerProfile?.languages || [],
+      categoriesHiringFor: company.customerProfile?.categoriesHiringFor || [],
+      preferredContractTypes: company.customerProfile?.preferredContractTypes || [],
+      remotePolicy: company.customerProfile?.remotePolicy || null,
+      hiringFrequency: company.customerProfile?.hiringFrequency || null,
+      averageBudgetRange: company.customerProfile?.averageBudgetRange || null,
+      socialLinks: company.customerProfile?.socialLinks || null,
+      mediaGallery: company.customerProfile?.mediaGallery || [],
+    };
+
+    return transformedCompany;
+  } catch (error) {
+    console.error("Error getting company details:", error);
+    throw new Error("Failed to get company details");
+  }
+}
+
+// Get company reviews
+export async function getCompanyReviewsList(companyId, page = 1, limit = 10) {
+  try {
+    const result = await getCompanyReviews(companyId, page, limit);
+    
+    // Transform reviews for frontend
+    const transformedReviews = result.reviews.map((review) => ({
+      id: review.id,
+      author: review.recipient.name,
+      rating: review.rating,
+      date: review.createdAt.toISOString().split("T")[0],
+      text: review.content,
+      provider: {
+        name: review.recipient.name,
+        location: review.recipient.providerProfile?.location || "Not specified",
+        rating: parseFloat(review.recipient.providerProfile?.rating || 0),
+      },
+    }));
+
+    return {
+      reviews: transformedReviews,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting company reviews:", error);
+    throw new Error("Failed to get company reviews");
+  }
+}
+
+// Save company
+export async function saveCompanyService(userId, companyId) {
+  try {
+    await saveCompany(userId, companyId);
+    return { success: true, message: "Company saved successfully" };
+  } catch (error) {
+    if (error.message === "Company already saved") {
+      throw new Error("Company already saved");
+    }
+    console.error("Error saving company:", error);
+    throw new Error("Failed to save company");
+  }
+}
+
+// Unsave company
+export async function unsaveCompanyService(userId, companyId) {
+  try {
+    await unsaveCompany(userId, companyId);
+    return { success: true, message: "Company removed from saved list" };
+  } catch (error) {
+    console.error("Error unsaving company:", error);
+    throw new Error("Failed to remove company from saved list");
+  }
+}
+
+// Get saved companies
+export async function getSavedCompaniesService(userId, page = 1, limit = 20) {
+  try {
+    const result = await getSavedCompanies(userId, page, limit);
+    
+    // Transform for frontend
+    const transformedCompanies = result.companies.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.customerProfile?.profileImageUrl || user.customerProfile?.logoUrl || "/placeholder.svg",
+      industry: user.customerProfile?.industry || "Not specified",
+      location: user.customerProfile?.location || "Not specified",
+      companySize: user.customerProfile?.companySize || "Not specified",
+      rating: parseFloat(user.customerProfile?.rating || 0),
+      reviewCount: user.customerProfile?.reviewCount || 0,
+      totalSpend: parseFloat(user.customerProfile?.totalSpend || 0),
+      projectsPosted: user.customerProfile?.projectsPosted || 0,
+      description: user.customerProfile?.description || "No description available",
+      website: user.customerProfile?.website || null,
+      memberSince: new Date(user.createdAt).getFullYear().toString(),
+      verified: user.isVerified || false,
+      savedAt: user.savedAt,
+    }));
+
+    return {
+      companies: transformedCompanies,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting saved companies:", error);
+    throw new Error("Failed to get saved companies");
+  }
+}
+
+// Get company statistics
+export async function getCompanyStatistics(companyId) {
+  try {
+    const stats = await getCompanyStats(companyId);
+    return stats;
+  } catch (error) {
+    console.error("Error getting company statistics:", error);
+    throw new Error("Failed to get company statistics");
+  }
+}
+
+// Get filter options (industries, locations, etc.)
+export async function getFilterOptions() {
+  try {
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient();
+    
+    // Get unique industries
+    const industriesResult = await prisma.customerProfile.findMany({
+      select: {
+        industry: true,
+      },
+      where: {
+        industry: {
+          not: null,
+        },
+      },
+    });
+    
+    const uniqueIndustries = [...new Set(industriesResult.map(p => p.industry).filter(Boolean))];
+    
+    // Get unique locations
+    const locationsResult = await prisma.customerProfile.findMany({
+      select: {
+        location: true,
+      },
+      where: {
+        location: {
+          not: null,
+        },
+      },
+    });
+    
+    const uniqueLocations = [...new Set(locationsResult.map(p => p.location).filter(Boolean))];
+    
+    // Get unique company sizes
+    const companySizesResult = await prisma.customerProfile.findMany({
+      select: {
+        companySize: true,
+      },
+      where: {
+        companySize: {
+          not: null,
+        },
+      },
+    });
+    
+    const uniqueCompanySizes = [...new Set(companySizesResult.map(p => p.companySize).filter(Boolean))];
+    
+    return {
+      industries: [
+        { value: "all", label: "All Industries" },
+        ...uniqueIndustries.slice(0, 10).map(industry => ({
+          value: industry.toLowerCase(),
+          label: industry,
+        })),
+      ],
+      locations: [
+        { value: "all", label: "All Locations" },
+        ...uniqueLocations.slice(0, 10).map(location => ({
+          value: location.toLowerCase(),
+          label: location,
+        })),
+      ],
+      companySizes: [
+        { value: "all", label: "All Company Sizes" },
+        ...uniqueCompanySizes.slice(0, 10).map(size => ({
+          value: size.toLowerCase(),
+          label: size,
+        })),
+      ],
+      ratings: [
+        { value: "all", label: "All Ratings" },
+        { value: "4.5+", label: "4.5+ Stars" },
+        { value: "4.0+", label: "4.0+ Stars" },
+        { value: "3.5+", label: "3.5+ Stars" },
+      ],
+    };
+  } catch (error) {
+    console.error("Error getting filter options:", error);
+    // Return default options if database query fails
+    return {
+      industries: [
+        { value: "all", label: "All Industries" },
+        { value: "technology", label: "Technology" },
+        { value: "finance", label: "Finance" },
+        { value: "healthcare", label: "Healthcare" },
+        { value: "education", label: "Education" },
+        { value: "retail", label: "Retail" },
+      ],
+      locations: [
+        { value: "all", label: "All Locations" },
+        { value: "kuala lumpur", label: "Kuala Lumpur" },
+        { value: "selangor", label: "Selangor" },
+        { value: "penang", label: "Penang" },
+        { value: "johor", label: "Johor" },
+      ],
+      companySizes: [
+        { value: "all", label: "All Company Sizes" },
+        { value: "1-10", label: "1-10 employees" },
+        { value: "11-50", label: "11-50 employees" },
+        { value: "51-200", label: "51-200 employees" },
+        { value: "201+", label: "201+ employees" },
+      ],
+      ratings: [
+        { value: "all", label: "All Ratings" },
+        { value: "4.5+", label: "4.5+ Stars" },
+        { value: "4.0+", label: "4.0+ Stars" },
+      ],
+    };
+  }
+}
+

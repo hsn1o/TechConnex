@@ -176,7 +176,6 @@ export default function ProviderDetailClient({
                 </span>
                 <span>RM{provider.hourlyRate}/hr</span>
                 <span>{provider.completedJobs} completed jobs</span>
-                <span>Responds in {provider.responseTime}</span>
                 <span className="flex items-center gap-2">
                   {provider.languages?.map((l) => (
                     <Badge key={l} variant="secondary" className="text-xs">

@@ -6,29 +6,29 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Eye, MapPin, MessageSquare, Star, Heart } from "lucide-react";
-import type { Provider } from "../types";
+import { Eye, MapPin, MessageSquare, Star, Heart, Building2 } from "lucide-react";
+import type { Company } from "../types";
 import { useRouter } from "next/navigation";
 
-export default function ProviderCard({ provider }: { provider: Provider }) {
+export default function CompanyCard({ company }: { company: Company }) {
   const router = useRouter();
-  const [saved, setSaved] = useState<boolean>(!!provider.saved);
+  const [saved, setSaved] = useState<boolean>(!!company.saved);
 
-  // Update saved state when provider prop changes (e.g., after refresh)
+  // Update saved state when company prop changes (e.g., after refresh)
   useEffect(() => {
-    setSaved(!!provider.saved);
-  }, [provider.saved]);
+    setSaved(!!company.saved);
+  }, [company.saved]);
 
   const handleContact = () => {
-    // Navigate to chat with this provider
-    const avatarUrl = provider.avatar && 
-      provider.avatar !== "/placeholder.svg" &&
-      !provider.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+    // Navigate to chat with this company
+    const avatarUrl = company.avatar && 
+      company.avatar !== "/placeholder.svg" &&
+      !company.avatar.includes("/placeholder.svg")
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`
         : "";
     router.push(
-      `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
-        provider.name
+      `/provider/messages?userId=${company.id}&name=${encodeURIComponent(
+        company.name
       )}&avatar=${encodeURIComponent(avatarUrl)}`
     );
   };
@@ -48,7 +48,7 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
     try {
       const { userId, token } = getUserAndToken();
       if (!userId || !token) {
-        alert("Please login to save providers");
+        alert("Please login to save companies");
         return;
       }
 
@@ -56,7 +56,7 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
       const response = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
-        }/providers/${provider.id}/save?userId=${encodeURIComponent(userId)}`,
+        }/companies/${company.id}/save?userId=${encodeURIComponent(userId)}`,
         {
           method,
           headers: {
@@ -77,6 +77,7 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
       alert("Failed to update saved status");
     }
   };
+
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader className="pb-4">
@@ -85,16 +86,21 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
             <Avatar className="w-16 h-16">
               <AvatarImage 
                 src={
-                  provider.avatar && 
-                  provider.avatar !== "/placeholder.svg" &&
-                  !provider.avatar.includes("/placeholder.svg")
-                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+                  company.avatar && 
+                  company.avatar !== "/placeholder.svg" &&
+                  company.avatar !== "/placeholder.svg?height=40&width=40" &&
+                  !company.avatar.includes("/placeholder.svg")
+                    ? (company.avatar.startsWith("http") 
+                        ? company.avatar 
+                        : `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`)
                     : "/placeholder.svg"
                 } 
               />
-              <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
+              <AvatarFallback>
+                <Building2 className="w-8 h-8" />
+              </AvatarFallback>
             </Avatar>
-            {provider.verified && (
+            {company.verified && (
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
                 <svg
                   className="w-3 h-3 text-white"
@@ -113,16 +119,11 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-semibold text-gray-900 truncate">
-                {provider.name}
+                {company.name}
               </h3>
-              {provider.topRated && (
-                <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-                  Top Rated
-                </Badge>
-              )}
             </div>
-            <p className="text-sm text-gray-600 mb-1">{provider.title}</p>
-            <p className="text-xs text-gray-500">{provider.company}</p>
+            <p className="text-sm text-gray-600 mb-1">{company.industry}</p>
+            <p className="text-xs text-gray-500">{company.companySize}</p>
           </div>
         </div>
       </CardHeader>
@@ -131,54 +132,32 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 text-yellow-400 fill-current" />
-            <span className="font-medium">{provider.rating}</span>
+            <span className="font-medium">{company.rating}</span>
             <span className="text-sm text-gray-500">
-              ({provider.reviewCount})
+              ({company.reviewCount})
             </span>
           </div>
           <div className="flex items-center gap-1 text-sm text-gray-500">
             <MapPin className="w-3 h-3" />
-            {provider.location}
+            {company.location}
           </div>
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-3">{provider.bio}</p>
-
-        <div className="flex flex-wrap gap-1">
-          {provider.skills.slice(0, 4).map((skill) => (
-            <Badge key={skill} variant="secondary" className="text-xs">
-              {skill}
-            </Badge>
-          ))}
-          {provider.skills.length > 4 && (
-            <Badge variant="secondary" className="text-xs">
-              +{provider.skills.length - 4}
-            </Badge>
-          )}
-        </div>
+        <p className="text-sm text-gray-600 line-clamp-3">{company.description}</p>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-gray-500">Hourly Rate</p>
-            <p className="font-semibold">RM{provider.hourlyRate}/hr</p>
+            <p className="text-gray-500">Projects Posted</p>
+            <p className="font-semibold">{company.projectsPosted}</p>
           </div>
           <div>
-            <p className="text-gray-500">Completed Jobs</p>
-            <p className="font-semibold">{provider.completedJobs}</p>
+            <p className="text-gray-500">Total Spent</p>
+            <p className="font-semibold">RM{company.totalSpend.toLocaleString()}</p>
           </div>
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                provider.availability === "Available"
-                  ? "bg-green-500"
-                  : "bg-yellow-500"
-              }`}
-            />
-            <span className="text-gray-600">{provider.availability}</span>
-          </div>
+          <span className="text-gray-500">Member since {company.memberSince}</span>
         </div>
 
         <div className="flex gap-2 pt-2">
@@ -194,7 +173,7 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
           >
             <Heart className={`w-4 h-4 ${saved ? "fill-current" : ""}`} />
           </Button>
-          <Link href={`/customer/providers/${provider.id}`} className="flex-1">
+          <Link href={`/provider/companies/${company.id}`} className="flex-1">
             <Button size="sm" variant="outline" className="w-full">
               <Eye className="w-4 h-4 mr-2" />
               View Profile
@@ -205,3 +184,4 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
     </Card>
   );
 }
+

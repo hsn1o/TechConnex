@@ -1363,10 +1363,6 @@ export default function ProjectDetailsPage({
                 Created: {new Date(project.createdAt).toLocaleDateString()}
               </div>
               <div className="flex items-center gap-1">
-                <Eye className="w-4 h-4" />
-                {viewCount} views
-              </div>
-              <div className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
                 {bidCount} bids
               </div>
@@ -1581,10 +1577,6 @@ export default function ProjectDetailsPage({
                   <div>
                     <h4 className="font-medium mb-2">Category</h4>
                     <Badge variant="secondary">{project.category}</Badge>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Location</h4>
-                    <p className="text-gray-600">{project.location}</p>
                   </div>
                   <div>
                     <h4 className="font-medium mb-2">Timeline</h4>
@@ -2222,15 +2214,8 @@ export default function ProjectDetailsPage({
                                 </div>
                               </div>
 
-                              {(p.providerLocation ||
-                                p.providerResponseTime) && (
+                              {p.providerResponseTime && (
                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mb-2">
-                                  {p.providerLocation && (
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="w-4 h-4" />
-                                      {p.providerLocation}
-                                    </div>
-                                  )}
                                   {p.providerResponseTime && (
                                     <div className="flex items-center gap-1">
                                       <Clock className="w-4 h-4" />
@@ -3255,13 +3240,6 @@ export default function ProjectDetailsPage({
                             rating
                       </span>
                     </div>
-
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                          {selectedProposalDetails.provider?.location ||
-                            selectedProposalDetails.providerLocation ||
-                            "—"}
-                      </div>
 
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />

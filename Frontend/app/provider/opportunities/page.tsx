@@ -136,9 +136,16 @@ export default function ProviderOpportunitiesPage() {
                 "Not specified",
               clientRating: 4.5, // Default rating
               clientJobs: 10, // Default jobs count
-              avatar:
-                opportunity.customer?.customerProfile?.logoUrl ||
-                "/placeholder.svg?height=40&width=40",
+              avatar: (() => {
+                const profile = opportunity.customer?.customerProfile;
+                if (profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg") {
+                  return `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`;
+                }
+                if (profile?.logoUrl && profile.logoUrl !== "/placeholder.svg") {
+                  return `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.logoUrl.startsWith("/") ? "" : "/"}${profile.logoUrl}`;
+                }
+                return "/placeholder.svg?height=40&width=40";
+              })(),
               urgent: opportunity.priority === "High",
               verified: true,
               hasSubmitted: opportunity.hasProposed || false,
@@ -706,7 +713,13 @@ export default function ProviderOpportunitiesPage() {
                         <div className="flex items-center space-x-4">
                           <Avatar>
                             <AvatarImage
-                              src={opportunity.avatar || "/placeholder.svg"}
+                              src={
+                                opportunity.avatar && 
+                                opportunity.avatar !== "/placeholder.svg?height=40&width=40" &&
+                                !opportunity.avatar.includes("/placeholder.svg")
+                                  ? opportunity.avatar
+                                  : "/placeholder.svg"
+                              }
                             />
                             <AvatarFallback>
                               {opportunity.client.charAt(0)}
@@ -923,7 +936,13 @@ export default function ProviderOpportunitiesPage() {
                         <div className="flex items-center space-x-3">
                           <Avatar>
                             <AvatarImage
-                              src={selectedProject.avatar || "/placeholder.svg"}
+                              src={
+                                selectedProject.avatar && 
+                                selectedProject.avatar !== "/placeholder.svg?height=40&width=40" &&
+                                !selectedProject.avatar.includes("/placeholder.svg")
+                                  ? selectedProject.avatar
+                                  : "/placeholder.svg"
+                              }
                             />
                             <AvatarFallback>
                               {selectedProject.client.charAt(0)}
