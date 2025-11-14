@@ -187,8 +187,8 @@ export default function AdminUsersPage() {
     if (roles.includes("PROVIDER")) return "bg-blue-100 text-blue-800"
     if (roles.includes("CUSTOMER")) return "bg-purple-100 text-purple-800"
     if (roles.includes("ADMIN")) return "bg-red-100 text-red-800"
-    return "bg-gray-100 text-gray-800"
-  }
+        return "bg-gray-100 text-gray-800"
+    }
 
   const getPrimaryRole = (roles: string[]) => {
     if (!roles || !Array.isArray(roles)) return "Unknown"
@@ -321,11 +321,11 @@ export default function AdminUsersPage() {
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="ACTIVE">Active</SelectItem>
                     <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                  </SelectContent>
+                </SelectContent>
               </Select>
             </div>
           </CardContent>
@@ -344,19 +344,19 @@ export default function AdminUsersPage() {
                 <span className="ml-2">Loading users...</span>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
                     <TableHead>Projects/Stats</TableHead>
-                    <TableHead>Rating</TableHead>
+                  <TableHead>Rating</TableHead>
                     <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                   {users.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-12 text-gray-500">
@@ -370,36 +370,36 @@ export default function AdminUsersPage() {
                       const profile = isProvider ? user.providerProfile : user.customerProfile
                       
                       return (
-                        <TableRow key={user.id}>
-                          <TableCell>
-                            <div className="flex items-center space-x-3">
-                              <Avatar>
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                        <Avatar>
                                 <AvatarImage src="/placeholder.svg" />
                                 <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{user.name}</p>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{user.name}</p>
                                   {user.isVerified && <CheckCircle className="w-4 h-4 text-green-500" />}
-                                </div>
-                                <p className="text-sm text-gray-500">{user.email}</p>
+                          </div>
+                          <p className="text-sm text-gray-500">{user.email}</p>
                                 {profile?.location && (
                                   <p className="text-xs text-gray-400">{profile.location}</p>
                                 )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getRoleColor(user.role)}>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getRoleColor(user.role)}>
                               {getPrimaryRole(user.role)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(user.status)}>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(user.status)}>
                               {user.status || "ACTIVE"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                             {isProvider ? (
                               <div>
                                 <p className="font-medium">{profile?.totalProjects || 0} projects</p>
@@ -408,69 +408,69 @@ export default function AdminUsersPage() {
                                 </p>
                               </div>
                             ) : (
-                              <div>
+                      <div>
                                 <p className="font-medium">{profile?.projectsPosted || 0} posted</p>
-                                <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500">
                                   RM {Number(profile?.totalSpend || 0).toLocaleString()} spent
-                                </p>
-                              </div>
+                        </p>
+                      </div>
                             )}
-                          </TableCell>
-                          <TableCell>
+                    </TableCell>
+                    <TableCell>
                             {profile?.rating ? (
-                              <div className="flex items-center">
-                                <span className="text-yellow-400">★</span>
+                        <div className="flex items-center">
+                          <span className="text-yellow-400">★</span>
                                 <span className="ml-1 font-medium">{Number(profile.rating).toFixed(1)}</span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">No rating</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No rating</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                             <p className="text-sm">{formatDate(user.createdAt)}</p>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
                                   <Link href={`/admin/users/${user.id}`}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Profile
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Profile
                                   </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                                 {user.status === "ACTIVE" ? (
                                   <DropdownMenuItem
                                     className="text-red-600"
                                     onClick={() => handleSuspendClick(user)}
                                   >
-                                    <Ban className="mr-2 h-4 w-4" />
-                                    Suspend User
-                                  </DropdownMenuItem>
-                                ) : (
+                              <Ban className="mr-2 h-4 w-4" />
+                              Suspend User
+                            </DropdownMenuItem>
+                          ) : (
                                   <DropdownMenuItem
                                     className="text-green-600"
                                     onClick={() => handleActivateClick(user)}
                                   >
-                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                    Activate User
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Activate User
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                       )
                     })
                   )}
-                </TableBody>
-              </Table>
+              </TableBody>
+            </Table>
             )}
           </CardContent>
         </Card>

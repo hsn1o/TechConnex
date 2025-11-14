@@ -211,8 +211,34 @@ export async function findProviders(filters) {
     }));
   }
 
+  // Calculate completed projects for each provider
+  const providerIds = providersWithSavedStatus.map(p => p.id);
+  const completedProjectsCounts = await prisma.project.groupBy({
+    by: ['providerId'],
+    where: {
+      providerId: {
+        in: providerIds,
+      },
+      status: 'COMPLETED',
+    },
+    _count: {
+      id: true,
+    },
+  });
+
+  // Create a map of providerId -> completedProjects count
+  const completedProjectsMap = new Map(
+    completedProjectsCounts.map(item => [item.providerId, item._count.id])
+  );
+
+  // Add completedProjects to each provider
+  const providersWithCompletedProjects = providersWithSavedStatus.map(provider => ({
+    ...provider,
+    completedProjects: completedProjectsMap.get(provider.id) || 0,
+  }));
+
   return {
-    providers: providersWithSavedStatus,
+    providers: providersWithCompletedProjects,
     total,
     page,
     limit,
@@ -258,9 +284,18 @@ export async function getProviderById(providerId, userId = null) {
     isSaved = !!savedProvider;
   }
 
+  // Calculate completed projects count
+  const completedProjects = await prisma.project.count({
+    where: {
+      providerId: providerId,
+      status: 'COMPLETED',
+    },
+  });
+
   return {
     ...provider,
     isSaved,
+    completedProjects,
   };
 }
 

@@ -71,12 +71,6 @@ export default function FindProvidersClient({
               Saved Providers
             </Button>
           </Link>
-          <Link href="/customer/projects/new">
-            <Button>
-              <Briefcase className="w-4 h-4 mr-2" />
-              Post Project
-            </Button>
-          </Link>
         </div>
       </div>
 

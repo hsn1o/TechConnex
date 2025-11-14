@@ -140,69 +140,69 @@ export default function AdminProjectsPage() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Projects</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Projects</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.totalProjects || 0}</p>
-                  </div>
-                  <Briefcase className="w-8 h-8 text-blue-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <Briefcase className="w-8 h-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active</p>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Active</p>
                     <p className="text-2xl font-bold text-blue-600">{stats.activeProjects || 0}</p>
-                  </div>
-                  <Clock className="w-8 h-8 text-blue-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <Clock className="w-8 h-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Completed</p>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Completed</p>
                     <p className="text-2xl font-bold text-green-600">{stats.completedProjects || 0}</p>
-                  </div>
-                  <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Disputed</p>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Disputed</p>
                     <p className="text-2xl font-bold text-red-600">{stats.disputedProjects || 0}</p>
-                  </div>
-                  <AlertTriangle className="w-8 h-8 text-red-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <AlertTriangle className="w-8 h-8 text-red-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Value</p>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Value</p>
                     <p className="text-2xl font-bold text-purple-600">
                       RM{((stats.totalValue || 0) / 1000).toFixed(0)}K
                     </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-purple-600" />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <DollarSign className="w-8 h-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
         )}
 
         {/* Filters */}
@@ -269,19 +269,19 @@ export default function AdminProjectsPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Project</TableHead>
-                    <TableHead>Participants</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Budget</TableHead>
-                    <TableHead>Timeline</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Participants</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Progress</TableHead>
+                  <TableHead>Budget</TableHead>
+                  <TableHead>Timeline</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                   {filteredProjects.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-12 text-gray-500">
@@ -298,108 +298,108 @@ export default function AdminProjectsPage() {
                       const totalMilestones = project.milestones?.length || 0
 
                       return (
-                        <TableRow key={project.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{project.title}</p>
-                              <p className="text-sm text-gray-500">{project.category}</p>
+                  <TableRow key={project.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{project.title}</p>
+                        <p className="text-sm text-gray-500">{project.category}</p>
                               {disputesCount > 0 && (
-                                <Badge className="bg-red-100 text-red-800 mt-1">
-                                  <AlertTriangle className="w-3 h-3 mr-1" />
+                          <Badge className="bg-red-100 text-red-800 mt-1">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
                                   {disputesCount} dispute(s)
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                <Avatar className="w-6 h-6">
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Avatar className="w-6 h-6">
                                   <AvatarFallback>
                                     {project.customer?.name?.charAt(0) || "C"}
                                   </AvatarFallback>
-                                </Avatar>
+                          </Avatar>
                                 <span className="text-sm">{project.customer?.name || "N/A"}</span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Avatar className="w-6 h-6">
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Avatar className="w-6 h-6">
                                   <AvatarFallback>
                                     {project.provider?.name?.charAt(0) || "P"}
                                   </AvatarFallback>
-                                </Avatar>
+                          </Avatar>
                                 <span className="text-sm">{project.provider?.name || "N/A"}</span>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                             <Badge className={getStatusColor(project.status)}>
                               {getStatusText(project.status)}
                             </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-sm">
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
                                 <span>{progress}%</span>
-                                <span>
+                          <span>
                                   {completedMilestones}/{totalMilestones}
-                                </span>
-                              </div>
+                          </span>
+                        </div>
                               <Progress value={progress} className="h-2" />
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
                               <p className="font-medium">
                                 RM{project.budgetMin?.toLocaleString() || 0} - RM
                                 {project.budgetMax?.toLocaleString() || 0}
                               </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
                               <p className="text-sm">
                                 {project.timeline || "—"}
                               </p>
                               <p className="text-xs text-gray-500">
                                 {new Date(project.createdAt).toLocaleDateString()}
                               </p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
                                   <Link href={`/admin/projects/${project.id}`}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Details
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
                                   </Link>
-                                </DropdownMenuItem>
+                          </DropdownMenuItem>
                                 {disputesCount > 0 && (
                                   <>
-                                    <DropdownMenuSeparator />
+                          <DropdownMenuSeparator />
                                     <DropdownMenuItem asChild>
                                       <Link href={`/admin/disputes`}>
-                                        <AlertTriangle className="mr-2 h-4 w-4" />
+                              <AlertTriangle className="mr-2 h-4 w-4" />
                                         View Disputes ({disputesCount})
                                       </Link>
-                                    </DropdownMenuItem>
+                            </DropdownMenuItem>
                                   </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                       )
                     })
                   )}
-                </TableBody>
-              </Table>
+              </TableBody>
+            </Table>
             )}
           </CardContent>
         </Card>

@@ -214,12 +214,16 @@ export async function getProjects(dto) {
       ).length || 0;
       const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
       
+      // Calculate approved price (sum of all milestone amounts)
+      const approvedPrice = item.milestones?.reduce((sum, milestone) => sum + milestone.amount, 0) || 0;
+      
       return {
         ...item,
         type: "Project",
         progress,
         completedMilestones,
         totalMilestones,
+        approvedPrice,
       };
     });
 
@@ -424,12 +428,45 @@ export async function getProjectById(projectId, customerId) {
       });
     }
 
+    // Calculate project stats
+    const milestones = project.milestones || [];
+    const totalMilestones = milestones.length;
+    const completedMilestones = milestones.filter(
+      (m) => m.status === "APPROVED" || m.status === "PAID"
+    ).length;
+    const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+    
+    // Calculate approved price (sum of all milestone amounts)
+    const approvedPrice = milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
+    
+    // Calculate total spent (sum of PAID milestone amounts)
+    const totalSpent = milestones
+      .filter((m) => m.status === "PAID")
+      .reduce((sum, milestone) => sum + milestone.amount, 0);
+    
+    // Calculate days left until the last milestone due date
+    let daysLeft = null;
+    if (milestones.length > 0) {
+      const lastMilestone = milestones[milestones.length - 1];
+      if (lastMilestone.dueDate) {
+        const dueDate = new Date(lastMilestone.dueDate);
+        const now = new Date();
+        const diffTime = dueDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        daysLeft = diffDays > 0 ? diffDays : 0;
+      }
+    }
+
     return {
       ...project,
       type: "Project",
       serviceRequestId: originalServiceRequest?.id || null, // Include the original ServiceRequest ID for fetching proposals
       originalTimeline: originalServiceRequest?.timeline || null, // Original company timeline (string)
       providerProposedTimeline: acceptedProposal?.deliveryTime || null, // Provider's proposed timeline in days (number, frontend will format)
+      approvedPrice, // Sum of all milestone amounts
+      totalSpent, // Sum of PAID milestone amounts
+      progress, // Percentage of completed milestones
+      daysLeft, // Days until last milestone due date
     };
   } catch (error) {
     console.error("Error fetching project:", error);
@@ -445,6 +482,7 @@ export async function getCompanyProjectStats(customerId) {
     const [
       activeProjects,
       completedProjects,
+      disputedProjects,
       totalSpentResult,
     ] = await Promise.all([
       prisma.project.count({
@@ -459,6 +497,12 @@ export async function getCompanyProjectStats(customerId) {
           status: "COMPLETED",
         },
       }),
+      prisma.project.count({
+        where: {
+          customerId,
+          status: "DISPUTED",
+        },
+      }),
       prisma.milestone.aggregate({
         where: {
           project: { customerId },
@@ -471,6 +515,7 @@ export async function getCompanyProjectStats(customerId) {
     return {
       activeProjects,
       completedProjects,
+      disputedProjects,
       totalSpent: totalSpentResult._sum.amount || 0,
     };
   } catch (error) {

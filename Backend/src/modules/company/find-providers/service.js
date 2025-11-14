@@ -8,6 +8,9 @@ import {
   getSavedProviders,
   getProviderStats,
 } from "./model.js";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Find providers with filtering
 export async function searchProviders(filters) {
@@ -24,7 +27,7 @@ export async function searchProviders(filters) {
       company: user.providerProfile?.website || "Freelancer",
       rating: parseFloat(user.providerProfile?.rating || 0),
       reviewCount: user.providerProfile?.totalReviews || 0,
-      completedJobs: user.providerProfile?.totalProjects || 0,
+      completedJobs: user.completedProjects || 0, // Use calculated completed projects
       hourlyRate: user.providerProfile?.hourlyRate || 0,
       location: user.providerProfile?.location || "Malaysia",
       bio: user.providerProfile?.bio || "Experienced ICT professional",
@@ -68,7 +71,7 @@ export async function getProviderDetails(providerId, userId = null) {
       company: provider.providerProfile?.website || "Freelancer",
       rating: parseFloat(provider.providerProfile?.rating || 0),
       reviewCount: provider.providerProfile?.totalReviews || 0,
-      completedJobs: provider.providerProfile?.totalProjects || 0,
+      completedJobs: provider.completedProjects || 0, // Use calculated completed projects
       hourlyRate: provider.providerProfile?.hourlyRate || 0,
       location: provider.providerProfile?.location || "Malaysia",
       bio: provider.providerProfile?.bio || "Experienced ICT professional",
@@ -174,6 +177,26 @@ export async function getSavedProvidersService(userId, page = 1, limit = 20) {
   try {
     const result = await getSavedProviders(userId, page, limit);
     
+    // Calculate completed projects for saved providers
+    const savedProviderIds = result.providers.map(p => p.id);
+    const completedProjectsCounts = await prisma.project.groupBy({
+      by: ['providerId'],
+      where: {
+        providerId: {
+          in: savedProviderIds,
+        },
+        status: 'COMPLETED',
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Create a map of providerId -> completedProjects count
+    const completedProjectsMap = new Map(
+      completedProjectsCounts.map(item => [item.providerId, item._count.id])
+    );
+
     // Transform for frontend
     const transformedProviders = result.providers.map((user) => ({
       id: user.id,
@@ -184,7 +207,7 @@ export async function getSavedProvidersService(userId, page = 1, limit = 20) {
       company: user.providerProfile?.website || "Freelancer",
       rating: parseFloat(user.providerProfile?.rating || 0),
       reviewCount: user.providerProfile?.totalReviews || 0,
-      completedJobs: user.providerProfile?.totalProjects || 0,
+      completedJobs: completedProjectsMap.get(user.id) || 0, // Use calculated completed projects
       hourlyRate: user.providerProfile?.hourlyRate || 0,
       location: user.providerProfile?.location || "Malaysia",
       bio: user.providerProfile?.bio || "Experienced ICT professional",

@@ -1424,9 +1424,9 @@ export default function ProjectDetailsPage({
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Budget</p>
+                  <p className="text-sm text-gray-500">Approved Price</p>
                   <p className="text-2xl font-bold">
-                    {currency} {fmt(project.budget)}
+                    {currency} {fmt(project.approvedPrice || 0)}
                   </p>
                 </div>
                 <DollarSign className="w-8 h-8 text-green-600" />
@@ -1437,9 +1437,9 @@ export default function ProjectDetailsPage({
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Spent</p>
+                  <p className="text-sm text-gray-500">Total Spent</p>
                   <p className="text-2xl font-bold">
-                    {project.currency} {fmt(project.spent)}
+                    {currency} {fmt(project.totalSpent || 0)}
                   </p>
                 </div>
                 <DollarSign className="w-8 h-8 text-blue-600" />
@@ -1451,7 +1451,7 @@ export default function ProjectDetailsPage({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500">Progress</p>
-                  <p className="text-2xl font-bold">{project.progress}%</p>
+                  <p className="text-2xl font-bold">{project.progress || 0}%</p>
                 </div>
                 <div className="w-8 h-8 flex items-center justify-center">
                   <div
@@ -1462,25 +1462,33 @@ export default function ProjectDetailsPage({
               </div>
             </CardContent>
           </Card>
-          {project.endDate ? (
+          {project.daysLeft !== null && project.daysLeft !== undefined ? (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500">Days Left</p>
                   <p className="text-2xl font-bold">
-                    {Math.ceil(
-                      (new Date(project.endDate).getTime() -
-                        new Date().getTime()) /
-                        (1000 * 60 * 60 * 24)
-                    )}
+                    {project.daysLeft}
                   </p>
                 </div>
                 <Calendar className="w-8 h-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>
-          ) : null}
+          ) : (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Days Left</p>
+                  <p className="text-2xl font-bold">—</p>
+                </div>
+                <Calendar className="w-8 h-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+          )}
         </div>
 
         {/* Progress Bar */}

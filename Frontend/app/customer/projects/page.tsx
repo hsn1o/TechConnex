@@ -43,6 +43,7 @@ import {
   Star,
   Clock,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
@@ -71,7 +72,7 @@ export default function CustomerProjectsPage() {
           page: 1,
           limit: 100, // Get all projects for now
         });
-
+        
         if (response.success) {
           setProjects(response.items || []);
         } else {
@@ -102,7 +103,7 @@ export default function CustomerProjectsPage() {
           return "bg-gray-100 text-gray-800";
       }
     }
-
+    
     // Project statuses
     switch (status) {
       case "COMPLETED":
@@ -130,7 +131,7 @@ export default function CustomerProjectsPage() {
           return status;
       }
     }
-
+    
     // Project statuses
     switch (status) {
       case "COMPLETED":
@@ -223,39 +224,39 @@ export default function CustomerProjectsPage() {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveProject = async () => {
-    if (!editingProject) return;
-    try {
-      // Prepare a minimal, safe payload: only send fields the user just edited.
-      const payload: any = {
-        title: editingProject.title,
-        description: editingProject.description,
-        category: editingProject.category,
+const handleSaveProject = async () => {
+  if (!editingProject) return;
+  try {
+    // Prepare a minimal, safe payload: only send fields the user just edited.
+    const payload: any = {
+      title: editingProject.title,
+      description: editingProject.description,
+      category: editingProject.category,
         priority:
           editingProject.priority?.toLowerCase?.() || editingProject.priority,
-      };
+    };
 
-      // If you show separate min/max in your dialog later, include them here:
+    // If you show separate min/max in your dialog later, include them here:
       if (
         Number.isFinite(editingProject.budgetMin) &&
         Number.isFinite(editingProject.budgetMax)
       ) {
-        payload.budgetMin = Number(editingProject.budgetMin);
-        payload.budgetMax = Number(editingProject.budgetMax);
-      }
+      payload.budgetMin = Number(editingProject.budgetMin);
+      payload.budgetMax = Number(editingProject.budgetMax);
+    }
 
-      if (editingProject.timeline) payload.timeline = editingProject.timeline;
+    if (editingProject.timeline) payload.timeline = editingProject.timeline;
 
-      // If you add Requirements/Deliverables fields in the dialog later, send arrays:
-      // payload.requirements = toLines(editingRequirementsText);
-      // payload.deliverables = toLines(editingDeliverablesText);
+    // If you add Requirements/Deliverables fields in the dialog later, send arrays:
+    // payload.requirements = toLines(editingRequirementsText);
+    // payload.deliverables = toLines(editingDeliverablesText);
 
       const { project: updated } = await updateCompanyProject(
         editingProject.id,
         payload
       );
 
-      // Update local list
+    // Update local list
       setProjects((prev) =>
         prev.map((p) => (p.id === editingProject.id ? { ...p, ...updated } : p))
       );
@@ -264,18 +265,18 @@ export default function CustomerProjectsPage() {
         title: "Project Updated",
         description: "Changes saved successfully.",
       });
-      setIsEditDialogOpen(false);
-      setEditingProject(null);
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Update failed",
+    setIsEditDialogOpen(false);
+    setEditingProject(null);
+  } catch (err) {
+    console.error(err);
+    toast({
+      title: "Update failed",
         description:
           err instanceof Error ? err.message : "Could not update project",
-        variant: "destructive",
-      });
-    }
-  };
+      variant: "destructive",
+    });
+  }
+};
 
   const handleDeleteProject = (projectId: number) => {
     toast({
@@ -296,6 +297,7 @@ export default function CustomerProjectsPage() {
     active: projects.filter((p) => p.status === "IN_PROGRESS").length,
     completed: projects.filter((p) => p.status === "COMPLETED").length,
     pending: projects.filter((p) => p.status === "OPEN").length,
+    disputed: projects.filter((p) => p.status === "DISPUTED").length,
   };
 
   if (loading) {
@@ -355,7 +357,7 @@ export default function CustomerProjectsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -410,6 +412,21 @@ export default function CustomerProjectsPage() {
                 </div>
                 <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                   <Clock className="w-6 h-6 text-yellow-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Disputed</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {stats.disputed}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
                 </div>
               </div>
             </CardContent>
@@ -494,24 +511,46 @@ export default function CustomerProjectsPage() {
               {sortedProjects.map((project) => (
                 <Card
                   key={project.id}
-                  className="hover:shadow-lg transition-shadow"
+                  className="hover:shadow-lg transition-shadow flex flex-col h-full"
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
                         <div className="flex-1">
-                          <CardTitle className="text-lg">
-                            {project.title}
-                          </CardTitle>
-                          <CardDescription className="mt-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <CardTitle className="text-lg">
+                              {project.title}
+                            </CardTitle>
+                            <Badge
+                              className={getStatusColor(
+                                project.status,
+                                project.type
+                              )}
+                            >
+                          {getStatusText(project.status, project.type)}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {project.type}
+                        </Badge>
+                            <Badge
+                              className={getPriorityColor(project.priority)}
+                              variant="outline"
+                            >
+                              {project.priority}
+                          </Badge>
+                            {(project.priority === "High" ||
+                              project.priority === "high") && (
+                              <Badge variant="destructive">Urgent</Badge>
+                        )}
+                          </div>
+                          <CardDescription className="mt-1 line-clamp-3">
                             {project.description}
                           </CardDescription>
                         </div>
                       </div>
-                      ...
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex-1 flex flex-col">
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-8 h-8">
                         <AvatarImage
@@ -524,9 +563,18 @@ export default function CustomerProjectsPage() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
+                        {project.provider?.id && project.provider?.name ? (
+                          <Link
+                            href={`/customer/providers/${project.provider.id}`}
+                            className="text-sm font-medium hover:text-blue-600 hover:underline transition-colors"
+                          >
+                            {project.provider.name}
+                          </Link>
+                        ) : (
                         <p className="text-sm font-medium">
                           {project.provider?.name || "No Provider Assigned"}
                         </p>
+                        )}
                         <p className="text-xs text-gray-500">
                           {project.category}
                         </p>
@@ -535,27 +583,32 @@ export default function CustomerProjectsPage() {
 
                     {project.type === "Project" &&
                       project.status === "IN_PROGRESS" && (
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
                             <span>Progress: {project.progress || 0}%</span>
-                            <span>
+                          <span>
                               {project.completedMilestones || 0}/
                               {project.totalMilestones || 0} milestones
-                            </span>
-                          </div>
-                          <Progress
-                            value={project.progress || 0}
-                            className="h-2"
-                          />
+                          </span>
                         </div>
-                      )}
+                        <Progress 
+                            value={project.progress || 0}
+                          className="h-2" 
+                        />
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-gray-500">Budget</p>
+                        <p className="text-gray-500">
+                          {project.type === "Project" && project.status === "IN_PROGRESS" && project.approvedPrice
+                            ? "Approved Price"
+                            : "Budget"}
+                        </p>
                         <p className="font-semibold">
-                          RM{project.budgetMin.toLocaleString()} - RM
-                          {project.budgetMax.toLocaleString()}
+                          {project.type === "Project" && project.status === "IN_PROGRESS" && project.approvedPrice
+                            ? `RM${project.approvedPrice.toLocaleString()}`
+                            : `RM${project.budgetMin.toLocaleString()} - RM${project.budgetMax.toLocaleString()}`}
                         </p>
                       </div>
                       <div>
@@ -582,15 +635,15 @@ export default function CustomerProjectsPage() {
 
                     {project.type === "Project" &&
                       project.status === "COMPLETED" && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-gray-500">Status:</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-gray-500">Status:</span>
                           <Badge className="bg-green-100 text-green-800">
                             Completed
                           </Badge>
-                        </div>
-                      )}
+                      </div>
+                    )}
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-auto">
                       <Button
                         size="sm"
                         className="flex-1"
@@ -633,11 +686,11 @@ export default function CustomerProjectsPage() {
                   {sortedProjects.map((project) => (
                     <div
                       key={project.id}
-                      className="p-6 hover:bg-gray-50 transition-colors"
+                      className="p-6 hover:bg-gray-50 transition-colors min-h-[200px] flex items-center"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4 flex-1">
-                          <Avatar>
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center space-x-4 flex-1 min-w-0">
+                          <Avatar className="flex-shrink-0">
                             <AvatarImage
                               src={
                                 project.provider?.avatar || "/placeholder.svg"
@@ -649,8 +702,8 @@ export default function CustomerProjectsPage() {
                                 : project.type.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-1">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-1 flex-wrap">
                               <h3 className="font-semibold text-gray-900">
                                 {project.title}
                               </h3>
@@ -676,13 +729,20 @@ export default function CustomerProjectsPage() {
                                 <Badge variant="destructive">Urgent</Badge>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600 mb-2">
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-3">
                               {project.description}
                             </p>
-                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                              <span>
-                                {project.provider?.name || "No Provider"}
-                              </span>
+                            <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
+                              {project.provider?.id && project.provider?.name ? (
+                                <Link
+                                  href={`/customer/providers/${project.provider.id}`}
+                                  className="hover:text-blue-600 hover:underline transition-colors"
+                                >
+                                  {project.provider.name}
+                                </Link>
+                              ) : (
+                              <span>{project.provider?.name || "No Provider"}</span>
+                              )}
                               <span>•</span>
                               <span>{project.category}</span>
                               <span>•</span>
@@ -701,32 +761,37 @@ export default function CustomerProjectsPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-6">
+                        <div className="flex items-center space-x-6 flex-shrink-0">
                           <div className="text-right">
-                            <p className="text-sm text-gray-500">Budget</p>
+                            <p className="text-sm text-gray-500">
+                              {project.type === "Project" && project.status === "IN_PROGRESS" && project.approvedPrice
+                                ? "Approved Price"
+                                : "Budget"}
+                            </p>
                             <p className="font-semibold">
-                              RM{project.budgetMin.toLocaleString()} - RM
-                              {project.budgetMax.toLocaleString()}
+                              {project.type === "Project" && project.status === "IN_PROGRESS" && project.approvedPrice
+                                ? `RM${project.approvedPrice.toLocaleString()}`
+                                : `RM${project.budgetMin.toLocaleString()} - RM${project.budgetMax.toLocaleString()}`}
                             </p>
                           </div>
                           {project.type === "Project" &&
                             project.status === "IN_PROGRESS" && (
-                              <div className="w-24">
-                                <div className="flex justify-between text-xs mb-1">
-                                  <span>
+                            <div className="w-24">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span>
                                     Progress: {project.progress || 0}%
                                   </span>
                                   <span>
                                     {project.completedMilestones || 0}/
                                     {project.totalMilestones || 0}
-                                  </span>
-                                </div>
-                                <Progress
-                                  value={project.progress || 0}
-                                  className="h-2"
-                                />
+                                </span>
                               </div>
-                            )}
+                              <Progress 
+                                  value={project.progress || 0}
+                                className="h-2" 
+                              />
+                            </div>
+                          )}
                           <div className="flex gap-2">
                             <Button
                               size="sm"

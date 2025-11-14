@@ -720,7 +720,7 @@ export default function ProviderProfilePage() {
                           </p>
                           
                           <div className="flex gap-2">
-                            <Input
+                          <Input
                               value={customLanguage}
                               onChange={(e) => setCustomLanguage(e.target.value)}
                               placeholder="Type a language and press Add"
@@ -854,7 +854,7 @@ export default function ProviderProfilePage() {
                             variant="outline"
                           >
                             <Plus className="w-4 h-4" />
-                          </Button>
+                        </Button>
                         </div>
 
                         {portfolioUrls.length > 0 && (
@@ -896,7 +896,7 @@ export default function ProviderProfilePage() {
                             <p className="text-sm">
                               Add links to showcase your work and professional profiles
                             </p>
-                          </div>
+                    </div>
                         )}
                       </>
                     ) : (
@@ -1002,7 +1002,7 @@ export default function ProviderProfilePage() {
                         </p>
                         
                         <div className="flex gap-2">
-                          <Input
+                        <Input
                             value={customSkill}
                             onChange={(e) => setCustomSkill(e.target.value)}
                             placeholder="Type a skill and press Add"
@@ -1064,7 +1064,7 @@ export default function ProviderProfilePage() {
                               ))}
                           </div>
                         </div>
-                      </div>
+                        </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="yearsExperience">Years of Experience</Label>

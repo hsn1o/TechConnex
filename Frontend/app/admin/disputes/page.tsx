@@ -230,69 +230,69 @@ export default function AdminDisputesPage() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Disputes</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Disputes</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.totalDisputes || 0}</p>
-                  </div>
-                  <AlertTriangle className="w-8 h-8 text-orange-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <AlertTriangle className="w-8 h-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Open</p>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Open</p>
                     <p className="text-2xl font-bold text-red-600">{stats.openDisputes || 0}</p>
-                  </div>
-                  <XCircle className="w-8 h-8 text-red-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <XCircle className="w-8 h-8 text-red-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">In Review</p>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">In Review</p>
                     <p className="text-2xl font-bold text-yellow-600">{stats.inReviewDisputes || 0}</p>
-                  </div>
-                  <Clock className="w-8 h-8 text-yellow-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <Clock className="w-8 h-8 text-yellow-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Resolved</p>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Resolved</p>
                     <p className="text-2xl font-bold text-green-600">{stats.resolvedDisputes || 0}</p>
-                  </div>
-                  <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-              </CardContent>
-            </Card>
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Value</p>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Value</p>
                     <p className="text-2xl font-bold text-purple-600">
                       RM{((stats.totalAmount || 0) / 1000).toFixed(0)}K
                     </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-purple-600" />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <DollarSign className="w-8 h-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
         )}
 
         {/* Filters */}
@@ -343,20 +343,20 @@ export default function AdminDisputesPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Dispute</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Dispute</TableHead>
                     <TableHead>Project</TableHead>
-                    <TableHead>Participants</TableHead>
+                  <TableHead>Participants</TableHead>
                     <TableHead>Raised By</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                   {filteredDisputes.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-12 text-gray-500">
@@ -365,9 +365,9 @@ export default function AdminDisputesPage() {
                     </TableRow>
                   ) : (
                     filteredDisputes.map((dispute) => (
-                      <TableRow key={dispute.id}>
-                        <TableCell>
-                          <div>
+                  <TableRow key={dispute.id}>
+                    <TableCell>
+                      <div>
                             <p className="font-medium">{dispute.reason}</p>
                             <p className="text-sm text-gray-500 line-clamp-2">{dispute.description}</p>
                           </div>
@@ -380,53 +380,53 @@ export default function AdminDisputesPage() {
                                 View Project
                               </Button>
                             </Link>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <Avatar className="w-6 h-6">
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Avatar className="w-6 h-6">
                                 <AvatarFallback>
                                   {dispute.project?.customer?.name?.charAt(0) || "C"}
                                 </AvatarFallback>
-                              </Avatar>
+                          </Avatar>
                               <span className="text-sm">{dispute.project?.customer?.name || "N/A"}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Avatar className="w-6 h-6">
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Avatar className="w-6 h-6">
                                 <AvatarFallback>
                                   {dispute.project?.provider?.name?.charAt(0) || "P"}
                                 </AvatarFallback>
-                              </Avatar>
+                          </Avatar>
                               <span className="text-sm">{dispute.project?.provider?.name || "N/A"}</span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-6 h-6">
                               <AvatarFallback>{dispute.raisedBy?.name?.charAt(0) || "U"}</AvatarFallback>
                             </Avatar>
                             <span className="text-sm">{dispute.raisedBy?.name || "N/A"}</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
+                    </TableCell>
+                    <TableCell>
                           <Badge className={getStatusColor(dispute.status)}>
                             {dispute.status?.replace("_", " ")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                           <p className="font-medium">RM{disputeAmount(dispute).toLocaleString()}</p>
-                        </TableCell>
-                        <TableCell>
-                          <div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
                             <p className="text-sm">{new Date(dispute.createdAt).toLocaleDateString()}</p>
                             <p className="text-xs text-gray-500">
                               Updated: {new Date(dispute.updatedAt).toLocaleDateString()}
                             </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
                           <Button
                             variant="outline"
                             size="sm"
@@ -447,36 +447,36 @@ export default function AdminDisputesPage() {
 
         {/* View Dispute Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
+                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
               <DialogTitle>Dispute Review - {selectedDispute?.reason}</DialogTitle>
-              <DialogDescription>Review dispute details and provide resolution</DialogDescription>
-            </DialogHeader>
+                            <DialogDescription>Review dispute details and provide resolution</DialogDescription>
+                          </DialogHeader>
 
-            {selectedDispute && (
-              <div className="space-y-6">
-                {/* Dispute Overview */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Dispute Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
+                          {selectedDispute && (
+                            <div className="space-y-6">
+                              {/* Dispute Overview */}
+                              <div className="grid md:grid-cols-2 gap-6">
+                                <Card>
+                                  <CardHeader>
+                                    <CardTitle className="text-lg">Dispute Details</CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-3">
+                                    <div>
                         <p className="font-medium">{selectedDispute.reason}</p>
                         <p className="text-sm text-gray-500">Project: {selectedDispute.project?.title}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Badge className={getStatusColor(selectedDispute.status)}>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Badge className={getStatusColor(selectedDispute.status)}>
                           {selectedDispute.status?.replace("_", " ")}
-                        </Badge>
-                      </div>
-                      <div className="text-sm space-y-1">
-                        <p>
-                          <span className="font-medium">Amount:</span> RM
+                                      </Badge>
+                                    </div>
+                                    <div className="text-sm space-y-1">
+                                      <p>
+                                        <span className="font-medium">Amount:</span> RM
                           {disputeAmount(selectedDispute).toLocaleString()}
-                        </p>
-                        <p>
+                                      </p>
+                                      <p>
                           <span className="font-medium">Created:</span>{" "}
                           {new Date(selectedDispute.createdAt).toLocaleDateString()}
                         </p>
@@ -624,36 +624,36 @@ export default function AdminDisputesPage() {
                           <p className="text-sm text-gray-700">{selectedDispute.suggestedResolution}</p>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                                  </CardContent>
+                                </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Participants</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center gap-3 p-3 border rounded-lg">
-                        <Avatar>
+                                <Card>
+                                  <CardHeader>
+                                    <CardTitle className="text-lg">Participants</CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                    <div className="flex items-center gap-3 p-3 border rounded-lg">
+                                      <Avatar>
                           <AvatarFallback>
                             {selectedDispute.project?.customer?.name?.charAt(0) || "C"}
                           </AvatarFallback>
-                        </Avatar>
-                        <div>
+                                      </Avatar>
+                                      <div>
                           <p className="font-medium">{selectedDispute.project?.customer?.name || "N/A"}</p>
-                          <p className="text-sm text-gray-500">Customer</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 border rounded-lg">
-                        <Avatar>
+                                        <p className="text-sm text-gray-500">Customer</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-3 border rounded-lg">
+                                      <Avatar>
                           <AvatarFallback>
                             {selectedDispute.project?.provider?.name?.charAt(0) || "P"}
                           </AvatarFallback>
-                        </Avatar>
-                        <div>
+                                      </Avatar>
+                                      <div>
                           <p className="font-medium">{selectedDispute.project?.provider?.name || "N/A"}</p>
-                          <p className="text-sm text-gray-500">Provider</p>
-                        </div>
-                      </div>
+                                        <p className="text-sm text-gray-500">Provider</p>
+                                      </div>
+                                    </div>
                       <div className="flex items-center gap-3 p-3 border rounded-lg">
                         <Avatar>
                           <AvatarFallback>{selectedDispute.raisedBy?.name?.charAt(0) || "U"}</AvatarFallback>
@@ -669,18 +669,18 @@ export default function AdminDisputesPage() {
                           View Project Details
                         </Button>
                       </Link>
-                    </CardContent>
-                  </Card>
-                </div>
+                                  </CardContent>
+                                </Card>
+                              </div>
 
-                {/* Evidence */}
+                              {/* Evidence */}
                 {selectedDispute.attachments && selectedDispute.attachments.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Evidence & Documents</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid md:grid-cols-2 gap-4">
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="text-lg">Evidence & Documents</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="grid md:grid-cols-2 gap-4">
                         {selectedDispute.attachments.map((url: string, index: number) => {
                           // Extract filename from path
                           const normalized = url.replace(/\\/g, "/");
@@ -714,7 +714,7 @@ export default function AdminDisputesPage() {
                           }
                           
                           return (
-                            <div key={index} className="border rounded-lg p-4">
+                                      <div key={index} className="border rounded-lg p-4">
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                   <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
@@ -727,43 +727,43 @@ export default function AdminDisputesPage() {
                                     </p>
                                   </div>
                                 </div>
-                              </div>
+                                        </div>
                               <a
                                 href={`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${url.startsWith("/") ? url : `/${url}`}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                <Button variant="outline" size="sm" className="w-full bg-transparent">
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View
-                                </Button>
+                                        <Button variant="outline" size="sm" className="w-full bg-transparent">
+                                          <Eye className="w-4 h-4 mr-2" />
+                                          View
+                                        </Button>
                               </a>
-                            </div>
+                                      </div>
                           );
                         })}
-                      </div>
-                    </CardContent>
-                  </Card>
+                                  </div>
+                                </CardContent>
+                              </Card>
                 )}
 
-                {/* Resolution */}
+                              {/* Resolution */}
                 {selectedDispute.status === "RESOLVED" && selectedDispute.resolution && (
-                  <Card className="border-green-200 bg-green-50">
-                    <CardHeader>
-                      <CardTitle className="text-lg text-green-800">Resolution</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-green-700">{selectedDispute.resolution}</p>
-                    </CardContent>
-                  </Card>
-                )}
+                                <Card className="border-green-200 bg-green-50">
+                                  <CardHeader>
+                                    <CardTitle className="text-lg text-green-800">Resolution</CardTitle>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <p className="text-green-700">{selectedDispute.resolution}</p>
+                                  </CardContent>
+                                </Card>
+                              )}
 
-                {/* Resolution Form */}
+                              {/* Resolution Form */}
                 {selectedDispute.status !== "RESOLVED" && selectedDispute.status !== "CLOSED" && (
-                  <Card>
-                    <CardHeader>
+                                <Card>
+                                  <CardHeader>
                       <CardTitle className="text-lg">Resolution Actions</CardTitle>
-                    </CardHeader>
+                                  </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <Button
@@ -804,11 +804,11 @@ export default function AdminDisputesPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="resolution-notes">Resolution Notes (Optional)</Label>
-                        <Textarea
+                                    <Textarea
                           id="resolution-notes"
                           placeholder="Enter resolution notes..."
-                          value={resolutionNotes}
-                          onChange={(e) => setResolutionNotes(e.target.value)}
+                                      value={resolutionNotes}
+                                      onChange={(e) => setResolutionNotes(e.target.value)}
                           className="min-h-[80px]"
                         />
                       </div>
@@ -820,16 +820,16 @@ export default function AdminDisputesPage() {
                         <Ban className="w-4 h-4 mr-2" />
                         Reject Dispute
                       </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
+                                  </CardContent>
+                                </Card>
+                              )}
+                            </div>
+                          )}
 
-            <DialogFooter>
+                          <DialogFooter>
               <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
                 Close
-              </Button>
+                                </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -866,7 +866,7 @@ export default function AdminDisputesPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setPayoutDialogOpen(false)}>
                 Cancel
-              </Button>
+                                </Button>
               <Button onClick={() => handleResolve("partial")} disabled={actionLoading}>
                 {actionLoading ? (
                   <>
@@ -877,9 +877,9 @@ export default function AdminDisputesPage() {
                   "Process Payout"
                 )}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
       </div>
     </AdminLayout>
   )
