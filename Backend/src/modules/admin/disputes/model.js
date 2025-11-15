@@ -202,12 +202,41 @@ export const disputeModel = {
     return dispute;
   },
 
-  async updateDisputeStatus(disputeId, status, resolution = null) {
+  async updateDisputeStatus(disputeId, status, resolution = null, adminId = null, adminName = null) {
+    // Get existing dispute to access current resolutionNotes
+    const existingDispute = await prisma.dispute.findUnique({
+      where: { id: disputeId },
+      select: { resolutionNotes: true },
+    });
+
+    // Parse existing resolution notes or initialize empty array
+    let resolutionNotes = [];
+    if (existingDispute?.resolutionNotes) {
+      try {
+        resolutionNotes = Array.isArray(existingDispute.resolutionNotes) 
+          ? existingDispute.resolutionNotes 
+          : JSON.parse(existingDispute.resolutionNotes || "[]");
+      } catch (e) {
+        resolutionNotes = [];
+      }
+    }
+
+    // If resolution note is provided, add it to the array
+    if (resolution && resolution.trim()) {
+      resolutionNotes.push({
+        note: resolution.trim(),
+        createdAt: new Date().toISOString(),
+        adminId: adminId || null,
+        adminName: adminName || "Admin",
+      });
+    }
+
     const dispute = await prisma.dispute.update({
       where: { id: disputeId },
       data: {
         status: status.toUpperCase(),
-        resolution: resolution || undefined,
+        resolution: resolution || undefined, // Keep legacy field for backward compatibility
+        resolutionNotes: resolutionNotes.length > 0 ? resolutionNotes : undefined,
         updatedAt: new Date(),
       },
       include: {

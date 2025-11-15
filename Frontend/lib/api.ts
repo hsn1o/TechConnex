@@ -1658,7 +1658,7 @@ export async function resolveDispute(disputeId: string, status: string, resoluti
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ status, resolution }),
+    body: JSON.stringify({ status, resolution: resolution || "" }),
   });
   
   const data = await res.json();
@@ -1666,7 +1666,7 @@ export async function resolveDispute(disputeId: string, status: string, resoluti
   return data;
 }
 
-export async function simulateDisputePayout(disputeId: string, refundAmount: number, releaseAmount: number) {
+export async function simulateDisputePayout(disputeId: string, refundAmount: number, releaseAmount: number, resolution?: string) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
@@ -1676,7 +1676,7 @@ export async function simulateDisputePayout(disputeId: string, refundAmount: num
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ refundAmount, releaseAmount }),
+    body: JSON.stringify({ refundAmount, releaseAmount, resolution: resolution || "" }),
   });
   
   const data = await res.json();
@@ -1684,7 +1684,7 @@ export async function simulateDisputePayout(disputeId: string, refundAmount: num
   return data;
 }
 
-export async function redoMilestone(disputeId: string) {
+export async function redoMilestone(disputeId: string, resolution?: string) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
@@ -1694,6 +1694,7 @@ export async function redoMilestone(disputeId: string) {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    body: JSON.stringify({ resolution: resolution || "" }),
   });
   
   const data = await res.json();

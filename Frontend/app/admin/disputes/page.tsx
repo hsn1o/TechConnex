@@ -746,8 +746,41 @@ export default function AdminDisputesPage() {
                               </Card>
                 )}
 
-                              {/* Resolution */}
-                {selectedDispute.status === "RESOLVED" && selectedDispute.resolution && (
+                              {/* Resolution Notes */}
+                {selectedDispute.resolutionNotes && Array.isArray(selectedDispute.resolutionNotes) && selectedDispute.resolutionNotes.length > 0 && (
+                                <Card className="border-purple-200 bg-purple-50">
+                                  <CardHeader>
+                                    <CardTitle className="text-lg text-purple-800">Admin Resolution Notes</CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                    {selectedDispute.resolutionNotes.map((note: any, index: number) => (
+                                      <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Avatar className="w-6 h-6">
+                                            <AvatarFallback className="bg-purple-100 text-purple-700">
+                                              {note.adminName?.charAt(0) || "A"}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <div>
+                                            <p className="text-sm font-semibold text-gray-900">
+                                              Resolution Note #{index + 1}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                              By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
+                                          {note.note}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </CardContent>
+                                </Card>
+                              )}
+                              
+                              {/* Legacy Resolution (for backward compatibility) */}
+                {selectedDispute.status === "RESOLVED" && selectedDispute.resolution && (!selectedDispute.resolutionNotes || !Array.isArray(selectedDispute.resolutionNotes) || selectedDispute.resolutionNotes.length === 0) && (
                                 <Card className="border-green-200 bg-green-50">
                                   <CardHeader>
                                     <CardTitle className="text-lg text-green-800">Resolution</CardTitle>
@@ -860,6 +893,16 @@ export default function AdminDisputesPage() {
                   value={releaseAmount}
                   onChange={(e) => setReleaseAmount(e.target.value)}
                   placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="payout-resolution-notes">Resolution Notes (Optional)</Label>
+                <Textarea
+                  id="payout-resolution-notes"
+                  placeholder="Enter resolution notes..."
+                  value={resolutionNotes}
+                  onChange={(e) => setResolutionNotes(e.target.value)}
+                  className="min-h-[80px]"
                 />
               </div>
             </div>

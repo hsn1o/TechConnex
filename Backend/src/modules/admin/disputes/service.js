@@ -22,7 +22,7 @@ export const disputeService = {
     }
   },
 
-  async resolveDispute(disputeId, resolution, status) {
+  async resolveDispute(disputeId, resolution, status, adminId = null, adminName = null) {
     try {
       const dispute = await disputeModel.getDisputeById(disputeId);
       if (!dispute) {
@@ -32,14 +32,35 @@ export const disputeService = {
       const updatedDispute = await disputeModel.updateDisputeStatus(
         disputeId,
         status,
-        resolution
+        resolution,
+        adminId,
+        adminName
       );
+
+      const { PrismaClient } = await import("@prisma/client");
+      const prisma = new PrismaClient();
+
+      // If resolving dispute, set project to DISPUTED and reject all milestones
+      if (status === "RESOLVED") {
+        // Set project status to DISPUTED
+        await prisma.project.update({
+          where: { id: dispute.projectId },
+          data: {
+            status: "DISPUTED",
+          },
+        });
+
+        // Reject ALL milestones for this project
+        await prisma.milestone.updateMany({
+          where: { projectId: dispute.projectId },
+          data: {
+            status: "REJECTED",
+          },
+        });
+      }
 
       // If closing dispute, freeze project work
       if (status === "CLOSED") {
-        const { PrismaClient } = await import("@prisma/client");
-        const prisma = new PrismaClient();
-
         // Keep project status as DISPUTED to prevent further work
         await prisma.project.update({
           where: { id: dispute.projectId },
@@ -61,9 +82,6 @@ export const disputeService = {
 
       // If rejecting dispute, update milestone and project status
       if (status === "REJECTED" && dispute.milestoneId) {
-        const { PrismaClient } = await import("@prisma/client");
-        const prisma = new PrismaClient();
-
         // Return milestone to previous status (or IN_PROGRESS)
         await prisma.milestone.update({
           where: { id: dispute.milestoneId },
@@ -89,7 +107,7 @@ export const disputeService = {
     }
   },
 
-  async simulateDisputePayout(disputeId, refundAmount, releaseAmount) {
+  async simulateDisputePayout(disputeId, refundAmount, releaseAmount, resolution = null, adminId = null, adminName = null) {
     try {
       const dispute = await disputeModel.getDisputeById(disputeId);
       if (!dispute) {
@@ -109,47 +127,36 @@ export const disputeService = {
       // Log the payout (in production, this would trigger real payment processing)
       console.log("Simulated Dispute Payout:", payoutResult);
 
+      // Build resolution note
+      const resolutionNote = resolution || `Refund: RM${refundAmount || 0}, Release: RM${releaseAmount || 0}`;
+      
       // Update dispute status to RESOLVED
       const updatedDispute = await disputeModel.updateDisputeStatus(
         disputeId,
         "RESOLVED",
-        `Refund: RM${refundAmount || 0}, Release: RM${releaseAmount || 0}`
+        resolutionNote,
+        adminId,
+        adminName
       );
 
-      // Update milestone and project status if milestone exists
-      if (dispute.milestoneId) {
-        const { PrismaClient } = await import("@prisma/client");
-        const prisma = new PrismaClient();
+      const { PrismaClient } = await import("@prisma/client");
+      const prisma = new PrismaClient();
 
-        // Update milestone status based on resolution
-        if (releaseAmount > 0) {
-          // Provider wins - milestone can be paid
-          await prisma.milestone.update({
-            where: { id: dispute.milestoneId },
-            data: {
-              status: refundAmount > 0 ? "APPROVED" : "PAID",
-            },
-          });
-        } else if (refundAmount > 0) {
-          // Company wins - milestone stays disputed or rejected
-          await prisma.milestone.update({
-            where: { id: dispute.milestoneId },
-            data: {
-              status: "REJECTED",
-            },
-          });
-        }
+      // When dispute is RESOLVED, set project to DISPUTED and reject ALL milestones
+      await prisma.project.update({
+        where: { id: dispute.projectId },
+        data: {
+          status: "DISPUTED",
+        },
+      });
 
-        // Update project status back to IN_PROGRESS if it was DISPUTED (unless CLOSED)
-        if (dispute.project?.status === "DISPUTED") {
-          await prisma.project.update({
-            where: { id: dispute.projectId },
-            data: {
-              status: "IN_PROGRESS",
-            },
-          });
-        }
-      }
+      // Reject ALL milestones for this project
+      await prisma.milestone.updateMany({
+        where: { projectId: dispute.projectId },
+        data: {
+          status: "REJECTED",
+        },
+      });
 
       // If dispute is resolved, check if we should close it or keep it open for potential updates
       // For now, we'll keep it RESOLVED and allow admin to close it manually
@@ -164,7 +171,7 @@ export const disputeService = {
     }
   },
 
-  async redoMilestone(disputeId) {
+  async redoMilestone(disputeId, resolution = null, adminId = null, adminName = null) {
     try {
       const dispute = await disputeModel.getDisputeById(disputeId);
       if (!dispute) {
@@ -199,11 +206,16 @@ export const disputeService = {
         });
       }
 
+      // Build resolution note
+      const resolutionNote = resolution || "Milestone returned to IN_PROGRESS for resubmission. Provider can now edit and resubmit.";
+      
       // Update dispute status to UNDER_REVIEW (allows provider to resubmit)
       const updatedDispute = await disputeModel.updateDisputeStatus(
         disputeId,
         "UNDER_REVIEW",
-        "Milestone returned to IN_PROGRESS for resubmission. Provider can now edit and resubmit."
+        resolutionNote,
+        adminId,
+        adminName
       );
 
       return {

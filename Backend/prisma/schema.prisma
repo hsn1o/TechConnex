@@ -661,7 +661,8 @@ model Dispute {
   suggestedResolution String?       @db.Text // Suggested resolution from reporter
   attachments         String[]      @default([]) // URLs to attachment files
   status              DisputeStatus @default(OPEN)
-  resolution          String?       @db.Text // decision or admin notes
+  resolution          String?       @db.Text // decision or admin notes (legacy, kept for backward compatibility)
+  resolutionNotes     Json? // Array of resolution notes with timestamps: [{note: string, createdAt: DateTime, adminId: string, adminName: string}]
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 }

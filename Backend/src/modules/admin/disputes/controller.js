@@ -41,8 +41,23 @@ export const disputeController = {
     try {
       const { id } = req.params;
       const { status, resolution } = req.body;
+      const adminId = req.user?.userId || null;
       
-      const dispute = await disputeService.resolveDispute(id, resolution, status);
+      // Get admin name from database
+      let adminName = "Admin";
+      if (adminId) {
+        const { PrismaClient } = await import("@prisma/client");
+        const prisma = new PrismaClient();
+        const admin = await prisma.user.findUnique({
+          where: { id: adminId },
+          select: { name: true },
+        });
+        if (admin?.name) {
+          adminName = admin.name;
+        }
+      }
+      
+      const dispute = await disputeService.resolveDispute(id, resolution, status, adminId, adminName);
       
       res.json({
         success: true,
@@ -60,12 +75,30 @@ export const disputeController = {
   async simulatePayout(req, res) {
     try {
       const { id } = req.params;
-      const { refundAmount, releaseAmount } = req.body;
+      const { refundAmount, releaseAmount, resolution } = req.body;
+      const adminId = req.user?.userId || null;
+      
+      // Get admin name from database
+      let adminName = "Admin";
+      if (adminId) {
+        const { PrismaClient } = await import("@prisma/client");
+        const prisma = new PrismaClient();
+        const admin = await prisma.user.findUnique({
+          where: { id: adminId },
+          select: { name: true },
+        });
+        if (admin?.name) {
+          adminName = admin.name;
+        }
+      }
       
       const result = await disputeService.simulateDisputePayout(
         id,
         refundAmount || 0,
-        releaseAmount || 0
+        releaseAmount || 0,
+        resolution,
+        adminId,
+        adminName
       );
       
       res.json({
@@ -84,8 +117,24 @@ export const disputeController = {
   async redoMilestone(req, res) {
     try {
       const { id } = req.params;
+      const { resolution } = req.body;
+      const adminId = req.user?.userId || null;
       
-      const result = await disputeService.redoMilestone(id);
+      // Get admin name from database
+      let adminName = "Admin";
+      if (adminId) {
+        const { PrismaClient } = await import("@prisma/client");
+        const prisma = new PrismaClient();
+        const admin = await prisma.user.findUnique({
+          where: { id: adminId },
+          select: { name: true },
+        });
+        if (admin?.name) {
+          adminName = admin.name;
+        }
+      }
+      
+      const result = await disputeService.redoMilestone(id, resolution, adminId, adminName);
       
       res.json({
         success: true,
