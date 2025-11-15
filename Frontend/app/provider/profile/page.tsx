@@ -11,9 +11,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle, Loader2, X, Globe, Camera } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle, Loader2, X, Globe, Camera, AlertCircle } from "lucide-react"
 import { ProviderLayout } from "@/components/provider-layout"
-import { getProviderProfile, upsertProviderProfile, getProviderProfileStats, getProviderProfileCompletion, uploadProviderProfileImage } from "@/lib/api"
+import { getProviderProfile, upsertProviderProfile, getProviderProfileStats, getProviderProfileCompletion, uploadProviderProfileImage, getProviderPortfolio, getMyCertifications, createCertification, updateCertification, deleteCertification } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useRef } from "react"
 
@@ -80,6 +81,30 @@ export default function ProviderProfilePage() {
   const [customLanguage, setCustomLanguage] = useState("")
   const [newPortfolioUrl, setNewPortfolioUrl] = useState("")
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>([])
+  
+  // State for portfolio projects
+  const [portfolioProjects, setPortfolioProjects] = useState<any[]>([])
+  const [loadingPortfolio, setLoadingPortfolio] = useState(false)
+  
+  // State for certifications
+  const [certifications, setCertifications] = useState<any[]>([])
+  const [loadingCertifications, setLoadingCertifications] = useState(false)
+  const [showCertDialog, setShowCertDialog] = useState(false)
+  const [editingCertIndex, setEditingCertIndex] = useState<number | null>(null)
+  const [certFormData, setCertFormData] = useState({
+    name: "",
+    issuer: "",
+    issuedDate: "",
+    serialNumber: "",
+    sourceUrl: "",
+  })
+  const [certFormErrors, setCertFormErrors] = useState<{
+    name?: string;
+    issuer?: string;
+    issuedDate?: string;
+    serialNumber?: string;
+    sourceUrl?: string;
+  }>({})
 
   // Load profile data on component mount
   useEffect(() => {
@@ -145,6 +170,54 @@ export default function ProviderProfilePage() {
 
     loadProfileData()
   }, [toast])
+
+  // Load portfolio projects
+  useEffect(() => {
+    const loadPortfolio = async () => {
+      try {
+        setLoadingPortfolio(true);
+        const response = await getProviderPortfolio();
+        if (response.success && response.data) {
+          setPortfolioProjects(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading portfolio:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load portfolio projects",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingPortfolio(false);
+      }
+    };
+
+    loadPortfolio();
+  }, [toast]);
+
+  // Load certifications
+  useEffect(() => {
+    const loadCertifications = async () => {
+      try {
+        setLoadingCertifications(true);
+        const response = await getMyCertifications();
+        if (response.success && response.data) {
+          setCertifications(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading certifications:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load certifications",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingCertifications(false);
+      }
+    };
+
+    loadCertifications();
+  }, [toast]);
 
   // Save profile data
   const handleSaveProfile = async () => {
@@ -382,62 +455,157 @@ export default function ProviderProfilePage() {
     )
   }
 
-  const portfolio = [
-    {
-      id: 1,
-      title: "E-commerce Platform",
-      description: "Full-stack e-commerce solution with payment integration and admin dashboard",
-      image: "/placeholder.svg?height=200&width=300",
-      technologies: ["React", "Node.js", "MongoDB", "Stripe"],
-      url: "https://example-ecommerce.com",
-      client: "TechStart Sdn Bhd",
-      completedDate: "2024-01-15",
-    },
-    {
-      id: 2,
-      title: "Mobile Banking App",
-      description: "Secure mobile banking application with biometric authentication",
-      image: "/placeholder.svg?height=200&width=300",
-      technologies: ["React Native", "Firebase", "Node.js"],
-      url: "https://example-banking.com",
-      client: "Financial Corp",
-      completedDate: "2023-12-20",
-    },
-    {
-      id: 3,
-      title: "Cloud Infrastructure",
-      description: "Scalable cloud infrastructure setup with auto-scaling and monitoring",
-      image: "/placeholder.svg?height=200&width=300",
-      technologies: ["AWS", "Docker", "Kubernetes", "Terraform"],
-      url: "https://example-cloud.com",
-      client: "Manufacturing Corp",
-      completedDate: "2023-11-30",
-    },
-  ]
+  // Certification handlers
+  const handleAddCertification = () => {
+    setEditingCertIndex(null);
+    setCertFormData({
+      name: "",
+      issuer: "",
+      issuedDate: "",
+      serialNumber: "",
+      sourceUrl: "",
+    });
+    setCertFormErrors({});
+    setShowCertDialog(true);
+  };
 
-  const certifications = [
-    {
-      name: "AWS Certified Solutions Architect",
-      issuer: "Amazon Web Services",
-      date: "2023-06-15",
-      credentialId: "AWS-SA-2023-001",
-      verified: true,
-    },
-    {
-      name: "Google Cloud Professional Developer",
-      issuer: "Google Cloud",
-      date: "2023-03-20",
-      credentialId: "GCP-PD-2023-002",
-      verified: true,
-    },
-    {
-      name: "MongoDB Certified Developer",
-      issuer: "MongoDB University",
-      date: "2022-12-10",
-      credentialId: "MDB-DEV-2022-003",
-      verified: true,
-    },
-  ]
+  const handleEditCertification = (index: number) => {
+    const cert = certifications[index];
+    setEditingCertIndex(index);
+    setCertFormData({
+      name: cert.name || "",
+      issuer: cert.issuer || "",
+      issuedDate: cert.issuedDate ? new Date(cert.issuedDate).toISOString().split('T')[0] : "",
+      serialNumber: cert.serialNumber || "",
+      sourceUrl: cert.sourceUrl || "",
+    });
+    setCertFormErrors({});
+    setShowCertDialog(true);
+  };
+
+  const validateCertification = () => {
+    const errors: typeof certFormErrors = {};
+    
+    if (!certFormData.name.trim()) {
+      errors.name = "Certification name is required";
+    }
+    
+    if (!certFormData.issuer.trim()) {
+      errors.issuer = "Issuing organization is required";
+    }
+    
+    if (!certFormData.issuedDate) {
+      errors.issuedDate = "Issue date is required";
+    }
+    
+    // At least one of serialNumber or sourceUrl must be provided
+    if (!certFormData.serialNumber?.trim() && !certFormData.sourceUrl?.trim()) {
+      errors.serialNumber = "At least one of serial number or verification link is required";
+      errors.sourceUrl = "At least one of serial number or verification link is required";
+    }
+
+    setCertFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveCertification = async () => {
+    if (!validateCertification()) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const certData = {
+        name: certFormData.name.trim(),
+        issuer: certFormData.issuer.trim(),
+        issuedDate: certFormData.issuedDate,
+        serialNumber: certFormData.serialNumber?.trim() || undefined,
+        sourceUrl: certFormData.sourceUrl?.trim() || undefined,
+      };
+
+      if (editingCertIndex !== null) {
+        // Update existing certification
+        const certId = certifications[editingCertIndex].id;
+        const response = await updateCertification(certId, certData);
+        if (response.success) {
+          toast({
+            title: "Success",
+            description: "Certification updated successfully",
+          });
+          // Reload certifications
+          const certsResponse = await getMyCertifications();
+          if (certsResponse.success && certsResponse.data) {
+            setCertifications(certsResponse.data);
+          }
+        }
+      } else {
+        // Create new certification
+        const response = await createCertification(certData);
+        if (response.success) {
+          toast({
+            title: "Success",
+            description: "Certification added successfully",
+          });
+          // Reload certifications
+          const certsResponse = await getMyCertifications();
+          if (certsResponse.success && certsResponse.data) {
+            setCertifications(certsResponse.data);
+          }
+        }
+      }
+
+      setShowCertDialog(false);
+      setCertFormData({
+        name: "",
+        issuer: "",
+        issuedDate: "",
+        serialNumber: "",
+        sourceUrl: "",
+      });
+      setEditingCertIndex(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save certification",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteCertification = async (index: number) => {
+    const cert = certifications[index];
+    if (!cert.id) return;
+
+    if (!confirm("Are you sure you want to delete this certification?")) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const response = await deleteCertification(cert.id);
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "Certification deleted successfully",
+        });
+        // Reload certifications
+        const certsResponse = await getMyCertifications();
+        if (certsResponse.success && certsResponse.data) {
+          setCertifications(certsResponse.data);
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete certification",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const reviews = [
     {
@@ -536,12 +704,11 @@ export default function ProviderProfilePage() {
         </Card>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="skills">Skills</TabsTrigger>
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -663,6 +830,16 @@ export default function ProviderProfilePage() {
                                 <Calendar className="w-4 h-4" />
                                 Joined Jan 2023
                               </div>
+                              <div className="flex items-center gap-1">
+                                <CheckCircle className={`w-4 h-4 ${
+                                  profileData.availability === "available" 
+                                    ? "text-green-500" 
+                                    : profileData.availability === "busy" 
+                                    ? "text-yellow-500" 
+                                    : "text-gray-400"
+                                }`} />
+                                <span className="capitalize">{profileData.availability || "available"}</span>
+                              </div>
                             </div>
                           </>
                         )}
@@ -717,7 +894,7 @@ export default function ProviderProfilePage() {
                         Certifications
                       </CardTitle>
                       {isEditing && (
-                        <Button size="sm">
+                        <Button size="sm" onClick={handleAddCertification}>
                           <Plus className="w-4 h-4 mr-2" />
                           Add Certification
                         </Button>
@@ -725,37 +902,84 @@ export default function ProviderProfilePage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {certifications.map((cert, index) => (
-                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <Award className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium">{cert.name}</p>
-                                {cert.verified && <CheckCircle className="w-4 h-4 text-green-500" />}
+                    {loadingCertifications ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                        <span className="ml-2 text-gray-600">Loading certifications...</span>
+                      </div>
+                    ) : certifications.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Award className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <p>No certifications added yet</p>
+                        {isEditing && (
+                          <p className="text-sm mt-2">
+                            Click "Add Certification" to add your professional certifications
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {certifications.map((cert, index) => (
+                          <div key={cert.id || index} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex items-center space-x-3 flex-1">
+                              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Award className="w-6 h-6 text-blue-600" />
                               </div>
-                              <p className="text-sm text-gray-600">{cert.issuer}</p>
-                              <p className="text-xs text-gray-500">Issued: {cert.date}</p>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{cert.name}</p>
+                                  {cert.verified && <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />}
+                                </div>
+                                <p className="text-sm text-gray-600">{cert.issuer}</p>
+                                <p className="text-xs text-gray-500">
+                                  Issued: {cert.issuedDate ? new Date(cert.issuedDate).toLocaleDateString() : "N/A"}
+                                </p>
+                                {cert.serialNumber && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Serial: {cert.serialNumber}
+                                  </p>
+                                )}
+                                {cert.sourceUrl && (
+                                  <a
+                                    href={cert.sourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:underline mt-1 inline-block"
+                                  >
+                                    Verify Certificate ↗
+                                  </a>
+                                )}
+                              </div>
                             </div>
+                            {isEditing && (
+                              <div className="flex gap-2 ml-4">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleEditCertification(index)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleDeleteCertification(index)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
-                          {isEditing && (
-                            <Button variant="outline" size="sm">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
               {/* Sidebar */}
               <div className="space-y-6">
-                {/* Stats */}
+                {/* 
                 <Card>
                   <CardHeader>
                     <CardTitle>Performance Stats</CardTitle>
@@ -773,16 +997,9 @@ export default function ProviderProfilePage() {
                       <span className="text-sm text-gray-600">Total Earnings</span>
                       <span className="font-semibold">RM {profileStats.totalEarnings}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Response Time</span>
-                      <span className="font-semibold">{profileStats.responseTime} hours</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Profile Views</span>
-                      <span className="font-semibold">{profileStats.viewsCount}</span>
-                    </div>
                   </CardContent>
                 </Card>
+                */}
 
                 {/* Contact Info */}
                 <Card>
@@ -1035,47 +1252,72 @@ export default function ProviderProfilePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold">Portfolio</h2>
-                  <p className="text-gray-600">Showcase your best work and projects</p>
+                  <p className="text-gray-600">Showcase your completed projects</p>
                 </div>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Project
-                </Button>
               </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {portfolio.map((project) => (
-                  <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                    <div className="relative">
-                      <img
-                        src={project.image || "/placeholder.svg"}
-                        alt={project.title}
-                        className="w-full h-48 object-cover rounded-t-lg"
-                      />
-                      <div className="absolute top-2 right-2">
-                        <Button variant="outline" size="sm" className="bg-white/90">
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">{project.title}</h3>
-                      <p className="text-gray-600 text-sm mb-3">{project.description}</p>
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {project.technologies.map((tech, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {tech}
+              {loadingPortfolio ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                  <span className="ml-2 text-gray-600">Loading portfolio...</span>
+                </div>
+              ) : portfolioProjects.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No completed projects yet</h3>
+                    <p className="text-gray-600">
+                      Your completed projects will appear here automatically once you finish working on them.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {portfolioProjects.map((project) => (
+                    <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                      <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-48 flex items-center justify-center rounded-t-lg">
+                        <div className="text-center p-4">
+                          <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                            <Award className="w-8 h-8 text-blue-600" />
+                          </div>
+                          <Badge variant="secondary" className="text-xs">
+                            {project.category || "Project"}
                           </Badge>
-                        ))}
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <span>{project.client}</span>
-                        <span>{project.completedDate}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">{project.title}</h3>
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{project.description || "No description provided"}</p>
+                        {project.technologies && project.technologies.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {project.technologies.slice(0, 6).map((tech: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {tech}
+                              </Badge>
+                            ))}
+                            {project.technologies.length > 6 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{project.technologies.length - 6} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                          <span className="font-medium">{project.client}</span>
+                          {project.completedDate && (
+                            <span>{new Date(project.completedDate).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                        {project.approvedPrice && (
+                          <div className="text-sm text-green-600 font-semibold">
+                            RM {Number(project.approvedPrice).toLocaleString()}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -1358,92 +1600,146 @@ export default function ProviderProfilePage() {
             </div>
           </TabsContent>
 
-          {/* Settings */}
-          <TabsContent value="settings">
-            <div className="max-w-2xl space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold">Profile Settings</h2>
-                <p className="text-gray-600">Manage your profile visibility and preferences</p>
+        </Tabs>
+
+        {/* Certification Dialog */}
+        <Dialog open={showCertDialog} onOpenChange={setShowCertDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingCertIndex !== null ? "Edit Certification" : "Add Certification"}
+              </DialogTitle>
+              <DialogDescription>
+                Add your professional certifications to showcase your expertise
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start">
+                  <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-blue-800 font-medium">
+                      Why add certifications?
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      Certifications help build trust with clients and showcase your expertise in specific technologies.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profile Visibility</CardTitle>
-                  <CardDescription>Control who can see your profile and contact you</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="visibility">Profile Visibility</Label>
-                    <Select defaultValue="public">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public">Public - Visible to all users</SelectItem>
-                        <SelectItem value="verified">Verified Clients Only</SelectItem>
-                        <SelectItem value="private">Private - Hidden from search</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="certName">Certification Name *</Label>
+                  <Input
+                    id="certName"
+                    placeholder="e.g., AWS Certified Solutions Architect"
+                    value={certFormData.name}
+                    onChange={(e) => setCertFormData(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                  {certFormErrors.name && (
+                    <p className="text-xs text-red-600">{certFormErrors.name}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="certIssuer">Issuing Organization *</Label>
+                  <Input
+                    id="certIssuer"
+                    placeholder="e.g., Amazon Web Services"
+                    value={certFormData.issuer}
+                    onChange={(e) => setCertFormData(prev => ({ ...prev, issuer: e.target.value }))}
+                  />
+                  {certFormErrors.issuer && (
+                    <p className="text-xs text-red-600">{certFormErrors.issuer}</p>
+                  )}
+                </div>
+              </div>
 
-                  <div>
-                    <Label htmlFor="contact-preference">Contact Preference</Label>
-                    <Select defaultValue="platform">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="platform">Through Platform Only</SelectItem>
-                        <SelectItem value="direct">Allow Direct Contact</SelectItem>
-                        <SelectItem value="verified">Verified Clients Only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-2">
+                <Label htmlFor="certDate">Issue Date *</Label>
+                <Input
+                  id="certDate"
+                  type="date"
+                  value={certFormData.issuedDate}
+                  onChange={(e) => setCertFormData(prev => ({ ...prev, issuedDate: e.target.value }))}
+                />
+                {certFormErrors.issuedDate && (
+                  <p className="text-xs text-red-600">{certFormErrors.issuedDate}</p>
+                )}
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Availability Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="status">Current Status</Label>
-                    <Select defaultValue="available">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="available">Available for new projects</SelectItem>
-                        <SelectItem value="busy">Busy - Limited availability</SelectItem>
-                        <SelectItem value="unavailable">Unavailable</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="response-time">Expected Response Time</Label>
-                    <Select defaultValue="2-hours">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1-hour">Within 1 hour</SelectItem>
-                        <SelectItem value="2-hours">Within 2 hours</SelectItem>
-                        <SelectItem value="4-hours">Within 4 hours</SelectItem>
-                        <SelectItem value="24-hours">Within 24 hours</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="flex justify-end">
-                <Button>Save Settings</Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="certSerial">
+                    Serial Number (optional*)
+                  </Label>
+                  <Input
+                    id="certSerial"
+                    placeholder="e.g. ABC-123-XYZ"
+                    value={certFormData.serialNumber}
+                    onChange={(e) => setCertFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+                  />
+                  {certFormErrors.serialNumber && (
+                    <p className="text-xs text-red-600">{certFormErrors.serialNumber}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="certLink">
+                    Verification Link (optional*)
+                  </Label>
+                  <Input
+                    id="certLink"
+                    type="url"
+                    placeholder="https://verify.issuer.com/cert/ABC-123"
+                    value={certFormData.sourceUrl}
+                    onChange={(e) => setCertFormData(prev => ({ ...prev, sourceUrl: e.target.value }))}
+                  />
+                  {certFormErrors.sourceUrl && (
+                    <p className="text-xs text-red-600">{certFormErrors.sourceUrl}</p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    *At least one of Serial Number or Verification Link is required.
+                  </p>
+                </div>
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCertDialog(false);
+                  setCertFormData({
+                    name: "",
+                    issuer: "",
+                    issuedDate: "",
+                    serialNumber: "",
+                    sourceUrl: "",
+                  });
+                  setEditingCertIndex(null);
+                  setCertFormErrors({});
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveCertification}
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Award className="w-4 h-4 mr-2" />
+                    {editingCertIndex !== null ? "Update Certification" : "Add Certification"}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ProviderLayout>
   )

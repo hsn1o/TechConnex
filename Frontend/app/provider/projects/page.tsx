@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Filter, Eye, MessageSquare, Calendar, DollarSign, Clock, Loader2 } from "lucide-react"
+import { Search, Filter, Eye, MessageSquare, Calendar, DollarSign, Clock, Loader2, AlertTriangle } from "lucide-react"
 import { ProviderLayout } from "@/components/provider-layout"
 import { getProviderProjects, getProviderProjectStats } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -24,6 +24,7 @@ export default function ProviderProjectsPage() {
     totalProjects: 0,
     activeProjects: 0,
     completedProjects: 0,
+    disputedProjects: 0,
     totalEarnings: 0,
     averageRating: 0
   })
@@ -134,7 +135,7 @@ export default function ProviderProjectsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -172,6 +173,20 @@ export default function ProviderProjectsPage() {
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Disputed</p>
+                  <p className="text-2xl font-bold text-red-600">{stats.disputedProjects}</p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
                 </div>
               </div>
             </CardContent>
@@ -245,17 +260,134 @@ export default function ProviderProjectsPage() {
             </CardContent>
           </Card>
         ) : (
-          <Tabs defaultValue="active" className="space-y-6">
+          <Tabs defaultValue="all" className="space-y-6">
             <TabsList>
+              <TabsTrigger value="all">All Projects</TabsTrigger>
               <TabsTrigger value="active">Active Projects</TabsTrigger>
               <TabsTrigger value="completed">Completed</TabsTrigger>
-              <TabsTrigger value="all">All Projects</TabsTrigger>
+              <TabsTrigger value="disputed">Disputed</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="all">
+              <div className="grid gap-6">
+                {filteredProjects.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                        <Calendar className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No projects found</h3>
+                      <p className="text-gray-600">
+                        {searchQuery || statusFilter !== "all"
+                          ? "Try adjusting your search or filter criteria."
+                          : "You don't have any projects yet."}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredProjects.map((project) => (
+                    <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <CardTitle className="text-xl">{project.title}</CardTitle>
+                              <Badge className={getStatusColor(project.status)}>{getStatusText(project.status)}</Badge>
+                            </div>
+                            <CardDescription className="text-base line-clamp-3">{project.description}</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <Avatar>
+                              <AvatarImage
+                                src={
+                                  (project.customer?.customerProfile?.profileImageUrl && 
+                                   project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
+                                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
+                                    : (project.customer?.customerProfile?.logoUrl && 
+                                        project.customer.customerProfile.logoUrl !== "/placeholder.svg")
+                                      ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.logoUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.logoUrl}`
+                                      : "/placeholder.svg"
+                                }
+                              />
+                              <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <Link 
+                                href={`/provider/companies/${project.customer?.id}`}
+                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {project.customer?.name || "Unknown Client"}
+                              </Link>
+                              <p className="text-sm text-gray-500">{project.category}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-green-600">
+                              {project.approvedPrice 
+                                ? formatCurrency(project.approvedPrice)
+                                : `${formatCurrency(project.budgetMin)} - ${formatCurrency(project.budgetMax)}`
+                              }
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Created: {formatDate(project.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {project.status === "IN_PROGRESS" && (
+                          <div>
+                            <div className="flex justify-between text-sm mb-2">
+                              <span>Progress: {project.progress || 0}%</span>
+                              <span>
+                                {project.completedMilestones || 0}/{project.totalMilestones || 0} milestones
+                              </span>
+                            </div>
+                            <Progress value={project.progress || 0} className="h-2" />
+                            {project.nextMilestone ? (
+                              <p className="text-sm text-blue-600 mt-2">
+                                Next: {project.nextMilestone.title}
+                              </p>
+                            ) : (
+                              <p className="text-sm text-gray-500 mt-2">
+                                No pending milestones
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-4 border-t">
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span>Started: {formatDate(project.createdAt)}</span>
+                            <span>Timeline: {project.timeline || "Not specified"}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline">
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Message
+                            </Button>
+                            <Link href={`/provider/projects/${project.id}`}>
+                              <Button size="sm">
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
 
             <TabsContent value="active">
               <div className="grid gap-6">
                 {filteredProjects
-                  .filter((p) => p.status === "IN_PROGRESS" || p.status === "DISPUTED")
+                  .filter((p) => p.status === "IN_PROGRESS")
                   .map((project) => (
                   <Card key={project.id} className="hover:shadow-lg transition-shadow">
                     <CardHeader>
@@ -287,13 +419,21 @@ export default function ProviderProjectsPage() {
                             <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{project.customer?.name || "Unknown Client"}</p>
+                            <Link 
+                              href={`/provider/companies/${project.customer?.id}`}
+                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {project.customer?.name || "Unknown Client"}
+                            </Link>
                             <p className="text-sm text-gray-500">{project.category}</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-green-600">
-                            {formatCurrency(project.budgetMin)} - {formatCurrency(project.budgetMax)}
+                            {project.approvedPrice 
+                              ? formatCurrency(project.approvedPrice)
+                              : `${formatCurrency(project.budgetMin)} - ${formatCurrency(project.budgetMax)}`
+                            }
                           </p>
                           <p className="text-sm text-gray-500">
                             Created: {formatDate(project.createdAt)}
@@ -310,9 +450,13 @@ export default function ProviderProjectsPage() {
                             </span>
                           </div>
                           <Progress value={project.progress || 0} className="h-2" />
-                          {project.milestones && project.milestones.length > 0 && (
+                          {project.nextMilestone ? (
                             <p className="text-sm text-blue-600 mt-2">
-                              Next: {project.milestones.find((m: any) => m.status === "PENDING")?.title || "No pending milestones"}
+                              Next: {project.nextMilestone.title}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-500 mt-2">
+                              No pending milestones
                             </p>
                           )}
                         </div>
@@ -362,18 +506,36 @@ export default function ProviderProjectsPage() {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                        <Avatar>
-                          <AvatarImage src={project.customer?.customerProfile?.logoUrl || "/placeholder.svg"} />
-                          <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
-                        </Avatar>
+                          <Avatar>
+                            <AvatarImage
+                              src={
+                                (project.customer?.customerProfile?.profileImageUrl && 
+                                 project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
+                                  ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
+                                  : (project.customer?.customerProfile?.logoUrl && 
+                                      project.customer.customerProfile.logoUrl !== "/placeholder.svg")
+                                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.logoUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.logoUrl}`
+                                    : "/placeholder.svg"
+                              }
+                            />
+                            <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
+                          </Avatar>
                         <div>
-                          <p className="font-medium">{project.customer?.name || "Unknown Client"}</p>
+                          <Link 
+                            href={`/provider/companies/${project.customer?.id}`}
+                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            {project.customer?.name || "Unknown Client"}
+                          </Link>
                           <p className="text-sm text-gray-500">{project.category}</p>
                         </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-green-600">
-                            {formatCurrency(project.budgetMin)} - {formatCurrency(project.budgetMax)}
+                            {project.approvedPrice 
+                              ? formatCurrency(project.approvedPrice)
+                              : `${formatCurrency(project.budgetMin)} - ${formatCurrency(project.budgetMax)}`
+                            }
                           </p>
                           <p className="text-sm text-gray-500">
                             Completed: {formatDate(project.createdAt)}
@@ -389,10 +551,12 @@ export default function ProviderProjectsPage() {
                           <span>{project.completedMilestones || 0} milestones completed</span>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
-                          </Button>
+                          <Link href={`/provider/projects/${project.id}`}>
+                            <Button size="sm" variant="outline">
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </Button>
+                          </Link>
                         </div>
                       </div>
                     </CardContent>
@@ -401,100 +565,11 @@ export default function ProviderProjectsPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="all">
+          <TabsContent value="disputed">
             <div className="grid gap-6">
-              {filteredProjects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <CardTitle className="text-xl">{project.title}</CardTitle>
-                          <Badge className={getStatusColor(project.status)}>{getStatusText(project.status)}</Badge>
-                        </div>
-                        <CardDescription className="text-base">{project.description}</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <Avatar>
-                          <AvatarImage src={project.customer?.customerProfile?.logoUrl || "/placeholder.svg"} />
-                          <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{project.customer?.name || "Unknown Client"}</p>
-                          <p className="text-sm text-gray-500">{project.category}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-600">
-                          {formatCurrency(project.budgetMin)} - {formatCurrency(project.budgetMax)}
-                        </p>
-                        <p className="text-sm text-gray-500">Created: {formatDate(project.createdAt)}</p>
-                      </div>
-                    </div>
-
-                    {project.status === "IN_PROGRESS" && (
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span>Progress: {project.progress || 0}%</span>
-                          <span>
-                            {project.completedMilestones || 0}/{project.totalMilestones || 0} milestones
-                          </span>
-                        </div>
-                        <Progress value={project.progress || 0} className="h-2" />
-                        {project.milestones && project.milestones.length > 0 && (
-                          <p className="text-sm text-blue-600 mt-2">
-                            Next: {project.milestones.find((m: any) => m.status === "PENDING")?.title || "No pending milestones"}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                      <div className="flex items-center justify-between pt-4 border-t">
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span>Started: {formatDate(project.createdAt)}</span>
-                          <span>Timeline: {project.timeline || "Not specified"}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <MessageSquare className="w-4 h-4 mr-2" />
-                            Message
-                          </Button>
-                          <Link href={`/provider/projects/${project.id}`}>
-                            <Button size="sm">
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="all">
-            <div className="grid gap-6">
-              {filteredProjects.length === 0 ? (
-                <Card>
-                  <CardContent className="p-12 text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Calendar className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No projects found</h3>
-                    <p className="text-gray-600">
-                      {searchQuery || statusFilter !== "all"
-                        ? "Try adjusting your search or filter criteria."
-                        : "You don't have any projects yet."}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                filteredProjects.map((project) => (
+              {filteredProjects
+                .filter((p) => p.status === "DISPUTED")
+                .map((project) => (
                   <Card key={project.id} className="hover:shadow-lg transition-shadow">
                     <CardHeader>
                       <div className="flex items-start justify-between">
@@ -525,36 +600,27 @@ export default function ProviderProjectsPage() {
                             <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{project.customer?.name || "Unknown Client"}</p>
+                            <Link 
+                              href={`/provider/companies/${project.customer?.id}`}
+                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {project.customer?.name || "Unknown Client"}
+                            </Link>
                             <p className="text-sm text-gray-500">{project.category}</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-green-600">
-                            {formatCurrency(project.budgetMin)} - {formatCurrency(project.budgetMax)}
+                            {project.approvedPrice 
+                              ? formatCurrency(project.approvedPrice)
+                              : `${formatCurrency(project.budgetMin)} - ${formatCurrency(project.budgetMax)}`
+                            }
                           </p>
                           <p className="text-sm text-gray-500">
                             Created: {formatDate(project.createdAt)}
                           </p>
                         </div>
                       </div>
-
-                      {project.status === "IN_PROGRESS" && (
-                        <div>
-                          <div className="flex justify-between text-sm mb-2">
-                            <span>Progress: {project.progress || 0}%</span>
-                            <span>
-                              {project.completedMilestones || 0}/{project.totalMilestones || 0} milestones
-                            </span>
-                          </div>
-                          <Progress value={project.progress || 0} className="h-2" />
-                          {project.milestones && project.milestones.length > 0 && (
-                            <p className="text-sm text-blue-600 mt-2">
-                              Next: {project.milestones.find((m: any) => m.status === "PENDING")?.title || "No pending milestones"}
-                            </p>
-                          )}
-                        </div>
-                      )}
 
                       <div className="flex items-center justify-between pt-4 border-t">
                         <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -576,8 +642,7 @@ export default function ProviderProjectsPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))
-              )}
+                ))}
             </div>
           </TabsContent>
         </Tabs>

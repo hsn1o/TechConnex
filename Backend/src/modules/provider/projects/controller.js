@@ -5,6 +5,7 @@ import {
   updateProjectStatus,
   updateMilestoneStatus,
   getProviderProjectStats,
+  getProviderPerformanceMetrics,
 } from "./service.js";
 import { GetProviderProjectsDto, UpdateProjectStatusDto, UpdateMilestoneStatusDto } from "./dto.js";
 
@@ -167,6 +168,26 @@ export async function getProjectStatsController(req, res) {
     });
   } catch (error) {
     console.error("Error in getProjectStatsController:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/provider/projects/performance - Get performance metrics
+export async function getPerformanceMetricsController(req, res) {
+  try {
+    const providerId = req.user.userId;
+
+    const metrics = await getProviderPerformanceMetrics(providerId);
+
+    res.json({
+      success: true,
+      metrics,
+    });
+  } catch (error) {
+    console.error("Error in getPerformanceMetricsController:", error);
     res.status(400).json({
       success: false,
       message: error.message,

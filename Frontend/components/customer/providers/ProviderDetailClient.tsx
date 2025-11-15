@@ -20,11 +20,15 @@ import {
   MessageSquare,
   Heart,
   ArrowLeft,
+  Award,
+  Loader2,
+  Globe,
 } from "lucide-react";
 import type { Provider, PortfolioItem, Review } from "./types";
 import PortfolioGrid from "./sections/PortfolioGrid";
 import ReviewsList from "./sections/ReviewsList";
 import { useRouter } from "next/navigation";
+import { getProviderCompletedProjects } from "@/lib/api";
 
 export default function ProviderDetailClient({
   provider,
@@ -36,12 +40,33 @@ export default function ProviderDetailClient({
   reviews: Review[];
 }) {
   const [saved, setSaved] = useState<boolean>(!!provider.saved);
+  const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
+  const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   const router = useRouter();
 
   // Update saved state when provider prop changes (e.g., after refresh)
   useEffect(() => {
     setSaved(!!provider.saved);
   }, [provider.saved]);
+
+  // Load completed projects
+  useEffect(() => {
+    const loadCompletedProjects = async () => {
+      try {
+        setLoadingPortfolio(true);
+        const response = await getProviderCompletedProjects(provider.id);
+        if (response.success && response.data) {
+          setPortfolioProjects(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to load completed projects:", error);
+      } finally {
+        setLoadingPortfolio(false);
+      }
+    };
+
+    loadCompletedProjects();
+  }, [provider.id]);
 
   const handleContact = (provider: any) => {
     const avatarUrl = provider.avatar && 
@@ -176,6 +201,9 @@ export default function ProviderDetailClient({
                 </span>
                 <span>RM{provider.hourlyRate}/hr</span>
                 <span>{provider.completedJobs} completed jobs</span>
+                {provider.yearsExperience && provider.yearsExperience > 0 && (
+                  <span>{provider.yearsExperience} years experience</span>
+                )}
                 <span className="flex items-center gap-2">
                   {provider.languages?.map((l) => (
                     <Badge key={l} variant="secondary" className="text-xs">
@@ -208,6 +236,71 @@ export default function ProviderDetailClient({
             </CardHeader>
             <CardContent>
               <PortfolioGrid items={portfolio} />
+            </CardContent>
+          </Card>
+
+          {/* Completed Projects */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Completed Projects</CardTitle>
+              <CardDescription>Showcase of completed work</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingPortfolio ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                  <span className="ml-2 text-gray-600">Loading projects...</span>
+                </div>
+              ) : portfolioProjects.length === 0 ? (
+                <div className="text-center py-12">
+                  <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No completed projects yet</h3>
+                  <p className="text-gray-600">
+                    Completed projects will appear here automatically once the provider finishes working on them.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {portfolioProjects.map((project) => (
+                    <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                      <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-48 flex items-center justify-center rounded-t-lg">
+                        <div className="text-center p-4">
+                          <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                            <Award className="w-8 h-8 text-blue-600" />
+                          </div>
+                          <Badge variant="secondary" className="text-xs">
+                            {project.category || "Project"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">{project.title}</h3>
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{project.description || "No description provided"}</p>
+                        {project.technologies && project.technologies.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {project.technologies.slice(0, 6).map((tech: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {tech}
+                              </Badge>
+                            ))}
+                            {project.technologies.length > 6 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{project.technologies.length - 6} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between text-sm text-gray-500">
+                          <span className="font-medium">{project.client}</span>
+                          {project.completedDate && (
+                            <span>{new Date(project.completedDate).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -264,6 +357,97 @@ export default function ProviderDetailClient({
               ))}
             </CardContent>
           </Card>
+
+          {/* Additional Information Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Additional Information</CardTitle>
+              <CardDescription>Work preferences and details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {provider.workPreference && (
+                <div>
+                  <p className="text-gray-500">Work Preference</p>
+                  <p className="font-medium capitalize">{provider.workPreference}</p>
+                </div>
+              )}
+              {provider.teamSize && provider.teamSize > 1 && (
+                <div>
+                  <p className="text-gray-500">Team Size</p>
+                  <p className="font-medium">{provider.teamSize} members</p>
+                </div>
+              )}
+              {(provider.minimumProjectBudget || provider.maximumProjectBudget) && (
+                <div>
+                  <p className="text-gray-500">Project Budget Range</p>
+                  <p className="font-medium">
+                    {provider.minimumProjectBudget && provider.maximumProjectBudget
+                      ? `RM ${provider.minimumProjectBudget.toLocaleString()} - RM ${provider.maximumProjectBudget.toLocaleString()}`
+                      : provider.minimumProjectBudget
+                      ? `From RM ${provider.minimumProjectBudget.toLocaleString()}`
+                      : provider.maximumProjectBudget
+                      ? `Up to RM ${provider.maximumProjectBudget.toLocaleString()}`
+                      : "—"}
+                  </p>
+                </div>
+              )}
+              {provider.preferredProjectDuration && (
+                <div>
+                  <p className="text-gray-500">Preferred Project Duration</p>
+                  <p className="font-medium">{provider.preferredProjectDuration}</p>
+                </div>
+              )}
+              {provider.website && (
+                <div>
+                  <p className="text-gray-500">Website</p>
+                  <a
+                    href={provider.website.startsWith("http") ? provider.website : `https://${provider.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-blue-600 hover:underline"
+                  >
+                    {provider.website}
+                  </a>
+                </div>
+              )}
+              {provider.certificationsCount && provider.certificationsCount > 0 && (
+                <div>
+                  <p className="text-gray-500">Certifications</p>
+                  <p className="font-medium">{provider.certificationsCount} certification{provider.certificationsCount !== 1 ? "s" : ""}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Certifications List */}
+          {provider.certifications && provider.certifications.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Certifications</CardTitle>
+                <CardDescription>Verified credentials</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {provider.certifications.map((cert) => (
+                  <div key={cert.id} className="border-b pb-3 last:border-0">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium">{cert.name}</p>
+                        <p className="text-sm text-gray-500">{cert.issuer}</p>
+                        <p className="text-xs text-gray-400">
+                          Issued: {new Date(cert.issuedDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {cert.verified && (
+                        <Badge className="bg-green-100 text-green-800 text-xs">
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

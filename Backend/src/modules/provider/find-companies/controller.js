@@ -8,6 +8,7 @@ import {
   getSavedCompaniesService,
   getCompanyStatistics,
   getFilterOptions,
+  getCompanyOpportunities,
 } from "./service.js";
 import { FindCompaniesDto, SaveCompanyDto, CompanyDetailDto } from "./dto.js";
 
@@ -200,6 +201,34 @@ export async function getFilters(req, res) {
   } catch (error) {
     console.error("Error in getFilters:", error);
     res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/companies/:id/opportunities - Get company opportunities
+export async function getCompanyOpportunitiesController(req, res) {
+  try {
+    const companyId = req.params.id;
+    const providerId = req.user?.userId || null; // Get provider ID from authenticated user
+
+    if (!companyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Company ID is required",
+      });
+    }
+
+    const opportunities = await getCompanyOpportunities(companyId, providerId);
+    
+    res.json({
+      success: true,
+      data: opportunities,
+    });
+  } catch (error) {
+    console.error("Error in getCompanyOpportunities:", error);
+    res.status(404).json({
       success: false,
       message: error.message,
     });

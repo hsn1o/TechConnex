@@ -138,6 +138,80 @@ class ProviderProfileService {
       throw new Error(`Failed to get provider profile completion: ${error.message}`);
     }
   }
+
+  // Get completed projects for portfolio
+  static async getCompletedProjects(userId) {
+    try {
+      // Import PrismaClient and create instance
+      const { PrismaClient } = await import("@prisma/client");
+      const prisma = new PrismaClient();
+      
+      const projects = await prisma.project.findMany({
+        where: {
+          providerId: userId,
+          status: "COMPLETED",
+        },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              customerProfile: {
+                select: {
+                  companySize: true,
+                  industry: true,
+                  logoUrl: true,
+                  profileImageUrl: true,
+                },
+              },
+            },
+          },
+          milestones: {
+            select: {
+              id: true,
+              title: true,
+              amount: true,
+              status: true,
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+        take: 50, // Limit to 50 most recent completed projects
+      });
+
+      // Transform projects for portfolio display (public-safe data)
+      const portfolioProjects = projects.map((project) => {
+        // Calculate approved price (sum of milestone amounts)
+        const approvedPrice = project.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+        
+        // Get skills from project (public data)
+        const technologies = Array.isArray(project.skills) ? project.skills : [];
+        
+        return {
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          category: project.category,
+          technologies: technologies.slice(0, 8), // Limit to 8 technologies for display
+          client: project.customer?.name || "Client",
+          clientId: project.customer?.id || null,
+          completedDate: project.updatedAt ? new Date(project.updatedAt).toISOString().split('T')[0] : null,
+          approvedPrice,
+          image: null, // Projects don't have images, but we can use placeholder or category icon
+        };
+      });
+
+      await prisma.$disconnect();
+      return portfolioProjects;
+    } catch (error) {
+      throw new Error(`Failed to get completed projects: ${error.message}`);
+    }
+  }
 }
 
 export default ProviderProfileService;

@@ -19,6 +19,23 @@ export type Provider = {
   verified?: boolean;
   topRated?: boolean;
   saved?: boolean;
+  // Additional public-safe fields
+  yearsExperience?: number;
+  minimumProjectBudget?: number | null;
+  maximumProjectBudget?: number | null;
+  preferredProjectDuration?: string | null;
+  workPreference?: string;
+  teamSize?: number;
+  website?: string | null;
+  profileVideoUrl?: string | null;
+  certificationsCount?: number;
+  certifications?: Array<{
+    id: string;
+    name: string;
+    issuer: string;
+    issuedDate: string;
+    verified: boolean;
+  }>;
 };
 
 export type Option = { value: string; label: string };

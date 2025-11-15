@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ProviderLayout } from "@/components/provider-layout";
-import { getProviderProjectStats, getProviderProjects, getProviderOpportunities } from "@/lib/api";
+import { getProviderProjectStats, getProviderProjects, getProviderOpportunities, getProviderPerformanceMetrics } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 // Types for fetched opportunities
@@ -137,14 +137,26 @@ export default function ProviderDashboard() {
           setRecentOpportunities(mappedOpportunities);
         }
 
-        // Set performance data from stats
-        setPerformance({
-          totalProjects: statsResponse.stats?.totalProjects || 0,
-          completionRate: 95, // Default value
-          onTimeDelivery: 90, // Default value
-          repeatClients: 75, // Default value
-          responseRate: "85%", // Default value
-        });
+        // Fetch performance metrics
+        const performanceResponse = await getProviderPerformanceMetrics();
+        if (performanceResponse.success) {
+          setPerformance({
+            totalProjects: statsResponse.stats?.totalProjects || 0,
+            completionRate: performanceResponse.metrics?.completionRate || 0,
+            onTimeDelivery: performanceResponse.metrics?.onTimeDelivery || 0,
+            repeatClients: performanceResponse.metrics?.repeatClients || 0,
+            responseRate: "85%", // Default value (not calculated yet)
+          });
+        } else {
+          // Fallback to defaults if API fails
+          setPerformance({
+            totalProjects: statsResponse.stats?.totalProjects || 0,
+            completionRate: 0,
+            onTimeDelivery: 0,
+            repeatClients: 0,
+            responseRate: "85%",
+          });
+        }
 
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -352,51 +364,74 @@ export default function ProviderDashboard() {
                     ))
                   ) : activeProjects.length > 0 ? (
                     activeProjects.map((project: any) => (
-                      <div
+                      <Link
                         key={project.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                        href={`/provider/projects/${project.id}`}
+                        className="block"
                       >
-                        <div className="flex items-center space-x-4">
-                          <Avatar>
-                            <AvatarImage
-                              src={project.customer?.customerProfile?.logoUrl || "/placeholder.svg"}
-                            />
-                            <AvatarFallback>
-                              {project.customer?.name?.charAt(0) || "C"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">
-                              {project.title}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              {project.customer?.name || "Unknown Client"}
+                        <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                          <div className="flex items-center space-x-4">
+                            <Avatar>
+                              <AvatarImage
+                                src={
+                                  (project.customer?.customerProfile?.profileImageUrl && 
+                                   project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
+                                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
+                                    : (project.customer?.customerProfile?.logoUrl && 
+                                        project.customer.customerProfile.logoUrl !== "/placeholder.svg")
+                                      ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.logoUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.logoUrl}`
+                                      : "/placeholder.svg"
+                                }
+                              />
+                              <AvatarFallback>
+                                {project.customer?.name?.charAt(0) || "C"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                {project.title}
+                              </h4>
+                              <Link 
+                                href={`/provider/companies/${project.customer?.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {project.customer?.name || "Unknown Client"}
+                              </Link>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge className="bg-blue-100 text-blue-800">
+                                  In Progress
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  Timeline: {project.timeline || "Not specified"}
+                                </span>
+                              </div>
+                              {project.nextMilestone && (
+                                <p className="text-xs text-blue-600 mt-1">
+                                  Next: {project.nextMilestone.title}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-gray-900">
+                              {project.approvedPrice 
+                                ? `RM${project.approvedPrice.toLocaleString()}`
+                                : `RM${project.budgetMin?.toLocaleString() || "0"} - RM${project.budgetMax?.toLocaleString() || "0"}`
+                              }
                             </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge className="bg-blue-100 text-blue-800">
-                                In Progress
-                              </Badge>
-                              <span className="text-xs text-gray-500">
-                                Timeline: {project.timeline || "Not specified"}
-                              </span>
+                            <div className="mt-2 w-24">
+                              <Progress
+                                value={project.progress || 0}
+                                className="h-2"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                {project.progress || 0}%
+                              </p>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-gray-900">
-                            RM{project.budgetMin?.toLocaleString() || "0"} - RM{project.budgetMax?.toLocaleString() || "0"}
-                          </p>
-                          <div className="mt-2 w-24">
-                            <Progress
-                              value={project.progress || 0}
-                              className="h-2"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              {project.progress || 0}%
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      </Link>
                     ))
                   ) : (
                     <div className="text-center py-8 text-gray-500">
@@ -496,16 +531,7 @@ export default function ProviderDashboard() {
                 <CardTitle>Performance Metrics</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Response Rate</span>
-                  <span className="font-semibold">
-                    {performanceLoading ? (
-                      <div className="animate-pulse bg-gray-200 h-4 w-12 rounded"></div>
-                    ) : (
-                      performance.responseRate
-                    )}
-                  </span>
-                </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Total Projects</span>
                   <span className="font-semibold">

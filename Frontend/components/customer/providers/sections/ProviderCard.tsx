@@ -166,19 +166,36 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
             <p className="text-gray-500">Completed Jobs</p>
             <p className="font-semibold">{provider.completedJobs}</p>
           </div>
+          {provider.yearsExperience && provider.yearsExperience > 0 && (
+            <div>
+              <p className="text-gray-500">Experience</p>
+              <p className="font-semibold">{provider.yearsExperience} years</p>
+            </div>
+          )}
+          {provider.certificationsCount && provider.certificationsCount > 0 && (
+            <div>
+              <p className="text-gray-500">Certifications</p>
+              <p className="font-semibold">{provider.certificationsCount}</p>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
             <div
               className={`w-2 h-2 rounded-full ${
-                provider.availability === "Available"
+                provider.availability === "Available" || provider.availability === "available"
                   ? "bg-green-500"
-                  : "bg-yellow-500"
+                  : provider.availability === "busy"
+                  ? "bg-yellow-500"
+                  : "bg-gray-400"
               }`}
             />
-            <span className="text-gray-600">{provider.availability}</span>
+            <span className="text-gray-600 capitalize">{provider.availability}</span>
           </div>
+          {provider.workPreference && (
+            <span className="text-gray-500 capitalize">{provider.workPreference}</span>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">

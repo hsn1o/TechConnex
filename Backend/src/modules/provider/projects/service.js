@@ -69,7 +69,7 @@ export async function getProviderProjects(dto) {
       prisma.project.count({ where }),
     ]);
 
-    // Calculate progress for each project
+    // Calculate progress, approved price, and next milestone for each project
     const projectsWithProgress = projects.map((project) => {
       const totalMilestones = project._count.milestones;
       const completedMilestones = project.milestones.filter(
@@ -77,11 +77,26 @@ export async function getProviderProjects(dto) {
       ).length;
       const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
+      // Calculate approved price (sum of all milestone amounts)
+      const approvedPrice = project.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+
+      // Find next milestone that needs work (LOCKED or IN_PROGRESS, ordered by order field)
+      const nextMilestone = project.milestones.find(
+        (m) => m.status === "LOCKED" || m.status === "IN_PROGRESS"
+      );
+
       return {
         ...project,
         progress,
         completedMilestones,
         totalMilestones,
+        approvedPrice,
+        nextMilestone: nextMilestone ? {
+          id: nextMilestone.id,
+          title: nextMilestone.title,
+          status: nextMilestone.status,
+          order: nextMilestone.order,
+        } : null,
       };
     });
 
@@ -216,11 +231,15 @@ export async function getProviderProjectById(projectId, providerId) {
     ).length;
     const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
 
+    // Calculate approved price (sum of all milestone amounts)
+    const approvedPrice = project.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+
     return {
       ...project,
       progress,
       completedMilestones,
       totalMilestones,
+      approvedPrice,
       proposal: proposal, // Include proposal with attachments
       originalTimeline: serviceRequest?.timeline || null, // Original company timeline (string)
       providerProposedTimeline: proposal?.deliveryTime || null, // Provider's proposed timeline in days (number, frontend will format)
@@ -422,6 +441,7 @@ export async function getProviderProjectStats(providerId) {
       totalProjects,
       activeProjects,
       completedProjects,
+      disputedProjects,
       totalEarnings,
       averageRating,
     ] = await Promise.all([
@@ -438,6 +458,12 @@ export async function getProviderProjectStats(providerId) {
         where: { 
           providerId,
           status: "COMPLETED",
+        },
+      }),
+      prisma.project.count({
+        where: { 
+          providerId,
+          status: "DISPUTED",
         },
       }),
       prisma.milestone.aggregate({
@@ -459,11 +485,93 @@ export async function getProviderProjectStats(providerId) {
       totalProjects,
       activeProjects,
       completedProjects,
+      disputedProjects,
       totalEarnings: totalEarnings._sum.amount || 0,
       averageRating: averageRating._avg.rating || 0,
     };
   } catch (error) {
     console.error("Error fetching provider project stats:", error);
     throw new Error("Failed to fetch project statistics");
+  }
+}
+
+/**
+ * Get performance metrics for provider
+ * - Completion Rate: percentage of completed/paid milestones from all milestones
+ * - Repeat Clients: percentage of clients who have worked with provider more than once
+ * - On-time Delivery: percentage of milestones submitted before due date
+ */
+export async function getProviderPerformanceMetrics(providerId) {
+  try {
+    // Get all milestones for the provider
+    const allMilestones = await prisma.milestone.findMany({
+      where: {
+        project: { providerId },
+      },
+      select: {
+        id: true,
+        status: true,
+        dueDate: true,
+        submittedAt: true,
+      },
+    });
+
+    // Calculate Completion Rate: completed/paid milestones / total milestones
+    const totalMilestones = allMilestones.length;
+    const completedMilestones = allMilestones.filter(
+      (m) => m.status === "APPROVED" || m.status === "PAID"
+    ).length;
+    const completionRate = totalMilestones > 0 
+      ? Math.round((completedMilestones / totalMilestones) * 100) 
+      : 0;
+
+    // Calculate Repeat Clients: clients with >1 project / total unique clients
+    const projects = await prisma.project.findMany({
+      where: { providerId },
+      select: {
+        customerId: true,
+      },
+    });
+
+    const uniqueClients = new Set(projects.map((p) => p.customerId));
+    const totalUniqueClients = uniqueClients.size;
+
+    // Count how many clients have more than one project
+    const clientProjectCounts = {};
+    projects.forEach((p) => {
+      clientProjectCounts[p.customerId] = (clientProjectCounts[p.customerId] || 0) + 1;
+    });
+
+    const repeatClientsCount = Object.values(clientProjectCounts).filter(
+      (count) => count > 1
+    ).length;
+
+    const repeatClients = totalUniqueClients > 0
+      ? Math.round((repeatClientsCount / totalUniqueClients) * 100)
+      : 0;
+
+    // Calculate On-time Delivery: milestones submitted before due date / total submitted milestones
+    const submittedMilestones = allMilestones.filter(
+      (m) => m.submittedAt !== null && m.dueDate !== null
+    );
+
+    const onTimeMilestones = submittedMilestones.filter((m) => {
+      const submittedDate = new Date(m.submittedAt);
+      const dueDate = new Date(m.dueDate);
+      return submittedDate <= dueDate;
+    }).length;
+
+    const onTimeDelivery = submittedMilestones.length > 0
+      ? Math.round((onTimeMilestones / submittedMilestones.length) * 100)
+      : 0;
+
+    return {
+      completionRate,
+      repeatClients,
+      onTimeDelivery,
+    };
+  } catch (error) {
+    console.error("Error fetching provider performance metrics:", error);
+    throw new Error("Failed to fetch performance metrics");
   }
 }

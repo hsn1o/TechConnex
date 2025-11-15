@@ -39,6 +39,23 @@ export async function searchProviders(filters) {
       verified: user.providerProfile?.isVerified || false,
       topRated: user.providerProfile?.isFeatured || false,
       saved: user.isSaved || false, // Use saved status from backend
+      // Additional public-safe fields
+      yearsExperience: user.providerProfile?.yearsExperience || 0,
+      minimumProjectBudget: user.providerProfile?.minimumProjectBudget || null,
+      maximumProjectBudget: user.providerProfile?.maximumProjectBudget || null,
+      preferredProjectDuration: user.providerProfile?.preferredProjectDuration || null,
+      workPreference: user.providerProfile?.workPreference || "remote",
+      teamSize: user.providerProfile?.teamSize || 1,
+      website: user.providerProfile?.website || null,
+      profileVideoUrl: user.providerProfile?.profileVideoUrl || null,
+      certificationsCount: user.providerProfile?.certifications?.length || 0,
+      certifications: (user.providerProfile?.certifications || []).map(cert => ({
+        id: cert.id,
+        name: cert.name,
+        issuer: cert.issuer,
+        issuedDate: cert.issuedDate,
+        verified: cert.verified,
+      })),
     }));
 
     return {
@@ -83,6 +100,23 @@ export async function getProviderDetails(providerId, userId = null) {
       verified: provider.providerProfile?.isVerified || false,
       topRated: provider.providerProfile?.isFeatured || false,
       saved: provider.isSaved || false,
+      // Additional public-safe fields
+      yearsExperience: provider.providerProfile?.yearsExperience || 0,
+      minimumProjectBudget: provider.providerProfile?.minimumProjectBudget || null,
+      maximumProjectBudget: provider.providerProfile?.maximumProjectBudget || null,
+      preferredProjectDuration: provider.providerProfile?.preferredProjectDuration || null,
+      workPreference: provider.providerProfile?.workPreference || "remote",
+      teamSize: provider.providerProfile?.teamSize || 1,
+      website: provider.providerProfile?.website || null,
+      profileVideoUrl: provider.providerProfile?.profileVideoUrl || null,
+      certificationsCount: provider.providerProfile?.certifications?.length || 0,
+      certifications: (provider.providerProfile?.certifications || []).map(cert => ({
+        id: cert.id,
+        name: cert.name,
+        issuer: cert.issuer,
+        issuedDate: cert.issuedDate,
+        verified: cert.verified,
+      })),
     };
 
     return transformedProvider;
@@ -110,6 +144,80 @@ export async function getProviderPortfolio(providerId) {
   } catch (error) {
     console.error("Error getting provider portfolio:", error);
     throw new Error("Failed to get provider portfolio");
+  }
+}
+
+// Get completed projects for provider portfolio
+export async function getProviderCompletedProjects(providerId) {
+  try {
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient();
+    
+    const projects = await prisma.project.findMany({
+      where: {
+        providerId: providerId,
+        status: "COMPLETED",
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            customerProfile: {
+              select: {
+                companySize: true,
+                industry: true,
+                logoUrl: true,
+                profileImageUrl: true,
+              },
+            },
+          },
+        },
+        milestones: {
+          select: {
+            id: true,
+            title: true,
+            amount: true,
+            status: true,
+          },
+          orderBy: {
+            order: "asc",
+          },
+        },
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      take: 50, // Limit to 50 most recent completed projects
+    });
+
+    // Transform projects for portfolio display (public-safe data)
+    const portfolioProjects = projects.map((project) => {
+      // Calculate approved price (sum of milestone amounts)
+      const approvedPrice = project.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+      
+      // Get skills from project (public data)
+      const technologies = Array.isArray(project.skills) ? project.skills : [];
+      
+      return {
+        id: project.id,
+        title: project.title,
+        description: project.description,
+        category: project.category,
+        technologies: technologies.slice(0, 8), // Limit to 8 technologies for display
+        client: project.customer?.name || "Client",
+        clientId: project.customer?.id || null,
+        completedDate: project.updatedAt ? new Date(project.updatedAt).toISOString().split('T')[0] : null,
+        approvedPrice,
+        image: null, // Projects don't have images, but we can use placeholder or category icon
+      };
+    });
+
+    await prisma.$disconnect();
+    return portfolioProjects;
+  } catch (error) {
+    console.error("Error getting completed projects:", error);
+    throw new Error("Failed to get completed projects");
   }
 }
 
@@ -219,6 +327,23 @@ export async function getSavedProvidersService(userId, page = 1, limit = 20) {
       verified: user.providerProfile?.isVerified || false,
       topRated: user.providerProfile?.isFeatured || false,
       savedAt: user.savedAt,
+      // Additional public-safe fields
+      yearsExperience: user.providerProfile?.yearsExperience || 0,
+      minimumProjectBudget: user.providerProfile?.minimumProjectBudget || null,
+      maximumProjectBudget: user.providerProfile?.maximumProjectBudget || null,
+      preferredProjectDuration: user.providerProfile?.preferredProjectDuration || null,
+      workPreference: user.providerProfile?.workPreference || "remote",
+      teamSize: user.providerProfile?.teamSize || 1,
+      website: user.providerProfile?.website || null,
+      profileVideoUrl: user.providerProfile?.profileVideoUrl || null,
+      certificationsCount: user.providerProfile?.certifications?.length || 0,
+      certifications: (user.providerProfile?.certifications || []).map(cert => ({
+        id: cert.id,
+        name: cert.name,
+        issuer: cert.issuer,
+        issuedDate: cert.issuedDate,
+        verified: cert.verified,
+      })),
     }));
 
     return {

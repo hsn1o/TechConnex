@@ -50,6 +50,7 @@ export async function getOpportunities(dto) {
                   website: true,
                   logoUrl: true,
                   profileImageUrl: true, // 🆕 Profile image
+                  totalSpend: true,
                 },
               },
             },
@@ -140,6 +141,7 @@ export async function getOpportunityById(opportunityId, providerId) {
                 description: true,
                 logoUrl: true,
                 profileImageUrl: true, // 🆕 Profile image
+                totalSpend: true,
               },
             },
           },

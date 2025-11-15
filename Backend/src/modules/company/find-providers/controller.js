@@ -3,6 +3,7 @@ import {
   searchProviders,
   getProviderDetails,
   getProviderPortfolio,
+  getProviderCompletedProjects,
   getProviderReviewsList,
   saveProviderService,
   unsaveProviderService,
@@ -227,6 +228,32 @@ export async function getFilters(req, res) {
   } catch (error) {
     console.error("Error in getFilters:", error);
     res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/providers/:id/completed-projects - Get completed projects for provider
+export async function getProviderCompletedProjectsController(req, res) {
+  try {
+    const providerId = req.params.id;
+    if (!providerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Provider ID is required",
+      });
+    }
+
+    const completedProjects = await getProviderCompletedProjects(providerId);
+    
+    res.json({
+      success: true,
+      data: completedProjects,
+    });
+  } catch (error) {
+    console.error("Error in getProviderCompletedProjects:", error);
+    res.status(404).json({
       success: false,
       message: error.message,
     });

@@ -11,6 +11,7 @@ import {
   getSavedCompanies,
   getFilters,
   getCompanyFullDetails,
+  getCompanyOpportunitiesController,
 } from "./controller.js";
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.get("/:id", getCompany);
 router.get("/:id/full", getCompanyFullDetails); // Combined endpoint for frontend
 router.get("/:id/reviews", getCompanyReviews);
 router.get("/:id/stats", getCompanyStats);
+router.get("/:id/opportunities", getCompanyOpportunitiesController);
 
 // Save/unsave company
 router.post("/:id/save", saveCompany);

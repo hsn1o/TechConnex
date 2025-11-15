@@ -350,7 +350,7 @@ export default function ProjectDetailsPage({
               status: p.status
           ? (p.status.toLowerCase() as "pending" | "accepted" | "rejected")
                 : "pending",
-              submittedAt: p.submittedAt || p.createdAt || "",
+              submittedAt: p.createdAt || p.submittedAt || "",
               skills: Array.isArray(profile.skills)
                 ? profile.skills
                 : Array.isArray(provider.skills)
@@ -474,6 +474,90 @@ export default function ProjectDetailsPage({
 
     fetchAll();
   }, [resolvedId]);
+
+  // Function to refresh all project data
+  const refreshProjectData = async () => {
+    if (!resolvedId) return;
+    try {
+      // Refresh project data
+      const projectRes = await getProjectById(resolvedId);
+      if (!projectRes?.success || !projectRes.project) {
+        return;
+      }
+
+      const loadedProject = projectRes.project;
+      setProject(loadedProject);
+
+      // Refresh milestones
+      const milestoneData = await getCompanyProjectMilestones(loadedProject.id);
+      setProjectMilestones(
+        Array.isArray(milestoneData.milestones)
+          ? milestoneData.milestones.map((m: any) => ({
+              ...m,
+              sequence: m.order,
+              submissionAttachmentUrl: m.submissionAttachmentUrl,
+              submissionNote: m.submissionNote,
+              submittedAt: m.submittedAt,
+              startDeliverables: m.startDeliverables,
+              submitDeliverables: m.submitDeliverables,
+              revisionNumber: m.revisionNumber,
+              submissionHistory: m.submissionHistory,
+            }))
+          : []
+      );
+      setMilestoneApprovalState({
+        milestonesLocked: milestoneData.milestonesLocked,
+        companyApproved: milestoneData.companyApproved,
+        providerApproved: milestoneData.providerApproved,
+        milestonesApprovedAt: milestoneData.milestonesApprovedAt,
+      });
+
+      // Refresh dispute if exists
+      try {
+        const disputeRes = await getDisputeByProject(loadedProject.id);
+        if (disputeRes.success && disputeRes.data) {
+          setCurrentDispute(disputeRes.data);
+        }
+      } catch (err) {
+        // No dispute exists, which is fine
+      }
+
+      // Refresh proposals/bids
+      let serviceRequestId: string | null = null;
+      if (loadedProject.type === "ServiceRequest") {
+        serviceRequestId = loadedProject.id;
+      } else {
+        serviceRequestId =
+          (loadedProject as any)?.serviceRequestId ||
+          (loadedProject as any)?.originalRequestId ||
+          null;
+      }
+
+      if (serviceRequestId) {
+        try {
+          const proposalsResponse = await getCompanyProjectRequests({
+            serviceRequestId,
+            sort: "newest",
+          });
+
+          const rawProposals = Array.isArray(proposalsResponse?.proposals)
+            ? proposalsResponse.proposals
+            : Array.isArray(proposalsResponse?.data)
+            ? proposalsResponse.data
+            : Array.isArray(proposalsResponse?.items)
+            ? proposalsResponse.items
+            : [];
+
+          const mappedProposals = mapProposalsToProviderRequests(rawProposals);
+          setProposals(mappedProposals);
+        } catch (err) {
+          console.warn("Failed to refresh proposals:", err);
+        }
+      }
+    } catch (err) {
+      console.error("Error refreshing project data:", err);
+    }
+  };
 
   // Load project milestones
   useEffect(() => {
@@ -729,6 +813,10 @@ export default function ProjectDetailsPage({
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
+      
+      // Refresh project data to get updated milestones
+      await refreshProjectData();
+      
       toast({
         title: "Milestones updated",
         description: "Milestone changes have been saved.",
@@ -758,6 +846,9 @@ export default function ProjectDetailsPage({
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
 
+      // Refresh project data to get updated milestones
+      await refreshProjectData();
+
       // Always close the inline milestone editor
       setMilestoneEditorOpen(false);
 
@@ -785,13 +876,15 @@ export default function ProjectDetailsPage({
   const handleApproveIndividualMilestone = async (milestoneId: string) => {
     try {
       await approveIndividualMilestone(milestoneId);
+      
+      // Refresh all project data including milestones
+      await refreshProjectData();
+      
       toast({
         title: "Milestone approved",
         description:
           "The milestone has been approved and is ready for payment.",
       });
-      // Reload project data to reflect the change
-      window.location.reload();
     } catch (e) {
       toast({
         title: "Approval failed",
@@ -830,15 +923,8 @@ export default function ProjectDetailsPage({
         requestChangesReason.trim()
       );
 
-      // Refresh milestone data
-      if (project?.id) {
-        const milestoneData = await getCompanyProjectMilestones(project.id);
-        setProjectMilestones(
-          Array.isArray(milestoneData.milestones)
-            ? milestoneData.milestones.map((m) => ({ ...m, sequence: m.order }))
-            : []
-        );
-      }
+      // Refresh all project data including milestones
+      await refreshProjectData();
 
       // Close dialog and reset
       setRequestChangesDialogOpen(false);
@@ -1115,11 +1201,8 @@ export default function ProjectDetailsPage({
           : "Your dispute has been submitted successfully. The milestone has been frozen.",
       });
 
-      // Reload dispute
-      const disputeRes = await getDisputeByProject(project.id);
-      if (disputeRes.success && disputeRes.data) {
-        setCurrentDispute(disputeRes.data);
-      }
+      // Refresh all project data including dispute and milestones
+      await refreshProjectData();
 
       // Reset form
       setDisputeDialogOpen(false);
@@ -1129,9 +1212,6 @@ export default function ProjectDetailsPage({
       setDisputeSuggestedResolution("");
       setDisputeAttachments([]);
       setSelectedMilestoneForDispute(null);
-
-      // Reload project to reflect new status
-      window.location.reload();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -1184,11 +1264,8 @@ export default function ProjectDetailsPage({
         description: "Your update has been added to the dispute.",
       });
 
-      // Reload dispute
-      const disputeRes = await getDisputeByProject(project.id);
-      if (disputeRes.success && disputeRes.data) {
-        setCurrentDispute(disputeRes.data);
-      }
+      // Refresh all project data including dispute
+      await refreshProjectData();
 
       // Reset form
       setDisputeAdditionalNotes("");
@@ -1319,8 +1396,8 @@ export default function ProjectDetailsPage({
       setPaymentDialogOpen(false);
       setSelectedMilestoneForPayment(null);
 
-      // Refresh data
-      window.location.reload();
+      // Refresh all project data including milestones
+      await refreshProjectData();
     } catch (err) {
       console.error("Payment error:", err);
       toast({
@@ -2021,7 +2098,7 @@ export default function ProjectDetailsPage({
                                             </div>
                                           )}
 
-                                          {history.submittedAt && (
+                                          {history.submittedAt && !isNaN(new Date(history.submittedAt).getTime()) && (
                                             <p className="text-xs text-gray-500 mt-2">
                                               Submitted:{" "}
                                               {new Date(
@@ -2283,9 +2360,9 @@ export default function ProjectDetailsPage({
                               </Badge>
 
                               <span className="text-sm text-gray-500">
-                                {p.submittedAt
+                                {p.submittedAt && !isNaN(new Date(p.submittedAt).getTime())
                                   ? new Date(p.submittedAt).toLocaleDateString()
-                                  : ""}
+                                  : "—"}
                               </span>
                             </div>
 
@@ -2640,7 +2717,7 @@ export default function ProjectDetailsPage({
                               </span>
                               <span className="text-xs text-gray-500 leading-snug">
                                 From: {attachment.milestoneTitle}
-                                {attachment.submittedAt &&
+                                {attachment.submittedAt && !isNaN(new Date(attachment.submittedAt).getTime()) &&
                                   ` • Submitted: ${new Date(
                                     attachment.submittedAt
                                   ).toLocaleDateString()}`}

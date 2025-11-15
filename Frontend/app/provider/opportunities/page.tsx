@@ -52,7 +52,8 @@ import {
 import { ProviderLayout } from "@/components/provider-layout";
 import { toast } from "sonner";
 import { getProviderOpportunities, sendProposal } from "@/lib/api";
-import { formatTimeline, buildTimelineData } from "@/lib/timeline-utils";
+import { formatTimeline, buildTimelineData, timelineToDays } from "@/lib/timeline-utils";
+import Link from "next/link";
 
 export default function ProviderOpportunitiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -123,9 +124,25 @@ export default function ProviderOpportunitiesPage() {
               description: opportunity.description,
               fullDescription: opportunity.description, // Use description as full description for now
               client: opportunity.customer?.name || "Unknown Client",
+              clientId: opportunity.customer?.id || null,
               budget: `RM ${opportunity.budgetMin?.toLocaleString()} - RM ${opportunity.budgetMax?.toLocaleString()}`,
+              budgetMin: opportunity.budgetMin || 0,
+              budgetMax: opportunity.budgetMax || 0,
               budgetType: "fixed",
               timeline: formatTimeline(opportunity.timeline) || "Not specified",
+              originalTimeline: opportunity.timeline || null,
+              originalTimelineInDays: (() => {
+                if (!opportunity.timeline) return 0;
+                // Parse timeline string (e.g., "32 days", "2 weeks", "1 month")
+                const timelineStr = opportunity.timeline.toLowerCase().trim();
+                const match = timelineStr.match(/^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/);
+                if (match) {
+                  const amount = Number(match[1]);
+                  const unit = match[2].replace(/s$/, ""); // Remove plural 's'
+                  return timelineToDays(amount, unit);
+                }
+                return 0;
+              })(),
               skills: opportunity.skills || [],
               postedTime: new Date(opportunity.createdAt).toLocaleDateString(),
               matchScore: 85, // Default match score
@@ -167,7 +184,9 @@ export default function ProviderOpportunitiesPage() {
                 )
                   .getFullYear()
                   .toString(),
-                totalSpent: "RM 100,000+", // Default value
+                totalSpent: opportunity.customer?.customerProfile?.totalSpend
+                  ? `RM ${Number(opportunity.customer.customerProfile.totalSpend).toLocaleString()}`
+                  : "RM 0",
                 avgRating: 4.5, // Default rating
               },
               originalData: opportunity, // Store original API data for proposal submission
@@ -290,7 +309,7 @@ export default function ProviderOpportunitiesPage() {
 
     const messages: string[] = [];
 
-    // Bid amount: required, >0
+    // Bid amount: required, >0, and within budget range
     const bidAmountNum = Number(form.bidAmount);
     if (!form.bidAmount) {
       newErrors.bidAmount = "Bid amount is required.";
@@ -298,9 +317,16 @@ export default function ProviderOpportunitiesPage() {
     } else if (isNaN(bidAmountNum) || bidAmountNum <= 0) {
       newErrors.bidAmount = "Bid amount must be a positive number.";
       messages.push("Bid amount must be a positive number.");
+    } else if (selectedProject) {
+      const budgetMin = selectedProject.budgetMin || 0;
+      const budgetMax = selectedProject.budgetMax || 0;
+      if (bidAmountNum < budgetMin || bidAmountNum > budgetMax) {
+        newErrors.bidAmount = `Bid amount must be between RM ${budgetMin.toLocaleString()} and RM ${budgetMax.toLocaleString()}.`;
+        messages.push(`Bid amount must be within the budget range (RM ${budgetMin.toLocaleString()} - RM ${budgetMax.toLocaleString()}).`);
+      }
     }
 
-    // Timeline: required
+    // Timeline: required, and must be <= original timeline
     const timelineAmountNum = Number(form.timelineAmount);
     if (!form.timelineAmount) {
       newErrors.timelineAmount = "Timeline amount is required.";
@@ -313,6 +339,14 @@ export default function ProviderOpportunitiesPage() {
     if (!form.timelineUnit) {
       newErrors.timelineUnit = "Timeline unit is required.";
       messages.push("Timeline unit is required.");
+    } else if (selectedProject && selectedProject.originalTimelineInDays > 0) {
+      // Check if provider timeline is <= original timeline
+      const providerTimelineInDays = timelineToDays(timelineAmountNum, form.timelineUnit);
+      if (providerTimelineInDays > selectedProject.originalTimelineInDays) {
+        const originalTimelineDisplay = formatTimeline(selectedProject.originalTimeline) || `${selectedProject.originalTimelineInDays} days`;
+        newErrors.timelineAmount = `Your timeline must be equal to or less than the company's timeline (${originalTimelineDisplay}).`;
+        messages.push(`Your timeline must be equal to or less than the company's timeline (${originalTimelineDisplay}).`);
+      }
     }
 
     // Cover letter: required, min length 20
@@ -563,10 +597,6 @@ export default function ProviderOpportunitiesPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              Advanced Filters
-            </Button>
             <Button>
               <Zap className="w-4 h-4 mr-2" />
               AI Recommendations
@@ -695,7 +725,7 @@ export default function ProviderOpportunitiesPage() {
                               </Badge>
                             )}
                           </div>
-                          <CardDescription className="text-base">
+                          <CardDescription className="text-base line-clamp-3">
                             {opportunity.description}
                           </CardDescription>
                         </div>
@@ -726,7 +756,16 @@ export default function ProviderOpportunitiesPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{opportunity.client}</p>
+                            {opportunity.clientId ? (
+                              <Link 
+                                href={`/provider/companies/${opportunity.clientId}`}
+                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {opportunity.client}
+                              </Link>
+                            ) : (
+                              <p className="font-medium">{opportunity.client}</p>
+                            )}
                             <div className="flex items-center gap-2 text-sm text-gray-500">
                               <div className="flex items-center">
                                 <span className="text-yellow-400">★</span>
@@ -980,10 +1019,20 @@ export default function ProviderOpportunitiesPage() {
                           <div className="flex justify-between">
                             <span className="text-gray-600">Total Spent:</span>
                             <span className="text-green-600 font-semibold">
-                              {selectedProject.clientInfo?.totalSpent}
+                              {selectedProject.clientInfo?.totalSpent || "RM 0"}
                             </span>
                           </div>
                         </div>
+                        {selectedProject.clientId && (
+                          <div className="pt-2">
+                            <Link href={`/provider/companies/${selectedProject.clientId}`}>
+                              <Button variant="outline" className="w-full">
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Company
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
@@ -1072,7 +1121,7 @@ export default function ProviderOpportunitiesPage() {
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Client budget: {selectedProject?.budget}
+                    Client budget range: RM {selectedProject?.budgetMin?.toLocaleString() || "0"} - RM {selectedProject?.budgetMax?.toLocaleString() || "0"}
                   </p>
                 </div>
                 <div>
@@ -1131,9 +1180,12 @@ export default function ProviderOpportunitiesPage() {
                       {proposalErrors.timelineUnit}
                     </p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Company timeline: {selectedProject?.originalTimeline ? formatTimeline(selectedProject.originalTimeline) : "Not specified"}
+                  </p>
                   {proposalData.timelineAmount && proposalData.timelineUnit && (
                     <p className="text-xs text-gray-500 mt-1">
-                      {formatTimeline(proposalData.timelineAmount, proposalData.timelineUnit)}
+                      Your timeline: {formatTimeline(proposalData.timelineAmount, proposalData.timelineUnit)}
                     </p>
                   )}
                 </div>

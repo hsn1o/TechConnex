@@ -5,6 +5,7 @@ import {
   findProviders,
   getProvider,
   getProviderPortfolioController,
+  getProviderCompletedProjectsController,
   getProviderReviews,
   getProviderStats,
   saveProvider,
@@ -27,6 +28,7 @@ router.get("/filters", getFilters);
 router.get("/:id", getProvider);
 router.get("/:id/full", getProviderFullDetails); // Combined endpoint for frontend
 router.get("/:id/portfolio", getProviderPortfolioController);
+router.get("/:id/completed-projects", getProviderCompletedProjectsController);
 router.get("/:id/reviews", getProviderReviews);
 router.get("/:id/stats", getProviderStats);
 

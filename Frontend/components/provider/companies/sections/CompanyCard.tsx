@@ -154,6 +154,18 @@ export default function CompanyCard({ company }: { company: Company }) {
             <p className="text-gray-500">Total Spent</p>
             <p className="font-semibold">RM{company.totalSpend.toLocaleString()}</p>
           </div>
+          {company.establishedYear && (
+            <div>
+              <p className="text-gray-500">Established</p>
+              <p className="font-semibold">{company.establishedYear}</p>
+            </div>
+          )}
+          {company.employeeCount && (
+            <div>
+              <p className="text-gray-500">Employees</p>
+              <p className="font-semibold">{company.employeeCount}</p>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between text-sm">

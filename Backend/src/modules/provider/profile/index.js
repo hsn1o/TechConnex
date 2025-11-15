@@ -16,5 +16,6 @@ router.patch("/", ProviderProfileController.upsertProfile);
 router.post("/upload-image", uploadProfileImageMiddleware, ProviderProfileController.uploadProfileImage);
 router.get("/stats", ProviderProfileController.getProfileStats);
 router.get("/completion", ProviderProfileController.getProfileCompletion);
+router.get("/portfolio", ProviderProfileController.getPortfolio);
 
 export default router;

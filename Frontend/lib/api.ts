@@ -603,6 +603,23 @@ export async function getProviderProjectStats() {
   return data;
 }
 
+export async function getProviderPerformanceMetrics() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/projects/performance`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch performance metrics");
+  return data;
+}
+
 
 export async function updateCompanyProject(
   id: string,
@@ -1019,6 +1036,23 @@ export async function getSavedCompanies(userId: string, page?: number, limit?: n
   return data;
 }
 
+export async function getCompanyOpportunities(companyId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/companies/${companyId}/opportunities`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch company opportunities");
+  return data;
+}
+
 // Provider Profile API functions
 export async function getProviderProfile() {
   const token = getToken();
@@ -1125,6 +1159,123 @@ export async function getProviderProfileCompletion() {
   
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "Failed to fetch profile completion");
+  return data;
+}
+
+export async function getProviderPortfolio() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/profile/portfolio`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch portfolio");
+  return data;
+}
+
+export async function getProviderCompletedProjects(providerId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/providers/${providerId}/completed-projects`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch completed projects");
+  return data;
+}
+
+// Certification API functions
+export async function getMyCertifications() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/certifications`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch certifications");
+  return data;
+}
+
+export async function createCertification(certificationData: {
+  name: string;
+  issuer: string;
+  issuedDate: string;
+  serialNumber?: string;
+  sourceUrl?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/certifications`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(certificationData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to create certification");
+  return data;
+}
+
+export async function updateCertification(id: string, certificationData: {
+  name: string;
+  issuer: string;
+  issuedDate: string;
+  serialNumber?: string;
+  sourceUrl?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/certifications/${id}`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(certificationData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to update certification");
+  return data;
+}
+
+export async function deleteCertification(id: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/certifications/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to delete certification");
   return data;
 }
 

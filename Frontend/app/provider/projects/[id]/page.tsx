@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -232,6 +233,10 @@ export default function ProviderProjectDetailsPage() {
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
+      
+      // Refresh project data to get updated milestones
+      await refreshProjectData();
+      
       toast({
         title: "Milestones updated",
         description: "Milestone changes have been saved.",
@@ -259,6 +264,9 @@ export default function ProviderProjectDetailsPage() {
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
+      
+      // Refresh project data to get updated milestones
+      await refreshProjectData();
       
       if (res.locked) {
         toast({
@@ -310,6 +318,56 @@ export default function ProviderProjectDetailsPage() {
     }
   };
 
+  // Function to refresh all project data
+  const refreshProjectData = async () => {
+    if (!params.id) return;
+    try {
+      // Refresh project data
+      const projectResponse = await getProviderProjectById(params.id as string);
+      if (projectResponse.success) {
+        setProject(projectResponse.project);
+      }
+
+      // Refresh milestones
+      const milestoneData = await getProviderProjectMilestones(params.id as string);
+      if (milestoneData.milestones) {
+        setProjectMilestones(
+          Array.isArray(milestoneData.milestones) 
+            ? milestoneData.milestones.map((m: any) => ({
+                ...m,
+                sequence: m.order,
+                submissionAttachmentUrl: m.submissionAttachmentUrl,
+                submissionNote: m.submissionNote,
+                submittedAt: m.submittedAt,
+                startDeliverables: m.startDeliverables,
+                submitDeliverables: m.submitDeliverables,
+                revisionNumber: m.revisionNumber,
+                submissionHistory: m.submissionHistory,
+              }))
+            : []
+        );
+        setMilestoneApprovalState({
+          milestonesLocked: milestoneData.milestonesLocked,
+          companyApproved: milestoneData.companyApproved,
+          providerApproved: milestoneData.providerApproved,
+          milestonesApprovedAt: milestoneData.milestonesApprovedAt,
+        });
+      }
+
+      // Refresh dispute if exists
+      try {
+        const disputeRes = await getDisputeByProject(params.id as string);
+        if (disputeRes.success && disputeRes.data) {
+          setCurrentDispute(disputeRes.data);
+        }
+      } catch (err) {
+        // No dispute exists, which is fine
+      }
+    } catch (err) {
+      console.error("Error refreshing project data:", err);
+    }
+  };
+
   const handleMilestoneUpdate = async (status: string) => {
     try {
       setUpdating(true);
@@ -344,13 +402,9 @@ export default function ProviderProjectDetailsPage() {
       );
       
       if (response.success) {
-        // Refresh project data
-        const projectResponse = await getProviderProjectById(
-          params.id as string
-        );
-        if (projectResponse.success) {
-          setProject(projectResponse.project);
-        }
+        // Refresh all project data including milestones
+        await refreshProjectData();
+        
         toast({
           title: "Success",
           description: "Milestone updated successfully",
@@ -413,11 +467,8 @@ export default function ProviderProjectDetailsPage() {
           : "Your dispute has been submitted successfully. The milestone has been frozen.",
       });
 
-      // Reload dispute
-      const disputeRes = await getDisputeByProject(project.id);
-      if (disputeRes.success && disputeRes.data) {
-        setCurrentDispute(disputeRes.data);
-      }
+      // Refresh all project data including dispute and milestones
+      await refreshProjectData();
 
       // Reset form
       setDisputeDialogOpen(false);
@@ -427,9 +478,6 @@ export default function ProviderProjectDetailsPage() {
       setDisputeSuggestedResolution("");
       setDisputeAttachments([]);
       setSelectedMilestoneForDispute(null);
-
-      // Reload project to reflect new status
-      window.location.reload();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -482,11 +530,8 @@ export default function ProviderProjectDetailsPage() {
         description: "Your update has been added to the dispute.",
       });
 
-      // Reload dispute
-      const disputeRes = await getDisputeByProject(project.id);
-      if (disputeRes.success && disputeRes.data) {
-        setCurrentDispute(disputeRes.data);
-      }
+      // Refresh all project data including dispute
+      await refreshProjectData();
 
       // Reset form
       setDisputeAdditionalNotes("");
@@ -761,6 +806,16 @@ export default function ProviderProjectDetailsPage() {
                           {formatCurrency(project.budgetMax)}
                         </p>
                       </div>
+                      {project.approvedPrice && (
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">
+                            Approved Price
+                          </Label>
+                          <p className="text-lg font-semibold text-green-600">
+                            {formatCurrency(project.approvedPrice)}
+                          </p>
+                        </div>
+                      )}
                       <div>
                         <Label className="text-sm font-medium text-gray-500">
                           Timeline
@@ -1599,7 +1654,16 @@ export default function ProviderProjectDetailsPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{project.customer?.name}</p>
+                    {project.customer?.id ? (
+                      <Link 
+                        href={`/provider/companies/${project.customer.id}`}
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline block"
+                      >
+                        {project.customer?.name}
+                      </Link>
+                    ) : (
+                      <p className="font-medium">{project.customer?.name}</p>
+                    )}
                     <p className="text-sm text-gray-600">
                       {project.customer?.email}
                     </p>

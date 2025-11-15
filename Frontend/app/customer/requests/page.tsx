@@ -103,7 +103,8 @@ interface ApiProposal {
   deliveryTime: number;
   coverLetter: string;
   status: "PENDING" | "ACCEPTED" | "REJECTED";
-  submittedAt: string;
+  submittedAt?: string;
+  createdAt?: string;
   milestones: Array<{
     title: string;
     amount: number;
@@ -246,7 +247,7 @@ export default function CustomerRequestsPage() {
                 | "pending"
                 | "accepted"
                 | "rejected",
-              submittedAt: proposal.submittedAt,
+              submittedAt: proposal.createdAt || proposal.submittedAt,
               skills: Array.isArray(profile.skills)
                 ? profile.skills
                 : Array.isArray(provider.skills)
@@ -752,10 +753,6 @@ export default function CustomerRequestsPage() {
                             <MapPin className="w-4 h-4" />
                             {request.providerLocation || "—"}
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            Responds in {request.providerResponseTime || "N/A"}
-                          </div>
                         </div>
 
                         {/* Project title */}
@@ -808,7 +805,9 @@ export default function CustomerRequestsPage() {
                             request.status.slice(1)}
                         </Badge>
                         <span className="text-sm text-gray-500">
-                          {new Date(request.submittedAt).toLocaleDateString()}
+                          {request.submittedAt && !isNaN(new Date(request.submittedAt).getTime())
+                            ? new Date(request.submittedAt).toLocaleDateString()
+                            : "—"}
                         </span>
                       </div>
 
@@ -827,24 +826,7 @@ export default function CustomerRequestsPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-1">
-                        {asArray<string>(request.skills)
-                          .slice(0, 3)
-                          .map((skill) => (
-                            <Badge
-                              key={skill}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
-                        {asArray<string>(request.skills).length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{asArray<string>(request.skills).length - 3} more
-                          </Badge>
-                        )}
-                      </div>
+
 
                       {/* Action Buttons */}
                       <div className="flex flex-wrap gap-2 pt-2">

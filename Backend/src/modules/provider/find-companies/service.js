@@ -35,6 +35,21 @@ export async function searchCompanies(filters) {
       memberSince: new Date(user.createdAt).getFullYear().toString(),
       verified: user.isVerified || false,
       saved: user.isSaved || false, // Use saved status from backend
+      // Additional public-safe fields
+      employeeCount: user.customerProfile?.employeeCount || null,
+      establishedYear: user.customerProfile?.establishedYear || null,
+      annualRevenue: user.customerProfile?.annualRevenue || null,
+      fundingStage: user.customerProfile?.fundingStage || null,
+      mission: user.customerProfile?.mission || null,
+      values: user.customerProfile?.values || [],
+      languages: user.customerProfile?.languages || [],
+      categoriesHiringFor: user.customerProfile?.categoriesHiringFor || [],
+      preferredContractTypes: user.customerProfile?.preferredContractTypes || [],
+      remotePolicy: user.customerProfile?.remotePolicy || null,
+      hiringFrequency: user.customerProfile?.hiringFrequency || null,
+      averageBudgetRange: user.customerProfile?.averageBudgetRange || null,
+      socialLinks: user.customerProfile?.socialLinks || null,
+      mediaGallery: user.customerProfile?.mediaGallery || [],
     }));
 
     return {
@@ -181,6 +196,21 @@ export async function getSavedCompaniesService(userId, page = 1, limit = 20) {
       memberSince: new Date(user.createdAt).getFullYear().toString(),
       verified: user.isVerified || false,
       savedAt: user.savedAt,
+      // Additional public-safe fields
+      employeeCount: user.customerProfile?.employeeCount || null,
+      establishedYear: user.customerProfile?.establishedYear || null,
+      annualRevenue: user.customerProfile?.annualRevenue || null,
+      fundingStage: user.customerProfile?.fundingStage || null,
+      mission: user.customerProfile?.mission || null,
+      values: user.customerProfile?.values || [],
+      languages: user.customerProfile?.languages || [],
+      categoriesHiringFor: user.customerProfile?.categoriesHiringFor || [],
+      preferredContractTypes: user.customerProfile?.preferredContractTypes || [],
+      remotePolicy: user.customerProfile?.remotePolicy || null,
+      hiringFrequency: user.customerProfile?.hiringFrequency || null,
+      averageBudgetRange: user.customerProfile?.averageBudgetRange || null,
+      socialLinks: user.customerProfile?.socialLinks || null,
+      mediaGallery: user.customerProfile?.mediaGallery || [],
     }));
 
     return {
@@ -206,6 +236,104 @@ export async function getCompanyStatistics(companyId) {
   } catch (error) {
     console.error("Error getting company statistics:", error);
     throw new Error("Failed to get company statistics");
+  }
+}
+
+// Get opportunities (OPEN ServiceRequests) for a specific company
+export async function getCompanyOpportunities(companyId, providerId) {
+  try {
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient();
+    
+    // Get OPEN ServiceRequests for this company
+    const serviceRequests = await prisma.serviceRequest.findMany({
+      where: {
+        customerId: companyId,
+        status: "OPEN",
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            customerProfile: {
+              select: {
+                companySize: true,
+                industry: true,
+                location: true,
+                website: true,
+                logoUrl: true,
+                profileImageUrl: true,
+                totalSpend: true,
+              },
+            },
+          },
+        },
+        milestones: {
+          orderBy: {
+            order: "asc",
+          },
+        },
+        _count: {
+          select: {
+            proposals: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 50, // Limit to 50 most recent opportunities
+    });
+
+    // Check which ServiceRequests the current provider has already proposed to
+    const serviceRequestIds = serviceRequests.map(sr => sr.id);
+    const existingProposals = providerId ? await prisma.proposal.findMany({
+      where: {
+        providerId: providerId,
+        serviceRequestId: {
+          in: serviceRequestIds,
+        },
+      },
+      select: {
+        serviceRequestId: true,
+      },
+    }) : [];
+
+    const proposedServiceRequestIds = new Set(existingProposals.map(p => p.serviceRequestId));
+
+    // Transform opportunities for frontend
+    const opportunities = serviceRequests.map((sr) => ({
+      id: sr.id,
+      title: sr.title,
+      description: sr.description,
+      category: sr.category,
+      budgetMin: sr.budgetMin,
+      budgetMax: sr.budgetMax,
+      timeline: sr.timeline,
+      skills: sr.skills || [],
+      priority: sr.priority,
+      requirements: Array.isArray(sr.requirements) ? sr.requirements : [],
+      deliverables: Array.isArray(sr.deliverables) ? sr.deliverables : [],
+      createdAt: sr.createdAt,
+      updatedAt: sr.updatedAt,
+      milestones: sr.milestones || [],
+      proposalCount: sr._count?.proposals || 0,
+      hasProposed: proposedServiceRequestIds.has(sr.id),
+      customer: {
+        id: sr.customer.id,
+        name: sr.customer.name,
+        email: sr.customer.email,
+        customerProfile: sr.customer.customerProfile,
+      },
+    }));
+
+    await prisma.$disconnect();
+    return opportunities;
+  } catch (error) {
+    console.error("Error getting company opportunities:", error);
+    throw new Error("Failed to get company opportunities");
   }
 }
 

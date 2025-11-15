@@ -164,6 +164,26 @@ class ProviderProfileController {
       });
     }
   }
+
+  // GET /api/provider/profile/portfolio - Get completed projects for portfolio
+  static async getPortfolio(req, res) {
+    try {
+      const userId = req.user.userId;
+      const projects = await ProviderProfileService.getCompletedProjects(userId);
+      
+      res.json({
+        success: true,
+        message: "Portfolio projects retrieved successfully",
+        data: projects,
+      });
+    } catch (error) {
+      console.error("Error in getPortfolio:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
 }
 
 export default ProviderProfileController;
