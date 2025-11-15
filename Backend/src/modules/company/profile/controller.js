@@ -1,4 +1,7 @@
 import CompanyProfileService from "./service.js";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 // Get company profile
 async function getProfile(req, res) {
@@ -349,6 +352,75 @@ async function uploadProfileImage(req, res) {
   }
 }
 
+// Upload media gallery images
+async function uploadMediaGalleryImages(req, res) {
+  try {
+    const userId = req.user.userId;
+    const MAX_IMAGES = 10;
+    
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No image files provided",
+      });
+    }
+
+    // Get existing media gallery from profile
+    const existingProfile = await prisma.customerProfile.findUnique({
+      where: { userId },
+      select: { mediaGallery: true },
+    });
+
+    const existingMediaGallery = Array.isArray(existingProfile?.mediaGallery) 
+      ? existingProfile.mediaGallery 
+      : [];
+
+    // Validate maximum images limit
+    if (existingMediaGallery.length >= MAX_IMAGES) {
+      return res.status(400).json({
+        success: false,
+        message: `Maximum ${MAX_IMAGES} images allowed. Please remove some images first.`,
+      });
+    }
+
+    // Check if adding these files would exceed the limit
+    if (existingMediaGallery.length + req.files.length > MAX_IMAGES) {
+      const allowed = MAX_IMAGES - existingMediaGallery.length;
+      return res.status(400).json({
+        success: false,
+        message: `You can only add ${allowed} more image(s). Maximum ${MAX_IMAGES} images allowed.`,
+      });
+    }
+
+    // Get the file paths (normalize slashes for cross-platform compatibility)
+    const newImagePaths = req.files.map((file) => file.path.replace(/\\/g, "/"));
+    
+    // Merge with existing media gallery
+    const updatedMediaGallery = [...existingMediaGallery, ...newImagePaths];
+    
+    // Update profile with new media gallery URLs
+    const profile = await CompanyProfileService.updateProfile(userId, {
+      mediaGallery: updatedMediaGallery,
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: "Media gallery images uploaded successfully",
+      data: {
+        mediaGallery: updatedMediaGallery,
+        uploadedImages: newImagePaths,
+        profile,
+      },
+    });
+  } catch (error) {
+    console.error("Upload media gallery images error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 export {
   getProfile,
   createProfile,
@@ -365,4 +437,5 @@ export {
   getUserWithKycData,
   getComprehensiveProfile,
   uploadProfileImage,
+  uploadMediaGalleryImages,
 };

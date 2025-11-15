@@ -74,6 +74,13 @@ class CompanyProfileService {
       const dto = new CompanyProfileUpdateDto(updateData);
       dto.validate();
 
+      // Additional validation: Check mediaGallery limit if it's being updated
+      if (updateData.mediaGallery !== undefined && Array.isArray(updateData.mediaGallery)) {
+        if (updateData.mediaGallery.length > 10) {
+          throw new Error("Media gallery cannot contain more than 10 images");
+        }
+      }
+
       // Check if profile exists
       const exists = await CompanyProfileModel.profileExists(userId);
       if (!exists) {
@@ -114,11 +121,11 @@ class CompanyProfileService {
     }
   }
 
-  // Get profile completion percentage
+  // Get profile completion percentage with suggestions
   static async getProfileCompletion(userId) {
     try {
-      const completion = await CompanyProfileModel.getProfileCompletion(userId);
-      return { completion };
+      const completionData = await CompanyProfileModel.getProfileCompletion(userId);
+      return completionData;
     } catch (error) {
       throw new Error(`Failed to get profile completion: ${error.message}`);
     }

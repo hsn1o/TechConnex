@@ -37,6 +37,23 @@ export async function getCompanyProfile() {
   return data;
 }
 
+export async function getCompanyProfileCompletion() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE_URL}/company/profile/completion`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch profile completion");
+  return data;
+}
+
 export async function updateCompanyProfile(profileData: any) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
@@ -91,6 +108,29 @@ export async function uploadCompanyProfileImage(imageFile: File) {
   
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "Failed to upload profile image");
+  return data;
+}
+
+export async function uploadCompanyMediaGalleryImages(imageFiles: File[]) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const formData = new FormData();
+  imageFiles.forEach((file) => {
+    formData.append("mediaImages", file);
+  });
+
+  const res = await fetch(`${API_BASE_URL}/company/profile/upload-media`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      // Don't set Content-Type - let browser set it with boundary for FormData
+    },
+    body: formData,
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to upload media gallery images");
   return data;
 }
 

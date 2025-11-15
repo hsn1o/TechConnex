@@ -1,6 +1,6 @@
 "use client";
 
-import { Building, Globe, DollarSign, Calendar, Users, Briefcase, Target, Heart, Image as ImageIcon, X, Plus } from "lucide-react";
+import { Building, Globe, DollarSign, Calendar, Users, Briefcase, Target, Heart, Image as ImageIcon, X, Plus, Download, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,21 +10,30 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { uploadCompanyMediaGalleryImages, getCompanyProfileCompletion } from "@/lib/api";
 import type { ProfileData } from "../types";
 
 type Props = {
   value: ProfileData;
   onChange: (next: ProfileData) => void;
   isEditing: boolean;
+  onCompletionUpdate?: (completion: number, suggestions: string[]) => void;
 };
 
-export default function CompanyInfo({ value, onChange, isEditing }: Props) {
+export default function CompanyInfo({ value, onChange, isEditing, onCompletionUpdate }: Props) {
   // State for input fields
   const [customCategory, setCustomCategory] = useState("");
   const [customValue, setCustomValue] = useState("");
   const [newSocialUrl, setNewSocialUrl] = useState("");
   const [newMediaUrl, setNewMediaUrl] = useState("");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Helper to handle array inputs
   const handleArrayInput = (field: "preferredContractTypes" | "categoriesHiringFor" | "values" | "mediaGallery" | "socialLinks", newValue: string[]) => {
@@ -83,9 +92,187 @@ export default function CompanyInfo({ value, onChange, isEditing }: Props) {
   };
 
   const handleAddMediaUrl = () => {
+    const MAX_IMAGES = 10;
+    const currentCount = value.customerProfile?.mediaGallery?.length || 0;
+    
+    if (currentCount >= MAX_IMAGES) {
+      toast.error(`Maximum ${MAX_IMAGES} images allowed. Please remove some images first.`);
+      setNewMediaUrl("");
+      return;
+    }
+
     if (newMediaUrl.trim() && !value.customerProfile?.mediaGallery?.includes(newMediaUrl.trim())) {
       addArrayItem("mediaGallery", newMediaUrl.trim());
     }
+  };
+
+  const handleMediaImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    // Check current media gallery count
+    const currentCount = value.customerProfile?.mediaGallery?.length || 0;
+    const MAX_IMAGES = 10;
+    
+    if (currentCount >= MAX_IMAGES) {
+      toast.error(`Maximum ${MAX_IMAGES} images allowed. Please remove some images first.`);
+      event.target.value = "";
+      return;
+    }
+
+    // Check if adding these files would exceed the limit
+    if (currentCount + files.length > MAX_IMAGES) {
+      const allowed = MAX_IMAGES - currentCount;
+      toast.error(`You can only add ${allowed} more image(s). Maximum ${MAX_IMAGES} images allowed.`);
+      event.target.value = "";
+      return;
+    }
+
+    // Validate file types
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    const invalidFiles = files.filter(file => !allowedTypes.includes(file.type));
+    if (invalidFiles.length > 0) {
+      toast.error("Only image files are allowed (JPEG, PNG, GIF, WebP)");
+      event.target.value = "";
+      return;
+    }
+
+    // Validate file sizes (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversizedFiles = files.filter(file => file.size > maxSize);
+    if (oversizedFiles.length > 0) {
+      toast.error("Some files exceed 10MB limit");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setUploadingMedia(true);
+      const response = await uploadCompanyMediaGalleryImages(files);
+      
+      if (response.success && response.data?.mediaGallery) {
+        // Update the profile with new media gallery URLs
+        onChange({
+          ...value,
+          customerProfile: {
+            ...value.customerProfile || {},
+            mediaGallery: response.data.mediaGallery,
+          },
+        });
+        toast.success(`${files.length} image(s) uploaded successfully`);
+        // Reload completion percentage and suggestions
+        if (onCompletionUpdate) {
+          try {
+            const completionResponse = await getCompanyProfileCompletion();
+            if (completionResponse.success) {
+              onCompletionUpdate(
+                completionResponse.data.completion || 0,
+                completionResponse.data.suggestions || []
+              );
+            }
+          } catch (error) {
+            console.error("Failed to fetch completion:", error);
+          }
+        }
+      } else {
+        toast.error(response.message || "Failed to upload images");
+      }
+    } catch (error: any) {
+      console.error("Error uploading media images:", error);
+      toast.error(error.message || "Failed to upload images");
+    } finally {
+      setUploadingMedia(false);
+      // Reset file input
+      event.target.value = "";
+    }
+  };
+
+  const handleRemoveMediaItem = (index: number) => {
+    const current = value.customerProfile?.mediaGallery || [];
+    const updated = current.filter((_, i) => i !== index);
+    handleArrayInput("mediaGallery", updated);
+    
+    // Optionally, we could also delete the file from the server here
+    // For now, we just remove it from the array
+  };
+
+  const handleDownloadMedia = (url: string) => {
+    // Check if it's a local file path or external URL
+    const isLocalPath = url.startsWith("/uploads/") || url.startsWith("uploads/");
+    const downloadUrl = isLocalPath 
+      ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${url.startsWith("/") ? "" : "/"}${url}`
+      : url;
+    
+    // Create a temporary anchor element to trigger download
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = url.split("/").pop() || "image";
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getMediaUrl = (url: string) => {
+    if (!url) return "";
+    
+    // Check if it's a local file path or external URL
+    const isLocalPath = url.startsWith("/uploads/") || url.startsWith("uploads/");
+    if (isLocalPath) {
+      // Normalize the path
+      const normalizedPath = url.replace(/\\/g, "/");
+      const cleanPath = normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`;
+      // Match the pattern used for profile images - ensure we have the full URL
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+      return `${apiBase}${cleanPath}`;
+    }
+    // For external URLs, return as-is
+    return url;
+  };
+  
+  const openLightbox = (index: number) => {
+    setCurrentImageIndex(index);
+    setLightboxOpen(true);
+  };
+  
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+  };
+  
+  const goToPrevious = () => {
+    const images = value.customerProfile?.mediaGallery || [];
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  };
+  
+  const goToNext = () => {
+    const images = value.customerProfile?.mediaGallery || [];
+    setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  };
+  
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        const images = value.customerProfile?.mediaGallery || [];
+        setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+      } else if (e.key === "ArrowRight") {
+        const images = value.customerProfile?.mediaGallery || [];
+        setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+      } else if (e.key === "Escape") {
+        setLightboxOpen(false);
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxOpen, value.customerProfile?.mediaGallery]);
+
+  const isImageUrl = (url: string) => {
+    if (!url) return false;
+    // Check if it's an image file extension or data URL
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes("image") || url.startsWith("data:image");
   };
 
   // Popular categories and values (same as registration form)
@@ -637,56 +824,141 @@ export default function CompanyInfo({ value, onChange, isEditing }: Props) {
           <div className="space-y-4">
             <Label>Media Gallery</Label>
             <p className="text-sm text-gray-600">
-              Add URLs to images, videos, or other media showcasing your company
+              Upload images or add URLs to showcase your company
             </p>
             {isEditing ? (
               <>
-                <div className="flex gap-2">
-                  <Input
-                    value={newMediaUrl}
-                    onChange={(e) => setNewMediaUrl(e.target.value)}
-                    type="url"
-                    placeholder="https://example.com/image1.jpg"
-                    onKeyPress={(e) =>
-                      e.key === "Enter" &&
-                      (e.preventDefault(), handleAddMediaUrl())
-                    }
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleAddMediaUrl}
-                    variant="outline"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                {/* File Upload Section */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Upload Images</Label>
+                    <span className="text-xs text-gray-500">
+                      {value.customerProfile?.mediaGallery?.length || 0} / 10 images
+                    </span>
+                  </div>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      onChange={handleMediaImageUpload}
+                      className="hidden"
+                      id="media-upload"
+                      disabled={uploadingMedia || (value.customerProfile?.mediaGallery?.length || 0) >= 10}
+                    />
+                    <label 
+                      htmlFor="media-upload" 
+                      className={`cursor-pointer ${(value.customerProfile?.mediaGallery?.length || 0) >= 10 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {uploadingMedia ? (
+                        <div className="flex flex-col items-center">
+                          <Loader2 className="w-8 h-8 animate-spin text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-600">Uploading images...</p>
+                        </div>
+                      ) : (
+                        <>
+                          <ImageIcon className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-600">
+                            {(value.customerProfile?.mediaGallery?.length || 0) >= 10 
+                              ? "Maximum 10 images reached" 
+                              : "Click to upload images or drag and drop"}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            JPEG, PNG, GIF, WebP (Max 10MB each, Max 10 images)
+                          </p>
+                        </>
+                      )}
+                    </label>
+                  </div>
                 </div>
 
+                {/* URL Input Section */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Or Add URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newMediaUrl}
+                      onChange={(e) => setNewMediaUrl(e.target.value)}
+                      type="url"
+                      placeholder="https://example.com/image1.jpg"
+                      disabled={(value.customerProfile?.mediaGallery?.length || 0) >= 10}
+                      onKeyPress={(e) =>
+                        e.key === "Enter" &&
+                        (e.preventDefault(), handleAddMediaUrl())
+                      }
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleAddMediaUrl}
+                      variant="outline"
+                      disabled={(value.customerProfile?.mediaGallery?.length || 0) >= 10}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {(value.customerProfile?.mediaGallery?.length || 0) >= 10 && (
+                    <p className="text-xs text-red-600">Maximum 10 images reached. Remove some images to add more.</p>
+                  )}
+                </div>
+
+                {/* Media Gallery Display */}
                 {value.customerProfile?.mediaGallery && value.customerProfile.mediaGallery.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">
-                      Media URLs ({value.customerProfile.mediaGallery.length})
+                      Media Gallery ({value.customerProfile.mediaGallery.length})
                     </Label>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {value.customerProfile.mediaGallery.map((url, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 border rounded-lg"
+                          className="relative group border rounded-lg overflow-hidden bg-gray-50"
                         >
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-700 text-sm truncate flex-1"
-                          >
-                            {url}
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => removeArrayItem("mediaGallery", index)}
-                            className="ml-2 text-red-500 hover:text-red-700"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          <div className="w-full h-40 bg-gray-100 relative overflow-hidden cursor-pointer" onClick={() => !isEditing && isImageUrl(url) && openLightbox(index)}>
+                            {isImageUrl(url) ? (
+                              <>
+                                <img
+                                  src={getMediaUrl(url)}
+                                  alt={`Media ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Show placeholder if image fails to load
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = "none";
+                                    const parent = target.parentElement;
+                                    if (parent && !parent.querySelector('.image-placeholder')) {
+                                      const placeholder = document.createElement("div");
+                                      placeholder.className = "image-placeholder w-full h-full flex items-center justify-center bg-gray-200";
+                                      placeholder.innerHTML = '<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                                      parent.appendChild(placeholder);
+                                    }
+                                  }}
+                                />
+                                {isEditing && (
+                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center gap-2 pointer-events-none">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveMediaItem(index);
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white p-2 rounded transition-opacity pointer-events-auto"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ImageIcon className="w-8 h-8 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-2 bg-white border-t">
+                            <p className="text-xs text-gray-600 truncate" title={url}>
+                              {url.split("/").pop() || `Media ${index + 1}`}
+                            </p>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -696,35 +968,159 @@ export default function CompanyInfo({ value, onChange, isEditing }: Props) {
                 {(!value.customerProfile?.mediaGallery || value.customerProfile.mediaGallery.length === 0) && (
                   <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
                     <ImageIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>No media URLs added yet</p>
+                    <p>No media added yet</p>
                     <p className="text-sm">
-                      Add URLs to showcase your company's visual content
+                      Upload images or add URLs to showcase your company's visual content
                     </p>
                   </div>
                 )}
               </>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 {value.customerProfile?.mediaGallery && value.customerProfile.mediaGallery.length > 0 ? (
-                  value.customerProfile.mediaGallery.map((url, index) => (
-                    <a
-                      key={index}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-blue-600 hover:underline"
-                    >
-                      {url}
-                    </a>
-                  ))
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {value.customerProfile.mediaGallery.map((url, index) => (
+                      <div
+                        key={index}
+                        className="relative group border rounded-lg overflow-hidden bg-gray-50 hover:shadow-lg transition-shadow"
+                      >
+                        <div className="w-full h-64 bg-gray-100 relative overflow-hidden cursor-pointer" onClick={() => isImageUrl(url) && openLightbox(index)}>
+                          {isImageUrl(url) ? (
+                            <>
+                              <img
+                                src={getMediaUrl(url)}
+                                alt={`Media ${index + 1}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Show placeholder if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = "none";
+                                  const parent = target.parentElement;
+                                  if (parent && !parent.querySelector('.image-placeholder')) {
+                                    const placeholder = document.createElement("div");
+                                    placeholder.className = "image-placeholder w-full h-full flex items-center justify-center bg-gray-200";
+                                    placeholder.innerHTML = '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                                    parent.appendChild(placeholder);
+                                  }
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center pointer-events-none">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownloadMedia(url);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"
+                                >
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Download
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageIcon className="w-12 h-12 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2 bg-white border-t">
+                          <p className="text-xs text-gray-600 truncate" title={url}>
+                            {url.split("/").pop() || `Media ${index + 1}`}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <span className="text-sm text-gray-500">No media URLs added</span>
+                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                    <ImageIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No media added</p>
+                  </div>
                 )}
               </div>
             )}
         </div>
       </CardContent>
     </Card>
+    
+    {/* Lightbox Dialog */}
+    <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+      <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] p-0 bg-black/95 border-none">
+        {value.customerProfile?.mediaGallery && value.customerProfile.mediaGallery.length > 0 && (
+          <div className="relative w-full h-full flex items-center justify-center min-h-[500px]">
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-50 text-white hover:bg-white/20 rounded-full"
+              onClick={closeLightbox}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            
+            {/* Previous Button - Always visible when multiple images */}
+            {value.customerProfile.mediaGallery.length > 1 && (
+              <Button
+                variant="default"
+                size="icon"
+                className="absolute left-2 z-50 bg-white/90 hover:bg-white text-gray-900 shadow-lg rounded-full w-12 h-12"
+                onClick={goToPrevious}
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </Button>
+            )}
+            
+            {/* Next Button - Always visible when multiple images */}
+            {value.customerProfile.mediaGallery.length > 1 && (
+              <Button
+                variant="default"
+                size="icon"
+                className="absolute right-2 z-50 bg-white/90 hover:bg-white text-gray-900 shadow-lg rounded-full w-12 h-12"
+                onClick={goToNext}
+              >
+                <ChevronRight className="w-6 h-6" />
+              </Button>
+            )}
+            
+            {/* Image Display */}
+            <div className="w-full h-full flex items-center justify-center p-4 md:p-8">
+              {isImageUrl(value.customerProfile.mediaGallery[currentImageIndex]) ? (
+                <img
+                  src={getMediaUrl(value.customerProfile.mediaGallery[currentImageIndex])}
+                  alt={`Media ${currentImageIndex + 1}`}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.image-placeholder')) {
+                      const placeholder = document.createElement("div");
+                      placeholder.className = "image-placeholder w-full h-full flex items-center justify-center text-white";
+                      placeholder.innerHTML = '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                      parent.appendChild(placeholder);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white">
+                  <ImageIcon className="w-24 h-24 text-gray-400" />
+                </div>
+              )}
+            </div>
+            
+            {/* Image Counter */}
+            {value.customerProfile.mediaGallery.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
+                {currentImageIndex + 1} / {value.customerProfile.mediaGallery.length}
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
     </div>
   );
 }

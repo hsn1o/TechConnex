@@ -11,16 +11,17 @@ import { Mail, Phone, MapPin, Camera, Globe, X, Plus, Loader2 } from "lucide-rea
 import { Separator } from "@/components/ui/separator";
 import { useState, useRef } from "react";
 import type { ProfileData } from "../types";
-import { uploadCompanyProfileImage } from "@/lib/api";
+import { uploadCompanyProfileImage, getCompanyProfileCompletion } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 type Props = {
   value: ProfileData;
   onChange: (next: ProfileData) => void;
   isEditing: boolean;
+  onCompletionUpdate?: (completion: number, suggestions: string[]) => void;
 };
 
-export default function ProfileOverview({ value, onChange, isEditing }: Props) {
+export default function ProfileOverview({ value, onChange, isEditing, onCompletionUpdate }: Props) {
   const [newSocialUrl, setNewSocialUrl] = useState("");
   const [newLanguage, setNewLanguage] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -108,6 +109,20 @@ export default function ProfileOverview({ value, onChange, isEditing }: Props) {
         title: "Success",
         description: "Profile image uploaded successfully",
       });
+      // Reload completion percentage and suggestions
+      if (onCompletionUpdate) {
+        try {
+          const completionResponse = await getCompanyProfileCompletion();
+          if (completionResponse.success) {
+            onCompletionUpdate(
+              completionResponse.data.completion || 0,
+              completionResponse.data.suggestions || []
+            );
+          }
+        } catch (error) {
+          console.error("Failed to fetch completion:", error);
+        }
+      }
     } catch (error: any) {
       toast({
         title: "Upload failed",

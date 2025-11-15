@@ -61,6 +61,11 @@ class CompanyProfileDto {
       errors.push("Annual revenue cannot be negative");
     }
 
+    // Validate mediaGallery array length (max 10 images)
+    if (Array.isArray(this.mediaGallery) && this.mediaGallery.length > 10) {
+      errors.push("Media gallery cannot contain more than 10 images");
+    }
+
     if (errors.length > 0) {
       throw new Error(errors.join(", "));
     }
@@ -172,6 +177,11 @@ class CompanyProfileUpdateDto {
       errors.push("Annual revenue cannot be negative");
     }
 
+    // Validate mediaGallery array length (max 10 images)
+    if (this.mediaGallery !== undefined && Array.isArray(this.mediaGallery) && this.mediaGallery.length > 10) {
+      errors.push("Media gallery cannot contain more than 10 images");
+    }
+
     if (errors.length > 0) {
       throw new Error(errors.join(", "));
     }
@@ -227,7 +237,18 @@ class CompanyProfileUpdateDto {
         } else if (key === 'socialLinks' && Array.isArray(this[key])) {
           updateData[key] = this[key].map(link => typeof link === 'string' ? this.normalizeUrl(link) : link);
         } else if (key === 'mediaGallery' && Array.isArray(this[key])) {
-          updateData[key] = this[key].map(url => typeof url === 'string' ? this.normalizeUrl(url) : url);
+          // Don't normalize file paths (starting with /uploads/ or uploads/), only normalize external URLs
+          updateData[key] = this[key].map(url => {
+            if (typeof url === 'string') {
+              // Check if it's a file path (local upload)
+              if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
+                return url; // Keep file path as-is
+              }
+              // Otherwise, it's an external URL, normalize it
+              return this.normalizeUrl(url);
+            }
+            return url;
+          });
         } else {
           updateData[key] = this[key];
         }

@@ -48,6 +48,10 @@ import {
   Send,
   Paperclip,
   Loader2,
+  Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import type { Company, Review } from "./types";
 import { useRouter } from "next/navigation";
@@ -82,6 +86,10 @@ export default function CompanyDetailClient({
   const [saved, setSaved] = useState<boolean>(!!company.saved);
   const router = useRouter();
   
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
   // Opportunities state
   const [opportunities, setOpportunities] = useState<any[]>([]);
   const [loadingOpportunities, setLoadingOpportunities] = useState(true);
@@ -102,8 +110,70 @@ export default function CompanyDetailClient({
     timelineUnit?: string;
     coverLetter?: string;
     milestones?: string;
-    attachments?: string;
   }>({});
+  
+  // Helper functions for media gallery
+  const getMediaUrl = (url: string) => {
+    if (!url) return "";
+    
+    // Check if it's a local file path or external URL
+    const isLocalPath = url.startsWith("/uploads/") || url.startsWith("uploads/");
+    if (isLocalPath) {
+      // Normalize the path
+      const normalizedPath = url.replace(/\\/g, "/");
+      const cleanPath = normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`;
+      // Construct full URL
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+      return `${apiBase}${cleanPath}`;
+    }
+    // For external URLs, return as-is
+    return url;
+  };
+  
+  const isImageUrl = (url: string) => {
+    if (!url) return false;
+    // Check if it's an image file extension or data URL
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes("image") || url.startsWith("data:image");
+  };
+  
+  const openLightbox = (index: number) => {
+    setCurrentImageIndex(index);
+    setLightboxOpen(true);
+  };
+  
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+  };
+  
+  const goToPrevious = () => {
+    const images = company.mediaGallery || [];
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  };
+  
+  const goToNext = () => {
+    const images = company.mediaGallery || [];
+    setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  };
+  
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        const images = company.mediaGallery || [];
+        setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+      } else if (e.key === "ArrowRight") {
+        const images = company.mediaGallery || [];
+        setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+      } else if (e.key === "Escape") {
+        setLightboxOpen(false);
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxOpen, company.mediaGallery]);
 
   // Update saved state when company prop changes (e.g., after refresh)
   useEffect(() => {
@@ -396,6 +466,59 @@ export default function CompanyDetailClient({
               )}
             </CardContent>
           </Card>
+
+          {/* Media Gallery */}
+          {company.mediaGallery && company.mediaGallery.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Media Gallery</CardTitle>
+                <CardDescription>Company images and visual content</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {company.mediaGallery.map((url, index) => (
+                    <div
+                      key={index}
+                      className="relative group border rounded-lg overflow-hidden bg-gray-50 hover:shadow-lg transition-shadow cursor-pointer"
+                      onClick={() => isImageUrl(url) && openLightbox(index)}
+                    >
+                      <div className="w-full h-48 bg-gray-100 relative overflow-hidden">
+                        {isImageUrl(url) ? (
+                          <img
+                            src={getMediaUrl(url)}
+                            alt={`Company media ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Show placeholder if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              const parent = target.parentElement;
+                              if (parent && !parent.querySelector('.image-placeholder')) {
+                                const placeholder = document.createElement("div");
+                                placeholder.className = "image-placeholder w-full h-full flex items-center justify-center bg-gray-200";
+                                placeholder.innerHTML = '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                                parent.appendChild(placeholder);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon className="w-12 h-12 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity" />
+                      </div>
+                      <div className="p-2 bg-white border-t">
+                        <p className="text-xs text-gray-600 truncate" title={url}>
+                          {url.split("/").pop() || `Media ${index + 1}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Reviews */}
           <Card>
@@ -1104,6 +1227,82 @@ export default function CompanyDetailClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Media Gallery Lightbox */}
+      {company.mediaGallery && company.mediaGallery.length > 0 && (
+        <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+          <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] p-0 bg-black/95 border-none">
+            <div className="relative w-full h-full flex items-center justify-center min-h-[500px]">
+              {/* Close Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 z-50 text-white hover:bg-white/20 rounded-full"
+                onClick={closeLightbox}
+              >
+                <X className="w-5 h-5" />
+              </Button>
+              
+              {/* Previous Button */}
+              {company.mediaGallery.length > 1 && (
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="absolute left-2 z-50 bg-white/90 hover:bg-white text-gray-900 shadow-lg rounded-full w-12 h-12"
+                  onClick={goToPrevious}
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </Button>
+              )}
+              
+              {/* Next Button */}
+              {company.mediaGallery.length > 1 && (
+                <Button
+                  variant="default"
+                  size="icon"
+                  className="absolute right-2 z-50 bg-white/90 hover:bg-white text-gray-900 shadow-lg rounded-full w-12 h-12"
+                  onClick={goToNext}
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </Button>
+              )}
+              
+              {/* Image Display */}
+              <div className="w-full h-full flex items-center justify-center p-4 md:p-8">
+                {isImageUrl(company.mediaGallery[currentImageIndex]) ? (
+                  <img
+                    src={getMediaUrl(company.mediaGallery[currentImageIndex])}
+                    alt={`Company media ${currentImageIndex + 1}`}
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.image-placeholder')) {
+                        const placeholder = document.createElement("div");
+                        placeholder.className = "image-placeholder w-full h-full flex items-center justify-center text-white";
+                        placeholder.innerHTML = '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                        parent.appendChild(placeholder);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white">
+                    <ImageIcon className="w-24 h-24 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              
+              {/* Image Counter */}
+              {company.mediaGallery.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
+                  {currentImageIndex + 1} / {company.mediaGallery.length}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

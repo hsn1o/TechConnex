@@ -129,11 +129,11 @@ class ProviderProfileService {
     }
   }
 
-  // Get profile completion
+  // Get profile completion with suggestions
   static async getProfileCompletion(userId) {
     try {
-      const completion = await ProviderProfileModel.getProfileCompletion(userId);
-      return { completion };
+      const completionData = await ProviderProfileModel.getProfileCompletion(userId);
+      return completionData;
     } catch (error) {
       throw new Error(`Failed to get provider profile completion: ${error.message}`);
     }

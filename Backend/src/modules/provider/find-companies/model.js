@@ -165,6 +165,26 @@ export async function findCompanies(filters) {
     prisma.user.count({ where }),
   ]);
 
+  // Calculate projectsPosted dynamically for each company
+  const companyIds = companies.map(c => c.id);
+  const projectsPostedCounts = await prisma.serviceRequest.groupBy({
+    by: ['customerId'],
+    where: {
+      customerId: {
+        in: companyIds,
+      },
+    },
+    _count: {
+      id: true,
+    },
+  });
+
+  // Create a map for quick lookup
+  const projectsPostedMap = new Map();
+  projectsPostedCounts.forEach(item => {
+    projectsPostedMap.set(item.customerId, item._count.id);
+  });
+
   // If userId is provided, check saved status for each company
   let companiesWithSavedStatus = companies;
   if (userId) {
@@ -173,7 +193,7 @@ export async function findCompanies(filters) {
       where: {
         userId: userId,
         companyId: {
-          in: companies.map(c => c.id),
+          in: companyIds,
         },
       },
       select: {
@@ -183,16 +203,24 @@ export async function findCompanies(filters) {
 
     const savedIdsSet = new Set(savedCompanyIds.map(sc => sc.companyId));
 
-    // Add isSaved property to each company
+    // Add isSaved property and update projectsPosted with calculated value
     companiesWithSavedStatus = companies.map(company => ({
       ...company,
       isSaved: savedIdsSet.has(company.id),
+      customerProfile: company.customerProfile ? {
+        ...company.customerProfile,
+        projectsPosted: projectsPostedMap.get(company.id) || 0,
+      } : null,
     }));
   } else {
-    // If no userId, set isSaved to false for all
+    // If no userId, set isSaved to false for all and update projectsPosted
     companiesWithSavedStatus = companies.map(company => ({
       ...company,
       isSaved: false,
+      customerProfile: company.customerProfile ? {
+        ...company.customerProfile,
+        projectsPosted: projectsPostedMap.get(company.id) || 0,
+      } : null,
     }));
   }
 
@@ -252,6 +280,13 @@ export async function getCompanyById(companyId, userId = null) {
     throw new Error("Company not found");
   }
 
+  // Calculate projectsPosted dynamically
+  const projectsPostedCount = await prisma.serviceRequest.count({
+    where: {
+      customerId: companyId,
+    },
+  });
+
   // Check if saved by user
   let isSaved = false;
   if (userId) {
@@ -269,6 +304,10 @@ export async function getCompanyById(companyId, userId = null) {
   return {
     ...company,
     isSaved,
+    customerProfile: company.customerProfile ? {
+      ...company.customerProfile,
+      projectsPosted: projectsPostedCount,
+    } : null,
   };
 }
 
@@ -413,10 +452,35 @@ export async function getSavedCompanies(userId, page = 1, limit = 20) {
     }),
   ]);
 
+  // Calculate projectsPosted dynamically for each saved company
+  const companyIds = savedCompanies.map(sc => sc.company.id);
+  const projectsPostedCounts = companyIds.length > 0 ? await prisma.serviceRequest.groupBy({
+    by: ['customerId'],
+    where: {
+      customerId: {
+        in: companyIds,
+      },
+    },
+    _count: {
+      id: true,
+    },
+  }) : [];
+
+  // Create a map for quick lookup
+  const projectsPostedMap = new Map();
+  projectsPostedCounts.forEach(item => {
+    projectsPostedMap.set(item.customerId, item._count.id);
+  });
+
   return {
     companies: savedCompanies.map((sc) => ({
       ...sc.company,
       savedAt: sc.createdAt,
+      isSaved: true,
+      customerProfile: sc.company.customerProfile ? {
+        ...sc.company.customerProfile,
+        projectsPosted: projectsPostedMap.get(sc.company.id) || 0,
+      } : null,
     })),
     total,
     page,

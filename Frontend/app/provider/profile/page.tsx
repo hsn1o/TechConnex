@@ -74,6 +74,7 @@ export default function ProviderProfilePage() {
     completion: 0,
   })
   const [profileCompletion, setProfileCompletion] = useState(0)
+  const [completionSuggestions, setCompletionSuggestions] = useState<string[]>([])
   const { toast } = useToast()
   
   // State for input fields (similar to registration form)
@@ -154,7 +155,8 @@ export default function ProviderProfilePage() {
         }
 
         if (completionResponse.success) {
-          setProfileCompletion(completionResponse.data.completion)
+          setProfileCompletion(completionResponse.data.completion || 0)
+          setCompletionSuggestions(completionResponse.data.suggestions || [])
         }
       } catch (error) {
         console.error("Error loading profile data:", error)
@@ -247,10 +249,11 @@ export default function ProviderProfilePage() {
           description: "Profile updated successfully",
         })
         setIsEditing(false)
-        // Reload completion percentage
+        // Reload completion percentage and suggestions
         const completionResponse = await getProviderProfileCompletion()
         if (completionResponse.success) {
-          setProfileCompletion(completionResponse.data.completion)
+          setProfileCompletion(completionResponse.data.completion || 0)
+          setCompletionSuggestions(completionResponse.data.suggestions || [])
         }
       }
     } catch (error) {
@@ -429,6 +432,12 @@ export default function ProviderProfilePage() {
         title: "Success",
         description: "Profile image uploaded successfully",
       })
+      // Reload completion percentage and suggestions
+      const completionResponse = await getProviderProfileCompletion()
+      if (completionResponse.success) {
+        setProfileCompletion(completionResponse.data.completion || 0)
+        setCompletionSuggestions(completionResponse.data.suggestions || [])
+      }
     } catch (error: any) {
       toast({
         title: "Upload failed",
@@ -537,6 +546,12 @@ export default function ProviderProfilePage() {
           if (certsResponse.success && certsResponse.data) {
             setCertifications(certsResponse.data);
           }
+          // Reload completion percentage and suggestions
+          const completionResponse = await getProviderProfileCompletion()
+          if (completionResponse.success) {
+            setProfileCompletion(completionResponse.data.completion || 0)
+            setCompletionSuggestions(completionResponse.data.suggestions || [])
+          }
         }
       } else {
         // Create new certification
@@ -550,6 +565,12 @@ export default function ProviderProfilePage() {
           const certsResponse = await getMyCertifications();
           if (certsResponse.success && certsResponse.data) {
             setCertifications(certsResponse.data);
+          }
+          // Reload completion percentage and suggestions
+          const completionResponse = await getProviderProfileCompletion()
+          if (completionResponse.success) {
+            setProfileCompletion(completionResponse.data.completion || 0)
+            setCompletionSuggestions(completionResponse.data.suggestions || [])
           }
         }
       }
@@ -594,6 +615,12 @@ export default function ProviderProfilePage() {
         const certsResponse = await getMyCertifications();
         if (certsResponse.success && certsResponse.data) {
           setCertifications(certsResponse.data);
+        }
+        // Reload completion percentage and suggestions
+        const completionResponse = await getProviderProfileCompletion()
+        if (completionResponse.success) {
+          setProfileCompletion(completionResponse.data.completion || 0)
+          setCompletionSuggestions(completionResponse.data.suggestions || [])
         }
       }
     } catch (error: any) {
@@ -695,11 +722,26 @@ export default function ProviderProfilePage() {
                 <p className="text-2xl font-bold text-blue-600">{profileCompletion}%</p>
               </div>
             </div>
-            <Progress value={profileCompletion} className="h-2" />
-            <div className="flex flex-wrap gap-2 mt-4">
-              <Badge className="bg-blue-100 text-blue-800">Add more portfolio items</Badge>
-              <Badge className="bg-blue-100 text-blue-800">Upload profile video</Badge>
-            </div>
+            <Progress value={profileCompletion} className="h-2 mb-4" />
+            {completionSuggestions.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-blue-900 mb-2">To complete your profile:</p>
+                <ul className="space-y-1">
+                  {completionSuggestions.map((suggestion, index) => (
+                    <li key={index} className="text-sm text-blue-700 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <span>{suggestion}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {profileCompletion === 100 && (
+              <div className="mt-4 flex items-center gap-2 text-green-700">
+                <CheckCircle className="w-5 h-5" />
+                <span className="text-sm font-medium">Your profile is complete! 🎉</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

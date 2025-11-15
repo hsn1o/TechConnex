@@ -15,9 +15,11 @@ import {
   getUserWithKycData,
   getComprehensiveProfile,
   uploadProfileImage,
+  uploadMediaGalleryImages,
 } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 import { uploadProfileImage as uploadProfileImageMiddleware } from "../../../middlewares/uploadProfileImage.js";
+import { uploadCompanyMedia } from "../../../middlewares/uploadCompanyMedia.js";
 
 const router = express.Router();
 
@@ -27,6 +29,7 @@ router.post("/", authenticateToken, createProfile);
 router.put("/", authenticateToken, updateProfile);
 router.patch("/", authenticateToken, upsertProfile);
 router.post("/upload-image", authenticateToken, uploadProfileImageMiddleware, uploadProfileImage);
+router.post("/upload-media", authenticateToken, uploadCompanyMedia, uploadMediaGalleryImages);
 router.get("/completion", authenticateToken, getProfileCompletion);
 router.get("/stats", authenticateToken, getProfileStats);
 router.get("/comprehensive", authenticateToken, getComprehensiveProfile);

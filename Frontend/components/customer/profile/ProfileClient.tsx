@@ -8,13 +8,16 @@ import type {
   DocumentType,
 } from "./types";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, Edit, Loader2 } from "lucide-react";
+import { Save, Edit, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   upsertCompanyProfile,
   getCompanyProfile,
   getKycDocuments,
+  getCompanyProfileCompletion,
 } from "@/lib/api";
 
 import ProfileOverview from "./sections/ProfileOverview";
@@ -49,6 +52,8 @@ export default function ProfileClient(props: Props = {}) {
   const [statsState, setStatsState] = useState<Stats | null>(
     initialStats ?? null
   );
+  const [profileCompletion, setProfileCompletion] = useState(0);
+  const [completionSuggestions, setCompletionSuggestions] = useState<string[]>([]);
 
   const documentTypes: DocumentType[] = initialDocumentTypes ?? [
     {
@@ -149,6 +154,16 @@ export default function ProfileClient(props: Props = {}) {
         title: "Profile Updated",
         description: "Your profile has been successfully updated.",
       });
+      // Reload completion percentage and suggestions
+      try {
+        const completionResponse = await getCompanyProfileCompletion();
+        if (completionResponse.success) {
+          setProfileCompletion(completionResponse.data.completion || 0);
+          setCompletionSuggestions(completionResponse.data.suggestions || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch completion:", error);
+      }
     } catch (error) {
       console.error("Failed to save profile:", error);
       toast({
@@ -168,26 +183,36 @@ export default function ProfileClient(props: Props = {}) {
 
     setIsLoading(true);
     (async () => {
-      try {
-        const profileResp = await getCompanyProfile();
-        if (profileResp?.data) setProfile(profileResp.data);
+        try {
+          const [profileResp, completionResp] = await Promise.all([
+            getCompanyProfile(),
+            getCompanyProfileCompletion(),
+          ]);
+          
+          if (profileResp?.data) setProfile(profileResp.data);
 
-        if (profileResp?.data) {
-          const pd = profileResp.data as ProfileData;
-          const computed: Stats = {
-            projectsPosted: pd.customerProfile?.projectsPosted || 0,
-            rating: pd.customerProfile?.rating || 0,
-            reviewCount: pd.customerProfile?.reviewCount || 0,
-            totalSpend: pd.customerProfile?.totalSpend || "0",
-            completion: pd.customerProfile?.completion || 0,
-            lastActiveAt: pd.customerProfile?.lastActiveAt || "",
-            memberSince: new Date(pd.createdAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-            }),
-          };
-          setStatsState(computed);
-        }
+          if (profileResp?.data) {
+            const pd = profileResp.data as ProfileData;
+            const computed: Stats = {
+              projectsPosted: pd.customerProfile?.projectsPosted || 0,
+              rating: pd.customerProfile?.rating || 0,
+              reviewCount: pd.customerProfile?.reviewCount || 0,
+              totalSpend: pd.customerProfile?.totalSpend || "0",
+              completion: pd.customerProfile?.completion || 0,
+              lastActiveAt: pd.customerProfile?.lastActiveAt || "",
+              memberSince: new Date(pd.createdAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+              }),
+            };
+            setStatsState(computed);
+          }
+
+          // Set completion and suggestions
+          if (completionResp?.success) {
+            setProfileCompletion(completionResp.data.completion || 0);
+            setCompletionSuggestions(completionResp.data.suggestions || []);
+          }
 
         try {
           const kycResp = await getKycDocuments();
@@ -313,6 +338,41 @@ export default function ProfileClient(props: Props = {}) {
         </div>
       </div>
 
+      {/* Profile Completion */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-semibold text-blue-900">Profile Completion</h3>
+              <p className="text-sm text-blue-700">Complete your profile to attract more providers</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-600">{profileCompletion}%</p>
+            </div>
+          </div>
+          <Progress value={profileCompletion} className="h-2 mb-4" />
+          {completionSuggestions.length > 0 && (
+            <div className="mt-4">
+              <p className="text-sm font-medium text-blue-900 mb-2">To complete your profile:</p>
+              <ul className="space-y-1">
+                {completionSuggestions.map((suggestion, index) => (
+                  <li key={index} className="text-sm text-blue-700 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{suggestion}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {profileCompletion === 100 && (
+            <div className="mt-4 flex items-center gap-2 text-green-700">
+              <CheckCircle className="w-5 h-5" />
+              <span className="text-sm font-medium">Your profile is complete! 🎉</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile">Profile</TabsTrigger>
@@ -325,6 +385,10 @@ export default function ProfileClient(props: Props = {}) {
             value={profile as ProfileData}
             onChange={setProfile}
             isEditing={isEditing}
+            onCompletionUpdate={(completion, suggestions) => {
+              setProfileCompletion(completion);
+              setCompletionSuggestions(suggestions);
+            }}
           />
           <ProfileStatsCard
             stats={
@@ -346,6 +410,10 @@ export default function ProfileClient(props: Props = {}) {
             value={profile as ProfileData}
             onChange={setProfile}
             isEditing={isEditing}
+            onCompletionUpdate={(completion, suggestions) => {
+              setProfileCompletion(completion);
+              setCompletionSuggestions(suggestions);
+            }}
           />
         </TabsContent>
 
