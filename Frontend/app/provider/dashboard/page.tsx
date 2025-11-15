@@ -15,7 +15,7 @@ import {
   DollarSign,
   Star,
   Briefcase,
-  TrendingUp,
+  CheckCircle,
   MessageSquare,
   Eye,
   ThumbsUp,
@@ -62,7 +62,6 @@ export default function ProviderDashboard() {
     totalEarnings: 0,
     rating: "0",
     responseRate: 0,
-    profileViews: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -100,7 +99,6 @@ export default function ProviderDashboard() {
             totalEarnings: statsResponse.stats.totalEarnings || 0,
             rating: statsResponse.stats.averageRating?.toString() || "0",
             responseRate: 85, // Default value since not available in API
-            profileViews: 0, // Default value since not available in API
           });
         }
 
@@ -306,18 +304,18 @@ export default function ProviderDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">
-                    Profile Views
+                    Completed Projects
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {statsLoading ? (
                       <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
                     ) : (
-                      stats.profileViews
+                      stats.completedProjects
                     )}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </CardContent>

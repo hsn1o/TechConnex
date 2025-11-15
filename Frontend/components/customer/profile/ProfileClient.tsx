@@ -23,7 +23,6 @@ import {
 import ProfileOverview from "./sections/ProfileOverview";
 import CompanyInfo from "./sections/CompanyInfo";
 import VerificationSection from "./sections/VerificationSection";
-import ProfileStatsCard from "./sections/ProfileStatsCard";
 
 type Props = {
   profileData?: ProfileData;
@@ -389,19 +388,7 @@ export default function ProfileClient(props: Props = {}) {
               setProfileCompletion(completion);
               setCompletionSuggestions(suggestions);
             }}
-          />
-          <ProfileStatsCard
-            stats={
-              statsState ?? {
-                projectsPosted: 0,
-                rating: 0,
-                reviewCount: 0,
-                totalSpend: "0",
-                completion: 0,
-                lastActiveAt: "",
-                memberSince: "",
-              }
-            }
+            memberSince={statsState?.memberSince || ""}
           />
         </TabsContent>
 

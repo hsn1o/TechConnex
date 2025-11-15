@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, MapPin, Camera, Globe, X, Plus, Loader2 } from "lucide-react";
+import { Mail, Phone, MapPin, Camera, Globe, X, Plus, Loader2, Calendar } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useState, useRef } from "react";
 import type { ProfileData } from "../types";
@@ -19,9 +19,10 @@ type Props = {
   onChange: (next: ProfileData) => void;
   isEditing: boolean;
   onCompletionUpdate?: (completion: number, suggestions: string[]) => void;
+  memberSince?: string;
 };
 
-export default function ProfileOverview({ value, onChange, isEditing, onCompletionUpdate }: Props) {
+export default function ProfileOverview({ value, onChange, isEditing, onCompletionUpdate, memberSince }: Props) {
   const [newSocialUrl, setNewSocialUrl] = useState("");
   const [newLanguage, setNewLanguage] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -213,6 +214,12 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                   placeholder="Tell us about your company..."
                 />
               </div>
+              {memberSince && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Calendar className="w-4 h-4" />
+                  <span>Member since {memberSince}</span>
+                </div>
+              )}
             </div>
           </div>
 
