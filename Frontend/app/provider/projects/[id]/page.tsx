@@ -217,6 +217,26 @@ export default function ProviderProjectDetailsPage() {
   // Save project milestones
   const handleSaveProjectMilestones = async () => {
     if (!project?.id) return;
+    
+    // Validate due dates before saving
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const invalidMilestones = projectMilestones.filter((m) => {
+      if (!m.dueDate) return true;
+      const dueDate = new Date(m.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    });
+    
+    if (invalidMilestones.length > 0) {
+      toast({
+        title: "Invalid Due Dates",
+        description: "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setSavingMilestones(true);
       const payload = normalizeMilestoneSequences(projectMilestones).map(
@@ -1907,12 +1927,23 @@ export default function ProviderProjectDetailsPage() {
                         <Label className="text-sm font-medium">Due Date</Label>
                         <Input
                           type="date"
+                          min={new Date().toISOString().split('T')[0]}
                           value={(m.dueDate || "").slice(0, 10)}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const selectedDate = e.target.value;
+                            const today = new Date().toISOString().split('T')[0];
+                            if (selectedDate < today) {
+                              toast({
+                                title: "Invalid Date",
+                                description: "Due date cannot be in the past. Please select today or a future date.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
                             updateProjectMilestone(i, {
-                              dueDate: e.target.value,
-                            })
-                          }
+                              dueDate: selectedDate,
+                            });
+                          }}
                         />
                       </div>
                     </div>
@@ -2330,28 +2361,51 @@ export default function ProviderProjectDetailsPage() {
                       <CardTitle className="text-purple-800">Admin Resolution Notes</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {currentDispute.resolutionNotes.map((note: any, index: number) => (
-                        <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Avatar className="w-6 h-6">
-                              <AvatarFallback className="bg-purple-100 text-purple-700">
-                                {note.adminName?.charAt(0) || "A"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">
-                                Resolution Note #{index + 1}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
-                              </p>
+                      {currentDispute.resolutionNotes.map((note: any, index: number) => {
+                        // Check if note contains "--- Admin Note ---" separator
+                        const noteParts = note.note?.split(/\n--- Admin Note ---\n/) || [];
+                        const hasAdminNote = noteParts.length > 1;
+                        const resolutionResult = noteParts[0] || note.note;
+                        const adminNote = noteParts[1];
+                        
+                        return (
+                          <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Avatar className="w-6 h-6">
+                                <AvatarFallback className="bg-purple-100 text-purple-700">
+                                  {note.adminName?.charAt(0) || "A"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  Resolution Note #{index + 1}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="space-y-3 mt-2">
+                              {/* Resolution Result */}
+                              <div>
+                                <p className="text-xs font-semibold text-gray-500 mb-1">Resolution Result:</p>
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                  {resolutionResult}
+                                </p>
+                              </div>
+                              {/* Admin Note (if exists) */}
+                              {hasAdminNote && adminNote && (
+                                <div>
+                                  <p className="text-xs font-semibold text-purple-600 mb-1">Admin Note:</p>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap bg-purple-50 p-2 rounded border-l-2 border-purple-300">
+                                    {adminNote}
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
-                            {note.note}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </CardContent>
                   </Card>
                 )}

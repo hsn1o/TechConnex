@@ -51,6 +51,7 @@ export async function getOpportunities(dto) {
                   logoUrl: true,
                   profileImageUrl: true, // 🆕 Profile image
                   totalSpend: true,
+                  projectsPosted: true, // 🆕 Projects posted count
                 },
               },
             },
@@ -91,13 +92,40 @@ export async function getOpportunities(dto) {
 
     const proposedServiceRequestIds = new Set(existingProposals.map(p => p.serviceRequestId));
 
-    // Add hasProposed flag and filter out already proposed requests
+    // Calculate projectsPosted dynamically for each company
+    const customerIds = [...new Set(serviceRequests.map(sr => sr.customerId))];
+    const projectsPostedCounts = customerIds.length > 0 ? await prisma.serviceRequest.groupBy({
+      by: ['customerId'],
+      where: {
+        customerId: { in: customerIds },
+      },
+      _count: {
+        id: true,
+      },
+    }) : [];
+
+    const projectsPostedMap = new Map();
+    projectsPostedCounts.forEach(item => {
+      projectsPostedMap.set(item.customerId, item._count.id);
+    });
+
+    // Add hasProposed flag, filter out already proposed requests, and update projectsPosted
     const opportunities = serviceRequests
       .filter(sr => !proposedServiceRequestIds.has(sr.id))
-      .map(sr => ({
-        ...sr,
-        hasProposed: false,
-      }));
+      .map(sr => {
+        const projectsPosted = projectsPostedMap.get(sr.customerId) || 0;
+        return {
+          ...sr,
+          hasProposed: false,
+          customer: sr.customer ? {
+            ...sr.customer,
+            customerProfile: sr.customer.customerProfile ? {
+              ...sr.customer.customerProfile,
+              projectsPosted: projectsPosted,
+            } : null,
+          } : null,
+        };
+      });
 
     const totalPages = Math.ceil(total / dto.limit);
 
@@ -142,6 +170,7 @@ export async function getOpportunityById(opportunityId, providerId) {
                 logoUrl: true,
                 profileImageUrl: true, // 🆕 Profile image
                 totalSpend: true,
+                projectsPosted: true, // 🆕 Projects posted count
               },
             },
           },
@@ -171,10 +200,27 @@ export async function getOpportunityById(opportunityId, providerId) {
       },
     });
 
-    return {
+    // Calculate projectsPosted dynamically
+    const projectsPostedCount = await prisma.serviceRequest.count({
+      where: {
+        customerId: serviceRequest.customerId,
+      },
+    });
+
+    // Update customerProfile with calculated projectsPosted
+    const updatedServiceRequest = {
       ...serviceRequest,
       hasProposed: !!existingProposal,
+      customer: serviceRequest.customer ? {
+        ...serviceRequest.customer,
+        customerProfile: serviceRequest.customer.customerProfile ? {
+          ...serviceRequest.customer.customerProfile,
+          projectsPosted: projectsPostedCount,
+        } : null,
+      } : null,
     };
+
+    return updatedServiceRequest;
   } catch (error) {
     console.error("Error fetching opportunity:", error);
     throw new Error("Failed to fetch opportunity");

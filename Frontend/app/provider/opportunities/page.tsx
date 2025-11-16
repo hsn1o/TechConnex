@@ -54,6 +54,7 @@ import { toast } from "sonner";
 import { getProviderOpportunities, sendProposal } from "@/lib/api";
 import { formatTimeline, buildTimelineData, timelineToDays } from "@/lib/timeline-utils";
 import Link from "next/link";
+import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
 
 export default function ProviderOpportunitiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -152,7 +153,7 @@ export default function ProviderOpportunitiesPage() {
                 opportunity.customer?.customerProfile?.location ||
                 "Not specified",
               clientRating: 4.5, // Default rating
-              clientJobs: 10, // Default jobs count
+              projectsPosted: opportunity.customer?.customerProfile?.projectsPosted || 0,
               avatar: (() => {
                 const profile = opportunity.customer?.customerProfile;
                 if (profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg") {
@@ -166,12 +167,17 @@ export default function ProviderOpportunitiesPage() {
               urgent: opportunity.priority === "High",
               verified: true,
               hasSubmitted: opportunity.hasProposed || false,
-              requirements: Array.isArray(opportunity.requirements)
-                ? opportunity.requirements
-                : [],
-              deliverables: Array.isArray(opportunity.deliverables)
-                ? opportunity.deliverables
-                : [],
+              // Convert requirements/deliverables: if array, convert to markdown; if string, use as-is
+              requirements: typeof opportunity.requirements === "string" 
+                ? opportunity.requirements 
+                : (Array.isArray(opportunity.requirements) 
+                  ? opportunity.requirements.map((r: any) => `- ${r}`).join('\n') 
+                  : ""),
+              deliverables: typeof opportunity.deliverables === "string" 
+                ? opportunity.deliverables 
+                : (Array.isArray(opportunity.deliverables) 
+                  ? opportunity.deliverables.map((d: any) => `- ${d}`).join('\n') 
+                  : ""),
               clientInfo: {
                 companySize:
                   opportunity.customer?.customerProfile?.companySize ||
@@ -374,6 +380,16 @@ export default function ProviderOpportunitiesPage() {
         }
         if (!m.dueDate) {
           messages.push(`Milestone #${idx + 1}: due date is required.`);
+        } else {
+          // Validate that due date is not in the past
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const dueDate = new Date(m.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+          
+          if (dueDate < today) {
+            messages.push(`Milestone #${idx + 1}: due date cannot be in the past. Please select today or a future date.`);
+          }
         }
       });
 
@@ -774,7 +790,7 @@ export default function ProviderOpportunitiesPage() {
                                 </span>
                               </div>
                               <span>•</span>
-                              <span>{opportunity.clientJobs} jobs posted</span>
+                              <span>{opportunity.projectsPosted} projects posted</span>
                               <span>•</span>
                               <div className="flex items-center">
                                 <MapPin className="w-3 h-3 mr-1" />
@@ -897,26 +913,22 @@ export default function ProviderOpportunitiesPage() {
                       <h3 className="font-semibold text-lg mb-2">
                         Requirements
                       </h3>
-                      <ul className="list-disc list-inside space-y-1 text-gray-700">
-                        {selectedProject.requirements?.map(
-                          (req: string, index: number) => (
-                            <li key={index}>{req}</li>
-                          )
-                        )}
-                      </ul>
+                      <MarkdownViewer
+                        content={selectedProject.requirements}
+                        emptyMessage="No requirements specified."
+                        className="text-gray-700"
+                      />
                     </div>
 
                     <div>
                       <h3 className="font-semibold text-lg mb-2">
                         Deliverables
                       </h3>
-                      <ul className="list-disc list-inside space-y-1 text-gray-700">
-                        {selectedProject.deliverables?.map(
-                          (deliverable: string, index: number) => (
-                            <li key={index}>{deliverable}</li>
-                          )
-                        )}
-                      </ul>
+                      <MarkdownViewer
+                        content={selectedProject.deliverables}
+                        emptyMessage="No deliverables specified."
+                        className="text-gray-700"
+                      />
                     </div>
                   </div>
 
@@ -994,7 +1006,7 @@ export default function ProviderOpportunitiesPage() {
                             <div className="flex items-center text-sm text-gray-500">
                               <Star className="w-3 h-3 text-yellow-400 mr-1" />
                               {selectedProject.clientRating} (
-                              {selectedProject.clientJobs} jobs)
+                              {selectedProject.projectsPosted} projects)
                             </div>
                           </div>
                         </div>
@@ -1283,12 +1295,19 @@ export default function ProviderOpportunitiesPage() {
                             </label>
                             <Input
                               type="date"
+                              min={new Date().toISOString().split('T')[0]}
                               value={(m.dueDate || "").slice(0, 10)}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const selectedDate = e.target.value;
+                                const today = new Date().toISOString().split('T')[0];
+                                if (selectedDate < today) {
+                                  toast.error("Due date cannot be in the past. Please select today or a future date.");
+                                  return;
+                                }
                                 updateProposalMilestone(i, {
-                                  dueDate: e.target.value,
-                                })
-                              }
+                                  dueDate: selectedDate,
+                                });
+                              }}
                             />
                           </div>
                         </div>

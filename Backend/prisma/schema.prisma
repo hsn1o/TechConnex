@@ -304,8 +304,8 @@ model ServiceRequest {
   timeline     String?
   priority     String?
   ndaSigned    Boolean  @default(false)
-  requirements String[] @default([]) // was: Json
-  deliverables String[] @default([]) // was: Json
+  requirements String?  @db.Text // Markdown text field
+  deliverables String?  @db.Text // Markdown text field
 
   status RequestStatus @default(OPEN)
 
@@ -425,8 +425,8 @@ model Project {
   timeline     String?
   priority     String?
   ndaSigned    Boolean  @default(false)
-  requirements String[] @default([]) // was: Json
-  deliverables String[] @default([]) // was: Json
+  requirements String?  @db.Text // Markdown text field
+  deliverables String?  @db.Text // Markdown text field
 
   status ProjectStatus
 

@@ -38,6 +38,7 @@ import { createProject } from "@/lib/api";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { buildTimelineData } from "@/lib/timeline-utils";
+import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -257,12 +258,6 @@ export default function NewProjectPage() {
   };
 
   const handleSubmit = async () => {
-    const toLines = (s: string) =>
-      s
-        .split(/\r?\n/)
-        .map((x) => x.trim())
-        .filter(Boolean);
-
     // Run client validation
     const isValid = validateForm();
     if (!isValid) {
@@ -294,8 +289,8 @@ export default function NewProjectPage() {
         priority: formData.priority,
         skills: formData.skills,
         ndaSigned: formData.ndaSigned,
-        requirements: toLines(formData.requirements),
-        deliverables: toLines(formData.deliverables),
+        requirements: formData.requirements.trim() || undefined, // Markdown string
+        deliverables: formData.deliverables.trim() || undefined, // Markdown string
       };
 
       const response = await createProject(projectData);
@@ -665,39 +660,21 @@ export default function NewProjectPage() {
                     </Label>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="requirements">
-                      Requirements (one per line)
-                    </Label>
-                    <Textarea
-                      id="requirements"
-                      placeholder={
-                        "Cross-platform app\nUser auth\nPayment integration"
-                      }
-                      value={formData.requirements}
-                      onChange={(e) =>
-                        handleInputChange("requirements", e.target.value)
-                      }
-                      rows={4}
-                    />
-                  </div>
+                  <MarkdownEditor
+                    label="Requirements"
+                    value={formData.requirements}
+                    onChange={(value) => handleInputChange("requirements", value)}
+                    placeholder="Enter project requirements in markdown format...\n\nExample:\n- Cross-platform app\n- User authentication\n- Payment integration"
+                    height={250}
+                  />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="deliverables">
-                      Deliverables (one per line)
-                    </Label>
-                    <Textarea
-                      id="deliverables"
-                      placeholder={
-                        "Source code\nAdmin panel\nAPI docs\nDeployment guide"
-                      }
-                      value={formData.deliverables}
-                      onChange={(e) =>
-                        handleInputChange("deliverables", e.target.value)
-                      }
-                      rows={4}
-                    />
-                  </div>
+                  <MarkdownEditor
+                    label="Deliverables"
+                    value={formData.deliverables}
+                    onChange={(value) => handleInputChange("deliverables", value)}
+                    placeholder="Enter project deliverables in markdown format...\n\nExample:\n- Source code\n- Admin panel\n- API documentation\n- Deployment guide"
+                    height={250}
+                  />
                 </div>
               </CardContent>
             </Card>

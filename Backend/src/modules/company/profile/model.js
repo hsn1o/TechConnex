@@ -321,7 +321,7 @@ class CompanyProfileModel {
           if (!isComplete) {
             suggestionMessage = `Add your ${label.toLowerCase()}`;
           }
-        } else {
+          } else {
           isComplete = value !== null && value !== undefined;
           if (!isComplete) {
             suggestionMessage = `Add your ${label.toLowerCase()}`;

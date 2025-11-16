@@ -192,8 +192,8 @@ export async function createProject(projectData: {
   priority: string;
   skills: string[];
   ndaSigned?: boolean;
-  requirements?: string[];  // ✅ updated to accept arrays
-  deliverables?: string[];  // ✅ updated to accept arrays
+  requirements?: string;  // ✅ Markdown string
+  deliverables?: string;  // ✅ Markdown string
 }) {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
@@ -673,8 +673,8 @@ export async function updateCompanyProject(
     priority: string;
     skills: string[];
     ndaSigned: boolean;
-    requirements: string[];
-    deliverables: string[];
+    requirements: string;  // ✅ Markdown string
+    deliverables: string;  // ✅ Markdown string
   }>
 ) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;

@@ -49,6 +49,16 @@ export class UpsertMilestonesDto {
         const date = new Date(milestone.dueDate)
         if (isNaN(date.getTime())) {
           errors.push(`${prefix}: Due date must be a valid ISO date`)
+        } else {
+          // Validate that due date is not in the past
+          const today = new Date()
+          today.setHours(0, 0, 0, 0) // Set to start of day for comparison
+          const dueDateOnly = new Date(date)
+          dueDateOnly.setHours(0, 0, 0, 0) // Set to start of day for comparison
+          
+          if (dueDateOnly < today) {
+            errors.push(`${prefix}: Due date cannot be in the past. Please select today or a future date.`)
+          }
         }
       }
 

@@ -75,6 +75,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { formatTimeline } from "@/lib/timeline-utils";
 import { createPaymentIntentAPI, finalizePaymentAPI } from "@/lib/api-payment";
+import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
+import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
 
 export default function ProjectDetailsPage({
   params,
@@ -279,6 +281,17 @@ export default function ProjectDetailsPage({
 
   useEffect(() => {
     if (!project) return;
+    // Convert requirements/deliverables: if array, convert to markdown; if string, use as-is
+    const convertToMarkdown = (value: any): string => {
+      if (!value) return "";
+      if (typeof value === "string") return value;
+      if (Array.isArray(value)) {
+        const items = value.map(String).filter(Boolean);
+        return items.length > 0 ? items.map(item => `- ${item}`).join('\n') : "";
+      }
+      return "";
+    };
+    
     setEdit({
       title: project.title ?? "",
       description: project.description ?? "",
@@ -288,8 +301,8 @@ export default function ProjectDetailsPage({
       budgetMin: project.budgetMin?.toString?.() ?? "",
       budgetMax: project.budgetMax?.toString?.() ?? "",
       skills: (Array.isArray(project.skills) ? project.skills : []).join(", "),
-      requirements: toList(project.requirements).join("\n"),
-      deliverables: toList(project.deliverables).join("\n"),
+      requirements: convertToMarkdown(project.requirements),
+      deliverables: convertToMarkdown(project.deliverables),
     });
   }, [project]);
 
@@ -740,8 +753,9 @@ export default function ProjectDetailsPage({
   // Normalize project data to safe arrays to avoid runtime errors
   const safeProject = project ?? {};
   const skills = asArray<string>(safeProject.skills);
-  const requirements = toList(safeProject.requirements);
-  const deliverables = toList(safeProject.deliverables);
+  // Requirements and deliverables are now markdown strings
+  const requirements = typeof safeProject.requirements === "string" ? safeProject.requirements : (Array.isArray(safeProject.requirements) ? safeProject.requirements.map((r: any) => `- ${r}`).join('\n') : "");
+  const deliverables = typeof safeProject.deliverables === "string" ? safeProject.deliverables : (Array.isArray(safeProject.deliverables) ? safeProject.deliverables.map((d: any) => `- ${d}`).join('\n') : "");
   const milestones = asArray<any>(safeProject.milestones);
   const bids = asArray<any>(safeProject.bids);
   const files = asArray<any>(safeProject.files);
@@ -771,10 +785,9 @@ export default function ProjectDetailsPage({
       const skillsArr = toLines(edit.skills);
       if (skillsArr.length) payload.skills = skillsArr;
 
-      const reqArr = toLines(edit.requirements);
-      const delArr = toLines(edit.deliverables);
-      payload.requirements = reqArr; // backend expects string[]
-      payload.deliverables = delArr; // backend expects string[]
+      // Send markdown strings directly
+      if (edit.requirements?.trim()) payload.requirements = edit.requirements.trim();
+      if (edit.deliverables?.trim()) payload.deliverables = edit.deliverables.trim();
 
       const { project: updated } = await updateCompanyProject(
         project.id,
@@ -797,6 +810,26 @@ export default function ProjectDetailsPage({
   // ADD - save draft
   const handleSaveProjectMilestones = async () => {
     if (!project?.id) return;
+    
+    // Validate due dates before saving
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const invalidMilestones = projectMilestones.filter((m) => {
+      if (!m.dueDate) return true;
+      const dueDate = new Date(m.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    });
+    
+    if (invalidMilestones.length > 0) {
+      toast({
+        title: "Invalid Due Dates",
+        description: "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setSavingMilestones(true);
       const payload = normalizeMilestoneSequences(projectMilestones).map(
@@ -1012,6 +1045,26 @@ export default function ProjectDetailsPage({
   // Save milestones after accept (inside modal)
   const handleSaveAcceptedMilestones = async () => {
     if (!activeProjectId) return;
+    
+    // Validate due dates before saving
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const invalidMilestones = milestonesDraft.filter((m) => {
+      if (!m.dueDate) return true;
+      const dueDate = new Date(m.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate < today;
+    });
+    
+    if (invalidMilestones.length > 0) {
+      toast({
+        title: "Invalid Due Dates",
+        description: "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setSavingMilestonesModal(true);
 
@@ -1705,17 +1758,11 @@ export default function ProjectDetailsPage({
                   <CardTitle>Requirements</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2">
-                    {requirements.map((req, index) => (
-                      <li
-                        key={index}
-                        className="flex items-start gap-2 text-sm"
-                      >
-                        <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span>{req}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <MarkdownViewer
+                    content={requirements}
+                    emptyMessage="No requirements specified."
+                    className="text-sm"
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -1725,14 +1772,11 @@ export default function ProjectDetailsPage({
                 <CardTitle>Deliverables</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {deliverables.map((deliverable, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
-                      <FileText className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <span>{deliverable}</span>
-                    </li>
-                  ))}
-                </ul>
+                <MarkdownViewer
+                  content={deliverables}
+                  emptyMessage="No deliverables specified."
+                  className="text-sm"
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -2923,25 +2967,25 @@ export default function ProjectDetailsPage({
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <Label>Requirements (one per line)</Label>
-                <Textarea
-                  rows={4}
-                  placeholder={"Cross-platform app\nUser auth\nPayments"}
+                <MarkdownEditor
+                  label="Requirements"
                   value={edit.requirements}
-                  onChange={(e) =>
-                    setEdit({ ...edit, requirements: e.target.value })
+                  onChange={(value) =>
+                    setEdit({ ...edit, requirements: value })
                   }
+                  placeholder="Enter project requirements in markdown format..."
+                  height={200}
                 />
               </div>
               <div>
-                <Label>Deliverables (one per line)</Label>
-                <Textarea
-                  rows={4}
-                  placeholder={"Source code\nAdmin panel\nAPI docs"}
+                <MarkdownEditor
+                  label="Deliverables"
                   value={edit.deliverables}
-                  onChange={(e) =>
-                    setEdit({ ...edit, deliverables: e.target.value })
+                  onChange={(value) =>
+                    setEdit({ ...edit, deliverables: value })
                   }
+                  placeholder="Enter project deliverables in markdown format..."
+                  height={200}
                 />
               </div>
             </div>
@@ -3003,10 +3047,21 @@ export default function ProjectDetailsPage({
                       <label className="text-sm font-medium">Due Date</label>
                       <Input
                         type="date"
+                        min={new Date().toISOString().split('T')[0]}
                         value={(m.dueDate || "").slice(0, 10)}
-                        onChange={(e) =>
-                          updateProjectMilestone(i, { dueDate: e.target.value })
-                        }
+                        onChange={(e) => {
+                          const selectedDate = e.target.value;
+                          const today = new Date().toISOString().split('T')[0];
+                          if (selectedDate < today) {
+                            toast({
+                              title: "Invalid Date",
+                              description: "Due date cannot be in the past. Please select today or a future date.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          updateProjectMilestone(i, { dueDate: selectedDate });
+                        }}
                       />
                     </div>
                   </div>
@@ -3715,12 +3770,23 @@ export default function ProjectDetailsPage({
                       <Label>Due Date</Label>
                       <Input
                         type="date"
+                        min={new Date().toISOString().split('T')[0]}
                         value={(m.dueDate || "").slice(0, 10)}
                         onChange={(e) => {
+                          const selectedDate = e.target.value;
+                          const today = new Date().toISOString().split('T')[0];
+                          if (selectedDate < today) {
+                            toast({
+                              title: "Invalid Date",
+                              description: "Due date cannot be in the past. Please select today or a future date.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
                           const updated = [...milestonesDraft];
                           updated[i] = {
                             ...updated[i],
-                            dueDate: e.target.value,
+                            dueDate: selectedDate,
                           };
                           setMilestonesDraft(updated);
                         }}
@@ -4246,28 +4312,51 @@ export default function ProjectDetailsPage({
                       <CardTitle className="text-purple-800">Admin Resolution Notes</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {currentDispute.resolutionNotes.map((note: any, index: number) => (
-                        <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Avatar className="w-6 h-6">
-                              <AvatarFallback className="bg-purple-100 text-purple-700">
-                                {note.adminName?.charAt(0) || "A"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">
-                                Resolution Note #{index + 1}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
-                              </p>
+                      {currentDispute.resolutionNotes.map((note: any, index: number) => {
+                        // Check if note contains "--- Admin Note ---" separator
+                        const noteParts = note.note?.split(/\n--- Admin Note ---\n/) || [];
+                        const hasAdminNote = noteParts.length > 1;
+                        const resolutionResult = noteParts[0] || note.note;
+                        const adminNote = noteParts[1];
+                        
+                        return (
+                          <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Avatar className="w-6 h-6">
+                                <AvatarFallback className="bg-purple-100 text-purple-700">
+                                  {note.adminName?.charAt(0) || "A"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  Resolution Note #{index + 1}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="space-y-3 mt-2">
+                              {/* Resolution Result */}
+                              <div>
+                                <p className="text-xs font-semibold text-gray-500 mb-1">Resolution Result:</p>
+                                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                  {resolutionResult}
+                                </p>
+                              </div>
+                              {/* Admin Note (if exists) */}
+                              {hasAdminNote && adminNote && (
+                                <div>
+                                  <p className="text-xs font-semibold text-purple-600 mb-1">Admin Note:</p>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap bg-purple-50 p-2 rounded border-l-2 border-purple-300">
+                                    {adminNote}
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
-                            {note.note}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </CardContent>
                   </Card>
                 )}

@@ -1,17 +1,19 @@
 // src/modules/company/projects/dto.js
 
-// Add near the top helper
-const ensureStringArray = (v) => {
-  if (v == null) return undefined;
-  if (Array.isArray(v)) return v.map(String).map(s => s.trim()).filter(Boolean);
+// Helper to ensure markdown string (accepts string, array, or null)
+const ensureMarkdownString = (v) => {
+  if (v == null || v === "") return undefined;
   if (typeof v === "string") {
-    // allow newline/comma separated fallbacks
-    return v
-      .split(/\r?\n|,/)
-      .map(s => s.trim())
-      .filter(Boolean);
+    return v.trim() || undefined;
   }
-  throw new Error("Requirements/Deliverables must be an array of strings or newline-separated text");
+  // Backward compatibility: convert array to markdown (one item per line with bullet)
+  if (Array.isArray(v)) {
+    const items = v.map(String).map(s => s.trim()).filter(Boolean);
+    if (items.length === 0) return undefined;
+    // Convert array to markdown list
+    return items.map(item => `- ${item}`).join('\n');
+  }
+  return undefined;
 };
 
 
@@ -59,14 +61,14 @@ export class CreateProjectDto {
     
     this.priority = data.priority;
     this.ndaSigned = data.ndaSigned || false;
-    this.requirements = ensureStringArray(data.requirements);   // <— changed
-    this.deliverables = ensureStringArray(data.deliverables);   // <— changed
+    this.requirements = ensureMarkdownString(data.requirements);   // Markdown string
+    this.deliverables = ensureMarkdownString(data.deliverables);   // Markdown string
     this.customerId = data.customerId;
   }
 
   // mapCategory method removed - categories are now strings, no mapping needed
 
-validate() {
+  validate() {
     // existing checks...
     if (!this.title || this.title.trim() === "") throw new Error("Title is required");
     if (!this.description || this.description.trim() === "") throw new Error("Description is required");
@@ -75,11 +77,12 @@ validate() {
     if (this.budgetMin >= this.budgetMax) throw new Error("Minimum budget must be less than maximum budget");
     if (!this.customerId) throw new Error("Customer ID is required");
 
-    if (this.requirements && !Array.isArray(this.requirements)) {
-      throw new Error("Requirements must be an array of strings");
+    // Requirements and deliverables are now optional markdown strings
+    if (this.requirements !== undefined && typeof this.requirements !== "string") {
+      throw new Error("Requirements must be a markdown string");
     }
-    if (this.deliverables && !Array.isArray(this.deliverables)) {
-      throw new Error("Deliverables must be an array of strings");
+    if (this.deliverables !== undefined && typeof this.deliverables !== "string") {
+      throw new Error("Deliverables must be a markdown string");
     }
   }
 }
@@ -119,12 +122,20 @@ export class GetProjectsDto {
   }
 }
 
-// src/modules/company/projects/dto.js
-const toStringArray = (v) => {
-  if (v == null) return undefined;
-  if (Array.isArray(v)) return v.map(String).map(s=>s.trim()).filter(Boolean);
-  if (typeof v === "string") return v.split(/\r?\n|,/).map(s=>s.trim()).filter(Boolean);
-  throw new Error("requirements/deliverables must be array or newline-separated string");
+// Helper to ensure markdown string for updates (accepts string, array, or null)
+const ensureMarkdownStringForUpdate = (v) => {
+  if (v == null || v === "") return undefined;
+  if (typeof v === "string") {
+    return v.trim() || undefined;
+  }
+  // Backward compatibility: convert array to markdown (one item per line with bullet)
+  if (Array.isArray(v)) {
+    const items = v.map(String).map(s => s.trim()).filter(Boolean);
+    if (items.length === 0) return undefined;
+    // Convert array to markdown list
+    return items.map(item => `- ${item}`).join('\n');
+  }
+  return undefined;
 };
 
 export class UpdateProjectDto {
@@ -172,8 +183,8 @@ export class UpdateProjectDto {
     this.priority     = data.priority;
     this.skills       = Array.isArray(data.skills) ? data.skills : undefined;
     this.ndaSigned    = typeof data.ndaSigned === "boolean" ? data.ndaSigned : undefined;
-    this.requirements = toStringArray(data.requirements);
-    this.deliverables = toStringArray(data.deliverables);
+    this.requirements = ensureMarkdownStringForUpdate(data.requirements);
+    this.deliverables = ensureMarkdownStringForUpdate(data.deliverables);
   }
   validatePartial() {
     if (!this.customerId) throw new Error("Unauthorized");

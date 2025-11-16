@@ -127,14 +127,20 @@ export const disputeService = {
       // Log the payout (in production, this would trigger real payment processing)
       console.log("Simulated Dispute Payout:", payoutResult);
 
-      // Build resolution note
-      const resolutionNote = resolution || `Refund: RM${refundAmount || 0}, Release: RM${releaseAmount || 0}`;
+      // Build auto-generated resolution note based on payout amounts
+      const autoResolutionNote = `Refund: RM${refundAmount || 0}, Release: RM${releaseAmount || 0}`;
       
-      // Update dispute status to RESOLVED
+      // Combine auto-generated note and admin's custom note into one resolution note
+      let combinedResolutionNote = autoResolutionNote;
+      if (resolution && resolution.trim()) {
+        combinedResolutionNote = `${autoResolutionNote}\n\n--- Admin Note ---\n${resolution.trim()}`;
+      }
+      
+      // Update dispute status to RESOLVED with combined note
       const updatedDispute = await disputeModel.updateDisputeStatus(
         disputeId,
         "RESOLVED",
-        resolutionNote,
+        combinedResolutionNote,
         adminId,
         adminName
       );
@@ -206,14 +212,20 @@ export const disputeService = {
         });
       }
 
-      // Build resolution note
-      const resolutionNote = resolution || "Milestone returned to IN_PROGRESS for resubmission. Provider can now edit and resubmit.";
+      // Build auto-generated resolution note
+      const autoResolutionNote = "Milestone returned to IN_PROGRESS for resubmission. Provider can now edit and resubmit.";
       
-      // Update dispute status to UNDER_REVIEW (allows provider to resubmit)
+      // Combine auto-generated note and admin's custom note into one resolution note
+      let combinedResolutionNote = autoResolutionNote;
+      if (resolution && resolution.trim()) {
+        combinedResolutionNote = `${autoResolutionNote}\n\n--- Admin Note ---\n${resolution.trim()}`;
+      }
+      
+      // Update dispute status to UNDER_REVIEW with combined note
       const updatedDispute = await disputeModel.updateDisputeStatus(
         disputeId,
         "UNDER_REVIEW",
-        resolutionNote,
+        combinedResolutionNote,
         adminId,
         adminName
       );

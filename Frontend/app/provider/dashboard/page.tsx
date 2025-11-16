@@ -628,7 +628,7 @@ export default function ProviderDashboard() {
             </Card> */}
 
             {/* Quick Actions */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
@@ -670,7 +670,7 @@ export default function ProviderDashboard() {
                   </Button>
                 </Link>
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </div>

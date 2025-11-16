@@ -80,9 +80,27 @@ export class SendProposalDto {
       throw new Error("Total milestone amount must approximately match bid amount");
     }
     let prev = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+    
     for (const m of this.milestones) {
       if (!m.title || !m.amount) throw new Error("Each milestone must have title and amount");
       if (m.sequence <= prev) throw new Error("Milestones must have increasing sequence numbers starting at 1");
+      
+      // Validate due date is not in the past
+      if (m.dueDate) {
+        const dueDate = new Date(m.dueDate);
+        if (isNaN(dueDate.getTime())) {
+          throw new Error(`Milestone "${m.title}": Due date must be a valid date`);
+        }
+        const dueDateOnly = new Date(dueDate);
+        dueDateOnly.setHours(0, 0, 0, 0); // Set to start of day for comparison
+        
+        if (dueDateOnly < today) {
+          throw new Error(`Milestone "${m.title}": Due date cannot be in the past. Please select today or a future date.`);
+        }
+      }
+      
       prev = m.sequence;
     }
   }

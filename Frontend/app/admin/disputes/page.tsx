@@ -133,14 +133,14 @@ export default function AdminDisputesPage() {
 
       if (action === "refund") {
         const amount = selectedDispute.payment?.amount || selectedDispute.contestedAmount || 0
-        await simulateDisputePayout(selectedDispute.id, amount, 0)
+        await simulateDisputePayout(selectedDispute.id, amount, 0, resolutionNotes || undefined)
         toast({
           title: "Success",
           description: `Refund of RM${amount} processed successfully`,
         })
       } else if (action === "release") {
         const amount = selectedDispute.payment?.amount || selectedDispute.contestedAmount || 0
-        await simulateDisputePayout(selectedDispute.id, 0, amount)
+        await simulateDisputePayout(selectedDispute.id, 0, amount, resolutionNotes || undefined)
         toast({
           title: "Success",
           description: `Release of RM${amount} processed successfully`,
@@ -156,13 +156,13 @@ export default function AdminDisputesPage() {
           })
           return
         }
-        await simulateDisputePayout(selectedDispute.id, refund, release)
+        await simulateDisputePayout(selectedDispute.id, refund, release, resolutionNotes || undefined)
         toast({
           title: "Success",
           description: `Partial payout processed: Refund RM${refund}, Release RM${release}`,
         })
       } else if (action === "redo") {
-        await redoMilestone(selectedDispute.id)
+        await redoMilestone(selectedDispute.id, resolutionNotes || undefined)
         toast({
           title: "Success",
           description: "Milestone returned to IN_PROGRESS",
@@ -753,28 +753,51 @@ export default function AdminDisputesPage() {
                                     <CardTitle className="text-lg text-purple-800">Admin Resolution Notes</CardTitle>
                                   </CardHeader>
                                   <CardContent className="space-y-4">
-                                    {selectedDispute.resolutionNotes.map((note: any, index: number) => (
-                                      <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <Avatar className="w-6 h-6">
-                                            <AvatarFallback className="bg-purple-100 text-purple-700">
-                                              {note.adminName?.charAt(0) || "A"}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                          <div>
-                                            <p className="text-sm font-semibold text-gray-900">
-                                              Resolution Note #{index + 1}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                              By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
-                                            </p>
+                                    {selectedDispute.resolutionNotes.map((note: any, index: number) => {
+                                      // Check if note contains "--- Admin Note ---" separator
+                                      const noteParts = note.note?.split(/\n--- Admin Note ---\n/) || [];
+                                      const hasAdminNote = noteParts.length > 1;
+                                      const resolutionResult = noteParts[0] || note.note;
+                                      const adminNote = noteParts[1];
+                                      
+                                      return (
+                                        <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <Avatar className="w-6 h-6">
+                                              <AvatarFallback className="bg-purple-100 text-purple-700">
+                                                {note.adminName?.charAt(0) || "A"}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                              <p className="text-sm font-semibold text-gray-900">
+                                                Resolution Note #{index + 1}
+                                              </p>
+                                              <p className="text-xs text-gray-500">
+                                                By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="space-y-3 mt-2">
+                                            {/* Resolution Result */}
+                                            <div>
+                                              <p className="text-xs font-semibold text-gray-500 mb-1">Resolution Result:</p>
+                                              <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                                {resolutionResult}
+                                              </p>
+                                            </div>
+                                            {/* Admin Note (if exists) */}
+                                            {hasAdminNote && adminNote && (
+                                              <div>
+                                                <p className="text-xs font-semibold text-purple-600 mb-1">Admin Note:</p>
+                                                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-purple-50 p-2 rounded border-l-2 border-purple-300">
+                                                  {adminNote}
+                                                </p>
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
-                                        <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
-                                          {note.note}
-                                        </p>
-                                      </div>
-                                    ))}
+                                      );
+                                    })}
                                   </CardContent>
                                 </Card>
                               )}
