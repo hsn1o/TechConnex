@@ -22,6 +22,14 @@ export const API_ENDPOINTS = {
   COMPANY_PROJECT_REQUESTS: `${API_BASE_URL}/api/company/project-requests`,
   PROVIDER_PROPOSALS: `${API_BASE_URL}/api/provider/proposals`,
   
+  // Review endpoints
+  COMPANY_REVIEWS: `${API_BASE_URL}/company/reviews`,
+  PROVIDER_REVIEWS: `${API_BASE_URL}/provider/reviews`,
+  COMPANY_REVIEW_STATISTICS: `${API_BASE_URL}/company/reviews/statistics`,
+  PROVIDER_REVIEW_STATISTICS: `${API_BASE_URL}/provider/reviews/statistics`,
+  COMPANY_COMPLETED_PROJECTS: `${API_BASE_URL}/company/reviews/projects/completed`,
+  PROVIDER_COMPLETED_PROJECTS: `${API_BASE_URL}/provider/reviews/projects/completed`,
+  
   // Other endpoints
   HEALTH: `${API_BASE_URL}/health`,
 } as const;

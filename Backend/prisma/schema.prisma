@@ -53,8 +53,6 @@ model User {
 
   ReviewReply ReviewReply[]
 
-  ReviewVote ReviewVote[]
-
   settings Settings?
 }
 
@@ -255,11 +253,10 @@ model Review {
   communicationRating Int?     @map("communication_rating")
   qualityRating       Int?     @map("quality_rating")
   timelinessRating    Int?     @map("timeliness_rating")
+  professionalismRating Int?   @map("professionalism_rating")
   createdAt           DateTime @default(now())
 
   ReviewReply ReviewReply[]
-
-  ReviewVote ReviewVote[]
 }
 
 model ReviewReply {
@@ -270,18 +267,6 @@ model ReviewReply {
   userId    String   @db.Uuid
   content   String
   createdAt DateTime @default(now())
-}
-
-model ReviewVote {
-  id        String   @id @default(uuid()) @db.Uuid
-  review    Review   @relation(fields: [reviewId], references: [id])
-  reviewId  String   @db.Uuid
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String   @db.Uuid
-  value     Int      @default(1) // could be +1 (helpful), -1 (not helpful)
-  createdAt DateTime @default(now())
-
-  @@unique([reviewId, userId]) // prevent double voting
 }
 
 model Resume {

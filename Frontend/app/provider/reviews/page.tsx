@@ -1,19 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import type React from "react";
+
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -23,88 +27,71 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
   Star,
-  MessageSquare,
-  Calendar,
-  Filter,
   Search,
+  Filter,
   Plus,
+  Calendar,
+  MessageSquare,
   Reply,
   Pencil,
   Trash2,
   Clock,
 } from "lucide-react";
-import { CustomerLayout } from "@/components/customer-layout";
+import { ProviderLayout } from "@/components/provider-layout";
 import { useToast } from "@/hooks/use-toast";
 import {
-  useCompanyReviews,
-  useCompanyReviewStatistics,
-  useCompletedProjectsForReview,
+  useProviderReviews,
+  useProviderReviewStatistics,
+  useProviderCompletedProjectsForReview,
   useReviewActions,
   type Review,
   type CompletedProject,
-} from "@/lib/hooks/useReviews";
+} from "../../../lib/hooks/useReviews";
 
-type ReviewFormState = {
+const PROVIDER_CATEGORY_KEYS = [
+  "communicationRating",
+  "clarityRating",
+  "paymentRating",
+  "professionalismRating",
+] as const;
+
+type ProviderReviewFormState = {
   projectId: string;
   rating: number;
   content: string;
   communicationRating: number;
-  qualityRating: number;
-  timelinessRating: number;
+  clarityRating: number;
+  paymentRating: number;
   professionalismRating: number;
 };
 
-const CUSTOMER_CATEGORY_KEYS = [
-  "communicationRating",
-  "qualityRating",
-  "timelinessRating",
-  "professionalismRating",
-] as const;
+const initialReviewForm: ProviderReviewFormState = {
+  projectId: "",
+  rating: 0,
+  content: "",
+  communicationRating: 0,
+  clarityRating: 0,
+  paymentRating: 0,
+  professionalismRating: 0,
+};
 
-type CustomerCategoryKey = (typeof CUSTOMER_CATEGORY_KEYS)[number];
-
-function computeCustomerOverallRating(form: ReviewFormState) {
-  const ratings = CUSTOMER_CATEGORY_KEYS.map((key) => form[key]).filter(
+const computeProviderOverallRating = (form: ProviderReviewFormState) => {
+  const ratings = PROVIDER_CATEGORY_KEYS.map((key) => form[key]).filter(
     (value) => value > 0
   );
-  if (ratings.length !== CUSTOMER_CATEGORY_KEYS.length) {
+  if (ratings.length !== PROVIDER_CATEGORY_KEYS.length) {
     return 0;
   }
   const average =
     ratings.reduce((sum, value) => sum + value, 0) / ratings.length;
   return Number(average.toFixed(1));
-}
-
-function hasAllCustomerCategoryRatings(form: ReviewFormState) {
-  return CUSTOMER_CATEGORY_KEYS.every((key) => form[key] > 0);
-}
-
-type CompanyProject = CompletedProject & {
-  hasReview?: boolean;
-  existingReview?: Review | null;
 };
 
-const initialReviewForm: ReviewFormState = {
-  projectId: "",
-  rating: 0,
-  content: "",
-  communicationRating: 0,
-  qualityRating: 0,
-  timelinessRating: 0,
-  professionalismRating: 0,
-};
+const hasAllProviderCategoryRatings = (form: ProviderReviewFormState) =>
+  PROVIDER_CATEGORY_KEYS.every((key) => form[key] > 0);
 
-export default function CustomerReviewsPage() {
+export default function ProviderReviewsPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"given" | "received" | "pending">(
     "given"
@@ -114,7 +101,7 @@ export default function CustomerReviewsPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [reviewForm, setReviewForm] =
-    useState<ReviewFormState>(initialReviewForm);
+    useState<ProviderReviewFormState>(initialReviewForm);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [replyingReview, setReplyingReview] = useState<Review | null>(null);
@@ -135,22 +122,21 @@ export default function CustomerReviewsPage() {
     loading: givenLoading,
     error: givenError,
     refetch: refetchGivenReviews,
-  } = useCompanyReviews({ ...filterParams, status: "given" });
+  } = useProviderReviews({ ...filterParams, status: "given" });
 
   const {
     reviews: receivedReviews = [],
     loading: receivedLoading,
     error: receivedError,
     refetch: refetchReceivedReviews,
-  } = useCompanyReviews({ ...filterParams, status: "received" });
+  } = useProviderReviews({ ...filterParams, status: "received" });
 
-  const { statistics, loading: statsLoading } = useCompanyReviewStatistics();
-
+  const { statistics, loading: statsLoading } = useProviderReviewStatistics();
   const {
     projects: completedProjects = [],
     loading: projectsLoading,
     refetch: refetchProjects,
-  } = useCompletedProjectsForReview();
+  } = useProviderCompletedProjectsForReview();
 
   const {
     createReview,
@@ -160,33 +146,27 @@ export default function CustomerReviewsPage() {
     loading: actionLoading,
   } = useReviewActions();
 
-  const companyProjects = completedProjects as CompanyProject[];
-
-  const pendingProjects = useMemo(
-    () => companyProjects.filter((project) => !project.hasReview),
-    [companyProjects]
-  );
-
   const availableProjectsForReview = useMemo(
-    () => companyProjects.filter((project) => !project.hasReview),
-    [companyProjects]
+    () => completedProjects,
+    [completedProjects]
   );
 
   const stats = useMemo(
     () => ({
       totalReviews: statistics?.totalReviews ?? 0,
       averageRating: statistics?.averageRating ?? 0,
-      pendingReviews: statistics?.pendingReviews ?? pendingProjects.length,
+      pendingReviews:
+        statistics?.pendingReviews ?? availableProjectsForReview.length,
     }),
-    [statistics, pendingProjects.length]
+    [statistics, availableProjectsForReview.length]
   );
 
-  const handleReviewFormChange = (values: Partial<ReviewFormState>) => {
+  const handleReviewFormChange = (values: Partial<ProviderReviewFormState>) => {
     setReviewForm((prev) => {
       const next = { ...prev, ...values };
       return {
         ...next,
-        rating: computeCustomerOverallRating(next),
+        rating: computeProviderOverallRating(next),
       };
     });
   };
@@ -197,16 +177,8 @@ export default function CustomerReviewsPage() {
       setEditingReview(null);
       setReviewForm({
         ...initialReviewForm,
-        rating: computeCustomerOverallRating(initialReviewForm),
+        rating: computeProviderOverallRating(initialReviewForm),
       });
-    }
-  };
-
-  const handleReplyDialogOpenChange = (open: boolean) => {
-    setReplyDialogOpen(open);
-    if (!open) {
-      setReplyingReview(null);
-      setReplyContent("");
     }
   };
 
@@ -218,19 +190,20 @@ export default function CustomerReviewsPage() {
 
     if (!targetProjectId) {
       toast({
-        title: "No projects available",
+        title: "No companies available",
         description: "All completed projects already have reviews.",
       });
       return;
     }
 
-    const resetForm: ReviewFormState = {
+    const nextForm: ProviderReviewFormState = {
       ...initialReviewForm,
       projectId: targetProjectId,
     };
+
     setReviewForm({
-      ...resetForm,
-      rating: computeCustomerOverallRating(resetForm),
+      ...nextForm,
+      rating: computeProviderOverallRating(nextForm),
     });
     setIsReviewDialogOpen(true);
   };
@@ -238,23 +211,23 @@ export default function CustomerReviewsPage() {
   const handleOpenEditReview = (review: Review) => {
     setActiveTab("given");
     setEditingReview(review);
-    const fallbackCategoryValue =
+    const fallback =
       review.rating && review.rating > 0
         ? Math.max(1, Math.min(5, Math.round(review.rating)))
         : 0;
-    const nextForm: ReviewFormState = {
+    const nextForm: ProviderReviewFormState = {
       projectId: review.projectId,
       rating: 0,
       content: review.content || "",
-      communicationRating: review.communicationRating ?? fallbackCategoryValue,
-      qualityRating: review.qualityRating ?? fallbackCategoryValue,
-      timelinessRating: review.timelinessRating ?? fallbackCategoryValue,
-      professionalismRating:
-        review.professionalismRating ?? fallbackCategoryValue,
+      communicationRating: review.communicationRating ?? fallback,
+      clarityRating: review.qualityRating ?? fallback,
+      paymentRating: review.timelinessRating ?? fallback,
+      professionalismRating: review.professionalismRating ?? fallback,
     };
+
     setReviewForm({
       ...nextForm,
-      rating: computeCustomerOverallRating(nextForm),
+      rating: computeProviderOverallRating(nextForm),
     });
     setIsReviewDialogOpen(true);
   };
@@ -266,7 +239,7 @@ export default function CustomerReviewsPage() {
     if (!confirmed) return;
 
     try {
-      await deleteReview(reviewId);
+      await deleteReview(reviewId, true);
       toast({
         title: "Review deleted",
         description: "The review has been removed successfully.",
@@ -288,7 +261,7 @@ export default function CustomerReviewsPage() {
     event.preventDefault();
 
     if (
-      !hasAllCustomerCategoryRatings(reviewForm) ||
+      !hasAllProviderCategoryRatings(reviewForm) ||
       !reviewForm.content.trim()
     ) {
       toast({
@@ -299,7 +272,7 @@ export default function CustomerReviewsPage() {
       return;
     }
 
-    const overallRating = computeCustomerOverallRating(reviewForm);
+    const overallRating = computeProviderOverallRating(reviewForm);
     if (overallRating === 0) {
       toast({
         title: "Incomplete categories",
@@ -311,44 +284,51 @@ export default function CustomerReviewsPage() {
 
     try {
       if (editingReview) {
-        await updateReview(editingReview.id, {
-          content: reviewForm.content.trim(),
-          rating: overallRating,
-          communicationRating: reviewForm.communicationRating,
-          qualityRating: reviewForm.qualityRating,
-          timelinessRating: reviewForm.timelinessRating,
-          professionalismRating: reviewForm.professionalismRating,
-        });
+        await updateReview(
+          editingReview.id,
+          {
+            content: reviewForm.content.trim(),
+            rating: overallRating,
+            communicationRating: reviewForm.communicationRating,
+            qualityRating: reviewForm.clarityRating,
+            timelinessRating: reviewForm.paymentRating,
+            professionalismRating: reviewForm.professionalismRating,
+          },
+          true
+        );
 
         toast({
           title: "Review updated",
           description: "Your review has been updated successfully.",
         });
       } else {
-        const selectedProject = companyProjects.find(
+        const selectedProject = availableProjectsForReview.find(
           (project) => project.id === reviewForm.projectId
         );
 
-        if (!selectedProject || !selectedProject.provider?.id) {
+        if (!selectedProject || !selectedProject.customer?.id) {
           throw new Error(
-            "We could not match the selected project with a provider."
+            "We could not match the selected project with a company."
           );
         }
 
-        await createReview({
-          projectId: selectedProject.id,
-          recipientId: selectedProject.provider.id,
-          content: reviewForm.content.trim(),
-          rating: overallRating,
-          communicationRating: reviewForm.communicationRating,
-          qualityRating: reviewForm.qualityRating,
-          timelinessRating: reviewForm.timelinessRating,
-          professionalismRating: reviewForm.professionalismRating,
-        });
+        await createReview(
+          {
+            projectId: selectedProject.id,
+            recipientId: selectedProject.customer.id,
+            content: reviewForm.content.trim(),
+            rating: overallRating,
+            communicationRating: reviewForm.communicationRating,
+            clarityRating: reviewForm.clarityRating,
+            paymentRating: reviewForm.paymentRating,
+            professionalismRating: reviewForm.professionalismRating,
+          },
+          true
+        );
 
         toast({
           title: "Review submitted",
-          description: "Thank you for sharing feedback with this provider.",
+          description: "Thank you for sharing feedback with this company.",
         });
       }
 
@@ -387,12 +367,13 @@ export default function CustomerReviewsPage() {
     }
 
     try {
-      await createReply(replyingReview.id, replyContent.trim());
+      await createReply(replyingReview.id, replyContent.trim(), true);
       toast({
         title: "Reply posted",
-        description: "Your response has been shared with the provider.",
+        description: "Your response has been shared with the company.",
       });
-      handleReplyDialogOpenChange(false);
+      setReplyDialogOpen(false);
+      setReplyContent("");
       refetchReceivedReviews();
     } catch (error: any) {
       toast({
@@ -404,16 +385,16 @@ export default function CustomerReviewsPage() {
   };
 
   return (
-    <CustomerLayout>
+    <ProviderLayout>
       <div className="space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
-              Company Reviews
+              Reviews & Feedback
             </h1>
             <p className="text-muted-foreground">
-              Track the reviews you have written, feedback from providers, and
-              any outstanding reviews.
+              Manage the reviews you leave for clients and the feedback you
+              receive.
             </p>
           </div>
           <Button
@@ -442,7 +423,7 @@ export default function CustomerReviewsPage() {
             title="Average Rating"
             value={statsLoading ? "…" : stats.averageRating.toFixed(1) ?? "0.0"}
             icon={<Star className="h-8 w-8 text-yellow-500" />}
-            helper="Across all published reviews"
+            helper="Across all client feedback"
           />
           <StatsCard
             title="Pending Reviews"
@@ -452,7 +433,7 @@ export default function CustomerReviewsPage() {
                 : stats.pendingReviews.toString().padStart(1, "0")
             }
             icon={<Calendar className="h-8 w-8 text-orange-500" />}
-            helper="Providers awaiting feedback"
+            helper="Clients awaiting your review"
           />
         </div>
 
@@ -461,7 +442,7 @@ export default function CustomerReviewsPage() {
             <div className="flex flex-1 items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by provider or project"
+                placeholder="Search reviews by company or project"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
@@ -520,7 +501,7 @@ export default function CustomerReviewsPage() {
               loading={givenLoading}
               error={givenError}
               type="given"
-              emptyMessage="You haven't reviewed any providers yet."
+              emptyMessage="You haven't reviewed any companies yet."
               onEdit={handleOpenEditReview}
               onDelete={(review) => handleDeleteReview(review.id)}
             />
@@ -532,14 +513,14 @@ export default function CustomerReviewsPage() {
               loading={receivedLoading}
               error={receivedError}
               type="received"
-              emptyMessage="No providers have reviewed your company yet."
+              emptyMessage="No companies have reviewed you yet."
               onReply={handleOpenReply}
             />
           </TabsContent>
 
           <TabsContent value="pending" className="pt-6">
             <PendingProjectsList
-              projects={pendingProjects}
+              projects={availableProjectsForReview}
               loading={projectsLoading}
               onWriteReview={(projectId) => handleOpenCreateReview(projectId)}
             />
@@ -552,16 +533,14 @@ export default function CustomerReviewsPage() {
           formState={reviewForm}
           onChange={handleReviewFormChange}
           onSubmit={handleSubmitReview}
-          projects={
-            editingReview ? companyProjects : availableProjectsForReview
-          }
+          projects={availableProjectsForReview}
           isSubmitting={actionLoading}
           mode={editingReview ? "edit" : "create"}
         />
 
         <ReplyDialog
           open={replyDialogOpen}
-          onOpenChange={handleReplyDialogOpenChange}
+          onOpenChange={setReplyDialogOpen}
           review={replyingReview}
           replyContent={replyContent}
           onReplyContentChange={setReplyContent}
@@ -569,7 +548,7 @@ export default function CustomerReviewsPage() {
           isSubmitting={actionLoading}
         />
       </div>
-    </CustomerLayout>
+    </ProviderLayout>
   );
 }
 
@@ -682,6 +661,21 @@ function ReviewCard({
   const projectTitle = review.project?.title ?? "Project";
   const reply = review.ReviewReply?.[0];
 
+  const categories =
+    type === "given"
+      ? [
+          { label: "Communication", value: review.communicationRating },
+          { label: "Clarity", value: review.qualityRating },
+          { label: "Payment", value: review.timelinessRating },
+          { label: "Professionalism", value: review.professionalismRating },
+        ]
+      : [
+          { label: "Quality", value: review.qualityRating },
+          { label: "Timeliness", value: review.timelinessRating },
+          { label: "Communication", value: review.communicationRating },
+          { label: "Professionalism", value: review.professionalismRating },
+        ];
+
   return (
     <Card>
       <CardContent className="space-y-4 p-6">
@@ -707,8 +701,8 @@ function ReviewCard({
             <RatingStars rating={review.rating || 0} />
             <Badge variant="outline">
               {type === "given"
-                ? "You reviewed this provider"
-                : "Provider review"}
+                ? "You reviewed this company"
+                : "Company review"}
             </Badge>
           </div>
         </div>
@@ -718,33 +712,33 @@ function ReviewCard({
         )}
 
         <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
-          {review.communicationRating ? (
-            <CategoryScore
-              label="Communication"
-              value={review.communicationRating}
-            />
-          ) : null}
-          {review.qualityRating ? (
-            <CategoryScore label="Quality" value={review.qualityRating} />
-          ) : null}
-          {review.timelinessRating ? (
-            <CategoryScore label="Timeliness" value={review.timelinessRating} />
-          ) : null}
-          {review.professionalismRating ? (
-            <CategoryScore
-              label="Professionalism"
-              value={review.professionalismRating}
-            />
-          ) : null}
+          {categories.map(
+            (category) =>
+              category.value && (
+                <CategoryScore
+                  key={category.label}
+                  label={category.label}
+                  value={category.value}
+                />
+              )
+          )}
         </div>
 
         {reply && (
           <div className="rounded-lg bg-muted p-4">
-            <p className="text-sm font-medium text-foreground">Your reply</p>
-            <p className="text-xs text-muted-foreground">
-              {new Date(reply.createdAt).toLocaleDateString()}
-            </p>
-            <p className="mt-2 text-sm text-foreground">{reply.content}</p>
+            <div className="flex items-center gap-2 mb-2">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src="/placeholder.svg?height=24&width=24" />
+                <AvatarFallback className="text-xs">
+                  {review.recipient?.name?.charAt(0) ?? "You"}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium">Your reply</span>
+              <span className="text-xs text-muted-foreground">
+                {new Date(reply.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+            <p className="text-sm text-foreground">{reply.content}</p>
           </div>
         )}
 
@@ -796,7 +790,7 @@ function PendingProjectsList({
   loading,
   onWriteReview,
 }: {
-  projects: CompanyProject[];
+  projects: CompletedProject[];
   loading: boolean;
   onWriteReview: (projectId: string) => void;
 }) {
@@ -826,9 +820,11 @@ function PendingProjectsList({
         <Card key={project.id}>
           <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="font-semibold text-foreground">{project.title}</h3>
+              <h3 className="font-semibold text-foreground">
+                {project.title || "Project"}
+              </h3>
               <p className="text-sm text-muted-foreground">
-                {project.provider?.name ?? "Provider"}
+                {project.customer?.name ?? "Company"}
               </p>
               <p className="text-xs text-muted-foreground">
                 {project.completedDate
@@ -859,14 +855,14 @@ function ReviewDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  formState: ReviewFormState;
-  onChange: (values: Partial<ReviewFormState>) => void;
+  formState: ProviderReviewFormState;
+  onChange: (values: Partial<ProviderReviewFormState>) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  projects: CompanyProject[];
+  projects: CompletedProject[];
   isSubmitting: boolean;
   mode: "create" | "edit";
 }) {
-  const hasAllRatings = hasAllCustomerCategoryRatings(formState);
+  const hasAllRatings = hasAllProviderCategoryRatings(formState);
   const hasProjects = projects.length > 0;
   const disableSubmit =
     !formState.content.trim() ||
@@ -882,7 +878,7 @@ function ReviewDialog({
             {mode === "edit" ? "Edit review" : "Write a review"}
           </DialogTitle>
           <DialogDescription>
-            Share transparent feedback with service providers.
+            Share transparent feedback with your clients.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-6">
@@ -900,7 +896,8 @@ function ReviewDialog({
                 {hasProjects ? (
                   projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
-                      {project.title} — {project.provider?.name ?? "Provider"}
+                      {project.title || "Project"} —{" "}
+                      {project.customer?.name ?? "Company"}
                     </SelectItem>
                   ))
                 ) : (
@@ -928,8 +925,8 @@ function ReviewDialog({
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Automatically averaged from Communication, Quality, Timeliness,
-              and Professionalism ratings.
+              Automatically averaged from Communication, Clarity, Payment, and
+              Professionalism ratings.
             </p>
           </div>
 
@@ -940,14 +937,14 @@ function ReviewDialog({
               onChange={(value) => onChange({ communicationRating: value })}
             />
             <RatingInput
-              label="Quality"
-              value={formState.qualityRating}
-              onChange={(value) => onChange({ qualityRating: value })}
+              label="Clarity"
+              value={formState.clarityRating}
+              onChange={(value) => onChange({ clarityRating: value })}
             />
             <RatingInput
-              label="Timeliness"
-              value={formState.timelinessRating}
-              onChange={(value) => onChange({ timelinessRating: value })}
+              label="Payment"
+              value={formState.paymentRating}
+              onChange={(value) => onChange({ paymentRating: value })}
             />
             <RatingInput
               label="Professionalism"
@@ -960,7 +957,7 @@ function ReviewDialog({
             <Label>Feedback</Label>
             <Textarea
               rows={4}
-              placeholder="Describe your experience working with this provider."
+              placeholder="Describe your experience working with this company."
               value={formState.content}
               onChange={(event) => onChange({ content: event.target.value })}
             />
@@ -1007,7 +1004,7 @@ function ReplyDialog({
         <DialogHeader>
           <DialogTitle>Reply to review</DialogTitle>
           <DialogDescription>
-            Respond publicly to the provider's feedback.
+            Respond publicly to the company's feedback.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -1038,21 +1035,14 @@ function RatingInput({
   label,
   value,
   onChange,
-  optional = false,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
-  optional?: boolean;
 }) {
   return (
     <div>
-      <Label className="flex items-center justify-between">
-        {label}
-        {optional && (
-          <span className="text-xs text-muted-foreground">Optional</span>
-        )}
-      </Label>
+      <Label className="flex items-center justify-between">{label}</Label>
       <div className="mt-2 flex items-center gap-2">
         <RatingStars rating={value} interactive onSelect={onChange} />
         <span className="text-xs text-muted-foreground">

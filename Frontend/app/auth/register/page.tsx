@@ -212,7 +212,7 @@ export default function SignupPage() {
   const [success, setSuccess] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   // Helper functions
   const isStrongPassword = (pwd: string) =>
@@ -223,15 +223,32 @@ export default function SignupPage() {
   const checkEmailAvailability = async (email: string) => {
     try {
       setEmailStatus("checking");
+      // Add cache-busting parameter to prevent browser caching
+      const timestamp = Date.now();
       const res = await fetch(
-        `${API_BASE}/auth/check-email?email=${encodeURIComponent(email)}`
+        `${API_BASE}/auth/check-email?email=${encodeURIComponent(
+          email
+        )}&_t=${timestamp}`,
+        {
+          method: "GET",
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        }
       );
       const data = await res.json();
+      console.log(`🔍 Checking email availability for: ${email}`);
+      console.log(`📧 Email check response:`, data);
       if (!res.ok || typeof data.available !== "boolean")
         throw new Error(data?.error || "Failed");
       setEmailStatus(data.available ? "available" : "used");
+      console.log(
+        `✅ Email status set to: ${data.available ? "available" : "used"}`
+      );
       return data.available;
-    } catch {
+    } catch (error) {
+      console.error(`❌ Email check error:`, error);
       setEmailStatus("idle");
       setFieldErrors((p) => ({
         ...p,
@@ -246,7 +263,7 @@ export default function SignupPage() {
     formData.append("resume", file);
     formData.append("userId", userId);
 
-    return fetch(`${process.env.NEXT_PUBLIC_API_URL}/resume/upload`, {
+    return fetch(`${API_BASE}/resume/upload`, {
       method: "POST",
       body: formData,
     });
@@ -256,14 +273,11 @@ export default function SignupPage() {
     userId: string,
     certs: Certification[]
   ) => {
-    return fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/certifications/upload`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, certifications: certs }),
-      }
-    );
+    return fetch(`${API_BASE}/certifications/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, certifications: certs }),
+    });
   };
 
   const uploadKyc = async (userId: string) => {
@@ -353,6 +367,9 @@ export default function SignupPage() {
   ) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
     if (key === "email") {
+      console.log(
+        `🔄 Email field changed to: ${value}, resetting email status to idle`
+      );
       setEmailStatus("idle");
       setFieldErrors((p) => ({ ...p, email: undefined }));
       setError("");
@@ -516,8 +533,8 @@ export default function SignupPage() {
       // 1️⃣ Register user
       const endpoint =
         userRole === "provider"
-          ? `${process.env.NEXT_PUBLIC_API_URL}/auth/provider/register`
-          : `${process.env.NEXT_PUBLIC_API_URL}/auth/company/register`;
+          ? `${API_BASE}/auth/provider/register`
+          : `${API_BASE}/auth/company/register`;
 
       const requestData: any = {
         email: formData.email,
