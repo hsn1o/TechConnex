@@ -1,6 +1,10 @@
 // src/modules/provider/projects/service.js
 import { prisma } from "./model.js";
-import { GetProviderProjectsDto, UpdateProjectStatusDto, UpdateMilestoneStatusDto } from "./dto.js";
+import {
+  GetProviderProjectsDto,
+  UpdateProjectStatusDto,
+  UpdateMilestoneStatusDto,
+} from "./dto.js";
 
 /**
  * Get all projects for a provider
@@ -75,10 +79,16 @@ export async function getProviderProjects(dto) {
       const completedMilestones = project.milestones.filter(
         (m) => m.status === "APPROVED" || m.status === "PAID"
       ).length;
-      const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+      const progress =
+        totalMilestones > 0
+          ? Math.round((completedMilestones / totalMilestones) * 100)
+          : 0;
 
       // Calculate approved price (sum of all milestone amounts)
-      const approvedPrice = project.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+      const approvedPrice = project.milestones.reduce(
+        (sum, m) => sum + (m.amount || 0),
+        0
+      );
 
       // Find next milestone that needs work (LOCKED or IN_PROGRESS, ordered by order field)
       const nextMilestone = project.milestones.find(
@@ -91,12 +101,14 @@ export async function getProviderProjects(dto) {
         completedMilestones,
         totalMilestones,
         approvedPrice,
-        nextMilestone: nextMilestone ? {
-          id: nextMilestone.id,
-          title: nextMilestone.title,
-          status: nextMilestone.status,
-          order: nextMilestone.order,
-        } : null,
+        nextMilestone: nextMilestone
+          ? {
+              id: nextMilestone.id,
+              title: nextMilestone.title,
+              status: nextMilestone.status,
+              order: nextMilestone.order,
+            }
+          : null,
       };
     });
 
@@ -192,7 +204,9 @@ export async function getProviderProjectById(projectId, providerId) {
     });
 
     if (!project) {
-      throw new Error("Project not found or you don't have permission to access it");
+      throw new Error(
+        "Project not found or you don't have permission to access it"
+      );
     }
 
     // Find the ServiceRequest that created this Project to get the proposal and original timeline
@@ -229,10 +243,16 @@ export async function getProviderProjectById(projectId, providerId) {
     const completedMilestones = project.milestones.filter(
       (m) => m.status === "APPROVED" || m.status === "PAID"
     ).length;
-    const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+    const progress =
+      totalMilestones > 0
+        ? Math.round((completedMilestones / totalMilestones) * 100)
+        : 0;
 
     // Calculate approved price (sum of all milestone amounts)
-    const approvedPrice = project.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+    const approvedPrice = project.milestones.reduce(
+      (sum, m) => sum + (m.amount || 0),
+      0
+    );
 
     return {
       ...project,
@@ -264,7 +284,9 @@ export async function updateProjectStatus(dto) {
     });
 
     if (!project) {
-      throw new Error("Project not found or you don't have permission to update it");
+      throw new Error(
+        "Project not found or you don't have permission to update it"
+      );
     }
 
     // Update project status
@@ -291,7 +313,9 @@ export async function updateProjectStatus(dto) {
     if (dto.status === "COMPLETED") {
       try {
         const { disputeService } = await import("../../disputes/service.js");
-        await disputeService.autoResolveDisputeOnProjectCompletion(dto.projectId);
+        await disputeService.autoResolveDisputeOnProjectCompletion(
+          dto.projectId
+        );
       } catch (error) {
         console.error("Error auto-resolving dispute:", error);
         // Don't fail the update if dispute resolution fails
@@ -302,6 +326,8 @@ export async function updateProjectStatus(dto) {
     await prisma.notification.create({
       data: {
         userId: project.customerId,
+        title: "Project Update",
+
         type: "project",
         content: `Project "${project.title}" status updated to ${dto.status}`,
       },
@@ -339,7 +365,9 @@ export async function updateMilestoneStatus(dto) {
     });
 
     if (!milestone) {
-      throw new Error("Milestone not found or you don't have permission to update it");
+      throw new Error(
+        "Milestone not found or you don't have permission to update it"
+      );
     }
 
     // Prepare update data
@@ -354,7 +382,10 @@ export async function updateMilestoneStatus(dto) {
       if (dto.deliverables) {
         updateData.startDeliverables = dto.deliverables;
       }
-    } else if (dto.status === "SUBMITTED" && milestone.status === "IN_PROGRESS") {
+    } else if (
+      dto.status === "SUBMITTED" &&
+      milestone.status === "IN_PROGRESS"
+    ) {
       // Submitting work - save to submitDeliverables
       if (dto.deliverables) {
         updateData.submitDeliverables = dto.deliverables;
@@ -371,7 +402,7 @@ export async function updateMilestoneStatus(dto) {
       // For other status changes, keep deliverables in legacy field for backward compatibility
       updateData.deliverables = dto.deliverables;
     }
-    
+
     // Note: We don't clear submissionAttachmentUrl, submissionNote, startDeliverables, or submitDeliverables
     // once set, they persist for reference even after status changes (unless company requests changes)
 
@@ -402,7 +433,13 @@ export async function updateMilestoneStatus(dto) {
         data: {
           userId: milestone.project.customerId,
           type: "milestone",
-          content: `Milestone "${milestone.title}" has been submitted for review${dto.submissionAttachmentUrl ? " with attachment" : ""}`,
+          title: "Milestone Update",
+
+          content: `Milestone "${
+            milestone.title
+          }" has been submitted for review${
+            dto.submissionAttachmentUrl ? " with attachment" : ""
+          }`,
         },
       });
     }
@@ -449,19 +486,19 @@ export async function getProviderProjectStats(providerId) {
         where: { providerId },
       }),
       prisma.project.count({
-        where: { 
+        where: {
           providerId,
           status: "IN_PROGRESS",
         },
       }),
       prisma.project.count({
-        where: { 
+        where: {
           providerId,
           status: "COMPLETED",
         },
       }),
       prisma.project.count({
-        where: { 
+        where: {
           providerId,
           status: "DISPUTED",
         },
@@ -521,9 +558,10 @@ export async function getProviderPerformanceMetrics(providerId) {
     const completedMilestones = allMilestones.filter(
       (m) => m.status === "APPROVED" || m.status === "PAID"
     ).length;
-    const completionRate = totalMilestones > 0 
-      ? Math.round((completedMilestones / totalMilestones) * 100) 
-      : 0;
+    const completionRate =
+      totalMilestones > 0
+        ? Math.round((completedMilestones / totalMilestones) * 100)
+        : 0;
 
     // Calculate Repeat Clients: clients with >1 project / total unique clients
     const projects = await prisma.project.findMany({
@@ -539,16 +577,18 @@ export async function getProviderPerformanceMetrics(providerId) {
     // Count how many clients have more than one project
     const clientProjectCounts = {};
     projects.forEach((p) => {
-      clientProjectCounts[p.customerId] = (clientProjectCounts[p.customerId] || 0) + 1;
+      clientProjectCounts[p.customerId] =
+        (clientProjectCounts[p.customerId] || 0) + 1;
     });
 
     const repeatClientsCount = Object.values(clientProjectCounts).filter(
       (count) => count > 1
     ).length;
 
-    const repeatClients = totalUniqueClients > 0
-      ? Math.round((repeatClientsCount / totalUniqueClients) * 100)
-      : 0;
+    const repeatClients =
+      totalUniqueClients > 0
+        ? Math.round((repeatClientsCount / totalUniqueClients) * 100)
+        : 0;
 
     // Calculate On-time Delivery: milestones submitted before due date / total submitted milestones
     const submittedMilestones = allMilestones.filter(
@@ -561,9 +601,10 @@ export async function getProviderPerformanceMetrics(providerId) {
       return submittedDate <= dueDate;
     }).length;
 
-    const onTimeDelivery = submittedMilestones.length > 0
-      ? Math.round((onTimeMilestones / submittedMilestones.length) * 100)
-      : 0;
+    const onTimeDelivery =
+      submittedMilestones.length > 0
+        ? Math.round((onTimeMilestones / submittedMilestones.length) * 100)
+        : 0;
 
     return {
       completionRate,

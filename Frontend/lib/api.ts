@@ -1775,3 +1775,312 @@ export async function updateAdminProject(projectId: string, updateData: any) {
   if (!res.ok) throw new Error(data?.error || "Failed to update project");
   return data;
 }
+
+
+// Review API functions
+export async function getCompanyReviews(params?: {
+  page?: number;
+  limit?: number;
+  rating?: number;
+  search?: string;
+  sortBy?: string;
+  status?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append("page", params.page.toString());
+  if (params?.limit) searchParams.append("limit", params.limit.toString());
+  if (params?.rating) searchParams.append("rating", params.rating.toString());
+  if (params?.search) searchParams.append("search", params.search);
+  if (params?.sortBy) searchParams.append("sortBy", params.sortBy);
+  if (params?.status) searchParams.append("status", params.status);
+
+  const url = `${API_BASE}/company/reviews${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch reviews");
+  return data;
+}
+
+export async function getProviderReviews(params?: {
+  page?: number;
+  limit?: number;
+  rating?: number;
+  search?: string;
+  sortBy?: string;
+  status?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.append("page", params.page.toString());
+  if (params?.limit) searchParams.append("limit", params.limit.toString());
+  if (params?.rating) searchParams.append("rating", params.rating.toString());
+  if (params?.search) searchParams.append("search", params.search);
+  if (params?.sortBy) searchParams.append("sortBy", params.sortBy);
+  if (params?.status) searchParams.append("status", params.status);
+
+  const url = `${API_BASE}/provider/reviews${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch reviews");
+  return data;
+}
+
+export async function createCompanyReview(reviewData: {
+  projectId: string;
+  recipientId: string;
+  content: string;
+  rating: number;
+  communicationRating?: number;
+  qualityRating?: number;
+  timelinessRating?: number;
+  professionalismRating?: number;
+  company?: string;
+  role?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/company/reviews`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(reviewData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to create review");
+  return data;
+}
+
+export async function createProviderReview(reviewData: {
+  projectId: string;
+  recipientId: string;
+  content: string;
+  rating: number;
+  communicationRating?: number;
+  clarityRating?: number;
+  paymentRating?: number;
+  professionalismRating?: number;
+  company?: string;
+  role?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/reviews`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(reviewData),
+  });
+  
+  const data = await res.json();
+  
+  if (!res.ok) throw new Error(data?.message || "Failed to create review");
+  return data;
+}
+
+export async function getCompanyReviewStatistics() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/company/reviews/statistics`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch review statistics");
+  return data;
+}
+
+export async function getProviderReviewStatistics() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/reviews/statistics`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch review statistics");
+  return data;
+}
+
+export async function getCompletedProjectsForCompanyReview() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/company/reviews/projects/completed`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch completed projects");
+  return data;
+}
+
+export async function getCompletedProjectsForProviderReview() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/reviews/projects/completed`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch completed projects");
+  return data;
+}
+
+// Update review functions
+export async function updateCompanyReview(reviewId: string, reviewData: {
+  content?: string;
+  rating?: number;
+  communicationRating?: number;
+  qualityRating?: number;
+  timelinessRating?: number;
+  professionalismRating?: number;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/company/reviews/${reviewId}`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(reviewData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to update review");
+  return data;
+}
+
+export async function updateProviderReview(reviewId: string, reviewData: {
+  content?: string;
+  rating?: number;
+  communicationRating?: number;
+  qualityRating?: number;
+  timelinessRating?: number;
+  professionalismRating?: number;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/reviews/${reviewId}`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(reviewData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to update review");
+  return data;
+}
+
+// Delete review functions
+export async function deleteCompanyReview(reviewId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  console.log("🔍 Deleting company review:", reviewId);
+  console.log("🔍 API URL:", `${API_BASE}/company/reviews/${reviewId}`);
+
+  const res = await fetch(`${API_BASE}/company/reviews/${reviewId}`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  console.log("🔍 Delete response:", { status: res.status, data });
+  
+  if (!res.ok) throw new Error(data?.message || "Failed to delete review");
+  return data;
+}
+
+export async function deleteProviderReview(reviewId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/reviews/${reviewId}`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  
+  if (!res.ok) throw new Error(data?.message || "Failed to delete review");
+  return data;
+}
+
+export async function createReviewReply(reviewId: string, content: string, isProvider: boolean = false) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const endpoint = isProvider ? "provider" : "company";
+  const res = await fetch(`${API_BASE}/${endpoint}/reviews/${reviewId}/reply`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content }),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to create reply");
+  return data;
+}
+

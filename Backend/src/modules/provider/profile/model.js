@@ -179,7 +179,6 @@ class ProviderProfileModel {
           preferredProjectDuration: true,
           workPreference: true,
           teamSize: true,
-          stripeAccountId: true,
           certifications: {
             select: { 
               id: true,

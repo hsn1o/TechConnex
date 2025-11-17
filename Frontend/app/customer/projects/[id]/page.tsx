@@ -52,7 +52,13 @@ import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -77,6 +83,7 @@ import { formatTimeline } from "@/lib/timeline-utils";
 import { createPaymentIntentAPI, finalizePaymentAPI } from "@/lib/api-payment";
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
 import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import MilestonePayment from "@/components/MilestonePayment";
 
 export default function ProjectDetailsPage({
   params,
@@ -166,13 +173,17 @@ export default function ProjectDetailsPage({
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeDescription, setDisputeDescription] = useState("");
   const [disputeContestedAmount, setDisputeContestedAmount] = useState("");
-  const [disputeSuggestedResolution, setDisputeSuggestedResolution] = useState("");
+  const [disputeSuggestedResolution, setDisputeSuggestedResolution] =
+    useState("");
   const [disputeAttachments, setDisputeAttachments] = useState<File[]>([]);
-  const [selectedMilestoneForDispute, setSelectedMilestoneForDispute] = useState<string | null>(null);
+  const [selectedMilestoneForDispute, setSelectedMilestoneForDispute] =
+    useState<string | null>(null);
   const [creatingDispute, setCreatingDispute] = useState(false);
   const [updatingDispute, setUpdatingDispute] = useState(false);
   const [disputeAdditionalNotes, setDisputeAdditionalNotes] = useState("");
-  const [disputeUpdateAttachments, setDisputeUpdateAttachments] = useState<File[]>([]);
+  const [disputeUpdateAttachments, setDisputeUpdateAttachments] = useState<
+    File[]
+  >([]);
   interface ProviderRequest {
     id: string;
     providerId: string;
@@ -287,11 +298,13 @@ export default function ProjectDetailsPage({
       if (typeof value === "string") return value;
       if (Array.isArray(value)) {
         const items = value.map(String).filter(Boolean);
-        return items.length > 0 ? items.map(item => `- ${item}`).join('\n') : "";
+        return items.length > 0
+          ? items.map((item) => `- ${item}`).join("\n")
+          : "";
       }
       return "";
     };
-    
+
     setEdit({
       title: project.title ?? "",
       description: project.description ?? "",
@@ -341,59 +354,65 @@ export default function ProjectDetailsPage({
     rawProposals: any[]
   ): ProviderRequest[] => {
     return rawProposals.map((p: any): ProviderRequest => {
-            const provider = p.provider || {};
-            const profile = provider.providerProfile || {};
+      const provider = p.provider || {};
+      const profile = provider.providerProfile || {};
 
-            return {
-              id: p.id,
-              providerId: provider.id,
-              providerName: provider.name,
-              providerAvatar: profile.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg"
-                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
-                : "/placeholder.svg?height=40&width=40",
-              providerRating: profile.rating ?? provider.rating ?? 0,
-              providerLocation: profile.location ?? provider.location ?? "",
-              providerResponseTime:
-                profile.responseTime ?? provider.responseTime ?? "",
-              projectId: p.serviceRequest?.id,
-              projectTitle: p.serviceRequest?.title,
-              bidAmount: p.bidAmount,
+      return {
+        id: p.id,
+        providerId: provider.id,
+        providerName: provider.name,
+        providerAvatar:
+          profile.profileImageUrl &&
+          profile.profileImageUrl !== "/placeholder.svg"
+            ? `${
+                process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
+              }${profile.profileImageUrl.startsWith("/") ? "" : "/"}${
+                profile.profileImageUrl
+              }`
+            : "/placeholder.svg?height=40&width=40",
+        providerRating: profile.rating ?? provider.rating ?? 0,
+        providerLocation: profile.location ?? provider.location ?? "",
+        providerResponseTime:
+          profile.responseTime ?? provider.responseTime ?? "",
+        projectId: p.serviceRequest?.id,
+        projectTitle: p.serviceRequest?.title,
+        bidAmount: p.bidAmount,
         proposedTimeline: formatTimeline(p.deliveryTime, "day") || "",
-              coverLetter: p.coverLetter,
-              status: p.status
+        coverLetter: p.coverLetter,
+        status: p.status
           ? (p.status.toLowerCase() as "pending" | "accepted" | "rejected")
-                : "pending",
-              submittedAt: p.createdAt || p.submittedAt || "",
-              skills: Array.isArray(profile.skills)
-                ? profile.skills
-                : Array.isArray(provider.skills)
-                ? provider.skills
-                : [],
-              portfolio: Array.isArray(profile.portfolios)
-                ? profile.portfolios
-                : Array.isArray(provider.portfolio)
-                ? provider.portfolio
-                : [],
-              experience: profile.experience ?? provider.experience ?? "",
+          : "pending",
+        submittedAt: p.createdAt || p.submittedAt || "",
+        skills: Array.isArray(profile.skills)
+          ? profile.skills
+          : Array.isArray(provider.skills)
+          ? provider.skills
+          : [],
+        portfolio: Array.isArray(profile.portfolios)
+          ? profile.portfolios
+          : Array.isArray(provider.portfolio)
+          ? provider.portfolio
+          : [],
+        experience: profile.experience ?? provider.experience ?? "",
         attachments: Array.isArray(p.attachmentUrls) ? p.attachmentUrls : [],
-              milestones: Array.isArray(p.milestones)
-                ? p.milestones.map(
-                    (m: {
-                      title: string;
-                      description?: string;
-                      amount: number;
-                      dueDate: string;
-                      order: number;
-                    }) => ({
-                      title: m.title,
-                      description: m.description,
-                      amount: m.amount,
-                      dueDate: m.dueDate,
-                      order: m.order,
-                    })
-                  )
-                : [],
-            };
+        milestones: Array.isArray(p.milestones)
+          ? p.milestones.map(
+              (m: {
+                title: string;
+                description?: string;
+                amount: number;
+                dueDate: string;
+                order: number;
+              }) => ({
+                title: m.title,
+                description: m.description,
+                amount: m.amount,
+                dueDate: m.dueDate,
+                order: m.order,
+              })
+            )
+          : [],
+      };
     });
   };
 
@@ -464,7 +483,7 @@ export default function ProjectDetailsPage({
 
           // 4. map raw proposals -> ProviderRequest[]
           const mappedProposals = mapProposalsToProviderRequests(rawProposals);
-        setProposals(mappedProposals);
+          setProposals(mappedProposals);
         } else {
           // No serviceRequestId means this Project wasn't created from a ServiceRequest (unlikely but handle gracefully)
           console.warn(
@@ -754,8 +773,18 @@ export default function ProjectDetailsPage({
   const safeProject = project ?? {};
   const skills = asArray<string>(safeProject.skills);
   // Requirements and deliverables are now markdown strings
-  const requirements = typeof safeProject.requirements === "string" ? safeProject.requirements : (Array.isArray(safeProject.requirements) ? safeProject.requirements.map((r: any) => `- ${r}`).join('\n') : "");
-  const deliverables = typeof safeProject.deliverables === "string" ? safeProject.deliverables : (Array.isArray(safeProject.deliverables) ? safeProject.deliverables.map((d: any) => `- ${d}`).join('\n') : "");
+  const requirements =
+    typeof safeProject.requirements === "string"
+      ? safeProject.requirements
+      : Array.isArray(safeProject.requirements)
+      ? safeProject.requirements.map((r: any) => `- ${r}`).join("\n")
+      : "";
+  const deliverables =
+    typeof safeProject.deliverables === "string"
+      ? safeProject.deliverables
+      : Array.isArray(safeProject.deliverables)
+      ? safeProject.deliverables.map((d: any) => `- ${d}`).join("\n")
+      : "";
   const milestones = asArray<any>(safeProject.milestones);
   const bids = asArray<any>(safeProject.bids);
   const files = asArray<any>(safeProject.files);
@@ -786,8 +815,10 @@ export default function ProjectDetailsPage({
       if (skillsArr.length) payload.skills = skillsArr;
 
       // Send markdown strings directly
-      if (edit.requirements?.trim()) payload.requirements = edit.requirements.trim();
-      if (edit.deliverables?.trim()) payload.deliverables = edit.deliverables.trim();
+      if (edit.requirements?.trim())
+        payload.requirements = edit.requirements.trim();
+      if (edit.deliverables?.trim())
+        payload.deliverables = edit.deliverables.trim();
 
       const { project: updated } = await updateCompanyProject(
         project.id,
@@ -810,7 +841,7 @@ export default function ProjectDetailsPage({
   // ADD - save draft
   const handleSaveProjectMilestones = async () => {
     if (!project?.id) return;
-    
+
     // Validate due dates before saving
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -820,16 +851,17 @@ export default function ProjectDetailsPage({
       dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
     });
-    
+
     if (invalidMilestones.length > 0) {
       toast({
         title: "Invalid Due Dates",
-        description: "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        description:
+          "One or more milestones have due dates in the past. Please update them to today or a future date.",
         variant: "destructive",
       });
       return;
     }
-    
+
     try {
       setSavingMilestones(true);
       const payload = normalizeMilestoneSequences(projectMilestones).map(
@@ -846,10 +878,10 @@ export default function ProjectDetailsPage({
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
-      
+
       // Refresh project data to get updated milestones
       await refreshProjectData();
-      
+
       toast({
         title: "Milestones updated",
         description: "Milestone changes have been saved.",
@@ -909,10 +941,10 @@ export default function ProjectDetailsPage({
   const handleApproveIndividualMilestone = async (milestoneId: string) => {
     try {
       await approveIndividualMilestone(milestoneId);
-      
+
       // Refresh all project data including milestones
       await refreshProjectData();
-      
+
       toast({
         title: "Milestone approved",
         description:
@@ -1045,7 +1077,7 @@ export default function ProjectDetailsPage({
   // Save milestones after accept (inside modal)
   const handleSaveAcceptedMilestones = async () => {
     if (!activeProjectId) return;
-    
+
     // Validate due dates before saving
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1055,16 +1087,17 @@ export default function ProjectDetailsPage({
       dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
     });
-    
+
     if (invalidMilestones.length > 0) {
       toast({
         title: "Invalid Due Dates",
-        description: "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        description:
+          "One or more milestones have due dates in the past. Please update them to today or a future date.",
         variant: "destructive",
       });
       return;
     }
-    
+
     try {
       setSavingMilestonesModal(true);
 
@@ -1242,14 +1275,17 @@ export default function ProjectDetailsPage({
         milestoneId: selectedMilestoneForDispute || undefined,
         reason: disputeReason.trim(),
         description: disputeDescription.trim(),
-        contestedAmount: disputeContestedAmount ? parseFloat(disputeContestedAmount) : undefined,
+        contestedAmount: disputeContestedAmount
+          ? parseFloat(disputeContestedAmount)
+          : undefined,
         suggestedResolution: disputeSuggestedResolution.trim() || undefined,
-        attachments: disputeAttachments.length > 0 ? disputeAttachments : undefined,
+        attachments:
+          disputeAttachments.length > 0 ? disputeAttachments : undefined,
       });
 
       toast({
         title: currentDispute ? "Dispute Updated" : "Dispute Created",
-        description: currentDispute 
+        description: currentDispute
           ? "Your dispute has been updated successfully."
           : "Your dispute has been submitted successfully. The milestone has been frozen.",
       });
@@ -1295,7 +1331,10 @@ export default function ProjectDetailsPage({
 
   const handleUpdateDispute = async () => {
     if (!currentDispute?.id) return;
-    if (!disputeAdditionalNotes.trim() && disputeUpdateAttachments.length === 0) {
+    if (
+      !disputeAdditionalNotes.trim() &&
+      disputeUpdateAttachments.length === 0
+    ) {
       toast({
         title: "Validation Error",
         description: "Please add notes or attachments to update the dispute",
@@ -1308,7 +1347,10 @@ export default function ProjectDetailsPage({
       setUpdatingDispute(true);
       await updateDispute(currentDispute.id, {
         additionalNotes: disputeAdditionalNotes.trim() || undefined,
-        attachments: disputeUpdateAttachments.length > 0 ? disputeUpdateAttachments : undefined,
+        attachments:
+          disputeUpdateAttachments.length > 0
+            ? disputeUpdateAttachments
+            : undefined,
         projectId: project?.id,
       });
 
@@ -1334,7 +1376,9 @@ export default function ProjectDetailsPage({
     }
   };
 
-  const handleDisputeAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDisputeAttachmentChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
@@ -1342,7 +1386,9 @@ export default function ProjectDetailsPage({
     }
   };
 
-  const handleDisputeUpdateAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDisputeUpdateAttachmentChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
@@ -1503,12 +1549,12 @@ export default function ProjectDetailsPage({
                 endDate &&
                 !isNaN(startDate.getTime()) &&
                 !isNaN(endDate.getTime()) && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  {startDate.toLocaleDateString()} -{" "}
-                  {endDate.toLocaleDateString()}
-                </div>
-              )}
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    {startDate.toLocaleDateString()} -{" "}
+                    {endDate.toLocaleDateString()}
+                  </div>
+                )}
             </div>
           </div>
           <div className="flex gap-3">
@@ -1529,12 +1575,15 @@ export default function ProjectDetailsPage({
               >
                 <Eye className="w-4 h-4 mr-2" />
                 View Dispute
-            </Button>
+              </Button>
             ) : (
               <Button
                 className="bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => setDisputeDialogOpen(true)}
-                disabled={project?.status === "DISPUTED" && currentDispute?.status === "CLOSED"}
+                disabled={
+                  project?.status === "DISPUTED" &&
+                  currentDispute?.status === "CLOSED"
+                }
               >
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Report Dispute
@@ -1588,31 +1637,29 @@ export default function ProjectDetailsPage({
             </CardContent>
           </Card>
           {project.daysLeft !== null && project.daysLeft !== undefined ? (
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Days Left</p>
-                  <p className="text-2xl font-bold">
-                    {project.daysLeft}
-                  </p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Days Left</p>
+                    <p className="text-2xl font-bold">{project.daysLeft}</p>
+                  </div>
+                  <Calendar className="w-8 h-8 text-orange-600" />
                 </div>
-                <Calendar className="w-8 h-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           ) : (
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Days Left</p>
-                  <p className="text-2xl font-bold">—</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Days Left</p>
+                    <p className="text-2xl font-bold">—</p>
+                  </div>
+                  <Calendar className="w-8 h-8 text-gray-400" />
                 </div>
-                <Calendar className="w-8 h-8 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           )}
         </div>
 
@@ -1643,9 +1690,23 @@ export default function ProjectDetailsPage({
                   <Avatar className="w-12 h-12">
                     <AvatarImage
                       src={
-                        project.assignedProvider?.providerProfile?.profileImageUrl
-                          ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.assignedProvider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.assignedProvider.providerProfile.profileImageUrl}`
-                          : project.assignedProvider?.avatar || "/placeholder.svg"
+                        project.assignedProvider?.providerProfile
+                          ?.profileImageUrl
+                          ? `${
+                              process.env.NEXT_PUBLIC_API_BASE_URL ||
+                              "http://localhost:4000"
+                            }${
+                              project.assignedProvider.providerProfile.profileImageUrl.startsWith(
+                                "/"
+                              )
+                                ? ""
+                                : "/"
+                            }${
+                              project.assignedProvider.providerProfile
+                                .profileImageUrl
+                            }`
+                          : project.assignedProvider?.avatar ||
+                            "/placeholder.svg"
                       }
                     />
                     <AvatarFallback>
@@ -1818,59 +1879,59 @@ export default function ProjectDetailsPage({
                 <div className="space-y-6">
                   {projectMilestones && projectMilestones.length > 0 ? (
                     projectMilestones.map((milestone, index) => (
-                    <div key={milestone.id} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        {getMilestoneStatusIcon(milestone.status)}
-                        {index < projectMilestones.length - 1 && (
-                          <div className="w-px h-16 bg-gray-200 mt-2" />
-                        )}
-                      </div>
-                      <div className="flex-1 pb-8">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold">{milestone.title}</h3>
-                          <div className="flex items-center gap-2">
+                      <div key={milestone.id} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          {getMilestoneStatusIcon(milestone.status)}
+                          {index < projectMilestones.length - 1 && (
+                            <div className="w-px h-16 bg-gray-200 mt-2" />
+                          )}
+                        </div>
+                        <div className="flex-1 pb-8">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold">{milestone.title}</h3>
+                            <div className="flex items-center gap-2">
                               <Badge
                                 className={getStatusColor(milestone.status)}
                               >
-                              {getStatusText(milestone.status)}
-                            </Badge>
-                            <span className="text-sm font-medium">
-                              {fmt(milestone.amount)} {project.currency}
-                            </span>
+                                {getStatusText(milestone.status)}
+                              </Badge>
+                              <span className="text-sm font-medium">
+                                {fmt(milestone.amount)} {project.currency}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        <p className="text-gray-600 mb-2">
-                          {milestone.description}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            Due:{" "}
-                            {new Date(milestone.dueDate).toLocaleDateString()}
-                          </div>
-                          {milestone.completedAt && (
+                          <p className="text-gray-600 mb-2">
+                            {milestone.description}
+                          </p>
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
                             <div className="flex items-center gap-1">
-                              <CheckCircle className="w-4 h-4" />
-                              Completed:{" "}
-                              {new Date(
-                                milestone.completedAt
-                              ).toLocaleDateString()}
+                              <Calendar className="w-4 h-4" />
+                              Due:{" "}
+                              {new Date(milestone.dueDate).toLocaleDateString()}
                             </div>
-                          )}
-                        </div>
-                        {milestone.status === "in_progress" &&
-                          milestone.progress && (
-                            <div className="mt-3">
-                              <div className="flex justify-between text-sm mb-1">
-                                <span>Progress</span>
-                                <span>{milestone.progress}%</span>
+                            {milestone.completedAt && (
+                              <div className="flex items-center gap-1">
+                                <CheckCircle className="w-4 h-4" />
+                                Completed:{" "}
+                                {new Date(
+                                  milestone.completedAt
+                                ).toLocaleDateString()}
                               </div>
-                              <Progress
-                                value={milestone.progress}
-                                className="h-2"
-                              />
-                            </div>
-                          )}
+                            )}
+                          </div>
+                          {milestone.status === "in_progress" &&
+                            milestone.progress && (
+                              <div className="mt-3">
+                                <div className="flex justify-between text-sm mb-1">
+                                  <span>Progress</span>
+                                  <span>{milestone.progress}%</span>
+                                </div>
+                                <Progress
+                                  value={milestone.progress}
+                                  className="h-2"
+                                />
+                              </div>
+                            )}
 
                           {/* Show start deliverables if available (persists even after status changes) */}
                           {milestone.startDeliverables && (
@@ -2142,14 +2203,19 @@ export default function ProjectDetailsPage({
                                             </div>
                                           )}
 
-                                          {history.submittedAt && !isNaN(new Date(history.submittedAt).getTime()) && (
-                                            <p className="text-xs text-gray-500 mt-2">
-                                              Submitted:{" "}
-                                              {new Date(
+                                          {history.submittedAt &&
+                                            !isNaN(
+                                              new Date(
                                                 history.submittedAt
-                                              ).toLocaleString()}
-                                            </p>
-                                          )}
+                                              ).getTime()
+                                            ) && (
+                                              <p className="text-xs text-gray-500 mt-2">
+                                                Submitted:{" "}
+                                                {new Date(
+                                                  history.submittedAt
+                                                ).toLocaleString()}
+                                              </p>
+                                            )}
                                         </div>
                                       );
                                     }
@@ -2215,49 +2281,49 @@ export default function ProjectDetailsPage({
                           </Dialog>
 
                           {/* Action buttons only shown for SUBMITTED status */}
-                        {milestone.status === "SUBMITTED" && (
-                          <div className="mt-3 flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                handleApproveIndividualMilestone(milestone.id)
-                              }
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Approve Milestone
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
+                          {milestone.status === "SUBMITTED" && (
+                            <div className="mt-3 flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleApproveIndividualMilestone(milestone.id)
+                                }
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Approve Milestone
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
                                   handleRequestChangesClick(milestone.id)
-                              }
-                            >
-                              <AlertCircle className="w-4 h-4 mr-2" />
-                              Request Changes
-                            </Button>
-                          </div>
-                        )}
-                        {milestone.status === "APPROVED" && (
-                          <div className="mt-3 flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                handlePayMilestone(
-                                  milestone.id,
-                                  milestone.amount
-                                )
-                              }
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              <DollarSign className="w-4 h-4 mr-2" />
-                              Pay Milestone
-                            </Button>
-                          </div>
-                        )}
+                                }
+                              >
+                                <AlertCircle className="w-4 h-4 mr-2" />
+                                Request Changes
+                              </Button>
+                            </div>
+                          )}
+                          {milestone.status === "APPROVED" && (
+                            <div className="mt-3 flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handlePayMilestone(
+                                    milestone.id,
+                                    milestone.amount
+                                  )
+                                }
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                <DollarSign className="w-4 h-4 mr-2" />
+                                Pay Milestone
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
                     ))
                   ) : (
                     <p className="text-gray-600 text-center py-8">
@@ -2306,8 +2372,9 @@ export default function ProjectDetailsPage({
                             <Avatar className="w-12 h-12">
                               <AvatarImage
                                 src={
-                                  p.providerAvatar && 
-                                  p.providerAvatar !== "/placeholder.svg?height=40&width=40" &&
+                                  p.providerAvatar &&
+                                  p.providerAvatar !==
+                                    "/placeholder.svg?height=40&width=40" &&
                                   !p.providerAvatar.includes("/placeholder.svg")
                                     ? p.providerAvatar
                                     : "/placeholder.svg"
@@ -2404,7 +2471,8 @@ export default function ProjectDetailsPage({
                               </Badge>
 
                               <span className="text-sm text-gray-500">
-                                {p.submittedAt && !isNaN(new Date(p.submittedAt).getTime())
+                                {p.submittedAt &&
+                                !isNaN(new Date(p.submittedAt).getTime())
                                   ? new Date(p.submittedAt).toLocaleDateString()
                                   : "—"}
                               </span>
@@ -2508,8 +2576,8 @@ export default function ProjectDetailsPage({
                                     proposedTimeline: p.proposedTimeline,
                                     deliveryTime:
                                       p.proposedTimeline?.replace(
-                                      " days",
-                                      ""
+                                        " days",
+                                        ""
                                       ) || p.proposedTimeline,
                                     coverLetter: p.coverLetter,
                                     createdAt: p.submittedAt,
@@ -2754,14 +2822,17 @@ export default function ProjectDetailsPage({
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
                               PDF
-                        </div>
+                            </div>
                             <div className="flex flex-col min-w-0 flex-1">
                               <span className="text-sm font-medium text-gray-900 break-all leading-snug">
                                 {fileName}
                               </span>
                               <span className="text-xs text-gray-500 leading-snug">
                                 From: {attachment.milestoneTitle}
-                                {attachment.submittedAt && !isNaN(new Date(attachment.submittedAt).getTime()) &&
+                                {attachment.submittedAt &&
+                                  !isNaN(
+                                    new Date(attachment.submittedAt).getTime()
+                                  ) &&
                                   ` • Submitted: ${new Date(
                                     attachment.submittedAt
                                   ).toLocaleDateString()}`}
@@ -2769,14 +2840,14 @@ export default function ProjectDetailsPage({
                                   Click to preview / download
                                 </span>
                               </span>
-                      </div>
+                            </div>
                             <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
                               <Download className="w-4 h-4" />
-                    </div>
+                            </div>
                           </a>
                         );
                       })}
-                </div>
+                    </div>
                   );
                 })()}
               </CardContent>
@@ -3047,15 +3118,16 @@ export default function ProjectDetailsPage({
                       <label className="text-sm font-medium">Due Date</label>
                       <Input
                         type="date"
-                        min={new Date().toISOString().split('T')[0]}
+                        min={new Date().toISOString().split("T")[0]}
                         value={(m.dueDate || "").slice(0, 10)}
                         onChange={(e) => {
                           const selectedDate = e.target.value;
-                          const today = new Date().toISOString().split('T')[0];
+                          const today = new Date().toISOString().split("T")[0];
                           if (selectedDate < today) {
                             toast({
                               title: "Invalid Date",
-                              description: "Due date cannot be in the past. Please select today or a future date.",
+                              description:
+                                "Due date cannot be in the past. Please select today or a future date.",
                               variant: "destructive",
                             });
                             return;
@@ -3186,8 +3258,25 @@ export default function ProjectDetailsPage({
         </DialogContent>
       </Dialog> */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-3xl w-full">
+          <MilestonePayment
+            milestone={{
+              id: selectedMilestoneForPayment?.id || "",
+              title: selectedMilestoneForPayment?.title || "",
+              amount: selectedMilestoneForPayment?.amount || 0,
+              projectId: project?.id || "",
+            }}
+            type={"customer"}
+            onSuccess={() => {
+              setPaymentDialogOpen(false);
+              refreshProjectData();
+              toast({
+                title: "Payment successful",
+                description: "Milestone payment has been processed.",
+              });
+            }}
+          />
+          {/* <DialogHeader>
             <DialogTitle>Confirm Payment</DialogTitle>
             <DialogDescription>
               You are about to process payment for milestone:{" "}
@@ -3247,7 +3336,7 @@ export default function ProjectDetailsPage({
             >
               {processingPayment ? "Processing..." : "Confirm Payment"}
             </Button>
-          </DialogFooter>
+          </DialogFooter> */}
         </DialogContent>
       </Dialog>
 
@@ -3265,13 +3354,13 @@ export default function ProjectDetailsPage({
           <div className="space-y-4">
             <div>
               <Label htmlFor="rejectReason">Reason for rejection</Label>
-            <Textarea
-              id="rejectReason"
+              <Textarea
+                id="rejectReason"
                 placeholder="Please explain why you're rejecting this request..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
                 rows={4}
-            />
+              />
             </div>
           </div>
 
@@ -3294,7 +3383,7 @@ export default function ProjectDetailsPage({
             >
               {processingId === selectedProposalForAction?.id ? (
                 <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Rejecting...
                 </>
               ) : (
@@ -3331,11 +3420,25 @@ export default function ProjectDetailsPage({
                 <Avatar className="w-16 h-16">
                   <AvatarImage
                     src={
-                      (selectedProposalDetails.providerAvatar && 
-                       selectedProposalDetails.providerAvatar !== "/placeholder.svg?height=40&width=40")
+                      selectedProposalDetails.providerAvatar &&
+                      selectedProposalDetails.providerAvatar !==
+                        "/placeholder.svg?height=40&width=40"
                         ? selectedProposalDetails.providerAvatar
-                        : selectedProposalDetails.provider?.providerProfile?.profileImageUrl
-                        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${selectedProposalDetails.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${selectedProposalDetails.provider.providerProfile.profileImageUrl}`
+                        : selectedProposalDetails.provider?.providerProfile
+                            ?.profileImageUrl
+                        ? `${
+                            process.env.NEXT_PUBLIC_API_BASE_URL ||
+                            "http://localhost:4000"
+                          }${
+                            selectedProposalDetails.provider.providerProfile.profileImageUrl.startsWith(
+                              "/"
+                            )
+                              ? ""
+                              : "/"
+                          }${
+                            selectedProposalDetails.provider.providerProfile
+                              .profileImageUrl
+                          }`
                         : "/placeholder.svg"
                     }
                   />
@@ -3356,30 +3459,30 @@ export default function ProjectDetailsPage({
                   {/* Name + rating */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                  <h3 className="text-xl font-semibold">
+                      <h3 className="text-xl font-semibold">
                         {selectedProposalDetails.provider?.name ||
                           selectedProposalDetails.providerName ||
                           "Provider"}
-                  </h3>
+                      </h3>
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                      <span>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                          <span>
                             {selectedProposalDetails.provider?.rating ||
                               selectedProposalDetails.providerRating ||
                               0}{" "}
                             rating
-                      </span>
-                    </div>
+                          </span>
+                        </div>
 
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
                           {selectedProposalDetails.provider?.responseTime ||
                             selectedProposalDetails.providerResponseTime ||
                             "N/A"}{" "}
                           response time
-                      </div>
+                        </div>
                       </div>
 
                       {selectedProposalDetails.experience && (
@@ -3414,8 +3517,8 @@ export default function ProjectDetailsPage({
                             more
                           </Badge>
                         )}
-                </div>
-              </div>
+                      </div>
+                    </div>
 
                     {/* View profile button */}
                     <NextLink
@@ -3435,26 +3538,26 @@ export default function ProjectDetailsPage({
                       </Button>
                     </NextLink>
                   </div>
-                    </div>
-                  </div>
+                </div>
+              </div>
 
               <Separator />
 
               {/* Project & Bid Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
+                <div>
                   <h4 className="font-semibold mb-2">Project</h4>
                   <p className="text-gray-900">
                     {selectedProposalDetails.projectTitle || project.title}
                   </p>
-                    </div>
+                </div>
                 <div>
                   <h4 className="font-semibold mb-2">Bid Amount</h4>
                   <p className="text-2xl font-bold text-green-600">
                     RM{fmt(selectedProposalDetails.bidAmount || 0)}
                   </p>
-                  </div>
-                  <div>
+                </div>
+                <div>
                   <h4 className="font-semibold mb-2">Proposed Timeline</h4>
                   <p className="text-gray-900">
                     {formatTimeline(selectedProposalDetails.proposedTimeline) ||
@@ -3464,7 +3567,7 @@ export default function ProjectDetailsPage({
                       ) ||
                       "—"}
                   </p>
-                    </div>
+                </div>
                 <div>
                   <h4 className="font-semibold mb-2">Status</h4>
                   <Badge
@@ -3477,14 +3580,14 @@ export default function ProjectDetailsPage({
                       .toUpperCase() +
                       (selectedProposalDetails.status || "pending").slice(1)}
                   </Badge>
-                  </div>
+                </div>
               </div>
 
               <Separator />
 
               {/* Cover Letter */}
-                <div>
-                  <h4 className="font-semibold mb-2">Cover Letter</h4>
+              <div>
+                <h4 className="font-semibold mb-2">Cover Letter</h4>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-gray-700 whitespace-pre-wrap">
                     {selectedProposalDetails.coverLetter}
@@ -3623,8 +3726,8 @@ export default function ProjectDetailsPage({
                               key={idx}
                               href={fullUrl}
                               download={fileName}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                             >
                               {/* Icon circle */}
@@ -3704,15 +3807,15 @@ export default function ProjectDetailsPage({
               </div>
             )}
             {selectedProposalDetails?.status !== "pending" && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setProposalDetailsOpen(false);
-                setSelectedProposalDetails(null);
-              }}
-            >
-              Close
-            </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setProposalDetailsOpen(false);
+                  setSelectedProposalDetails(null);
+                }}
+              >
+                Close
+              </Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -3770,15 +3873,16 @@ export default function ProjectDetailsPage({
                       <Label>Due Date</Label>
                       <Input
                         type="date"
-                        min={new Date().toISOString().split('T')[0]}
+                        min={new Date().toISOString().split("T")[0]}
                         value={(m.dueDate || "").slice(0, 10)}
                         onChange={(e) => {
                           const selectedDate = e.target.value;
-                          const today = new Date().toISOString().split('T')[0];
+                          const today = new Date().toISOString().split("T")[0];
                           if (selectedDate < today) {
                             toast({
                               title: "Invalid Date",
-                              description: "Due date cannot be in the past. Please select today or a future date.",
+                              description:
+                                "Due date cannot be in the past. Please select today or a future date.",
                               variant: "destructive",
                             });
                             return;
@@ -3953,7 +4057,8 @@ export default function ProjectDetailsPage({
           <DialogHeader>
             <DialogTitle>Report Dispute</DialogTitle>
             <DialogDescription>
-              Report a dispute related to this project. The associated milestone will be frozen until the dispute is resolved.
+              Report a dispute related to this project. The associated milestone
+              will be frozen until the dispute is resolved.
             </DialogDescription>
           </DialogHeader>
 
@@ -3961,10 +4066,14 @@ export default function ProjectDetailsPage({
             {/* Milestone Selection (if applicable) */}
             {projectMilestones && projectMilestones.length > 0 && (
               <div>
-                <Label htmlFor="disputeMilestone">Related Milestone (Optional)</Label>
+                <Label htmlFor="disputeMilestone">
+                  Related Milestone (Optional)
+                </Label>
                 <Select
                   value={selectedMilestoneForDispute || undefined}
-                  onValueChange={(value) => setSelectedMilestoneForDispute(value || null)}
+                  onValueChange={(value) =>
+                    setSelectedMilestoneForDispute(value || null)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a milestone (optional)" />
@@ -3978,7 +4087,8 @@ export default function ProjectDetailsPage({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500 mt-1">
-                  If selected, this milestone will be frozen until the dispute is resolved.
+                  If selected, this milestone will be frozen until the dispute
+                  is resolved.
                 </p>
               </div>
             )}
@@ -3988,19 +4098,24 @@ export default function ProjectDetailsPage({
               <Label htmlFor="disputeReason">
                 Reason for Dispute <span className="text-red-500">*</span>
               </Label>
-              <Select
-                value={disputeReason}
-                onValueChange={setDisputeReason}
-              >
+              <Select value={disputeReason} onValueChange={setDisputeReason}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Missed deadline">Missed deadline</SelectItem>
+                  <SelectItem value="Missed deadline">
+                    Missed deadline
+                  </SelectItem>
                   <SelectItem value="Low quality">Low quality</SelectItem>
-                  <SelectItem value="Payment not released">Payment not released</SelectItem>
-                  <SelectItem value="Work not completed">Work not completed</SelectItem>
-                  <SelectItem value="Communication issues">Communication issues</SelectItem>
+                  <SelectItem value="Payment not released">
+                    Payment not released
+                  </SelectItem>
+                  <SelectItem value="Work not completed">
+                    Work not completed
+                  </SelectItem>
+                  <SelectItem value="Communication issues">
+                    Communication issues
+                  </SelectItem>
                   <SelectItem value="Scope change">Scope change</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
@@ -4024,7 +4139,9 @@ export default function ProjectDetailsPage({
 
             {/* Contested Amount */}
             <div>
-              <Label htmlFor="disputeContestedAmount">Contested Amount (RM)</Label>
+              <Label htmlFor="disputeContestedAmount">
+                Contested Amount (RM)
+              </Label>
               <Input
                 id="disputeContestedAmount"
                 type="number"
@@ -4039,7 +4156,9 @@ export default function ProjectDetailsPage({
 
             {/* Suggested Resolution */}
             <div>
-              <Label htmlFor="disputeSuggestedResolution">Suggested Resolution</Label>
+              <Label htmlFor="disputeSuggestedResolution">
+                Suggested Resolution
+              </Label>
               <Textarea
                 id="disputeSuggestedResolution"
                 placeholder="What resolution would you like to see? (Optional)"
@@ -4061,7 +4180,8 @@ export default function ProjectDetailsPage({
                 className="mt-1"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT, JPG, PNG (Max 10MB per file)
+                Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT, JPG, PNG (Max
+                10MB per file)
               </p>
               {disputeAttachments.length > 0 && (
                 <div className="mt-2 space-y-2">
@@ -4107,7 +4227,11 @@ export default function ProjectDetailsPage({
             </Button>
             <Button
               onClick={handleCreateDispute}
-              disabled={creatingDispute || !disputeReason.trim() || !disputeDescription.trim()}
+              disabled={
+                creatingDispute ||
+                !disputeReason.trim() ||
+                !disputeDescription.trim()
+              }
               className="bg-red-600 hover:bg-red-700"
             >
               {creatingDispute ? (
@@ -4127,7 +4251,10 @@ export default function ProjectDetailsPage({
       </Dialog>
 
       {/* View Dispute Dialog */}
-      <Dialog open={viewDisputeDialogOpen} onOpenChange={setViewDisputeDialogOpen}>
+      <Dialog
+        open={viewDisputeDialogOpen}
+        onOpenChange={setViewDisputeDialogOpen}
+      >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Dispute Details</DialogTitle>
@@ -4144,9 +4271,14 @@ export default function ProjectDetailsPage({
                   {currentDispute.status?.replace("_", " ")}
                 </Badge>
                 <div className="text-sm text-gray-500">
-                  Created: {new Date(currentDispute.createdAt).toLocaleDateString()}
+                  Created:{" "}
+                  {new Date(currentDispute.createdAt).toLocaleDateString()}
                   {currentDispute.updatedAt !== currentDispute.createdAt && (
-                    <> • Updated: {new Date(currentDispute.updatedAt).toLocaleDateString()}</>
+                    <>
+                      {" "}
+                      • Updated:{" "}
+                      {new Date(currentDispute.updatedAt).toLocaleDateString()}
+                    </>
                   )}
                 </div>
               </div>
@@ -4158,11 +4290,15 @@ export default function ProjectDetailsPage({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Reason</Label>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Reason
+                    </Label>
                     <p className="mt-1">{currentDispute.reason}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Description & Updates</Label>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Description & Updates
+                    </Label>
                     <div className="mt-2 space-y-3">
                       {(() => {
                         // Parse description to show original and updates separately
@@ -4178,15 +4314,20 @@ export default function ProjectDetailsPage({
                               <div className="flex items-center gap-2 mb-2">
                                 <Avatar className="w-6 h-6">
                                   <AvatarFallback>
-                                    {currentDispute.raisedBy?.name?.charAt(0) || "U"}
+                                    {currentDispute.raisedBy?.name?.charAt(0) ||
+                                      "U"}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
                                   <p className="text-xs font-semibold text-gray-900">
-                                    {currentDispute.raisedBy?.name || "Unknown User"}
+                                    {currentDispute.raisedBy?.name ||
+                                      "Unknown User"}
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    Original dispute • {new Date(currentDispute.createdAt).toLocaleString()}
+                                    Original dispute •{" "}
+                                    {new Date(
+                                      currentDispute.createdAt
+                                    ).toLocaleString()}
                                   </p>
                                 </div>
                               </div>
@@ -4199,28 +4340,44 @@ export default function ProjectDetailsPage({
                             {updates.map((update: string, idx: number) => {
                               // Parse update format: [Update by Name on Date]: content
                               // Also handle old format: [Update by userId]: content
-                              let match = update.match(/^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/);
+                              let match = update.match(
+                                /^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/
+                              );
                               let userName = "";
                               let updateDate = "";
                               let updateContent = "";
-                              
+
                               if (match) {
                                 [, userName, updateDate, updateContent] = match;
                               } else {
                                 // Try old format: [Update by userId]: content
-                                const oldMatch = update.match(/^\[Update by (.+?)\]:\s*([\s\S]+)$/);
+                                const oldMatch = update.match(
+                                  /^\[Update by (.+?)\]:\s*([\s\S]+)$/
+                                );
                                 if (oldMatch) {
                                   const [, userIdOrName, content] = oldMatch;
                                   // Check if it's a UUID (old format)
-                                  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                                  const uuidRegex =
+                                    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                                   if (uuidRegex.test(userIdOrName)) {
                                     // It's a UUID, try to match with customer or provider
-                                    if (project?.customer?.id === userIdOrName) {
-                                      userName = project?.customer?.name || "Customer";
-                                    } else if (project?.provider?.id === userIdOrName) {
-                                      userName = project?.provider?.name || "Provider";
-                                    } else if (currentDispute?.raisedBy?.id === userIdOrName) {
-                                      userName = currentDispute?.raisedBy?.name || "Unknown User";
+                                    if (
+                                      project?.customer?.id === userIdOrName
+                                    ) {
+                                      userName =
+                                        project?.customer?.name || "Customer";
+                                    } else if (
+                                      project?.provider?.id === userIdOrName
+                                    ) {
+                                      userName =
+                                        project?.provider?.name || "Provider";
+                                    } else if (
+                                      currentDispute?.raisedBy?.id ===
+                                      userIdOrName
+                                    ) {
+                                      userName =
+                                        currentDispute?.raisedBy?.name ||
+                                        "Unknown User";
                                     } else {
                                       userName = "Unknown User";
                                     }
@@ -4238,10 +4395,12 @@ export default function ProjectDetailsPage({
                                   updateDate = "Unknown Date";
                                 }
                               }
-                              
-                              const isCustomer = project?.customer?.name === userName;
-                              const isProvider = project?.provider?.name === userName;
-                              
+
+                              const isCustomer =
+                                project?.customer?.name === userName;
+                              const isProvider =
+                                project?.provider?.name === userName;
+
                               return (
                                 <div
                                   key={idx}
@@ -4264,8 +4423,15 @@ export default function ProjectDetailsPage({
                                         <p className="text-xs font-semibold text-gray-900">
                                           {userName}
                                         </p>
-                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                          {isCustomer ? "Customer" : isProvider ? "Provider" : "User"}
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] px-1.5 py-0"
+                                        >
+                                          {isCustomer
+                                            ? "Customer"
+                                            : isProvider
+                                            ? "Provider"
+                                            : "User"}
                                         </Badge>
                                       </div>
                                       <p className="text-xs text-gray-500">
@@ -4286,41 +4452,55 @@ export default function ProjectDetailsPage({
                   </div>
                   {currentDispute.contestedAmount && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">Contested Amount</Label>
-                      <p className="mt-1 font-medium">RM{currentDispute.contestedAmount.toLocaleString()}</p>
+                      <Label className="text-sm font-medium text-gray-500">
+                        Contested Amount
+                      </Label>
+                      <p className="mt-1 font-medium">
+                        RM{currentDispute.contestedAmount.toLocaleString()}
+                      </p>
                     </div>
                   )}
                   {currentDispute.suggestedResolution && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">Suggested Resolution</Label>
-                      <p className="mt-1 whitespace-pre-wrap">{currentDispute.suggestedResolution}</p>
+                      <Label className="text-sm font-medium text-gray-500">
+                        Suggested Resolution
+                      </Label>
+                      <p className="mt-1 whitespace-pre-wrap">
+                        {currentDispute.suggestedResolution}
+                      </p>
                     </div>
                   )}
                   {currentDispute.milestone && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">Related Milestone</Label>
-                      <p className="mt-1">{currentDispute.milestone.title} - RM{currentDispute.milestone.amount.toLocaleString()}</p>
+                      <Label className="text-sm font-medium text-gray-500">
+                        Related Milestone
+                      </Label>
+                      <p className="mt-1">
+                        {currentDispute.milestone.title} - RM
+                        {currentDispute.milestone.amount.toLocaleString()}
+                      </p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-                {/* Admin Resolution Notes */}
-                {currentDispute.resolutionNotes && Array.isArray(currentDispute.resolutionNotes) && currentDispute.resolutionNotes.length > 0 && (
+              {/* Admin Resolution Notes */}
+              {currentDispute.resolutionNotes &&
+                Array.isArray(currentDispute.resolutionNotes) &&
+                currentDispute.resolutionNotes.length > 0 && (
                   <Card className="border-purple-200 bg-purple-50">
                     <CardHeader>
-                      <CardTitle className="text-purple-800">Admin Resolution Notes</CardTitle>
+                      <CardTitle className="text-purple-800">
+                        Admin Resolution Notes
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {currentDispute.resolutionNotes.map((note: any, index: number) => {
-                        // Check if note contains "--- Admin Note ---" separator
-                        const noteParts = note.note?.split(/\n--- Admin Note ---\n/) || [];
-                        const hasAdminNote = noteParts.length > 1;
-                        const resolutionResult = noteParts[0] || note.note;
-                        const adminNote = noteParts[1];
-                        
-                        return (
-                          <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
+                      {currentDispute.resolutionNotes.map(
+                        (note: any, index: number) => (
+                          <div
+                            key={index}
+                            className="bg-white p-4 rounded-lg border-l-4 border-purple-500"
+                          >
                             <div className="flex items-center gap-2 mb-2">
                               <Avatar className="w-6 h-6">
                                 <AvatarFallback className="bg-purple-100 text-purple-700">
@@ -4332,193 +4512,227 @@ export default function ProjectDetailsPage({
                                   Resolution Note #{index + 1}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
+                                  By {note.adminName || "Admin"} •{" "}
+                                  {new Date(note.createdAt).toLocaleString()}
                                 </p>
                               </div>
                             </div>
-                            <div className="space-y-3 mt-2">
-                              {/* Resolution Result */}
-                              <div>
-                                <p className="text-xs font-semibold text-gray-500 mb-1">Resolution Result:</p>
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">
-                                  {resolutionResult}
-                                </p>
-                              </div>
-                              {/* Admin Note (if exists) */}
-                              {hasAdminNote && adminNote && (
-                                <div>
-                                  <p className="text-xs font-semibold text-purple-600 mb-1">Admin Note:</p>
-                                  <p className="text-sm text-gray-700 whitespace-pre-wrap bg-purple-50 p-2 rounded border-l-2 border-purple-300">
-                                    {adminNote}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
+                              {note.note}
+                            </p>
                           </div>
-                        );
-                      })}
+                        )
+                      )}
                     </CardContent>
                   </Card>
                 )}
-                
-                {/* Legacy Resolution (for backward compatibility) */}
-                {currentDispute.resolution && (!currentDispute.resolutionNotes || !Array.isArray(currentDispute.resolutionNotes) || currentDispute.resolutionNotes.length === 0) && (
+
+              {/* Legacy Resolution (for backward compatibility) */}
+              {currentDispute.resolution &&
+                (!currentDispute.resolutionNotes ||
+                  !Array.isArray(currentDispute.resolutionNotes) ||
+                  currentDispute.resolutionNotes.length === 0) && (
                   <Card className="border-green-200 bg-green-50">
                     <CardHeader>
-                      <CardTitle className="text-green-800">Admin Resolution</CardTitle>
+                      <CardTitle className="text-green-800">
+                        Admin Resolution
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-green-700 whitespace-pre-wrap">{currentDispute.resolution}</p>
+                      <p className="text-green-700 whitespace-pre-wrap">
+                        {currentDispute.resolution}
+                      </p>
                     </CardContent>
                   </Card>
                 )}
 
               {/* Attachments */}
-              {currentDispute.attachments && currentDispute.attachments.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Attachments</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {currentDispute.attachments.map((url: string, index: number) => {
-                        // Extract filename from path
-                        const normalized = url.replace(/\\/g, "/");
-                        const filename = normalized.split("/").pop() || `Attachment ${index + 1}`;
-                        // Remove timestamp prefix if present (format: timestamp_filename.ext)
-                        const cleanFilename = filename.replace(/^\d+_/, "");
-                        
-                        // Try to find attachment metadata in description
-                        const attachmentMetadataMatch = currentDispute.description?.match(
-                          new RegExp(`\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`, "g")
-                        );
-                        let uploadedBy = "Unknown User";
-                        let uploadedAt = "Unknown Date";
-                        
-                        if (attachmentMetadataMatch) {
-                          // Find matching metadata for this file
-                          for (const meta of attachmentMetadataMatch) {
-                            const metaMatch = meta.match(/\[Attachment: (.+?) uploaded by (.+?) on (.+?)\]/);
-                            if (metaMatch && metaMatch[1] === filename) {
-                              uploadedBy = metaMatch[2];
-                              uploadedAt = metaMatch[3];
-                              break;
+              {currentDispute.attachments &&
+                currentDispute.attachments.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Attachments</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {currentDispute.attachments.map(
+                          (url: string, index: number) => {
+                            // Extract filename from path
+                            const normalized = url.replace(/\\/g, "/");
+                            const filename =
+                              normalized.split("/").pop() ||
+                              `Attachment ${index + 1}`;
+                            // Remove timestamp prefix if present (format: timestamp_filename.ext)
+                            const cleanFilename = filename.replace(/^\d+_/, "");
+
+                            // Try to find attachment metadata in description
+                            const attachmentMetadataMatch =
+                              currentDispute.description?.match(
+                                new RegExp(
+                                  `\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`,
+                                  "g"
+                                )
+                              );
+                            let uploadedBy = "Unknown User";
+                            let uploadedAt = "Unknown Date";
+
+                            if (attachmentMetadataMatch) {
+                              // Find matching metadata for this file
+                              for (const meta of attachmentMetadataMatch) {
+                                const metaMatch = meta.match(
+                                  /\[Attachment: (.+?) uploaded by (.+?) on (.+?)\]/
+                                );
+                                if (metaMatch && metaMatch[1] === filename) {
+                                  uploadedBy = metaMatch[2];
+                                  uploadedAt = metaMatch[3];
+                                  break;
+                                }
+                              }
                             }
-                          }
-                        }
-                        
-                        // Also check if it's from the original dispute creator
-                        if (uploadedBy === "Unknown User" && index === 0 && currentDispute.attachments.length === 1) {
-                          uploadedBy = currentDispute.raisedBy?.name || "Unknown User";
-                          uploadedAt = new Date(currentDispute.createdAt).toLocaleString();
-                        }
-                        
-                        return (
-                          <div key={index} className="flex items-center justify-between p-2 border rounded">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {cleanFilename}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Uploaded by {uploadedBy} • {uploadedAt}
-                                </p>
+
+                            // Also check if it's from the original dispute creator
+                            if (
+                              uploadedBy === "Unknown User" &&
+                              index === 0 &&
+                              currentDispute.attachments.length === 1
+                            ) {
+                              uploadedBy =
+                                currentDispute.raisedBy?.name || "Unknown User";
+                              uploadedAt = new Date(
+                                currentDispute.createdAt
+                              ).toLocaleString();
+                            }
+
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-2 border rounded"
+                              >
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {cleanFilename}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      Uploaded by {uploadedBy} • {uploadedAt}
+                                    </p>
+                                  </div>
+                                </div>
+                                <a
+                                  href={`${
+                                    process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                    "http://localhost:4000"
+                                  }${url.startsWith("/") ? url : `/${url}`}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Button variant="outline" size="sm">
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download
+                                  </Button>
+                                </a>
                               </div>
-                            </div>
-                            <a
-                              href={`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${url.startsWith("/") ? url : `/${url}`}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Button variant="outline" size="sm">
-                                <Download className="w-4 h-4 mr-2" />
-                                Download
-                              </Button>
-                            </a>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                            );
+                          }
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
               {/* Update Dispute (if not CLOSED and not RESOLVED) */}
-              {currentDispute.status !== "CLOSED" && currentDispute.status !== "RESOLVED" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Add Update</CardTitle>
-                    <CardDescription>
-                      Add additional notes or evidence to your dispute
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="disputeAdditionalNotes">Additional Notes</Label>
-                      <Textarea
-                        id="disputeAdditionalNotes"
-                        placeholder="Add any additional information or updates..."
-                        value={disputeAdditionalNotes}
-                        onChange={(e) => setDisputeAdditionalNotes(e.target.value)}
-                        rows={4}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="disputeUpdateAttachments">Additional Attachments</Label>
-                      <Input
-                        id="disputeUpdateAttachments"
-                        type="file"
-                        multiple
-                        onChange={handleDisputeUpdateAttachmentChange}
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.jpg,.png"
-                      />
-                      {disputeUpdateAttachments.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {disputeUpdateAttachments.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                              <span>{file.name}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeDisputeUpdateAttachment(index)}
+              {currentDispute.status !== "CLOSED" &&
+                currentDispute.status !== "RESOLVED" && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Add Update</CardTitle>
+                      <CardDescription>
+                        Add additional notes or evidence to your dispute
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="disputeAdditionalNotes">
+                          Additional Notes
+                        </Label>
+                        <Textarea
+                          id="disputeAdditionalNotes"
+                          placeholder="Add any additional information or updates..."
+                          value={disputeAdditionalNotes}
+                          onChange={(e) =>
+                            setDisputeAdditionalNotes(e.target.value)
+                          }
+                          rows={4}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="disputeUpdateAttachments">
+                          Additional Attachments
+                        </Label>
+                        <Input
+                          id="disputeUpdateAttachments"
+                          type="file"
+                          multiple
+                          onChange={handleDisputeUpdateAttachmentChange}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.jpg,.png"
+                        />
+                        {disputeUpdateAttachments.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {disputeUpdateAttachments.map((file, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
                               >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <Button
-                      onClick={handleUpdateDispute}
-                      disabled={updatingDispute || (!disputeAdditionalNotes.trim() && disputeUpdateAttachments.length === 0)}
-                      className="w-full"
-                    >
-                      {updatingDispute ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" />
-                          Add Update
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+                                <span>{file.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    removeDisputeUpdateAttachment(index)
+                                  }
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        onClick={handleUpdateDispute}
+                        disabled={
+                          updatingDispute ||
+                          (!disputeAdditionalNotes.trim() &&
+                            disputeUpdateAttachments.length === 0)
+                        }
+                        className="w-full"
+                      >
+                        {updatingDispute ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Add Update
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
 
               {/* CLOSED or RESOLVED Dispute Notice */}
-              {(currentDispute.status === "CLOSED" || currentDispute.status === "RESOLVED") && (
+              {(currentDispute.status === "CLOSED" ||
+                currentDispute.status === "RESOLVED") && (
                 <Card className="border-red-200 bg-red-50">
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-2 text-red-800">
                       <AlertCircle className="w-5 h-5" />
                       <p className="font-medium">
-                        {currentDispute.status === "CLOSED" 
+                        {currentDispute.status === "CLOSED"
                           ? "This dispute is closed. Project work has been frozen and no further updates are allowed."
                           : "This dispute has been resolved. Project completed peacefully. No further updates are allowed."}
                       </p>
@@ -4530,7 +4744,10 @@ export default function ProjectDetailsPage({
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDisputeDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setViewDisputeDialogOpen(false)}
+            >
               Close
             </Button>
           </DialogFooter>

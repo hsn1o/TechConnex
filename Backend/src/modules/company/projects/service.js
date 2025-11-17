@@ -87,7 +87,9 @@ export async function getProjects(dto) {
     if (dto.status) {
       if (dto.status === "OPEN" || dto.status === "CLOSED") {
         serviceRequestWhere.status = dto.status;
-      } else if (["IN_PROGRESS", "COMPLETED", "DISPUTED"].includes(dto.status)) {
+      } else if (
+        ["IN_PROGRESS", "COMPLETED", "DISPUTED"].includes(dto.status)
+      ) {
         projectWhere.status = dto.status;
       }
     }
@@ -98,127 +100,136 @@ export async function getProjects(dto) {
     }
 
     // Fetch ServiceRequests and Projects in parallel
-    const [serviceRequests, projects, serviceRequestTotal, projectTotal] = await Promise.all([
-      prisma.serviceRequest.findMany({
-        where: serviceRequestWhere,
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              customerProfile: {
-                select: {
-                  companySize: true,
-                  industry: true,
+    const [serviceRequests, projects, serviceRequestTotal, projectTotal] =
+      await Promise.all([
+        prisma.serviceRequest.findMany({
+          where: serviceRequestWhere,
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                customerProfile: {
+                  select: {
+                    companySize: true,
+                    industry: true,
+                  },
                 },
               },
             },
-          },
-          proposals: {
-            include: {
-              provider: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  providerProfile: {
-                    select: {
-                      rating: true,
-                      totalProjects: true,
-                      location: true,
+            proposals: {
+              include: {
+                provider: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    providerProfile: {
+                      select: {
+                        rating: true,
+                        totalProjects: true,
+                        location: true,
+                      },
                     },
                   },
                 },
               },
             },
-          },
-          milestones: {
-            orderBy: {
-              order: "asc",
+            milestones: {
+              orderBy: {
+                order: "asc",
+              },
             },
-          },
-          _count: {
-            select: {
-              proposals: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        skip,
-        take: dto.limit,
-      }),
-      prisma.project.findMany({
-        where: projectWhere,
-        include: {
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              customerProfile: {
-                select: {
-                  companySize: true,
-                  industry: true,
-                },
+            _count: {
+              select: {
+                proposals: true,
               },
             },
           },
-          provider: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              providerProfile: {
-                select: {
-                  rating: true,
-                  totalProjects: true,
-                  location: true,
-                  profileImageUrl: true, // 🆕 Profile image
+          orderBy: {
+            createdAt: "desc",
+          },
+          skip,
+          take: dto.limit,
+        }),
+        prisma.project.findMany({
+          where: projectWhere,
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                customerProfile: {
+                  select: {
+                    companySize: true,
+                    industry: true,
+                  },
                 },
               },
             },
-          },
-          milestones: {
-            orderBy: {
-              order: "asc",
+            provider: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                providerProfile: {
+                  select: {
+                    rating: true,
+                    totalProjects: true,
+                    location: true,
+                    profileImageUrl: true, // 🆕 Profile image
+                  },
+                },
+              },
+            },
+            milestones: {
+              orderBy: {
+                order: "asc",
+              },
+            },
+            _count: {
+              select: {
+                reviews: true,
+              },
             },
           },
-          _count: {
-            select: {
-              reviews: true,
-            },
+          orderBy: {
+            createdAt: "desc",
           },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        skip,
-        take: dto.limit,
-      }),
-      prisma.serviceRequest.count({ where: serviceRequestWhere }),
-      prisma.project.count({ where: projectWhere }),
-    ]);
+          skip,
+          take: dto.limit,
+        }),
+        prisma.serviceRequest.count({ where: serviceRequestWhere }),
+        prisma.project.count({ where: projectWhere }),
+      ]);
 
     // Add type field and merge the results
-    const serviceRequestsWithType = serviceRequests.map(item => ({
+    const serviceRequestsWithType = serviceRequests.map((item) => ({
       ...item,
       type: "ServiceRequest",
     }));
 
     // Calculate progress, completedMilestones, and totalMilestones for each project (like provider side)
-    const projectsWithType = projects.map(item => {
+    const projectsWithType = projects.map((item) => {
       const totalMilestones = item.milestones?.length || 0;
-      const completedMilestones = item.milestones?.filter(
-        (m) => m.status === "APPROVED" || m.status === "PAID"
-      ).length || 0;
-      const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
-      
+      const completedMilestones =
+        item.milestones?.filter(
+          (m) => m.status === "APPROVED" || m.status === "PAID"
+        ).length || 0;
+      const progress =
+        totalMilestones > 0
+          ? Math.round((completedMilestones / totalMilestones) * 100)
+          : 0;
+
       // Calculate approved price (sum of all milestone amounts)
-      const approvedPrice = item.milestones?.reduce((sum, milestone) => sum + milestone.amount, 0) || 0;
-      
+      const approvedPrice =
+        item.milestones?.reduce(
+          (sum, milestone) => sum + milestone.amount,
+          0
+        ) || 0;
+
       return {
         ...item,
         type: "Project",
@@ -230,8 +241,10 @@ export async function getProjects(dto) {
     });
 
     // Combine and sort by creation date
-    const combinedItems = [...serviceRequestsWithType, ...projectsWithType]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const combinedItems = [
+      ...serviceRequestsWithType,
+      ...projectsWithType,
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     // Apply pagination to combined results
     const paginatedItems = combinedItems.slice(skip, skip + dto.limit);
@@ -437,16 +450,22 @@ export async function getProjectById(projectId, customerId) {
     const completedMilestones = milestones.filter(
       (m) => m.status === "APPROVED" || m.status === "PAID"
     ).length;
-    const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
-    
+    const progress =
+      totalMilestones > 0
+        ? Math.round((completedMilestones / totalMilestones) * 100)
+        : 0;
+
     // Calculate approved price (sum of all milestone amounts)
-    const approvedPrice = milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
-    
+    const approvedPrice = milestones.reduce(
+      (sum, milestone) => sum + milestone.amount,
+      0
+    );
+
     // Calculate total spent (sum of PAID milestone amounts)
     const totalSpent = milestones
       .filter((m) => m.status === "PAID")
       .reduce((sum, milestone) => sum + milestone.amount, 0);
-    
+
     // Calculate days left until the last milestone due date
     let daysLeft = null;
     if (milestones.length > 0) {
@@ -572,7 +591,10 @@ export async function updateProjectStatus(projectId, customerId, status) {
 }
 
 // ServiceRequest milestone management functions
-export async function getServiceRequestMilestones(serviceRequestId, customerId) {
+export async function getServiceRequestMilestones(
+  serviceRequestId,
+  customerId
+) {
   try {
     const serviceRequest = await prisma.serviceRequest.findFirst({
       where: {
@@ -600,7 +622,11 @@ export async function getServiceRequestMilestones(serviceRequestId, customerId) 
   }
 }
 
-export async function updateServiceRequestMilestones(serviceRequestId, customerId, milestones) {
+export async function updateServiceRequestMilestones(
+  serviceRequestId,
+  customerId,
+  milestones
+) {
   try {
     // First verify the service request exists and is in OPEN status
     const serviceRequest = await prisma.serviceRequest.findFirst({
@@ -616,8 +642,14 @@ export async function updateServiceRequestMilestones(serviceRequestId, customerI
     }
 
     // Validate milestone amounts are within budget range
-    const totalAmount = milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
-    if (totalAmount < serviceRequest.budgetMin || totalAmount > serviceRequest.budgetMax) {
+    const totalAmount = milestones.reduce(
+      (sum, milestone) => sum + milestone.amount,
+      0
+    );
+    if (
+      totalAmount < serviceRequest.budgetMin ||
+      totalAmount > serviceRequest.budgetMax
+    ) {
       throw new Error("Total milestone amount must be within budget range");
     }
 
@@ -653,17 +685,16 @@ export async function updateServiceRequestMilestones(serviceRequestId, customerI
   }
 }
 
-
 // src/modules/company/projects/service.js
 export async function updateProjectDetails(id, customerId, dto) {
   // Try updating an OPEN ServiceRequest owned by this customer
   const sr = await prisma.serviceRequest.findFirst({
-    where: { id, customerId }
+    where: { id, customerId },
   });
   if (!sr) {
     // If not a ServiceRequest, optionally update a Project the customer owns:
     const pj = await prisma.project.findFirst({
-      where: { id, customerId }
+      where: { id, customerId },
     });
     if (!pj) throw new Error("Not found or not authorized");
     return prisma.project.update({
@@ -731,12 +762,16 @@ export async function requestMilestoneChanges(dto) {
     });
 
     if (!milestone) {
-      throw new Error("Milestone not found or you don't have permission to request changes");
+      throw new Error(
+        "Milestone not found or you don't have permission to request changes"
+      );
     }
 
     // Check if milestone is in SUBMITTED status
     if (milestone.status !== "SUBMITTED") {
-      throw new Error("Milestone must be in SUBMITTED status to request changes");
+      throw new Error(
+        "Milestone must be in SUBMITTED status to request changes"
+      );
     }
 
     // Prepare current submission to save to history
@@ -744,7 +779,7 @@ export async function requestMilestoneChanges(dto) {
     // Current milestone.revisionNumber is the number BEFORE this submission (0, 1, 2...)
     // So the submission number is (revisionNumber + 1)
     const currentSubmissionRevisionNumber = (milestone.revisionNumber || 0) + 1;
-    
+
     const currentSubmission = {
       revisionNumber: currentSubmissionRevisionNumber, // Save as submission number (1, 2, 3...)
       submitDeliverables: milestone.submitDeliverables,
@@ -757,8 +792,8 @@ export async function requestMilestoneChanges(dto) {
     };
 
     // Get existing submission history
-    const existingHistory = Array.isArray(milestone.submissionHistory) 
-      ? milestone.submissionHistory 
+    const existingHistory = Array.isArray(milestone.submissionHistory)
+      ? milestone.submissionHistory
       : [];
 
     // Add current submission to history
@@ -799,7 +834,12 @@ export async function requestMilestoneChanges(dto) {
       data: {
         userId: milestone.project.providerId,
         type: "milestone",
-        content: `Changes requested for milestone "${milestone.title}". Please review and resubmit.${dto.reason ? ` Reason: ${dto.reason}` : ""}`,
+        title: "Milestone Update",
+        content: `Changes requested for milestone "${
+          milestone.title
+        }". Please review and resubmit.${
+          dto.reason ? ` Reason: ${dto.reason}` : ""
+        }`,
       },
     });
 
@@ -832,7 +872,9 @@ export async function approveIndividualMilestone(dto) {
     });
 
     if (!milestone) {
-      throw new Error("Milestone not found or you don't have permission to approve it");
+      throw new Error(
+        "Milestone not found or you don't have permission to approve it"
+      );
     }
 
     // Check if milestone is in SUBMITTED status
@@ -870,6 +912,8 @@ export async function approveIndividualMilestone(dto) {
       data: {
         userId: milestone.project.providerId,
         type: "milestone",
+        title: "Milestone Update",
+
         content: `Milestone "${milestone.title}" has been approved and is ready for payment`,
       },
     });
@@ -906,7 +950,9 @@ export async function payMilestone(dto) {
     });
 
     if (!milestone) {
-      throw new Error("Milestone not found or you don't have permission to pay it");
+      throw new Error(
+        "Milestone not found or you don't have permission to pay it"
+      );
     }
 
     // Check if milestone is in APPROVED status
@@ -946,6 +992,8 @@ export async function payMilestone(dto) {
       data: {
         userId: milestone.project.providerId,
         type: "payment",
+        title: "Payment Update",
+
         content: `Payment for milestone "${milestone.title}" has been processed (RM ${milestone.amount})`,
       },
     });
@@ -966,10 +1014,16 @@ export async function payMilestone(dto) {
     });
 
     const totalMilestones = allMilestones.length;
-    const paidMilestones = allMilestones.filter(m => m.status === "PAID").length;
+    const paidMilestones = allMilestones.filter(
+      (m) => m.status === "PAID"
+    ).length;
 
     // If all milestones are paid and project is still IN_PROGRESS, mark it as COMPLETED
-    if (totalMilestones > 0 && paidMilestones === totalMilestones && updatedMilestone.project.status === "IN_PROGRESS") {
+    if (
+      totalMilestones > 0 &&
+      paidMilestones === totalMilestones &&
+      updatedMilestone.project.status === "IN_PROGRESS"
+    ) {
       await prisma.project.update({
         where: { id: projectId },
         data: {
@@ -1011,5 +1065,7 @@ export async function payMilestone(dto) {
 }
 
 function filterUndefined(obj) {
-  return Object.fromEntries(Object.entries(obj).filter(([,v]) => v !== undefined));
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  );
 }
