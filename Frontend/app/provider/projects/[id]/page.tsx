@@ -63,6 +63,7 @@ import {
   type Milestone,
 } from "@/lib/api";
 import { formatTimeline } from "@/lib/timeline-utils";
+import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
 
 export default function ProviderProjectDetailsPage() {
   const params = useParams();
@@ -891,39 +892,73 @@ export default function ProviderProjectDetailsPage() {
                       </div>
                     )}
 
-                    {project.requirements &&
-                      project.requirements.length > 0 && (
+                    {project.requirements && (
                       <div>
-                          <Label className="text-sm font-medium text-gray-500">
-                            Requirements
-                          </Label>
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                            {project.requirements.map(
-                              (req: string, index: number) => (
-                                <li key={index} className="text-gray-700">
-                                  {req}
-                                </li>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Requirements
+                        </Label>
+                        <div className="mt-2 space-y-3">
+                          {Array.isArray(project.requirements) ? (
+                            project.requirements.map(
+                              (req: string | any, index: number) => (
+                                <div key={index} className="text-gray-700">
+                                  <MarkdownViewer
+                                    content={
+                                      typeof req === "string"
+                                        ? req
+                                        : String(req)
+                                    }
+                                    className="prose max-w-none text-gray-700"
+                                    emptyMessage={""}
+                                  />
+                                </div>
                               )
-                            )}
-                        </ul>
+                            )
+                          ) : (
+                            <div className="text-gray-700">
+                              <MarkdownViewer
+                                content={String(project.requirements)}
+                                className="prose max-w-none text-gray-700"
+                                emptyMessage={""}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
-                    {project.deliverables &&
-                      project.deliverables.length > 0 && (
+                    {project.deliverables && (
                       <div>
-                          <Label className="text-sm font-medium text-gray-500">
-                            Deliverables
-                          </Label>
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                            {project.deliverables.map(
-                              (del: string, index: number) => (
-                                <li key={index} className="text-gray-700">
-                                  {del}
-                                </li>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Deliverables
+                        </Label>
+                        <div className="mt-2 space-y-3">
+                          {Array.isArray(project.deliverables) ? (
+                            project.deliverables.map(
+                              (del: string | any, index: number) => (
+                                <div key={index} className="text-gray-700">
+                                  <MarkdownViewer
+                                    content={
+                                      typeof del === "string"
+                                        ? del
+                                        : String(del)
+                                    }
+                                    className="prose max-w-none text-gray-700"
+                                    emptyMessage={""}
+                                  />
+                                </div>
                               )
-                            )}
-                        </ul>
+                            )
+                          ) : (
+                            <div className="text-gray-700">
+                              <MarkdownViewer
+                                content={String(project.deliverables)}
+                                className="prose max-w-none text-gray-700"
+                                emptyMessage={""}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </CardContent>

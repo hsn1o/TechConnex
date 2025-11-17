@@ -38,7 +38,7 @@ import { createProject } from "@/lib/api";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { buildTimelineData } from "@/lib/timeline-utils";
-import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { RichEditor } from "@/components/markdown/RichTextEditor";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -54,8 +54,8 @@ export default function NewProjectPage() {
     skills: [] as string[],
     ndaSigned: false,
     priority: "medium",
-    requirements: "",
-    deliverables: "",
+    requirements: "<p></p>",
+    deliverables: "<p></p>",
   });
 
   const [newSkill, setNewSkill] = useState("");
@@ -318,7 +318,12 @@ export default function NewProjectPage() {
       setLoading(false);
     }
   };
-
+  const handleChange = (field: keyof typeof formData, html: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: html,
+    }));
+  };
   return (
     <CustomerLayout>
       <div className="max-w-4xl mx-auto space-y-8">
@@ -660,21 +665,33 @@ export default function NewProjectPage() {
                     </Label>
                   </div>
 
-                  <MarkdownEditor
-                    label="Requirements"
-                    value={formData.requirements}
-                    onChange={(value) => handleInputChange("requirements", value)}
-                    placeholder="Enter project requirements in markdown format...\n\nExample:\n- Cross-platform app\n- User authentication\n- Payment integration"
-                    height={250}
-                  />
+                  <div>
+                    <label>Requirements</label>
+                    <RichEditor
+                      content={formData.requirements}
+                      onChange={(html) => handleChange("requirements", html)}
+                      placeholder="Enter your requirements …"
+                      initialHeight={300}
+                      style={{
+                        border: "1px solid #ccc",
+                        padding: "8px",
+                      }}
+                    />
+                  </div>
 
-                  <MarkdownEditor
-                    label="Deliverables"
-                    value={formData.deliverables}
-                    onChange={(value) => handleInputChange("deliverables", value)}
-                    placeholder="Enter project deliverables in markdown format...\n\nExample:\n- Source code\n- Admin panel\n- API documentation\n- Deployment guide"
-                    height={250}
-                  />
+                  <div>
+                    <label>Deliverables</label>
+                    <RichEditor
+                      content={formData.deliverables}
+                      initialHeight={300}
+                      onChange={(html) => handleChange("deliverables", html)}
+                      placeholder="Enter your deliverables …"
+                      style={{
+                        border: "1px solid #ccc",
+                        padding: "8px",
+                      }}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>

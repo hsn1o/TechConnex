@@ -82,7 +82,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatTimeline } from "@/lib/timeline-utils";
 import { createPaymentIntentAPI, finalizePaymentAPI } from "@/lib/api-payment";
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
-import { MarkdownEditor } from "@/components/markdown/MarkdownEditor";
+import { RichEditor } from "@/components/markdown/RichTextEditor";
 import MilestonePayment from "@/components/MilestonePayment";
 
 export default function ProjectDetailsPage({
@@ -3038,25 +3038,25 @@ export default function ProjectDetailsPage({
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <MarkdownEditor
-                  label="Requirements"
-                  value={edit.requirements}
+                <Label>Requirements</Label>
+                <RichEditor
+                  content={edit.requirements}
                   onChange={(value) =>
                     setEdit({ ...edit, requirements: value })
                   }
-                  placeholder="Enter project requirements in markdown format..."
-                  height={200}
+                  placeholder="Enter project requirements..."
+                  initialHeight={200}
                 />
               </div>
               <div>
-                <MarkdownEditor
-                  label="Deliverables"
-                  value={edit.deliverables}
+                <Label>Deliverables</Label>
+                <RichEditor
+                  content={edit.deliverables}
                   onChange={(value) =>
                     setEdit({ ...edit, deliverables: value })
                   }
-                  placeholder="Enter project deliverables in markdown format..."
-                  height={200}
+                  placeholder="Enter project deliverables..."
+                  initialHeight={200}
                 />
               </div>
             </div>

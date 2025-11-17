@@ -1,44 +1,40 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { cn } from "@/lib/utils";
+import React from "react";
+import "./markdown-viewer.css";
 
 interface MarkdownViewerProps {
-  content: string | null | undefined;
+  content: string;
   className?: string;
   emptyMessage?: string;
 }
 
-export function MarkdownViewer({
+export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
   content,
   className = "",
-  emptyMessage = "No content provided.",
-}: MarkdownViewerProps) {
-  if (!content || content.trim() === "") {
+  emptyMessage = "No content available",
+}) => {
+  // If no content, show empty message
+  if (!content || content.trim() === "" || content === "<p></p>") {
     return (
-      <div className={cn("text-gray-500 italic text-sm", className)}>
-        {emptyMessage}
-      </div>
+      <div className={`text-gray-500 text-sm ${className}`}>{emptyMessage}</div>
     );
   }
 
+  // If content is HTML from RichEditor, display it directly
+  if (content && content.includes("<")) {
+    return (
+      <div
+        className={`markdown-viewer ${className}`}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    );
+  }
+
+  // If it's plain text, wrap in p tag
   return (
-    <div
-      className={cn(
-        "prose prose-sm max-w-none dark:prose-invert",
-        "prose-headings:font-semibold",
-        "prose-p:text-gray-700 dark:prose-p:text-gray-300",
-        "prose-ul:list-disc prose-ol:list-decimal",
-        "prose-li:my-1",
-        "prose-code:text-sm prose-code:bg-gray-100 prose-code:px-1 prose-code:rounded",
-        "prose-pre:bg-gray-100 prose-pre:text-gray-800",
-        "prose-a:text-blue-600 hover:prose-a:text-blue-800",
-        className
-      )}
-    >
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+    <div className={`markdown-viewer ${className}`}>
+      <p>{content}</p>
     </div>
   );
-}
-
+};
