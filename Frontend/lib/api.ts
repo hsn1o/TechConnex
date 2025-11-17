@@ -1776,6 +1776,66 @@ export async function updateAdminProject(projectId: string, updateData: any) {
   return data;
 }
 
+// Admin Reports API
+export async function getAdminReports(params?: {
+  dateRange?: string;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const searchParams = new URLSearchParams();
+  if (params?.dateRange) searchParams.append("dateRange", params.dateRange);
+  if (params?.startDate) searchParams.append("startDate", params.startDate);
+  if (params?.endDate) searchParams.append("endDate", params.endDate);
+
+  const res = await fetch(`${API_BASE}/admin/reports?${searchParams.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch reports");
+  return data;
+}
+
+export async function exportAdminReport(params?: {
+  reportType?: string;
+  dateRange?: string;
+  startDate?: string;
+  endDate?: string;
+  format?: string;
+}): Promise<Blob> {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const searchParams = new URLSearchParams();
+  if (params?.reportType) searchParams.append("reportType", params.reportType);
+  if (params?.dateRange) searchParams.append("dateRange", params.dateRange);
+  if (params?.startDate) searchParams.append("startDate", params.startDate);
+  if (params?.endDate) searchParams.append("endDate", params.endDate);
+  if (params?.format) searchParams.append("format", params.format || "pdf");
+
+  const res = await fetch(`${API_BASE}/admin/reports/export?${searchParams.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      // Do not set Content-Type for PDF download, let browser handle it
+    },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData?.error || "Failed to export report");
+  }
+
+  // Return blob for PDF (default format)
+  return await res.blob();
+}
 
 // Review API functions
 export async function getCompanyReviews(params?: {

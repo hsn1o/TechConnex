@@ -144,39 +144,10 @@ export default function AdminReportsPage() {
         params.endDate = customEndDate;
       }
 
-      const token =
-        typeof window !== "undefined"
-          ? localStorage.getItem("token")
-          : undefined;
-      if (!token) throw new Error("Not authenticated");
+      // Use the API function
+      const blob = await exportAdminReport(params);
 
-      const searchParams = new URLSearchParams();
-      if (params.reportType)
-        searchParams.append("reportType", params.reportType);
-      if (params.dateRange) searchParams.append("dateRange", params.dateRange);
-      if (params.startDate) searchParams.append("startDate", params.startDate);
-      if (params.endDate) searchParams.append("endDate", params.endDate);
-      if (params.format) searchParams.append("format", params.format);
-
-      const API_BASE =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-      const res = await fetch(
-        `${API_BASE}/admin/reports/export?${searchParams.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData?.error || "Failed to export report");
-      }
-
-      // Get PDF blob
-      const blob = await res.blob();
+      // Create download link
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
