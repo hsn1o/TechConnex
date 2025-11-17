@@ -1776,6 +1776,84 @@ export async function updateAdminProject(projectId: string, updateData: any) {
   return data;
 }
 
+// Admin Dashboard API
+export async function getAdminDashboardStats() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/dashboard/stats`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch dashboard stats");
+  return data;
+}
+
+export async function getAdminRecentActivity(limit?: number) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit.toString());
+
+  const res = await fetch(`${API_BASE}/admin/dashboard/activity?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch recent activity");
+  return data;
+}
+
+export async function getAdminPendingVerifications(limit?: number) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit.toString());
+
+  const res = await fetch(`${API_BASE}/admin/dashboard/verifications?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch pending verifications");
+  return data;
+}
+
+export async function getAdminTopProviders(limit?: number) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit.toString());
+
+  const res = await fetch(`${API_BASE}/admin/dashboard/top-providers?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch top providers");
+  return data;
+}
+
 // Admin Reports API
 export async function getAdminReports(params?: {
   dateRange?: string;
