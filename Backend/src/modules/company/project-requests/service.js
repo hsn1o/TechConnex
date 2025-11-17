@@ -379,6 +379,20 @@ export async function acceptProposal(dto) {
         },
       });
 
+      // Increment totalProjects in ProviderProfile
+      await tx.providerProfile.upsert({
+        where: { userId: proposal.providerId },
+        update: {
+          totalProjects: {
+            increment: 1,
+          },
+        },
+        create: {
+          userId: proposal.providerId,
+          totalProjects: 1,
+        },
+      });
+
       // Update ServiceRequest (ignore draft fields - they're no longer used)
       await tx.serviceRequest.update({
         where: { id: proposal.serviceRequest.id },

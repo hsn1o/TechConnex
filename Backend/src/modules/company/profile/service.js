@@ -190,9 +190,8 @@ class CompanyProfileService {
 
       // Get additional stats from related models
       const stats = await CompanyProfileModel.prisma.$transaction(async (tx) => {
-        const projectsPosted = await tx.serviceRequest.count({
-          where: { customerId: userId },
-        });
+        // Use projectsPosted from database (automatically updated when service requests are created)
+        const projectsPosted = profile.projectsPosted ?? 0;
 
         const activeProjects = await tx.project.count({
           where: {

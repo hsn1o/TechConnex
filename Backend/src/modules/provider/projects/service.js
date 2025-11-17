@@ -474,17 +474,21 @@ export async function updateMilestoneStatus(dto) {
  */
 export async function getProviderProjectStats(providerId) {
   try {
+    // Get totalProjects from database (automatically updated when proposals are accepted)
+    const providerProfile = await prisma.providerProfile.findUnique({
+      where: { userId: providerId },
+      select: { totalProjects: true },
+    });
+
+    const totalProjects = providerProfile?.totalProjects ?? 0;
+
     const [
-      totalProjects,
       activeProjects,
       completedProjects,
       disputedProjects,
       totalEarnings,
       averageRating,
     ] = await Promise.all([
-      prisma.project.count({
-        where: { providerId },
-      }),
       prisma.project.count({
         where: {
           providerId,

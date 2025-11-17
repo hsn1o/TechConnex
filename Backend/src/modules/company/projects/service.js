@@ -5,64 +5,93 @@ import { CreateProjectDto, GetProjectsDto } from "./dto.js";
 export async function createProject(dto) {
   try {
     // Create a ServiceRequest - Projects are created when proposals are accepted
-    const serviceRequest = await prisma.serviceRequest.create({
-      data: {
-        title: dto.title,
-        description: dto.description,
-        category: dto.category,
-        budgetMin: dto.budgetMin,
-        budgetMax: dto.budgetMax,
-        skills: dto.skills,
-        timeline: dto.timeline,
-        priority: dto.priority,
-        ndaSigned: dto.ndaSigned || false,
-        requirements: dto.requirements,
-        deliverables: dto.deliverables,
-        customerId: dto.customerId,
-        status: "OPEN",
-      },
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            customerProfile: {
-              select: {
-                companySize: true,
-                industry: true,
+    // Use transaction to ensure atomicity when updating projectsPosted
+    const result = await prisma.$transaction(async (tx) => {
+      // Create ServiceRequest
+      const serviceRequest = await tx.serviceRequest.create({
+        data: {
+          title: dto.title,
+          description: dto.description,
+          category: dto.category,
+          budgetMin: dto.budgetMin,
+          budgetMax: dto.budgetMax,
+          skills: dto.skills,
+          timeline: dto.timeline,
+          priority: dto.priority,
+          ndaSigned: dto.ndaSigned || false,
+          requirements: dto.requirements,
+          deliverables: dto.deliverables,
+          customerId: dto.customerId,
+          status: "OPEN",
+        },
+      });
+
+      // Increment projectsPosted in CustomerProfile
+      // First, get current value to handle nulls properly
+      const customerProfile = await tx.customerProfile.findUnique({
+        where: { userId: dto.customerId },
+        select: { projectsPosted: true },
+      });
+
+      const currentProjectsPosted = customerProfile?.projectsPosted ?? 0;
+
+      await tx.customerProfile.upsert({
+        where: { userId: dto.customerId },
+        update: {
+          projectsPosted: currentProjectsPosted + 1,
+        },
+        create: {
+          userId: dto.customerId,
+          projectsPosted: 1,
+        },
+      });
+
+      // Return service request with all relations
+      return await tx.serviceRequest.findUnique({
+        where: { id: serviceRequest.id },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              customerProfile: {
+                select: {
+                  companySize: true,
+                  industry: true,
+                },
               },
             },
           },
-        },
-        proposals: {
-          include: {
-            provider: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                providerProfile: {
-                  select: {
-                    rating: true,
-                    totalProjects: true,
-                    location: true,
-                    profileImageUrl: true, // 🆕 Profile image
+          proposals: {
+            include: {
+              provider: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  providerProfile: {
+                    select: {
+                      rating: true,
+                      totalProjects: true,
+                      location: true,
+                      profileImageUrl: true, // 🆕 Profile image
+                    },
                   },
                 },
               },
             },
           },
-        },
-        milestones: {
-          orderBy: {
-            order: "asc",
+          milestones: {
+            orderBy: {
+              order: "asc",
+            },
           },
         },
-      },
+      });
     });
 
-    return serviceRequest;
+    return result;
   } catch (error) {
     console.error("Error creating service request:", error);
     throw new Error("Failed to create service request");

@@ -389,7 +389,7 @@ export default function AdminUserDetailPage() {
             {user.KycDocument && user.KycDocument.length > 0 && (
               <TabsTrigger value="documents">Documents</TabsTrigger>
             )}
-            {user.projectsAsProvider && user.projectsAsProvider.length > 0 && (
+            {((user.projectsAsProvider && user.projectsAsProvider.length > 0) || (user.projectsAsCustomer && user.projectsAsCustomer.length > 0)) && (
               <TabsTrigger value="projects">Projects</TabsTrigger>
             )}
           </TabsList>
@@ -662,6 +662,116 @@ export default function AdminUserDetailPage() {
                             <p>{profile.yearsExperience || "—"}</p>
                           )}
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="availability">Availability</Label>
+                          {isEditing ? (
+                            <Select
+                              value={formData.providerProfile?.availability || "available"}
+                              onValueChange={(value) => handleFieldChange("availability", value, true)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="available">Available</SelectItem>
+                                <SelectItem value="busy">Busy</SelectItem>
+                                <SelectItem value="unavailable">Unavailable</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p>{profile.availability || "—"}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="workPreference">Work Preference</Label>
+                          {isEditing ? (
+                            <Select
+                              value={formData.providerProfile?.workPreference || "remote"}
+                              onValueChange={(value) => handleFieldChange("workPreference", value, true)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="remote">Remote</SelectItem>
+                                <SelectItem value="onsite">On-site</SelectItem>
+                                <SelectItem value="hybrid">Hybrid</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p>{profile.workPreference || "—"}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="teamSize">Team Size</Label>
+                          {isEditing ? (
+                            <Input
+                              id="teamSize"
+                              type="number"
+                              value={formData.providerProfile?.teamSize || 1}
+                              onChange={(e) => handleFieldChange("teamSize", e.target.value ? parseInt(e.target.value) : 1, true)}
+                            />
+                          ) : (
+                            <p>{profile.teamSize || "—"}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="minimumProjectBudget">Minimum Project Budget (RM)</Label>
+                          {isEditing ? (
+                            <Input
+                              id="minimumProjectBudget"
+                              type="number"
+                              value={formData.providerProfile?.minimumProjectBudget || ""}
+                              onChange={(e) => handleFieldChange("minimumProjectBudget", e.target.value ? parseFloat(e.target.value) : null, true)}
+                            />
+                          ) : (
+                            <p>{profile.minimumProjectBudget ? `RM ${profile.minimumProjectBudget}` : "—"}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="maximumProjectBudget">Maximum Project Budget (RM)</Label>
+                          {isEditing ? (
+                            <Input
+                              id="maximumProjectBudget"
+                              type="number"
+                              value={formData.providerProfile?.maximumProjectBudget || ""}
+                              onChange={(e) => handleFieldChange("maximumProjectBudget", e.target.value ? parseFloat(e.target.value) : null, true)}
+                            />
+                          ) : (
+                            <p>{profile.maximumProjectBudget ? `RM ${profile.maximumProjectBudget}` : "—"}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="preferredProjectDuration">Preferred Project Duration</Label>
+                          {isEditing ? (
+                            <Input
+                              id="preferredProjectDuration"
+                              value={formData.providerProfile?.preferredProjectDuration || ""}
+                              onChange={(e) => handleFieldChange("preferredProjectDuration", e.target.value, true)}
+                              placeholder="e.g. 1-3 months"
+                            />
+                          ) : (
+                            <p>{profile.preferredProjectDuration || "—"}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="profileVideoUrl">Profile Video URL</Label>
+                          {isEditing ? (
+                            <Input
+                              id="profileVideoUrl"
+                              type="url"
+                              value={formData.providerProfile?.profileVideoUrl || ""}
+                              onChange={(e) => handleFieldChange("profileVideoUrl", e.target.value, true)}
+                              placeholder="https://..."
+                            />
+                          ) : (
+                            <p>{profile.profileVideoUrl ? (
+                              <a href={profile.profileVideoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                {profile.profileVideoUrl}
+                              </a>
+                            ) : "—"}</p>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label>Skills</Label>
@@ -826,9 +936,137 @@ export default function AdminUserDetailPage() {
                               placeholder="https://..."
                             />
                           ) : (
-                            <p>{profile.website || "—"}</p>
+                            <p>{profile.website ? (
+                              <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                {profile.website}
+                              </a>
+                            ) : "—"}</p>
                           )}
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="annualRevenue">Annual Revenue</Label>
+                          {isEditing ? (
+                            <Input
+                              id="annualRevenue"
+                              value={formData.customerProfile?.annualRevenue || ""}
+                              onChange={(e) => handleFieldChange("annualRevenue", e.target.value, true)}
+                              placeholder="e.g. 500000"
+                            />
+                          ) : (
+                            <p>{profile.annualRevenue || "—"}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="averageBudgetRange">Average Budget Range</Label>
+                          {isEditing ? (
+                            <Input
+                              id="averageBudgetRange"
+                              value={formData.customerProfile?.averageBudgetRange || ""}
+                              onChange={(e) => handleFieldChange("averageBudgetRange", e.target.value, true)}
+                              placeholder="e.g. 20000"
+                            />
+                          ) : (
+                            <p>{profile.averageBudgetRange || "—"}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Preferred Contract Types</Label>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Add contract type"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault()
+                                    const value = (e.target as HTMLInputElement).value
+                                    if (value.trim()) {
+                                      handleArrayFieldChange("preferredContractTypes", value, "add")
+                                      ;(e.target as HTMLInputElement).value = ""
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {formData.customerProfile?.preferredContractTypes?.map((type: string, index: number) => (
+                                <Badge key={index} variant="secondary" className="cursor-pointer" onClick={() => handleArrayFieldChange("preferredContractTypes", type, "remove")}>
+                                  {type} ×
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {profile.preferredContractTypes && profile.preferredContractTypes.length > 0 ? (
+                              profile.preferredContractTypes.map((type: string, index: number) => (
+                                <Badge key={index} variant="secondary">{type}</Badge>
+                              ))
+                            ) : (
+                              <span className="text-gray-400">No contract types</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Social Links</Label>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Add social link (e.g. https://linkedin.com/company/example)"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault()
+                                    const value = (e.target as HTMLInputElement).value
+                                    if (value.trim()) {
+                                      handleArrayFieldChange("socialLinks", value, "add")
+                                      ;(e.target as HTMLInputElement).value = ""
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {formData.customerProfile?.socialLinks?.map((link: string, index: number) => (
+                                <Badge key={index} variant="secondary" className="cursor-pointer" onClick={() => handleArrayFieldChange("socialLinks", link, "remove")}>
+                                  <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                    {link}
+                                  </a> ×
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {profile.socialLinks && profile.socialLinks.length > 0 ? (
+                              profile.socialLinks.map((link: string, index: number) => (
+                                <Badge key={index} variant="secondary">
+                                  <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                    {link}
+                                  </a>
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-gray-400">No social links</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="benefits">Benefits</Label>
+                        {isEditing ? (
+                          <Textarea
+                            id="benefits"
+                            value={formData.customerProfile?.benefits || ""}
+                            onChange={(e) => handleFieldChange("benefits", e.target.value, true)}
+                            placeholder="Enter company benefits"
+                            rows={3}
+                          />
+                        ) : (
+                          <p>{profile.benefits || "—"}</p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label>Languages</Label>
@@ -1055,24 +1293,65 @@ export default function AdminUserDetailPage() {
             </TabsContent>
           )}
 
-          {user.projectsAsProvider && user.projectsAsProvider.length > 0 && (
+          {((user.projectsAsProvider && user.projectsAsProvider.length > 0) || (user.projectsAsCustomer && user.projectsAsCustomer.length > 0)) && (
             <TabsContent value="projects" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Projects</CardTitle>
+                  <CardTitle>
+                    {isProvider ? "Projects as Provider" : isCustomer ? "Projects as Customer" : "Projects"}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {user.projectsAsProvider.map((project: any) => (
-                      <div key={project.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{project.title}</p>
-                          <p className="text-sm text-gray-500">Status: {project.status}</p>
-                          <p className="text-xs text-gray-400">
-                            Created: {new Date(project.createdAt).toLocaleDateString()}
-                          </p>
+                    {isProvider && user.projectsAsProvider && user.projectsAsProvider.map((project: any) => (
+                      <Link key={project.id} href={`/admin/projects/${project.id}`}>
+                        <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                          <div className="flex-1">
+                            <p className="font-medium">{project.title}</p>
+                            {project.description && (
+                              <p className="text-sm text-gray-500 line-clamp-2 mt-1">{project.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                              <span>Status: <Badge variant="outline" className="ml-1">{project.status}</Badge></span>
+                              {project.customer && (
+                                <span>Customer: {project.customer.name}</span>
+                              )}
+                              {project.budgetMin && project.budgetMax && (
+                                <span>Budget: RM {project.budgetMin.toLocaleString()} - RM {project.budgetMax.toLocaleString()}</span>
+                              )}
+                              <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            View Details
+                          </Button>
                         </div>
-                      </div>
+                      </Link>
+                    ))}
+                    {isCustomer && user.projectsAsCustomer && user.projectsAsCustomer.map((project: any) => (
+                      <Link key={project.id} href={`/admin/projects/${project.id}`}>
+                        <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                          <div className="flex-1">
+                            <p className="font-medium">{project.title}</p>
+                            {project.description && (
+                              <p className="text-sm text-gray-500 line-clamp-2 mt-1">{project.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                              <span>Status: <Badge variant="outline" className="ml-1">{project.status}</Badge></span>
+                              {project.provider && (
+                                <span>Provider: {project.provider.name}</span>
+                              )}
+                              {project.budgetMin && project.budgetMax && (
+                                <span>Budget: RM {project.budgetMin.toLocaleString()} - RM {project.budgetMax.toLocaleString()}</span>
+                              )}
+                              <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            View Details
+                          </Button>
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 </CardContent>
