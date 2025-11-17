@@ -26,17 +26,23 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { 
-  ArrowLeft, 
-  MessageSquare, 
-  Calendar, 
-  DollarSign, 
-  Clock, 
-  User, 
-  MapPin, 
-  Globe, 
+import {
+  ArrowLeft,
+  MessageSquare,
+  Calendar,
+  DollarSign,
+  Clock,
+  User,
+  MapPin,
+  Globe,
   Star,
   CheckCircle,
   AlertCircle,
@@ -81,7 +87,7 @@ export default function ProviderProjectDetailsPage() {
     null
   );
   const [updating, setUpdating] = useState(false);
-  
+
   // Project milestone management
   const [milestoneEditorOpen, setMilestoneEditorOpen] = useState(false);
   const [projectMilestones, setProjectMilestones] = useState<Milestone[]>([]);
@@ -100,13 +106,17 @@ export default function ProviderProjectDetailsPage() {
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeDescription, setDisputeDescription] = useState("");
   const [disputeContestedAmount, setDisputeContestedAmount] = useState("");
-  const [disputeSuggestedResolution, setDisputeSuggestedResolution] = useState("");
+  const [disputeSuggestedResolution, setDisputeSuggestedResolution] =
+    useState("");
   const [disputeAttachments, setDisputeAttachments] = useState<File[]>([]);
-  const [selectedMilestoneForDispute, setSelectedMilestoneForDispute] = useState<string | null>(null);
+  const [selectedMilestoneForDispute, setSelectedMilestoneForDispute] =
+    useState<string | null>(null);
   const [creatingDispute, setCreatingDispute] = useState(false);
   const [updatingDispute, setUpdatingDispute] = useState(false);
   const [disputeAdditionalNotes, setDisputeAdditionalNotes] = useState("");
-  const [disputeUpdateAttachments, setDisputeUpdateAttachments] = useState<File[]>([]);
+  const [disputeUpdateAttachments, setDisputeUpdateAttachments] = useState<
+    File[]
+  >([]);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -114,10 +124,10 @@ export default function ProviderProjectDetailsPage() {
         setLoading(true);
         setError(null);
         const response = await getProviderProjectById(params.id as string);
-        
+
         if (response.success) {
           setProject(response.project);
-          
+
           // Fetch dispute for this project
           try {
             const disputeRes = await getDisputeByProject(response.project.id);
@@ -153,7 +163,7 @@ export default function ProviderProjectDetailsPage() {
       try {
         const milestoneData = await getProviderProjectMilestones(project.id);
         setProjectMilestones(
-          Array.isArray(milestoneData.milestones) 
+          Array.isArray(milestoneData.milestones)
             ? milestoneData.milestones.map((m: any) => ({
                 ...m,
                 sequence: m.order,
@@ -218,7 +228,7 @@ export default function ProviderProjectDetailsPage() {
   // Save project milestones
   const handleSaveProjectMilestones = async () => {
     if (!project?.id) return;
-    
+
     // Validate due dates before saving
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -228,23 +238,24 @@ export default function ProviderProjectDetailsPage() {
       dueDate.setHours(0, 0, 0, 0);
       return dueDate < today;
     });
-    
+
     if (invalidMilestones.length > 0) {
       toast({
         title: "Invalid Due Dates",
-        description: "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        description:
+          "One or more milestones have due dates in the past. Please update them to today or a future date.",
         variant: "destructive",
       });
       return;
     }
-    
+
     try {
       setSavingMilestones(true);
       const payload = normalizeMilestoneSequences(projectMilestones).map(
         (m) => ({
-        ...m,
-        amount: Number(m.amount),
-        dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
+          ...m,
+          amount: Number(m.amount),
+          dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
         })
       );
       const res = await updateProviderProjectMilestones(project.id, payload);
@@ -254,10 +265,10 @@ export default function ProviderProjectDetailsPage() {
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
-      
+
       // Refresh project data to get updated milestones
       await refreshProjectData();
-      
+
       toast({
         title: "Milestones updated",
         description: "Milestone changes have been saved.",
@@ -285,10 +296,10 @@ export default function ProviderProjectDetailsPage() {
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
-      
+
       // Refresh project data to get updated milestones
       await refreshProjectData();
-      
+
       if (res.locked) {
         toast({
           title: "Milestones approved and locked",
@@ -318,7 +329,7 @@ export default function ProviderProjectDetailsPage() {
         params.id as string,
         newStatus
       );
-      
+
       if (response.success) {
         setProject(response.project);
         toast({
@@ -350,10 +361,12 @@ export default function ProviderProjectDetailsPage() {
       }
 
       // Refresh milestones
-      const milestoneData = await getProviderProjectMilestones(params.id as string);
+      const milestoneData = await getProviderProjectMilestones(
+        params.id as string
+      );
       if (milestoneData.milestones) {
         setProjectMilestones(
-          Array.isArray(milestoneData.milestones) 
+          Array.isArray(milestoneData.milestones)
             ? milestoneData.milestones.map((m: any) => ({
                 ...m,
                 sequence: m.order,
@@ -415,17 +428,17 @@ export default function ProviderProjectDetailsPage() {
       }
 
       const response = await updateProviderMilestoneStatus(
-        selectedMilestone.id, 
-        status, 
+        selectedMilestone.id,
+        status,
         deliverables,
         submissionNote || undefined,
         submissionAttachment || undefined
       );
-      
+
       if (response.success) {
         // Refresh all project data including milestones
         await refreshProjectData();
-        
+
         toast({
           title: "Success",
           description: "Milestone updated successfully",
@@ -476,14 +489,17 @@ export default function ProviderProjectDetailsPage() {
         milestoneId: selectedMilestoneForDispute || undefined,
         reason: disputeReason.trim(),
         description: disputeDescription.trim(),
-        contestedAmount: disputeContestedAmount ? parseFloat(disputeContestedAmount) : undefined,
+        contestedAmount: disputeContestedAmount
+          ? parseFloat(disputeContestedAmount)
+          : undefined,
         suggestedResolution: disputeSuggestedResolution.trim() || undefined,
-        attachments: disputeAttachments.length > 0 ? disputeAttachments : undefined,
+        attachments:
+          disputeAttachments.length > 0 ? disputeAttachments : undefined,
       });
 
       toast({
         title: currentDispute ? "Dispute Updated" : "Dispute Created",
-        description: currentDispute 
+        description: currentDispute
           ? "Your dispute has been updated successfully."
           : "Your dispute has been submitted successfully. The milestone has been frozen.",
       });
@@ -529,7 +545,10 @@ export default function ProviderProjectDetailsPage() {
 
   const handleUpdateDispute = async () => {
     if (!currentDispute?.id) return;
-    if (!disputeAdditionalNotes.trim() && disputeUpdateAttachments.length === 0) {
+    if (
+      !disputeAdditionalNotes.trim() &&
+      disputeUpdateAttachments.length === 0
+    ) {
       toast({
         title: "Validation Error",
         description: "Please add notes or attachments to update the dispute",
@@ -542,7 +561,10 @@ export default function ProviderProjectDetailsPage() {
       setUpdatingDispute(true);
       await updateDispute(currentDispute.id, {
         additionalNotes: disputeAdditionalNotes.trim() || undefined,
-        attachments: disputeUpdateAttachments.length > 0 ? disputeUpdateAttachments : undefined,
+        attachments:
+          disputeUpdateAttachments.length > 0
+            ? disputeUpdateAttachments
+            : undefined,
         projectId: project?.id,
       });
 
@@ -568,7 +590,9 @@ export default function ProviderProjectDetailsPage() {
     }
   };
 
-  const handleDisputeAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDisputeAttachmentChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
@@ -576,7 +600,9 @@ export default function ProviderProjectDetailsPage() {
     }
   };
 
-  const handleDisputeUpdateAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDisputeUpdateAttachmentChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
@@ -769,7 +795,11 @@ export default function ProviderProjectDetailsPage() {
               project.status === "IN_PROGRESS" && (
                 <Button
                   onClick={() => setDisputeDialogOpen(true)}
-                  disabled={creatingDispute || (project?.status === "DISPUTED" && currentDispute?.status === "CLOSED")}
+                  disabled={
+                    creatingDispute ||
+                    (project?.status === "DISPUTED" &&
+                      currentDispute?.status === "CLOSED")
+                  }
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
                   {creatingDispute ? (
@@ -1016,8 +1046,8 @@ export default function ProviderProjectDetailsPage() {
                           >
                             Edit Milestones
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             onClick={handleApproveProjectMilestones}
                           >
                             Approve
@@ -1035,71 +1065,71 @@ export default function ProviderProjectDetailsPage() {
                               key={milestone.id}
                               className="border rounded-lg p-4"
                             >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
-                                  {milestone.order}
-                                </div>
-                                <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
+                                    {milestone.order}
+                                  </div>
+                                  <div>
                                     <h4 className="font-medium">
                                       {milestone.title}
                                     </h4>
                                     <p className="text-sm text-gray-600">
                                       {milestone.description}
                                     </p>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3">
                                   <Badge
                                     className={getMilestoneStatusColor(
                                       milestone.status
                                     )}
                                   >
-                                  {getMilestoneStatusText(milestone.status)}
-                                </Badge>
-                                <span className="text-sm font-medium">
-                                  {formatCurrency(milestone.amount)}
-                                </span>
+                                    {getMilestoneStatusText(milestone.status)}
+                                  </Badge>
+                                  <span className="text-sm font-medium">
+                                    {formatCurrency(milestone.amount)}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <div className="flex items-center justify-between text-sm text-gray-600">
                                 <span>
                                   Due: {formatDate(milestone.dueDate)}
                                 </span>
-                              <div className="flex items-center gap-2">
-                                {milestone.status === "PAID" && (
-                                  <div className="flex items-center gap-1 text-green-600">
-                                    <DollarSign className="w-4 h-4" />
+                                <div className="flex items-center gap-2">
+                                  {milestone.status === "PAID" && (
+                                    <div className="flex items-center gap-1 text-green-600">
+                                      <DollarSign className="w-4 h-4" />
                                       <span className="text-sm font-medium">
                                         Paid
                                       </span>
-                                  </div>
-                                )}
+                                    </div>
+                                  )}
                                   {milestone.status === "LOCKED" &&
                                     project.status === "IN_PROGRESS" && (
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => {
+                                      <Button
+                                        size="sm"
+                                        onClick={() => {
                                           setSelectedMilestone(milestone);
                                           setIsMilestoneDialogOpen(true);
-                                    }}
-                                  >
-                                    Start Work
-                                  </Button>
-                                )}
-                                {milestone.status === "IN_PROGRESS" && (
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => {
+                                        }}
+                                      >
+                                        Start Work
+                                      </Button>
+                                    )}
+                                  {milestone.status === "IN_PROGRESS" && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
                                         setSelectedMilestone(milestone);
                                         setIsMilestoneDialogOpen(true);
-                                    }}
-                                  >
-                                    Submit
-                                  </Button>
-                                )}
+                                      }}
+                                    >
+                                      Submit
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
 
                               {/* Show start deliverables if available (persists even after status changes) */}
                               {milestone.startDeliverables && (
@@ -1116,7 +1146,7 @@ export default function ProviderProjectDetailsPage() {
                                           milestone.startDeliverables
                                         )}
                                   </p>
-                          </div>
+                                </div>
                               )}
 
                               {/* Show submit deliverables if available (persists even after status changes) */}
@@ -1695,13 +1725,35 @@ export default function ProviderProjectDetailsPage() {
                   <Avatar>
                     <AvatarImage
                       src={
-                        (project.customer?.customerProfile?.profileImageUrl && 
-                         project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
-                          ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
-                          : (project.customer?.customerProfile?.logoUrl && 
-                              project.customer.customerProfile.logoUrl !== "/placeholder.svg")
-                            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.logoUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.logoUrl}`
-                            : "/placeholder.svg"
+                        project.customer?.customerProfile?.profileImageUrl &&
+                        project.customer.customerProfile.profileImageUrl !==
+                          "/placeholder.svg"
+                          ? `${
+                              process.env.NEXT_PUBLIC_API_BASE_URL ||
+                              "http://localhost:4000"
+                            }${
+                              project.customer.customerProfile.profileImageUrl.startsWith(
+                                "/"
+                              )
+                                ? ""
+                                : "/"
+                            }${
+                              project.customer.customerProfile.profileImageUrl
+                            }`
+                          : project.customer?.customerProfile?.logoUrl &&
+                            project.customer.customerProfile.logoUrl !==
+                              "/placeholder.svg"
+                          ? `${
+                              process.env.NEXT_PUBLIC_API_BASE_URL ||
+                              "http://localhost:4000"
+                            }${
+                              project.customer.customerProfile.logoUrl.startsWith(
+                                "/"
+                              )
+                                ? ""
+                                : "/"
+                            }${project.customer.customerProfile.logoUrl}`
+                          : "/placeholder.svg"
                       }
                     />
                     <AvatarFallback>
@@ -1710,7 +1762,7 @@ export default function ProviderProjectDetailsPage() {
                   </Avatar>
                   <div>
                     {project.customer?.id ? (
-                      <Link 
+                      <Link
                         href={`/provider/companies/${project.customer.id}`}
                         className="font-medium text-blue-600 hover:text-blue-800 hover:underline block"
                       >
@@ -1724,7 +1776,7 @@ export default function ProviderProjectDetailsPage() {
                     </p>
                   </div>
                 </div>
-                
+
                 {project.customer?.customerProfile && (
                   <div className="space-y-2 text-sm">
                     {project.customer.customerProfile.industry && (
@@ -1742,9 +1794,9 @@ export default function ProviderProjectDetailsPage() {
                     {project.customer.customerProfile.website && (
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4 text-gray-400" />
-                        <a 
-                          href={project.customer.customerProfile.website} 
-                          target="_blank" 
+                        <a
+                          href={project.customer.customerProfile.website}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline"
                         >
@@ -1792,8 +1844,6 @@ export default function ProviderProjectDetailsPage() {
           </div>
         </div>
 
-        
-
         {/* Milestone Update Dialog */}
         <Dialog
           open={isMilestoneDialogOpen}
@@ -1807,25 +1857,25 @@ export default function ProviderProjectDetailsPage() {
                   : "Submit Milestone"}
               </DialogTitle>
               <DialogDescription>
-                {selectedMilestone?.status === "LOCKED" 
-                  ? "Start working on this milestone" 
+                {selectedMilestone?.status === "LOCKED"
+                  ? "Start working on this milestone"
                   : "Submit your work for this milestone"}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {selectedMilestone?.status === "LOCKED" && (
-              <div>
+                <div>
                   <Label htmlFor="startDeliverables">
                     Deliverables / Plan (When Starting Work)
                   </Label>
-                <Textarea
+                  <Textarea
                     id="startDeliverables"
                     placeholder="Describe your plan and deliverables when starting this milestone..."
-                  value={milestoneDeliverables}
-                  onChange={(e) => setMilestoneDeliverables(e.target.value)}
-                  rows={4}
-                />
-              </div>
+                    value={milestoneDeliverables}
+                    onChange={(e) => setMilestoneDeliverables(e.target.value)}
+                    rows={4}
+                  />
+                </div>
               )}
 
               {selectedMilestone?.status === "IN_PROGRESS" && (
@@ -1890,7 +1940,7 @@ export default function ProviderProjectDetailsPage() {
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() =>
                   handleMilestoneUpdate(
                     selectedMilestone?.status === "LOCKED"
@@ -1922,7 +1972,7 @@ export default function ProviderProjectDetailsPage() {
             <DialogHeader>
               <DialogTitle>Edit Milestones</DialogTitle>
               <DialogDescription>
-                Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} · 
+                Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
                 Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
                 {milestoneApprovalState.milestonesLocked && " · LOCKED"}
               </DialogDescription>
@@ -1962,15 +2012,18 @@ export default function ProviderProjectDetailsPage() {
                         <Label className="text-sm font-medium">Due Date</Label>
                         <Input
                           type="date"
-                          min={new Date().toISOString().split('T')[0]}
+                          min={new Date().toISOString().split("T")[0]}
                           value={(m.dueDate || "").slice(0, 10)}
                           onChange={(e) => {
                             const selectedDate = e.target.value;
-                            const today = new Date().toISOString().split('T')[0];
+                            const today = new Date()
+                              .toISOString()
+                              .split("T")[0];
                             if (selectedDate < today) {
                               toast({
                                 title: "Invalid Date",
-                                description: "Due date cannot be in the past. Please select today or a future date.",
+                                description:
+                                  "Due date cannot be in the past. Please select today or a future date.",
                                 variant: "destructive",
                               });
                               return;
@@ -2037,7 +2090,8 @@ export default function ProviderProjectDetailsPage() {
             <DialogHeader>
               <DialogTitle>Report Dispute</DialogTitle>
               <DialogDescription>
-                Report a dispute related to this project. The associated milestone will be frozen until the dispute is resolved.
+                Report a dispute related to this project. The associated
+                milestone will be frozen until the dispute is resolved.
               </DialogDescription>
             </DialogHeader>
 
@@ -2045,10 +2099,14 @@ export default function ProviderProjectDetailsPage() {
               {/* Milestone Selection (if applicable) */}
               {projectMilestones && projectMilestones.length > 0 && (
                 <div>
-                  <Label htmlFor="disputeMilestone">Related Milestone (Optional)</Label>
+                  <Label htmlFor="disputeMilestone">
+                    Related Milestone (Optional)
+                  </Label>
                   <Select
                     value={selectedMilestoneForDispute || undefined}
-                    onValueChange={(value) => setSelectedMilestoneForDispute(value || null)}
+                    onValueChange={(value) =>
+                      setSelectedMilestoneForDispute(value || null)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a milestone (optional)" />
@@ -2062,7 +2120,8 @@ export default function ProviderProjectDetailsPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-gray-500 mt-1">
-                    If selected, this milestone will be frozen until the dispute is resolved.
+                    If selected, this milestone will be frozen until the dispute
+                    is resolved.
                   </p>
                 </div>
               )}
@@ -2072,19 +2131,24 @@ export default function ProviderProjectDetailsPage() {
                 <Label htmlFor="disputeReason">
                   Reason for Dispute <span className="text-red-500">*</span>
                 </Label>
-                <Select
-                  value={disputeReason}
-                  onValueChange={setDisputeReason}
-                >
+                <Select value={disputeReason} onValueChange={setDisputeReason}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a reason" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Missed deadline">Missed deadline</SelectItem>
+                    <SelectItem value="Missed deadline">
+                      Missed deadline
+                    </SelectItem>
                     <SelectItem value="Low quality">Low quality</SelectItem>
-                    <SelectItem value="Payment not released">Payment not released</SelectItem>
-                    <SelectItem value="Work not completed">Work not completed</SelectItem>
-                    <SelectItem value="Communication issues">Communication issues</SelectItem>
+                    <SelectItem value="Payment not released">
+                      Payment not released
+                    </SelectItem>
+                    <SelectItem value="Work not completed">
+                      Work not completed
+                    </SelectItem>
+                    <SelectItem value="Communication issues">
+                      Communication issues
+                    </SelectItem>
                     <SelectItem value="Scope change">Scope change</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
@@ -2108,7 +2172,9 @@ export default function ProviderProjectDetailsPage() {
 
               {/* Contested Amount */}
               <div>
-                <Label htmlFor="disputeContestedAmount">Contested Amount (RM)</Label>
+                <Label htmlFor="disputeContestedAmount">
+                  Contested Amount (RM)
+                </Label>
                 <Input
                   id="disputeContestedAmount"
                   type="number"
@@ -2123,19 +2189,25 @@ export default function ProviderProjectDetailsPage() {
 
               {/* Suggested Resolution */}
               <div>
-                <Label htmlFor="disputeSuggestedResolution">Suggested Resolution</Label>
+                <Label htmlFor="disputeSuggestedResolution">
+                  Suggested Resolution
+                </Label>
                 <Textarea
                   id="disputeSuggestedResolution"
                   placeholder="What resolution would you like to see? (Optional)"
                   value={disputeSuggestedResolution}
-                  onChange={(e) => setDisputeSuggestedResolution(e.target.value)}
+                  onChange={(e) =>
+                    setDisputeSuggestedResolution(e.target.value)
+                  }
                   rows={4}
                 />
               </div>
 
               {/* Attachments */}
               <div>
-                <Label htmlFor="disputeAttachments">Attachments (Optional)</Label>
+                <Label htmlFor="disputeAttachments">
+                  Attachments (Optional)
+                </Label>
                 <Input
                   id="disputeAttachments"
                   type="file"
@@ -2145,7 +2217,8 @@ export default function ProviderProjectDetailsPage() {
                   className="mt-1"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT, JPG, PNG (Max 10MB per file)
+                  Supported: PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT, JPG, PNG (Max
+                  10MB per file)
                 </p>
                 {disputeAttachments.length > 0 && (
                   <div className="mt-2 space-y-2">
@@ -2191,7 +2264,11 @@ export default function ProviderProjectDetailsPage() {
               </Button>
               <Button
                 onClick={handleCreateDispute}
-                disabled={creatingDispute || !disputeReason.trim() || !disputeDescription.trim()}
+                disabled={
+                  creatingDispute ||
+                  !disputeReason.trim() ||
+                  !disputeDescription.trim()
+                }
                 className="bg-red-600 hover:bg-red-700"
               >
                 {creatingDispute ? (
@@ -2211,7 +2288,10 @@ export default function ProviderProjectDetailsPage() {
         </Dialog>
 
         {/* View Dispute Dialog */}
-        <Dialog open={viewDisputeDialogOpen} onOpenChange={setViewDisputeDialogOpen}>
+        <Dialog
+          open={viewDisputeDialogOpen}
+          onOpenChange={setViewDisputeDialogOpen}
+        >
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Dispute Details</DialogTitle>
@@ -2224,13 +2304,22 @@ export default function ProviderProjectDetailsPage() {
               <div className="space-y-6">
                 {/* Dispute Status */}
                 <div className="flex items-center justify-between">
-                  <Badge className={getDisputeStatusColor(currentDispute.status)}>
+                  <Badge
+                    className={getDisputeStatusColor(currentDispute.status)}
+                  >
                     {currentDispute.status?.replace("_", " ")}
                   </Badge>
                   <div className="text-sm text-gray-500">
-                    Created: {new Date(currentDispute.createdAt).toLocaleDateString()}
+                    Created:{" "}
+                    {new Date(currentDispute.createdAt).toLocaleDateString()}
                     {currentDispute.updatedAt !== currentDispute.createdAt && (
-                      <> • Updated: {new Date(currentDispute.updatedAt).toLocaleDateString()}</>
+                      <>
+                        {" "}
+                        • Updated:{" "}
+                        {new Date(
+                          currentDispute.updatedAt
+                        ).toLocaleDateString()}
+                      </>
                     )}
                   </div>
                 </div>
@@ -2242,11 +2331,15 @@ export default function ProviderProjectDetailsPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">Reason</Label>
+                      <Label className="text-sm font-medium text-gray-500">
+                        Reason
+                      </Label>
                       <p className="mt-1">{currentDispute.reason}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">Description & Updates</Label>
+                      <Label className="text-sm font-medium text-gray-500">
+                        Description & Updates
+                      </Label>
                       <div className="mt-2 space-y-3">
                         {(() => {
                           // Parse description to show original and updates separately
@@ -2262,15 +2355,21 @@ export default function ProviderProjectDetailsPage() {
                                 <div className="flex items-center gap-2 mb-2">
                                   <Avatar className="w-6 h-6">
                                     <AvatarFallback>
-                                      {currentDispute.raisedBy?.name?.charAt(0) || "U"}
+                                      {currentDispute.raisedBy?.name?.charAt(
+                                        0
+                                      ) || "U"}
                                     </AvatarFallback>
                                   </Avatar>
                                   <div>
                                     <p className="text-xs font-semibold text-gray-900">
-                                      {currentDispute.raisedBy?.name || "Unknown User"}
+                                      {currentDispute.raisedBy?.name ||
+                                        "Unknown User"}
                                     </p>
                                     <p className="text-xs text-gray-500">
-                                      Original dispute • {new Date(currentDispute.createdAt).toLocaleString()}
+                                      Original dispute •{" "}
+                                      {new Date(
+                                        currentDispute.createdAt
+                                      ).toLocaleString()}
                                     </p>
                                   </div>
                                 </div>
@@ -2283,28 +2382,45 @@ export default function ProviderProjectDetailsPage() {
                               {updates.map((update: string, idx: number) => {
                                 // Parse update format: [Update by Name on Date]: content
                                 // Also handle old format: [Update by userId]: content
-                                let match = update.match(/^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/);
+                                let match = update.match(
+                                  /^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/
+                                );
                                 let userName = "";
                                 let updateDate = "";
                                 let updateContent = "";
-                                
+
                                 if (match) {
-                                  [, userName, updateDate, updateContent] = match;
+                                  [, userName, updateDate, updateContent] =
+                                    match;
                                 } else {
                                   // Try old format: [Update by userId]: content
-                                  const oldMatch = update.match(/^\[Update by (.+?)\]:\s*([\s\S]+)$/);
+                                  const oldMatch = update.match(
+                                    /^\[Update by (.+?)\]:\s*([\s\S]+)$/
+                                  );
                                   if (oldMatch) {
                                     const [, userIdOrName, content] = oldMatch;
                                     // Check if it's a UUID (old format)
-                                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                                    const uuidRegex =
+                                      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                                     if (uuidRegex.test(userIdOrName)) {
                                       // It's a UUID, try to match with customer or provider
-                                      if (project?.customer?.id === userIdOrName) {
-                                        userName = project?.customer?.name || "Customer";
-                                      } else if (project?.provider?.id === userIdOrName) {
-                                        userName = project?.provider?.name || "Provider";
-                                      } else if (currentDispute?.raisedBy?.id === userIdOrName) {
-                                        userName = currentDispute?.raisedBy?.name || "Unknown User";
+                                      if (
+                                        project?.customer?.id === userIdOrName
+                                      ) {
+                                        userName =
+                                          project?.customer?.name || "Customer";
+                                      } else if (
+                                        project?.provider?.id === userIdOrName
+                                      ) {
+                                        userName =
+                                          project?.provider?.name || "Provider";
+                                      } else if (
+                                        currentDispute?.raisedBy?.id ===
+                                        userIdOrName
+                                      ) {
+                                        userName =
+                                          currentDispute?.raisedBy?.name ||
+                                          "Unknown User";
                                       } else {
                                         userName = "Unknown User";
                                       }
@@ -2322,10 +2438,12 @@ export default function ProviderProjectDetailsPage() {
                                     updateDate = "Unknown Date";
                                   }
                                 }
-                                
-                                const isCustomer = project?.customer?.name === userName;
-                                const isProvider = project?.provider?.name === userName;
-                                
+
+                                const isCustomer =
+                                  project?.customer?.name === userName;
+                                const isProvider =
+                                  project?.provider?.name === userName;
+
                                 return (
                                   <div
                                     key={idx}
@@ -2348,8 +2466,15 @@ export default function ProviderProjectDetailsPage() {
                                           <p className="text-xs font-semibold text-gray-900">
                                             {userName}
                                           </p>
-                                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                            {isCustomer ? "Customer" : isProvider ? "Provider" : "User"}
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[10px] px-1.5 py-0"
+                                          >
+                                            {isCustomer
+                                              ? "Customer"
+                                              : isProvider
+                                              ? "Provider"
+                                              : "User"}
                                           </Badge>
                                         </div>
                                         <p className="text-xs text-gray-500">
@@ -2370,239 +2495,321 @@ export default function ProviderProjectDetailsPage() {
                     </div>
                     {currentDispute.contestedAmount && (
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Contested Amount</Label>
-                        <p className="mt-1 font-medium">RM{currentDispute.contestedAmount.toLocaleString()}</p>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Contested Amount
+                        </Label>
+                        <p className="mt-1 font-medium">
+                          RM{currentDispute.contestedAmount.toLocaleString()}
+                        </p>
                       </div>
                     )}
                     {currentDispute.suggestedResolution && (
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Suggested Resolution</Label>
-                        <p className="mt-1 whitespace-pre-wrap">{currentDispute.suggestedResolution}</p>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Suggested Resolution
+                        </Label>
+                        <p className="mt-1 whitespace-pre-wrap">
+                          {currentDispute.suggestedResolution}
+                        </p>
                       </div>
                     )}
                     {currentDispute.milestone && (
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Related Milestone</Label>
-                        <p className="mt-1">{currentDispute.milestone.title} - RM{currentDispute.milestone.amount.toLocaleString()}</p>
+                        <Label className="text-sm font-medium text-gray-500">
+                          Related Milestone
+                        </Label>
+                        <p className="mt-1">
+                          {currentDispute.milestone.title} - RM
+                          {currentDispute.milestone.amount.toLocaleString()}
+                        </p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Admin Resolution Notes */}
-                {currentDispute.resolutionNotes && Array.isArray(currentDispute.resolutionNotes) && currentDispute.resolutionNotes.length > 0 && (
-                  <Card className="border-purple-200 bg-purple-50">
-                    <CardHeader>
-                      <CardTitle className="text-purple-800">Admin Resolution Notes</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {currentDispute.resolutionNotes.map((note: any, index: number) => {
-                        // Check if note contains "--- Admin Note ---" separator
-                        const noteParts = note.note?.split(/\n--- Admin Note ---\n/) || [];
-                        const hasAdminNote = noteParts.length > 1;
-                        const resolutionResult = noteParts[0] || note.note;
-                        const adminNote = noteParts[1];
-                        
-                        return (
-                          <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Avatar className="w-6 h-6">
-                                <AvatarFallback className="bg-purple-100 text-purple-700">
-                                  {note.adminName?.charAt(0) || "A"}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="text-sm font-semibold text-gray-900">
-                                  Resolution Note #{index + 1}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="space-y-3 mt-2">
-                              {/* Resolution Result */}
-                              <div>
-                                <p className="text-xs font-semibold text-gray-500 mb-1">Resolution Result:</p>
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">
-                                  {resolutionResult}
-                                </p>
-                              </div>
-                              {/* Admin Note (if exists) */}
-                              {hasAdminNote && adminNote && (
-                                <div>
-                                  <p className="text-xs font-semibold text-purple-600 mb-1">Admin Note:</p>
-                                  <p className="text-sm text-gray-700 whitespace-pre-wrap bg-purple-50 p-2 rounded border-l-2 border-purple-300">
-                                    {adminNote}
-                                  </p>
+                {currentDispute.resolutionNotes &&
+                  Array.isArray(currentDispute.resolutionNotes) &&
+                  currentDispute.resolutionNotes.length > 0 && (
+                    <Card className="border-purple-200 bg-purple-50">
+                      <CardHeader>
+                        <CardTitle className="text-purple-800">
+                          Admin Resolution Notes
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {currentDispute.resolutionNotes.map(
+                          (note: any, index: number) => {
+                            // Check if note contains "--- Admin Note ---" separator
+                            const noteParts =
+                              note.note?.split(/\n--- Admin Note ---\n/) || [];
+                            const hasAdminNote = noteParts.length > 1;
+                            const resolutionResult = noteParts[0] || note.note;
+                            const adminNote = noteParts[1];
+
+                            return (
+                              <div
+                                key={index}
+                                className="bg-white p-4 rounded-lg border-l-4 border-purple-500"
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Avatar className="w-6 h-6">
+                                    <AvatarFallback className="bg-purple-100 text-purple-700">
+                                      {note.adminName?.charAt(0) || "A"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                      Resolution Note #{index + 1}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      By {note.adminName || "Admin"} •{" "}
+                                      {new Date(
+                                        note.createdAt
+                                      ).toLocaleString()}
+                                    </p>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
-                )}
-                
+                                <div className="space-y-3 mt-2">
+                                  {/* Resolution Result */}
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 mb-1">
+                                      Resolution Result:
+                                    </p>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                      {resolutionResult}
+                                    </p>
+                                  </div>
+                                  {/* Admin Note (if exists) */}
+                                  {hasAdminNote && adminNote && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-purple-600 mb-1">
+                                        Admin Note:
+                                      </p>
+                                      <p className="text-sm text-gray-700 whitespace-pre-wrap bg-purple-50 p-2 rounded border-l-2 border-purple-300">
+                                        {adminNote}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
                 {/* Legacy Resolution (for backward compatibility) */}
-                {currentDispute.resolution && (!currentDispute.resolutionNotes || !Array.isArray(currentDispute.resolutionNotes) || currentDispute.resolutionNotes.length === 0) && (
-                  <Card className="border-green-200 bg-green-50">
-                    <CardHeader>
-                      <CardTitle className="text-green-800">Admin Resolution</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-green-700 whitespace-pre-wrap">{currentDispute.resolution}</p>
-                    </CardContent>
-                  </Card>
-                )}
+                {currentDispute.resolution &&
+                  (!currentDispute.resolutionNotes ||
+                    !Array.isArray(currentDispute.resolutionNotes) ||
+                    currentDispute.resolutionNotes.length === 0) && (
+                    <Card className="border-green-200 bg-green-50">
+                      <CardHeader>
+                        <CardTitle className="text-green-800">
+                          Admin Resolution
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-green-700 whitespace-pre-wrap">
+                          {currentDispute.resolution}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* Attachments */}
-                {currentDispute.attachments && currentDispute.attachments.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Attachments</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {currentDispute.attachments.map((url: string, index: number) => {
-                          // Extract filename from path
-                          const normalized = url.replace(/\\/g, "/");
-                          const filename = normalized.split("/").pop() || `Attachment ${index + 1}`;
-                          // Remove timestamp prefix if present (format: timestamp_filename.ext)
-                          const cleanFilename = filename.replace(/^\d+_/, "");
-                          
-                          // Try to find attachment metadata in description
-                          const attachmentMetadataMatch = currentDispute.description?.match(
-                            new RegExp(`\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`, "g")
-                          );
-                          let uploadedBy = "Unknown User";
-                          let uploadedAt = "Unknown Date";
-                          
-                          if (attachmentMetadataMatch) {
-                            // Find matching metadata for this file
-                            for (const meta of attachmentMetadataMatch) {
-                              const metaMatch = meta.match(/\[Attachment: (.+?) uploaded by (.+?) on (.+?)\]/);
-                              if (metaMatch && metaMatch[1] === filename) {
-                                uploadedBy = metaMatch[2];
-                                uploadedAt = metaMatch[3];
-                                break;
+                {currentDispute.attachments &&
+                  currentDispute.attachments.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Attachments</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {currentDispute.attachments.map(
+                            (url: string, index: number) => {
+                              // Extract filename from path
+                              const normalized = url.replace(/\\/g, "/");
+                              const filename =
+                                normalized.split("/").pop() ||
+                                `Attachment ${index + 1}`;
+                              // Remove timestamp prefix if present (format: timestamp_filename.ext)
+                              const cleanFilename = filename.replace(
+                                /^\d+_/,
+                                ""
+                              );
+
+                              // Try to find attachment metadata in description
+                              const attachmentMetadataMatch =
+                                currentDispute.description?.match(
+                                  new RegExp(
+                                    `\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`,
+                                    "g"
+                                  )
+                                );
+                              let uploadedBy = "Unknown User";
+                              let uploadedAt = "Unknown Date";
+
+                              if (attachmentMetadataMatch) {
+                                // Find matching metadata for this file
+                                for (const meta of attachmentMetadataMatch) {
+                                  const metaMatch = meta.match(
+                                    /\[Attachment: (.+?) uploaded by (.+?) on (.+?)\]/
+                                  );
+                                  if (metaMatch && metaMatch[1] === filename) {
+                                    uploadedBy = metaMatch[2];
+                                    uploadedAt = metaMatch[3];
+                                    break;
+                                  }
+                                }
                               }
-                            }
-                          }
-                          
-                          // Also check if it's from the original dispute creator
-                          if (uploadedBy === "Unknown User" && index === 0 && currentDispute.attachments.length === 1) {
-                            uploadedBy = currentDispute.raisedBy?.name || "Unknown User";
-                            uploadedAt = new Date(currentDispute.createdAt).toLocaleString();
-                          }
-                          
-                          return (
-                            <div key={index} className="flex items-center justify-between p-2 border rounded">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900 truncate">
-                                    {cleanFilename}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    Uploaded by {uploadedBy} • {uploadedAt}
-                                  </p>
+
+                              // Also check if it's from the original dispute creator
+                              if (
+                                uploadedBy === "Unknown User" &&
+                                index === 0 &&
+                                currentDispute.attachments.length === 1
+                              ) {
+                                uploadedBy =
+                                  currentDispute.raisedBy?.name ||
+                                  "Unknown User";
+                                uploadedAt = new Date(
+                                  currentDispute.createdAt
+                                ).toLocaleString();
+                              }
+
+                              return (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-2 border rounded"
+                                >
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                        {cleanFilename}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        Uploaded by {uploadedBy} • {uploadedAt}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={`${
+                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                      "http://localhost:4000"
+                                    }${url.startsWith("/") ? url : `/${url}`}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Button variant="outline" size="sm">
+                                      <Download className="w-4 h-4 mr-2" />
+                                      Download
+                                    </Button>
+                                  </a>
                                 </div>
-                              </div>
-                              <a
-                                href={`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${url.startsWith("/") ? url : `/${url}`}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Button variant="outline" size="sm">
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Download
-                                </Button>
-                              </a>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                              );
+                            }
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* Update Dispute (if not CLOSED and not RESOLVED) */}
-                {currentDispute.status !== "CLOSED" && currentDispute.status !== "RESOLVED" && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Add Update</CardTitle>
-                      <CardDescription>
-                        Add additional notes or evidence to your dispute
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <Label htmlFor="disputeAdditionalNotes">Additional Notes</Label>
-                        <Textarea
-                          id="disputeAdditionalNotes"
-                          placeholder="Add any additional information or updates..."
-                          value={disputeAdditionalNotes}
-                          onChange={(e) => setDisputeAdditionalNotes(e.target.value)}
-                          rows={4}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="disputeUpdateAttachments">Additional Attachments</Label>
-                        <Input
-                          id="disputeUpdateAttachments"
-                          type="file"
-                          multiple
-                          onChange={handleDisputeUpdateAttachmentChange}
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.jpg,.png"
-                        />
-                        {disputeUpdateAttachments.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {disputeUpdateAttachments.map((file, index) => (
-                              <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                                <span>{file.name}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeDisputeUpdateAttachment(index)}
+                {currentDispute.status !== "CLOSED" &&
+                  currentDispute.status !== "RESOLVED" && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Add Update</CardTitle>
+                        <CardDescription>
+                          Add additional notes or evidence to your dispute
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <Label htmlFor="disputeAdditionalNotes">
+                            Additional Notes
+                          </Label>
+                          <Textarea
+                            id="disputeAdditionalNotes"
+                            placeholder="Add any additional information or updates..."
+                            value={disputeAdditionalNotes}
+                            onChange={(e) =>
+                              setDisputeAdditionalNotes(e.target.value)
+                            }
+                            rows={4}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="disputeUpdateAttachments">
+                            Additional Attachments
+                          </Label>
+                          <Input
+                            id="disputeUpdateAttachments"
+                            type="file"
+                            multiple
+                            onChange={handleDisputeUpdateAttachmentChange}
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.jpg,.png"
+                          />
+                          {disputeUpdateAttachments.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {disputeUpdateAttachments.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
                                 >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        onClick={handleUpdateDispute}
-                        disabled={updatingDispute || (!disputeAdditionalNotes.trim() && disputeUpdateAttachments.length === 0)}
-                        className="w-full"
-                      >
-                        {updatingDispute ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Updating...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-4 h-4 mr-2" />
-                            Add Update
-                          </>
-                        )}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
+                                  <span>{file.name}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      removeDisputeUpdateAttachment(index)
+                                    }
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          onClick={handleUpdateDispute}
+                          disabled={
+                            updatingDispute ||
+                            (!disputeAdditionalNotes.trim() &&
+                              disputeUpdateAttachments.length === 0)
+                          }
+                          className="w-full"
+                        >
+                          {updatingDispute ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Updating...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4 mr-2" />
+                              Add Update
+                            </>
+                          )}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* CLOSED or RESOLVED Dispute Notice */}
-                {(currentDispute.status === "CLOSED" || currentDispute.status === "RESOLVED") && (
+                {(currentDispute.status === "CLOSED" ||
+                  currentDispute.status === "RESOLVED") && (
                   <Card className="border-red-200 bg-red-50">
                     <CardContent className="pt-6">
                       <div className="flex items-center gap-2 text-red-800">
                         <AlertCircle className="w-5 h-5" />
                         <p className="font-medium">
-                          {currentDispute.status === "CLOSED" 
+                          {currentDispute.status === "CLOSED"
                             ? "This dispute is closed. Project work has been frozen and no further updates are allowed."
                             : "This dispute has been resolved. Project completed peacefully. No further updates are allowed."}
                         </p>
@@ -2614,7 +2821,10 @@ export default function ProviderProjectDetailsPage() {
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setViewDisputeDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setViewDisputeDialogOpen(false)}
+              >
                 Close
               </Button>
             </DialogFooter>

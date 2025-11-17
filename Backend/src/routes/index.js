@@ -25,6 +25,7 @@ import adminSettingsRouter from "../modules/settings/admin/index.js";
 import adminUsersRouter from "../modules/admin/users/index.js";
 import adminDisputesRouter from "../modules/admin/disputes/index.js";
 import adminProjectsRouter from "../modules/admin/projects/index.js";
+import adminReportsRouter from "../modules/admin/reports/index.js";
 import disputesRouter from "../modules/disputes/index.js";
 import paymentRouter from "../modules/payment/index.js";
 import companyReviewsRouter from "../modules/company/reviews/index.js";
@@ -84,6 +85,7 @@ router.use("/admin/settings", adminSettingsRouter);
 router.use("/admin/users", adminUsersRouter);
 router.use("/admin/disputes", adminDisputesRouter);
 router.use("/admin/projects", adminProjectsRouter);
+router.use("/admin/reports", adminReportsRouter);
 router.use("/disputes", disputesRouter);
 router.use("/payments", paymentRouter);
 
