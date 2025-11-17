@@ -734,7 +734,7 @@ export default function ProviderProfilePage() {
                     </li>
                   ))}
                 </ul>
-              </div>
+            </div>
             )}
             {profileCompletion === 100 && (
               <div className="mt-4 flex items-center gap-2 text-green-700">
@@ -797,7 +797,7 @@ export default function ProviderProfilePage() {
                               ) : (
                                 <Camera className="w-4 h-4" />
                               )}
-                            </Button>
+                          </Button>
                           </>
                         )}
                       </div>
@@ -960,19 +960,19 @@ export default function ProviderProfilePage() {
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        {certifications.map((cert, index) => (
+                    <div className="space-y-4">
+                      {certifications.map((cert, index) => (
                           <div key={cert.id || index} className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center space-x-3 flex-1">
                               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <Award className="w-6 h-6 text-blue-600" />
-                              </div>
+                              <Award className="w-6 h-6 text-blue-600" />
+                            </div>
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium">{cert.name}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{cert.name}</p>
                                   {cert.verified && <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />}
-                                </div>
-                                <p className="text-sm text-gray-600">{cert.issuer}</p>
+                              </div>
+                              <p className="text-sm text-gray-600">{cert.issuer}</p>
                                 <p className="text-xs text-gray-500">
                                   Issued: {cert.issuedDate ? new Date(cert.issuedDate).toLocaleDateString() : "N/A"}
                                 </p>
@@ -991,9 +991,9 @@ export default function ProviderProfilePage() {
                                     Verify Certificate ↗
                                   </a>
                                 )}
-                              </div>
                             </div>
-                            {isEditing && (
+                          </div>
+                          {isEditing && (
                               <div className="flex gap-2 ml-4">
                                 <Button 
                                   variant="outline" 
@@ -1007,13 +1007,13 @@ export default function ProviderProfilePage() {
                                   size="sm"
                                   onClick={() => handleDeleteCertification(index)}
                                 >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                               </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                     )}
                   </CardContent>
                 </Card>
@@ -1314,9 +1314,9 @@ export default function ProviderProfilePage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {portfolioProjects.map((project) => (
-                    <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                  <Card key={project.id} className="hover:shadow-lg transition-shadow">
                       <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-48 flex items-center justify-center rounded-t-lg">
                         <div className="text-center p-4">
                           <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -1325,40 +1325,40 @@ export default function ProviderProfilePage() {
                           <Badge variant="secondary" className="text-xs">
                             {project.category || "Project"}
                           </Badge>
-                        </div>
                       </div>
-                      <CardContent className="p-4">
+                    </div>
+                    <CardContent className="p-4">
                         <h3 className="font-semibold text-lg mb-2 line-clamp-1">{project.title}</h3>
                         <p className="text-gray-600 text-sm mb-3 line-clamp-2">{project.description || "No description provided"}</p>
                         {project.technologies && project.technologies.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-3">
+                      <div className="flex flex-wrap gap-1 mb-3">
                             {project.technologies.slice(0, 6).map((tech: string, index: number) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {tech}
-                              </Badge>
-                            ))}
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {tech}
+                          </Badge>
+                        ))}
                             {project.technologies.length > 6 && (
                               <Badge variant="secondary" className="text-xs">
                                 +{project.technologies.length - 6} more
                               </Badge>
                             )}
-                          </div>
+                      </div>
                         )}
                         <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
                           <span className="font-medium">{project.client}</span>
                           {project.completedDate && (
                             <span>{new Date(project.completedDate).toLocaleDateString()}</span>
                           )}
-                        </div>
+                      </div>
                         {project.approvedPrice && (
                           <div className="text-sm text-green-600 font-semibold">
                             RM {Number(project.approvedPrice).toLocaleString()}
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
               )}
             </div>
           </TabsContent>
@@ -1667,7 +1667,7 @@ export default function ProviderProfilePage() {
                       Certifications help build trust with clients and showcase your expertise in specific technologies.
                     </p>
                   </div>
-                </div>
+                  </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1695,7 +1695,7 @@ export default function ProviderProfilePage() {
                     <p className="text-xs text-red-600">{certFormErrors.issuer}</p>
                   )}
                 </div>
-              </div>
+                  </div>
 
               <div className="space-y-2">
                 <Label htmlFor="certDate">Issue Date *</Label>
@@ -1708,7 +1708,7 @@ export default function ProviderProfilePage() {
                 {certFormErrors.issuedDate && (
                   <p className="text-xs text-red-600">{certFormErrors.issuedDate}</p>
                 )}
-              </div>
+                  </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -1724,7 +1724,7 @@ export default function ProviderProfilePage() {
                   {certFormErrors.serialNumber && (
                     <p className="text-xs text-red-600">{certFormErrors.serialNumber}</p>
                   )}
-                </div>
+              </div>
                 <div className="space-y-2">
                   <Label htmlFor="certLink">
                     Verification Link (optional*)
@@ -1742,7 +1742,7 @@ export default function ProviderProfilePage() {
                   <p className="text-xs text-gray-500">
                     *At least one of Serial Number or Verification Link is required.
                   </p>
-                </div>
+            </div>
               </div>
             </div>
             <DialogFooter>

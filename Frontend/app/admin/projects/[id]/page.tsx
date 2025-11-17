@@ -36,6 +36,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { formatTimeline } from "@/lib/timeline-utils"
+import { MarkdownViewer } from "@/components/markdown/MarkdownViewer"
+import { Globe, MapPin, Star } from "lucide-react"
 
 export default function AdminProjectDetailPage() {
   const params = useParams()
@@ -86,15 +88,31 @@ export default function AdminProjectDetailPage() {
   }
 
   const initializeFormData = (projectData: any) => {
+    // Handle requirements and deliverables (can be string or array)
+    const requirements = typeof projectData.requirements === "string"
+      ? projectData.requirements
+      : Array.isArray(projectData.requirements)
+      ? projectData.requirements.map((r: any) => `- ${r}`).join("\n")
+      : ""
+    
+    const deliverables = typeof projectData.deliverables === "string"
+      ? projectData.deliverables
+      : Array.isArray(projectData.deliverables)
+      ? projectData.deliverables.map((d: any) => `- ${d}`).join("\n")
+      : ""
+
     setFormData({
       title: projectData.title || "",
       description: projectData.description || "",
       category: projectData.category || "",
       budgetMin: projectData.budgetMin || 0,
       budgetMax: projectData.budgetMax || 0,
-      timeline: projectData.timeline || "",
+      timeline: projectData.timeline || projectData.originalTimeline || "",
       priority: projectData.priority || "medium",
       status: projectData.status || "IN_PROGRESS",
+      requirements: requirements,
+      deliverables: deliverables,
+      skills: Array.isArray(projectData.skills) ? projectData.skills.join(", ") : "",
     })
   }
 
@@ -106,11 +124,49 @@ export default function AdminProjectDetailPage() {
   }
 
   const handleSave = async () => {
-    if (!formData) return
+    if (!formData || !project) return
 
     try {
       setSaving(true)
-      const response = await updateAdminProject(projectId, formData)
+      
+      const isServiceRequest = project.type === "serviceRequest"
+      
+      // Prepare update data
+      const updateData: any = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        budgetMin: formData.budgetMin,
+        budgetMax: formData.budgetMax,
+        timeline: formData.timeline,
+        priority: formData.priority,
+      }
+
+      // Only include status for Projects (not ServiceRequests)
+      if (!isServiceRequest && formData.status) {
+        updateData.status = formData.status
+      }
+
+      // Convert skills from comma-separated string to array
+      if (formData.skills) {
+        const skillsArray = formData.skills
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length > 0)
+        if (skillsArray.length > 0) {
+          updateData.skills = skillsArray
+        }
+      }
+
+      // Include requirements and deliverables as markdown strings
+      if (formData.requirements !== undefined) {
+        updateData.requirements = formData.requirements.trim() || null
+      }
+      if (formData.deliverables !== undefined) {
+        updateData.deliverables = formData.deliverables.trim() || null
+      }
+
+      const response = await updateAdminProject(projectId, updateData)
       if (response.success) {
         toast({
           title: "Success",
@@ -137,7 +193,12 @@ export default function AdminProjectDetailPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, type?: string) => {
+    // ServiceRequests (unmatched opportunities)
+    if (type === "serviceRequest") {
+      return "bg-yellow-100 text-yellow-800"
+    }
+    
     switch (status?.toUpperCase()) {
       case "COMPLETED":
         return "bg-green-100 text-green-800"
@@ -148,6 +209,13 @@ export default function AdminProjectDetailPage() {
       default:
         return "bg-gray-100 text-gray-800"
     }
+  }
+
+  const getStatusText = (status: string, type?: string) => {
+    if (type === "serviceRequest") {
+      return "Open Opportunity"
+    }
+    return status?.replace("_", " ") || status
   }
 
   const getMilestoneStatusColor = (status: string) => {
@@ -240,11 +308,36 @@ export default function AdminProjectDetailPage() {
     )
   }
 
+  const isServiceRequest = project.type === "serviceRequest"
   const completedMilestones = project.milestones?.filter(
     (m: any) => m.status === "APPROVED" || m.status === "PAID"
   ).length || 0
   const totalMilestones = project.milestones?.length || 0
-  const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0
+  const progress = isServiceRequest ? 0 : (totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0)
+  
+  // Calculate approved price (sum of all milestone amounts)
+  const approvedPrice = project.milestones?.reduce((sum: number, m: any) => sum + (m.amount || 0), 0) || 0
+  
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return `RM${amount.toLocaleString()}`
+  }
+  
+  // Get skills array
+  const skills = Array.isArray(project.skills) ? project.skills : []
+  
+  // Get requirements and deliverables (handle both string and array formats)
+  const requirements = typeof project.requirements === "string" 
+    ? project.requirements 
+    : Array.isArray(project.requirements)
+    ? project.requirements.map((r: any) => `- ${r}`).join("\n")
+    : ""
+  
+  const deliverables = typeof project.deliverables === "string"
+    ? project.deliverables
+    : Array.isArray(project.deliverables)
+    ? project.deliverables.map((d: any) => `- ${d}`).join("\n")
+    : ""
 
   return (
     <AdminLayout>
@@ -284,9 +377,12 @@ export default function AdminProjectDetailPage() {
                 </Button>
               </>
             ) : (
-              <Button variant="outline" onClick={() => setIsEditing(true)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsEditing(true)}
+              >
                 <Edit className="w-4 h-4 mr-2" />
-                Edit Project
+                {isServiceRequest ? "Edit Opportunity" : "Edit Project"}
               </Button>
             )}
           </div>
@@ -294,13 +390,23 @@ export default function AdminProjectDetailPage() {
 
         {/* Status Badge */}
         <div className="flex gap-4">
-          <Badge className={getStatusColor(project.status)}>
-            {project.status?.replace("_", " ")}
+          <Badge className={getStatusColor(project.status, project.type)}>
+            {getStatusText(project.status, project.type)}
           </Badge>
-          {disputes.length > 0 && (
+          {isServiceRequest && (
+            <Badge className="bg-yellow-100 text-yellow-800">
+              Opportunity
+            </Badge>
+          )}
+          {disputes.length > 0 && !isServiceRequest && (
             <Badge variant="destructive">
               <AlertTriangle className="w-3 h-3 mr-1" />
               {disputes.length} Dispute(s)
+            </Badge>
+          )}
+          {isServiceRequest && project.proposalsCount > 0 && (
+            <Badge className="bg-blue-100 text-blue-800">
+              {project.proposalsCount} {project.proposalsCount === 1 ? "proposal" : "proposals"}
             </Badge>
           )}
         </div>
@@ -309,196 +415,452 @@ export default function AdminProjectDetailPage() {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="milestones">Milestones</TabsTrigger>
+            {isServiceRequest ? (
+              <TabsTrigger value="proposals">Proposals ({project.proposalsCount || project.proposals?.length || 0})</TabsTrigger>
+            ) : (
+              <>
+                <TabsTrigger value="milestones">Milestones</TabsTrigger>
+                <TabsTrigger value="proposals">Proposals ({project.proposalsCount || project.proposals?.length || 0})</TabsTrigger>
+              </>
+            )}
             <TabsTrigger value="files">Files</TabsTrigger>
-            {disputes.length > 0 && <TabsTrigger value="disputes">Disputes ({disputes.length})</TabsTrigger>}
+            {disputes.length > 0 && !isServiceRequest && <TabsTrigger value="disputes">Disputes ({disputes.length})</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Project Info */}
+            {/* Project Details */}
             <Card>
               <CardHeader>
-                <CardTitle>Project Information</CardTitle>
+                <CardTitle>Project Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Category
+                    </Label>
                     {isEditing ? (
                       <Input
-                        id="title"
-                        value={formData?.title || ""}
-                        onChange={(e) => handleFieldChange("title", e.target.value)}
-                      />
-                    ) : (
-                      <p className="font-medium">{project.title}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    {isEditing ? (
-                      <Input
-                        id="category"
                         value={formData?.category || ""}
                         onChange={(e) => handleFieldChange("category", e.target.value)}
+                        className="mt-1"
                       />
                     ) : (
-                      <p className="font-medium">{project.category}</p>
+                      <p className="text-lg mt-1">{project.category}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="budgetMin">Budget Min (RM)</Label>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Status
+                    </Label>
+                    <div className="mt-1">
+                      {isEditing && !isServiceRequest ? (
+                        <Select
+                          value={formData?.status || "IN_PROGRESS"}
+                          onValueChange={(value) => handleFieldChange("status", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                            <SelectItem value="COMPLETED">Completed</SelectItem>
+                            <SelectItem value="DISPUTED">Disputed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge className={getStatusColor(project.status, project.type)}>
+                          {getStatusText(project.status, project.type)}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Budget Range
+                    </Label>
                     {isEditing ? (
-                      <Input
-                        id="budgetMin"
-                        type="number"
-                        value={formData?.budgetMin || 0}
-                        onChange={(e) => handleFieldChange("budgetMin", parseFloat(e.target.value) || 0)}
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <Input
+                          type="number"
+                          value={formData?.budgetMin || 0}
+                          onChange={(e) => handleFieldChange("budgetMin", parseFloat(e.target.value) || 0)}
+                          placeholder="Min"
+                        />
+                        <Input
+                          type="number"
+                          value={formData?.budgetMax || 0}
+                          onChange={(e) => handleFieldChange("budgetMax", parseFloat(e.target.value) || 0)}
+                          placeholder="Max"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-lg mt-1">
+                        {formatCurrency(project.budgetMin || 0)} - {formatCurrency(project.budgetMax || 0)}
+                      </p>
+                    )}
+                  </div>
+                  {!isServiceRequest && approvedPrice > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">
+                        Approved Price
+                      </Label>
+                      <p className="text-lg font-semibold text-green-600 mt-1">
+                        {formatCurrency(approvedPrice)}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Timeline
+                    </Label>
+                    <div className="space-y-2 mt-1">
+                      {project.originalTimeline && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Original Timeline (Company):
+                          </p>
+                          {isEditing ? (
+                            <Input
+                              value={formData?.timeline || ""}
+                              onChange={(e) => handleFieldChange("timeline", e.target.value)}
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-900 font-medium">
+                              {formatTimeline(project.originalTimeline)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {project.providerProposedTimeline && !isServiceRequest && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Provider Proposed Timeline:
+                          </p>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {formatTimeline(project.providerProposedTimeline, "day")}
+                          </p>
+                        </div>
+                      )}
+                      {!project.originalTimeline && !project.providerProposedTimeline && (
+                        <p className="text-sm text-gray-600">
+                          {isEditing ? (
+                            <Input
+                              value={formData?.timeline || ""}
+                              onChange={(e) => handleFieldChange("timeline", e.target.value)}
+                              placeholder="Enter timeline"
+                            />
+                          ) : (
+                            "Not specified"
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">
+                      Priority
+                    </Label>
+                    <div className="mt-1">
+                      {isEditing ? (
+                        <Select
+                          value={formData?.priority || "medium"}
+                          onValueChange={(value) => handleFieldChange("priority", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge>{project.priority || "medium"}</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Required Skills
+                  </Label>
+                  {isEditing ? (
+                    <Input
+                      value={formData?.skills || skills.join(", ")}
+                      onChange={(e) => handleFieldChange("skills", e.target.value)}
+                      placeholder="Enter skills separated by commas"
+                      className="mt-1"
+                    />
+                  ) : skills.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {skills.map((skill: string, index: number) => (
+                        <Badge key={index} variant="secondary">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 mt-1">No skills specified</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Requirements
+                  </Label>
+                  <div className="mt-2">
+                    {isEditing ? (
+                      <Textarea
+                        value={formData?.requirements || requirements}
+                        onChange={(e) => handleFieldChange("requirements", e.target.value)}
+                        rows={6}
+                        placeholder="Enter requirements (Markdown supported)"
                       />
+                    ) : requirements ? (
+                      <div className="prose max-w-none text-gray-700">
+                        <MarkdownViewer
+                          content={requirements}
+                          className="prose max-w-none text-gray-700"
+                          emptyMessage="No requirements specified"
+                        />
+                      </div>
                     ) : (
-                      <p className="font-medium">RM{project.budgetMin?.toLocaleString() || 0}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="budgetMax">Budget Max (RM)</Label>
-                    {isEditing ? (
-                      <Input
-                        id="budgetMax"
-                        type="number"
-                        value={formData?.budgetMax || 0}
-                        onChange={(e) => handleFieldChange("budgetMax", parseFloat(e.target.value) || 0)}
-                      />
-                    ) : (
-                      <p className="font-medium">RM{project.budgetMax?.toLocaleString() || 0}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timeline">Timeline</Label>
-                    {isEditing ? (
-                      <Input
-                        id="timeline"
-                        value={formData?.timeline || ""}
-                        onChange={(e) => handleFieldChange("timeline", e.target.value)}
-                      />
-                    ) : (
-                      <p className="font-medium">{project.timeline || "—"}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="priority">Priority</Label>
-                    {isEditing ? (
-                      <Select
-                        value={formData?.priority || "medium"}
-                        onValueChange={(value) => handleFieldChange("priority", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge>{project.priority || "medium"}</Badge>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    {isEditing ? (
-                      <Select
-                        value={formData?.status || "IN_PROGRESS"}
-                        onValueChange={(value) => handleFieldChange("status", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                          <SelectItem value="COMPLETED">Completed</SelectItem>
-                          <SelectItem value="DISPUTED">Disputed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge className={getStatusColor(project.status)}>
-                        {project.status?.replace("_", " ")}
-                      </Badge>
+                      <p className="text-sm text-gray-500">No requirements specified</p>
                     )}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Deliverables
+                  </Label>
+                  <div className="mt-2">
+                    {isEditing ? (
+                      <Textarea
+                        value={formData?.deliverables || deliverables}
+                        onChange={(e) => handleFieldChange("deliverables", e.target.value)}
+                        rows={6}
+                        placeholder="Enter deliverables (Markdown supported)"
+                      />
+                    ) : deliverables ? (
+                      <div className="prose max-w-none text-gray-700">
+                        <MarkdownViewer
+                          content={deliverables}
+                          className="prose max-w-none text-gray-700"
+                          emptyMessage="No deliverables specified"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No deliverables specified</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">
+                    Description
+                  </Label>
                   {isEditing ? (
                     <Textarea
-                      id="description"
                       value={formData?.description || ""}
                       onChange={(e) => handleFieldChange("description", e.target.value)}
                       rows={6}
+                      className="mt-1"
                     />
                   ) : (
-                    <p className="text-sm text-gray-700">{project.description}</p>
+                    <p className="text-sm text-gray-700 mt-1">{project.description}</p>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Participants */}
+            {/* Client Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Participants</CardTitle>
+                <CardTitle>Client Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
-                    </Avatar>
+                <div className="flex items-start gap-4">
+                  <Avatar className="w-16 h-16">
+                    <AvatarImage
+                      src={
+                        project.customer?.customerProfile?.profileImageUrl
+                          ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
+                          : undefined
+                      }
+                    />
+                    <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 space-y-2">
                     <div>
-                      <p className="font-medium">Customer</p>
-                      <p className="text-sm text-gray-600">{project.customer?.name || "N/A"}</p>
-                      <p className="text-xs text-gray-500">{project.customer?.email || ""}</p>
+                      <p className="font-semibold text-lg">{project.customer?.name || "N/A"}</p>
+                      <p className="text-sm text-gray-600">{project.customer?.email || ""}</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarFallback>{project.provider?.name?.charAt(0) || "P"}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">Provider</p>
-                      <p className="text-sm text-gray-600">{project.provider?.name || "N/A"}</p>
-                      <p className="text-xs text-gray-500">{project.provider?.email || ""}</p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      {project.customer?.customerProfile?.location && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-600">{project.customer.customerProfile.location}</span>
+                        </div>
+                      )}
+                      {project.customer?.customerProfile?.website && (
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-gray-400" />
+                          <a
+                            href={project.customer.customerProfile.website.startsWith("http") ? project.customer.customerProfile.website : `https://${project.customer.customerProfile.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {project.customer.customerProfile.website}
+                          </a>
+                        </div>
+                      )}
+                      {project.customer?.customerProfile?.industry && (
+                        <div>
+                          <span className="text-gray-500">Industry: </span>
+                          <span className="text-gray-700">{project.customer.customerProfile.industry}</span>
+                        </div>
+                      )}
+                      {project.customer?.customerProfile?.companySize && (
+                        <div>
+                          <span className="text-gray-500">Company Size: </span>
+                          <span className="text-gray-700">{project.customer.customerProfile.companySize}</span>
+                        </div>
+                      )}
                     </div>
+                    <Link href={`/admin/users/${project.customer?.id}`}>
+                      <Button variant="outline" size="sm">
+                        View Full Profile
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Provider Information */}
+            {!isServiceRequest && project.provider && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Provider Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-start gap-4">
+                    <Avatar className="w-16 h-16">
+                      <AvatarImage
+                        src={
+                          project.provider?.providerProfile?.profileImageUrl
+                            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.provider.providerProfile.profileImageUrl}`
+                            : undefined
+                        }
+                      />
+                      <AvatarFallback>{project.provider?.name?.charAt(0) || "P"}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="font-semibold text-lg">{project.provider?.name || "N/A"}</p>
+                        <p className="text-sm text-gray-600">{project.provider?.email || ""}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {project.provider?.providerProfile?.location && (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-600">{project.provider.providerProfile.location}</span>
+                          </div>
+                        )}
+                        {project.provider?.providerProfile?.website && (
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-gray-400" />
+                            <a
+                              href={project.provider.providerProfile.website.startsWith("http") ? project.provider.providerProfile.website : `https://${project.provider.providerProfile.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {project.provider.providerProfile.website}
+                            </a>
+                          </div>
+                        )}
+                        {project.provider?.providerProfile?.rating !== undefined && project.provider.providerProfile.rating !== null && (
+                          <div className="flex items-center gap-2">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span className="text-gray-700">
+                              {Number(project.provider.providerProfile.rating).toFixed(1)} Rating
+                            </span>
+                          </div>
+                        )}
+                        {project.provider?.providerProfile?.totalProjects !== undefined && (
+                          <div>
+                            <span className="text-gray-500">Projects: </span>
+                            <span className="text-gray-700">{project.provider.providerProfile.totalProjects}</span>
+                          </div>
+                        )}
+                      </div>
+                      <Link href={`/admin/users/${project.provider?.id}`}>
+                        <Button variant="outline" size="sm">
+                          View Full Profile
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {isServiceRequest && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Provider Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
+                      <Users className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Awaiting Provider Match</p>
+                      {project.proposalsCount > 0 && (
+                        <p className="text-sm text-blue-600 mt-1">
+                          {project.proposalsCount} {project.proposalsCount === 1 ? "proposal" : "proposals"} received
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Progress */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span>Progress</span>
-                    <span>{progress}%</span>
+            {!isServiceRequest && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Project Progress</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-600 transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>
+                        {completedMilestones} of {totalMilestones} milestones completed
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 transition-all"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>
-                      {completedMilestones} of {totalMilestones} milestones completed
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="milestones" className="space-y-6">
@@ -777,17 +1139,159 @@ export default function AdminProjectDetailPage() {
             </Card>
           </TabsContent>
 
+          {/* Proposals Tab (for both Projects and ServiceRequests) */}
+          <TabsContent value="proposals" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Proposals</CardTitle>
+                  <CardDescription>
+                    {isServiceRequest
+                      ? "Proposals submitted by providers for this opportunity"
+                      : "All proposals submitted for this project (including accepted, rejected, and pending)"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {project.proposals && project.proposals.length > 0 ? (
+                    <div className="space-y-4">
+                      {project.proposals.map((proposal: any) => (
+                        <div key={proposal.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarFallback>
+                                  {proposal.provider?.name?.charAt(0) || "P"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{proposal.provider?.name || "N/A"}</p>
+                                <p className="text-sm text-gray-600">{proposal.provider?.email || ""}</p>
+                                {proposal.provider?.providerProfile?.location && (
+                                  <p className="text-xs text-gray-500">
+                                    {proposal.provider.providerProfile.location}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <Badge
+                              className={
+                                proposal.status === "ACCEPTED"
+                                  ? "bg-green-100 text-green-800"
+                                  : proposal.status === "REJECTED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }
+                            >
+                              {proposal.status}
+                            </Badge>
+                          </div>
+                          <div className="grid md:grid-cols-2 gap-4 mt-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Bid Amount</p>
+                              <p className="text-lg font-semibold">
+                                RM{proposal.bidAmount?.toLocaleString() || "N/A"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Delivery Time</p>
+                              <p className="text-lg font-semibold">
+                                {proposal.deliveryTime ? `${proposal.deliveryTime} days` : "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                          {proposal.coverLetter && (
+                            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                              <p className="text-sm font-medium text-gray-700 mb-2">Cover Letter</p>
+                              <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                                {proposal.coverLetter}
+                              </p>
+                            </div>
+                          )}
+                          {proposal.milestones && proposal.milestones.length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-sm font-medium text-gray-700 mb-2">
+                                Proposed Milestones ({proposal.milestones.length})
+                              </p>
+                              <div className="space-y-2">
+                                {proposal.milestones.map((milestone: any, idx: number) => (
+                                  <div key={milestone.id || idx} className="p-2 bg-gray-50 rounded text-sm">
+                                    <p className="font-medium">{milestone.title}</p>
+                                    <p className="text-gray-600">
+                                      RM{milestone.amount?.toLocaleString() || 0}
+                                      {milestone.dueDate &&
+                                        ` • Due: ${new Date(milestone.dueDate).toLocaleDateString()}`}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {proposal.attachmentUrls && proposal.attachmentUrls.length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-sm font-medium text-gray-700 mb-2">Attachments</p>
+                              <div className="space-y-2">
+                                {proposal.attachmentUrls.map((url: string, idx: number) => {
+                                  const normalized = url.replace(/\\/g, "/")
+                                  const fileName = normalized.split("/").pop() || `file-${idx + 1}`
+                                  const fullUrl = `${
+                                    process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+                                  }/${normalized.replace(/^\//, "")}`
+                                  return (
+                                    <a
+                                      key={idx}
+                                      href={fullUrl}
+                                      download={fileName}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                                    >
+                                      <Paperclip className="w-4 h-4" />
+                                      {fileName}
+                                    </a>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          <div className="mt-4 pt-4 border-t">
+                            <p className="text-xs text-gray-500">
+                              Submitted: {new Date(proposal.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-8">No proposals received yet</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
           <TabsContent value="files" className="space-y-6">
             {/* Proposal Attachments Section */}
             <Card>
               <CardHeader>
                 <CardTitle>Proposal Attachments</CardTitle>
-                <CardDescription>Files attached to accepted proposals</CardDescription>
+                <CardDescription>
+                  {isServiceRequest
+                    ? "Files attached to all proposals"
+                    : "Files attached to accepted proposals"}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {(() => {
                   const proposalAttachments: string[] = []
-                  if (
+                  
+                  // For ServiceRequests, collect attachments from all proposals
+                  if (isServiceRequest && project.proposals) {
+                    project.proposals.forEach((proposal: any) => {
+                      if (proposal.attachmentUrls && Array.isArray(proposal.attachmentUrls)) {
+                        proposalAttachments.push(...proposal.attachmentUrls)
+                      }
+                    })
+                  }
+                  // For Projects, use accepted proposal attachments
+                  else if (
                     project?.proposal?.attachmentUrls &&
                     Array.isArray(project.proposal.attachmentUrls)
                   ) {
@@ -847,21 +1351,22 @@ export default function AdminProjectDetailPage() {
             </Card>
 
             {/* Milestone Attachments Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Milestone Attachments</CardTitle>
-                <CardDescription>Files attached to milestone submissions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {(() => {
-                  const milestoneAttachments: Array<{
-                    url: string
-                    milestoneTitle: string
-                    milestoneId: string
-                    submittedAt?: string
-                  }> = []
+            {!isServiceRequest && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Milestone Attachments</CardTitle>
+                  <CardDescription>Files attached to milestone submissions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const milestoneAttachments: Array<{
+                      url: string
+                      milestoneTitle: string
+                      milestoneId: string
+                      submittedAt?: string
+                    }> = []
 
-                  project.milestones?.forEach((milestone: any) => {
+                    project.milestones?.forEach((milestone: any) => {
                     if (milestone.submissionAttachmentUrl) {
                       milestoneAttachments.push({
                         url: milestone.submissionAttachmentUrl,
@@ -941,6 +1446,7 @@ export default function AdminProjectDetailPage() {
                 })()}
               </CardContent>
             </Card>
+            )}
 
             {/* Message Attachments Section */}
             <Card>

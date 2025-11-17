@@ -169,12 +169,12 @@ export default function ProviderOpportunitiesPage() {
               hasSubmitted: opportunity.hasProposed || false,
               // Convert requirements/deliverables: if array, convert to markdown; if string, use as-is
               requirements: typeof opportunity.requirements === "string" 
-                ? opportunity.requirements 
+                ? opportunity.requirements
                 : (Array.isArray(opportunity.requirements) 
                   ? opportunity.requirements.map((r: any) => `- ${r}`).join('\n') 
                   : ""),
               deliverables: typeof opportunity.deliverables === "string" 
-                ? opportunity.deliverables 
+                ? opportunity.deliverables
                 : (Array.isArray(opportunity.deliverables) 
                   ? opportunity.deliverables.map((d: any) => `- ${d}`).join('\n') 
                   : ""),
@@ -780,7 +780,7 @@ export default function ProviderOpportunitiesPage() {
                                 {opportunity.client}
                               </Link>
                             ) : (
-                              <p className="font-medium">{opportunity.client}</p>
+                            <p className="font-medium">{opportunity.client}</p>
                             )}
                             <div className="flex items-center gap-2 text-sm text-gray-500">
                               <div className="flex items-center">
@@ -1139,24 +1139,24 @@ export default function ProviderOpportunitiesPage() {
                 <div>
                   <Label htmlFor="timeline">Delivery Timeline *</Label>
                   <div className="flex gap-2">
-                    <Input
+                  <Input
                       id="timelineAmount"
                       type="number"
                       placeholder="e.g. 2"
                       min="1"
                       value={proposalData.timelineAmount}
-                      onChange={(e) =>
-                        setProposalData((prev) => ({
-                          ...prev,
+                    onChange={(e) =>
+                      setProposalData((prev) => ({
+                        ...prev,
                           timelineAmount: e.target.value,
-                        }))
-                      }
-                      className={
+                      }))
+                    }
+                    className={
                         proposalErrors.timelineAmount
-                          ? "border-red-500 focus-visible:ring-red-500"
-                          : ""
-                      }
-                    />
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
+                  />
                     <Select
                       value={proposalData.timelineUnit}
                       onValueChange={(value: "day" | "week" | "month") =>

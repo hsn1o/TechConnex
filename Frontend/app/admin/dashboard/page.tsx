@@ -299,22 +299,22 @@ export default function AdminDashboard() {
                     <div className="text-center text-gray-500 py-8">No recent activity</div>
                   ) : (
                     recentActivity.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
                       <div
-                        key={activity.id}
-                        className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${getActivityColor(activity.status)}`}
                       >
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${getActivityColor(activity.status)}`}
-                        >
-                          {getActivityIcon(activity.type)}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{activity.user}</p>
-                          <p className="text-sm text-gray-600">{activity.action}</p>
-                          <p className="text-xs text-gray-500">{formatTimeAgo(activity.time)}</p>
-                        </div>
-                        <Badge className={getActivityColor(activity.status)}>{activity.status}</Badge>
+                        {getActivityIcon(activity.type)}
                       </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{activity.user}</p>
+                        <p className="text-sm text-gray-600">{activity.action}</p>
+                          <p className="text-xs text-gray-500">{formatTimeAgo(activity.time)}</p>
+                      </div>
+                      <Badge className={getActivityColor(activity.status)}>{activity.status}</Badge>
+                    </div>
                     ))
                   )}
                 </div>
@@ -349,13 +349,13 @@ export default function AdminDashboard() {
                       return (
                         <Link key={verification.id} href={`/admin/verifications`}>
                           <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                            <Avatar>
+                      <Avatar>
                               <AvatarImage src={avatarUrl} />
-                              <AvatarFallback>{verification.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{verification.name}</p>
-                              <p className="text-sm text-gray-600">{verification.type}</p>
+                        <AvatarFallback>{verification.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{verification.name}</p>
+                        <p className="text-sm text-gray-600">{verification.type}</p>
                               <p className="text-xs text-gray-500">
                                 Submitted: {new Date(verification.submitted).toLocaleDateString()}
                               </p>
@@ -364,13 +364,13 @@ export default function AdminDashboard() {
                                   {verification.documents.length} {verification.documents.length === 1 ? "document" : "documents"}
                                 </p>
                               )}
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <Button size="sm" className="text-xs">
-                                Review
-                              </Button>
-                            </div>
-                          </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Button size="sm" className="text-xs">
+                          Review
+                        </Button>
+                      </div>
+                    </div>
                         </Link>
                       )
                     })
@@ -398,20 +398,20 @@ export default function AdminDashboard() {
                       return (
                         <Link key={provider.id} href={`/admin/users/${provider.id}`}>
                           <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                            <Avatar>
+                      <Avatar>
                               <AvatarImage src={avatarUrl} />
-                              <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{provider.name}</p>
-                              <div className="flex items-center gap-1">
-                                <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                        <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{provider.name}</p>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 text-yellow-400 fill-current" />
                                 <span className="text-sm">{provider.rating.toFixed(1)}</span>
                                 <span className="text-xs text-gray-500">({provider.completedJobs} {provider.completedJobs === 1 ? "job" : "jobs"})</span>
-                              </div>
-                              <p className="text-xs text-gray-600">RM{provider.earnings.toLocaleString()} earned</p>
-                            </div>
-                          </div>
+                        </div>
+                        <p className="text-xs text-gray-600">RM{provider.earnings.toLocaleString()} earned</p>
+                      </div>
+                    </div>
                         </Link>
                       )
                     })
