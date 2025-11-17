@@ -25,6 +25,9 @@ router.get("/top-customers", reportsController.getTopCustomers);
 // Get all reports data in one call
 router.get("/", reportsController.getAllReportsData);
 
+// Get category details
+router.get("/category/:category", reportsController.getCategoryDetails);
+
 // Export report
 router.get("/export", reportsController.exportReport);
 

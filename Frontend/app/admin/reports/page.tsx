@@ -29,11 +29,26 @@ import {
   FileText,
   PieChart,
   RefreshCw,
+  X,
+  Loader2,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
-import { getAdminReports, exportAdminReport } from "@/lib/api";
+import {
+  getAdminReports,
+  exportAdminReport,
+  getAdminCategoryDetails,
+} from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AdminReportsPage() {
   const { toast } = useToast();
@@ -60,6 +75,12 @@ export default function AdminReportsPage() {
   const [categoryBreakdown, setCategoryBreakdown] = useState<any[]>([]);
   const [topProviders, setTopProviders] = useState<any[]>([]);
   const [topCustomers, setTopCustomers] = useState<any[]>([]);
+
+  // Category detail modal state
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryDetails, setCategoryDetails] = useState<any>(null);
+  const [loadingCategoryDetails, setLoadingCategoryDetails] = useState(false);
 
   const loadReports = async () => {
     try {
@@ -129,6 +150,40 @@ export default function AdminReportsPage() {
   const handleRefresh = () => {
     setRefreshing(true);
     loadReports();
+  };
+
+  const handleCategoryClick = async (category: string) => {
+    setSelectedCategory(category);
+    setCategoryModalOpen(true);
+    setLoadingCategoryDetails(true);
+    setCategoryDetails(null);
+
+    try {
+      const params: any = {
+        category,
+        dateRange: dateRange === "custom" ? undefined : dateRange,
+      };
+
+      if (dateRange === "custom" && customStartDate && customEndDate) {
+        params.startDate = customStartDate;
+        params.endDate = customEndDate;
+      }
+
+      const response = await getAdminCategoryDetails(params);
+      if (response.success && response.data) {
+        setCategoryDetails(response.data);
+      } else {
+        throw new Error("Failed to load category details");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load category details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCategoryDetails(false);
+    }
   };
 
   const handleExportReport = async () => {
@@ -530,9 +585,15 @@ export default function AdminReportsPage() {
                     {categoryBreakdown.length > 0 ? (
                       <div className="space-y-4">
                         {categoryBreakdown.map((category) => (
-                          <div key={category.category} className="space-y-2">
+                          <div
+                            key={category.category}
+                            onClick={() =>
+                              handleCategoryClick(category.category)
+                            }
+                            className="space-y-2 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                          >
                             <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">
+                              <span className="text-sm font-medium hover:text-blue-600 transition-colors">
                                 {category.category}
                               </span>
                               <span className="text-sm text-gray-500">
@@ -712,6 +773,343 @@ export default function AdminReportsPage() {
           </>
         )}
       </div>
+
+      {/* Category Detail Modal */}
+      <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              {selectedCategory} - Category Details
+            </DialogTitle>
+            <DialogDescription>
+              Comprehensive analytics and project information for this category
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingCategoryDetails ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <span className="ml-2">Loading category details...</span>
+            </div>
+          ) : categoryDetails ? (
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="projects">Projects</TabsTrigger>
+                <TabsTrigger value="providers">Providers</TabsTrigger>
+                <TabsTrigger value="customers">Customers</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-6 mt-6">
+                {/* Statistics Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">
+                            Total Revenue
+                          </p>
+                          <p className="text-2xl font-bold mt-1">
+                            RM{(categoryDetails.totalRevenue / 1000).toFixed(0)}
+                            K
+                          </p>
+                        </div>
+                        <DollarSign className="w-8 h-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">
+                            Projects
+                          </p>
+                          <p className="text-2xl font-bold mt-1">
+                            {categoryDetails.projectCount}
+                          </p>
+                        </div>
+                        <Briefcase className="w-8 h-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">
+                            Avg Project Value
+                          </p>
+                          <p className="text-2xl font-bold mt-1">
+                            RM
+                            {(
+                              categoryDetails.averageProjectValue / 1000
+                            ).toFixed(0)}
+                            K
+                          </p>
+                        </div>
+                        <TrendingUp className="w-8 h-8 text-purple-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">
+                            Providers
+                          </p>
+                          <p className="text-2xl font-bold mt-1">
+                            {categoryDetails.providers?.length || 0}
+                          </p>
+                        </div>
+                        <Users className="w-8 h-8 text-orange-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Monthly Trends */}
+                {categoryDetails.monthlyTrends &&
+                  categoryDetails.monthlyTrends.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Monthly Performance Trends</CardTitle>
+                        <CardDescription>
+                          Revenue and project count over time
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {categoryDetails.monthlyTrends.map(
+                            (month: any, index: number) => (
+                              <div key={index} className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium">
+                                    {month.month} {month.year}
+                                  </span>
+                                  <span className="text-sm text-gray-500">
+                                    RM{(month.revenue / 1000).toFixed(0)}K
+                                  </span>
+                                </div>
+                                <Progress
+                                  value={
+                                    categoryDetails.monthlyTrends.length > 0
+                                      ? (month.revenue /
+                                          Math.max(
+                                            ...categoryDetails.monthlyTrends.map(
+                                              (m: any) => m.revenue
+                                            )
+                                          )) *
+                                        100
+                                      : 0
+                                  }
+                                  className="h-2"
+                                />
+                                <div className="flex justify-between text-xs text-gray-500">
+                                  <span>{month.projects} projects</span>
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+              </TabsContent>
+
+              <TabsContent value="projects" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      All Projects ({categoryDetails.projects?.length || 0})
+                    </CardTitle>
+                    <CardDescription>Projects in this category</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {categoryDetails.projects &&
+                    categoryDetails.projects.length > 0 ? (
+                      <div className="space-y-3">
+                        {categoryDetails.projects.map((project: any) => (
+                          <Link
+                            key={project.id}
+                            href={`/admin/projects/${project.id}`}
+                            className="block p-4 border rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium">{project.title}</p>
+                                <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                                  {project.provider && (
+                                    <span>
+                                      Provider: {project.provider.name}
+                                    </span>
+                                  )}
+                                  {project.customer && (
+                                    <span>
+                                      Customer: {project.customer.name}
+                                    </span>
+                                  )}
+                                  <span>
+                                    {new Date(
+                                      project.createdAt
+                                    ).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <Badge
+                                  variant={
+                                    project.status === "COMPLETED"
+                                      ? "default"
+                                      : project.status === "IN_PROGRESS"
+                                      ? "secondary"
+                                      : "outline"
+                                  }
+                                  className="mb-2"
+                                >
+                                  {project.status}
+                                </Badge>
+                                <p className="font-medium">
+                                  RM{(project.revenue / 1000).toFixed(0)}K
+                                </p>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-gray-500 py-8">
+                        No projects found in this category
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="providers" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Providers ({categoryDetails.providers?.length || 0})
+                    </CardTitle>
+                    <CardDescription>
+                      Service providers working in this category
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {categoryDetails.providers &&
+                    categoryDetails.providers.length > 0 ? (
+                      <div className="space-y-3">
+                        {categoryDetails.providers.map((provider: any) => (
+                          <Link
+                            key={provider.id}
+                            href={`/admin/users/${provider.id}`}
+                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <Users className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{provider.name}</p>
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                  {provider.rating &&
+                                    Number(provider.rating) > 0 && (
+                                      <div className="flex items-center">
+                                        <Star className="w-3 h-3 text-yellow-400 fill-current mr-1" />
+                                        <span>
+                                          {Number(provider.rating).toFixed(1)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  {provider.location && (
+                                    <span>• {provider.location}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-500">
+                                {provider.email}
+                              </p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-gray-500 py-8">
+                        No providers found in this category
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="customers" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      Customers ({categoryDetails.customers?.length || 0})
+                    </CardTitle>
+                    <CardDescription>
+                      Companies using this category
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {categoryDetails.customers &&
+                    categoryDetails.customers.length > 0 ? (
+                      <div className="space-y-3">
+                        {categoryDetails.customers.map((customer: any) => (
+                          <Link
+                            key={customer.id}
+                            href={`/admin/users/${customer.id}`}
+                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 hover:border-purple-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                <Users className="w-5 h-5 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{customer.name}</p>
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                  {customer.industry && (
+                                    <span>{customer.industry}</span>
+                                  )}
+                                  {customer.companySize && (
+                                    <span>• {customer.companySize}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-500">
+                                {customer.email}
+                              </p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-gray-500 py-8">
+                        No customers found in this category
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No category details available</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

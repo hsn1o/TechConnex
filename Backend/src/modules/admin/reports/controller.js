@@ -130,6 +130,37 @@ export const reportsController = {
     }
   },
 
+  async getCategoryDetails(req, res) {
+    try {
+      const { category } = req.params;
+      const { dateRange, startDate, endDate } = req.query;
+      
+      if (!category) {
+        return res.status(400).json({
+          success: false,
+          error: "Category parameter is required",
+        });
+      }
+
+      const details = await reportsService.getCategoryDetails(
+        decodeURIComponent(category),
+        dateRange || "last_30_days",
+        startDate || null,
+        endDate || null
+      );
+
+      res.json({
+        success: true,
+        data: details,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  },
+
   async exportReport(req, res) {
     try {
       const { reportType, dateRange, startDate, endDate, format = "pdf" } = req.query;

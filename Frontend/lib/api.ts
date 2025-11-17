@@ -1837,6 +1837,34 @@ export async function exportAdminReport(params?: {
   return await res.blob();
 }
 
+export async function getAdminCategoryDetails(params: {
+  category: string;
+  dateRange?: string;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const searchParams = new URLSearchParams();
+  if (params.dateRange) searchParams.append("dateRange", params.dateRange);
+  if (params.startDate) searchParams.append("startDate", params.startDate);
+  if (params.endDate) searchParams.append("endDate", params.endDate);
+
+  const encodedCategory = encodeURIComponent(params.category);
+  const res = await fetch(`${API_BASE}/admin/reports/category/${encodedCategory}?${searchParams.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to fetch category details");
+  return data;
+}
+
 // Review API functions
 export async function getCompanyReviews(params?: {
   page?: number;

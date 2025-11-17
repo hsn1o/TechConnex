@@ -67,5 +67,14 @@ export const reportsService = {
       throw new Error(`Failed to get all reports data: ${error.message}`);
     }
   },
+
+  async getCategoryDetails(category, dateRange, customStartDate, customEndDate) {
+    try {
+      const details = await reportsModel.getCategoryDetails(category, dateRange, customStartDate, customEndDate);
+      return details;
+    } catch (error) {
+      throw new Error(`Failed to get category details: ${error.message}`);
+    }
+  },
 };
 

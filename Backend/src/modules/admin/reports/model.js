@@ -553,6 +553,263 @@ export const reportsModel = {
     customerStats.sort((a, b) => b.spent - a.spent);
     return customerStats.slice(0, limit);
   },
+
+  async getCategoryDetails(category, dateRange = "last_30_days", customStartDate = null, customEndDate = null) {
+    const { startDate, endDate } = customStartDate && customEndDate
+      ? { startDate: new Date(customStartDate), endDate: new Date(customEndDate) }
+      : getDateRange(dateRange);
+
+    // Get all projects in this category with payments in the date range
+    const projects = await prisma.project.findMany({
+      where: {
+        category: category,
+        createdAt: {
+          lte: endDate,
+        },
+        milestones: {
+          some: {
+            payments: {
+              some: {
+                status: "RELEASED",
+                createdAt: {
+                  gte: startDate,
+                  lte: endDate,
+                },
+              },
+            },
+          },
+        },
+      },
+      include: {
+        provider: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            providerProfile: {
+              select: {
+                rating: true,
+                location: true,
+              },
+            },
+          },
+        },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            customerProfile: {
+              select: {
+                companySize: true,
+                industry: true,
+              },
+            },
+          },
+        },
+        milestones: {
+          include: {
+            payments: {
+              where: {
+                status: "RELEASED",
+                createdAt: {
+                  gte: startDate,
+                  lte: endDate,
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // Calculate statistics
+    let totalRevenue = 0;
+    const providerIds = new Set();
+    const customerIds = new Set();
+    const projectRevenues = [];
+
+    projects.forEach((project) => {
+      let projectRevenue = 0;
+      project.milestones.forEach((milestone) => {
+        milestone.payments.forEach((payment) => {
+          projectRevenue += payment.amount;
+          totalRevenue += payment.amount;
+        });
+      });
+      projectRevenues.push(projectRevenue);
+      
+      if (project.providerId) providerIds.add(project.providerId);
+      if (project.customerId) customerIds.add(project.customerId);
+    });
+
+    const projectCount = projects.length;
+    const averageProjectValue = projectCount > 0 ? totalRevenue / projectCount : 0;
+
+    // Get unique providers and customers
+    const providers = await prisma.user.findMany({
+      where: {
+        id: { in: Array.from(providerIds) },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        providerProfile: {
+          select: {
+            rating: true,
+            location: true,
+          },
+        },
+      },
+    });
+
+    const customers = await prisma.user.findMany({
+      where: {
+        id: { in: Array.from(customerIds) },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        customerProfile: {
+          select: {
+            companySize: true,
+            industry: true,
+          },
+        },
+      },
+    });
+
+    // Get monthly trends for this category
+    const monthlyTrends = await this.getCategoryMonthlyTrends(category, dateRange, customStartDate, customEndDate);
+
+    // Format projects for response
+    const formattedProjects = projects.map((project) => {
+      let projectRevenue = 0;
+      project.milestones.forEach((milestone) => {
+        milestone.payments.forEach((payment) => {
+          projectRevenue += payment.amount;
+        });
+      });
+
+      return {
+        id: project.id,
+        title: project.title,
+        status: project.status,
+        createdAt: project.createdAt,
+        provider: project.provider ? {
+          id: project.provider.id,
+          name: project.provider.name,
+          rating: project.provider.providerProfile?.rating || 0,
+        } : null,
+        customer: project.customer ? {
+          id: project.customer.id,
+          name: project.customer.name,
+        } : null,
+        revenue: projectRevenue,
+      };
+    });
+
+    return {
+      category,
+      totalRevenue,
+      projectCount,
+      averageProjectValue,
+      providers: providers.map((p) => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        rating: p.providerProfile?.rating
+          ? parseFloat(p.providerProfile.rating.toString())
+          : 0,
+        location: p.providerProfile?.location || null,
+      })),
+      customers: customers.map((c) => ({
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        companySize: c.customerProfile?.companySize || null,
+        industry: c.customerProfile?.industry || null,
+      })),
+      projects: formattedProjects,
+      monthlyTrends,
+    };
+  },
+
+  async getCategoryMonthlyTrends(category, dateRange = "last_30_days", customStartDate = null, customEndDate = null) {
+    const { startDate, endDate } = customStartDate && customEndDate
+      ? { startDate: new Date(customStartDate), endDate: new Date(customEndDate) }
+      : getDateRange(dateRange);
+
+    // Get monthly data for this category
+    const months = [];
+    const current = new Date(startDate);
+    
+    while (current <= endDate) {
+      const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
+      const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59);
+
+      // Get projects in this category for this month
+      const monthProjects = await prisma.project.findMany({
+        where: {
+          category: category,
+          milestones: {
+            some: {
+              payments: {
+                some: {
+                  status: "RELEASED",
+                  createdAt: {
+                    gte: monthStart,
+                    lte: monthEnd,
+                  },
+                },
+              },
+            },
+          },
+        },
+        include: {
+          milestones: {
+            include: {
+              payments: {
+                where: {
+                  status: "RELEASED",
+                  createdAt: {
+                    gte: monthStart,
+                    lte: monthEnd,
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      let monthRevenue = 0;
+      monthProjects.forEach((project) => {
+        project.milestones.forEach((milestone) => {
+          milestone.payments.forEach((payment) => {
+            monthRevenue += payment.amount;
+          });
+        });
+      });
+
+      months.push({
+        month: current.toLocaleString("default", { month: "short" }),
+        year: current.getFullYear(),
+        revenue: monthRevenue,
+        projects: monthProjects.length,
+      });
+
+      // Move to next month
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    return months;
+  },
 };
 
 export default prisma;
