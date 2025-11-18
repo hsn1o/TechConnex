@@ -831,31 +831,30 @@ export default function ProviderOpportunitiesPage() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewDetails(opportunity)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleSubmitProposal(opportunity)}
-                            disabled={opportunity.hasSubmitted}
-                          >
-                            {opportunity.hasSubmitted ? (
-                              <>
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Submitted
-                              </>
-                            ) : (
-                              <>
-                                <ThumbsUp className="w-4 h-4 mr-2" />
-                                Submit Proposal
-                              </>
-                            )}
-                          </Button>
+                          <Link href={`/provider/opportunities/${opportunity.id}`}>
+                            <Button variant="outline" size="sm">
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Details
+                            </Button>
+                          </Link>
+                          <Link href={`/provider/opportunities/${opportunity.id}`}>
+                            <Button
+                              size="sm"
+                              disabled={opportunity.hasSubmitted}
+                            >
+                              {opportunity.hasSubmitted ? (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Submitted
+                                </>
+                              ) : (
+                                <>
+                                  <ThumbsUp className="w-4 h-4 mr-2" />
+                                  Submit Proposal
+                                </>
+                              )}
+                            </Button>
+                          </Link>
                         </div>
                       </div>
                     </CardContent>
