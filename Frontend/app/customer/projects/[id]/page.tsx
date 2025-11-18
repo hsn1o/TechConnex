@@ -37,6 +37,7 @@ import {
   Paperclip,
 } from "lucide-react";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 
 import { CustomerLayout } from "@/components/customer-layout";
 import {
@@ -123,6 +124,10 @@ export default function ProjectDetailsPage({
 
   const [activeTab, setActiveTab] = useState("overview");
   const [project, setProject] = useState<any>(null);
+  const [token, setToken] = useState<string>("");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [projectMessages, setProjectMessages] = useState<any[]>([]);
+  const [projectFiles, setProjectFiels] = useState<any[]>([]);
 
   // Extract id from params which may be a Promise in newer Next.js versions
   const [resolvedId, setResolvedId] = useState<string | null>(null);
@@ -211,6 +216,16 @@ export default function ProjectDetailsPage({
       order: number;
     }>;
   }
+  const isImage = (file: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(file);
+
+  const isPDF = (file: string) => /\.pdf$/i.test(file);
+
+  const getFullUrl = (path: string) => {
+    const normalized = path.replace(/\\/g, "/");
+    return normalized.startsWith("http://") || normalized.startsWith("https://")
+      ? normalized
+      : `${process.env.NEXT_PUBLIC_API_URL}/${normalized.replace(/^\//, "")}`;
+  };
 
   // This matches what the backend returns for each proposal
   interface ApiProposal {
@@ -338,6 +353,63 @@ export default function ProjectDetailsPage({
       mounted = false;
     };
   }, [params]);
+
+  // Load auth token and user from localStorage (client-side)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const t = localStorage.getItem("token") || "";
+      const u = localStorage.getItem("user");
+      setToken(t);
+      setCurrentUser(u ? JSON.parse(u) : null);
+    } catch (e) {
+      console.error("Error loading auth info:", e);
+    }
+  }, []);
+
+  // Fetch messages between the two project participants when Messages tab is opened
+  const fetchProjectMessages = async () => {
+    if (!token || !project) return;
+    try {
+      const currentUserId = currentUser?.id;
+      const providerId = project.providerId || project.provider?.id;
+      const customerId = project.customerId || project.customer?.id;
+      const otherUserId =
+        String(currentUserId) === String(providerId) ? customerId : providerId;
+      if (!otherUserId) return;
+
+      const url = `${
+        process.env.NEXT_PUBLIC_API_URL || ""
+      }/messages?otherUserId=${otherUserId}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data?.success) {
+        const filtered = Array.isArray(data.data)
+          ? data.data.filter(
+              (msg: any) => String(msg.projectId) === String(params.id)
+            )
+          : [];
+
+        setProjectMessages(Array.isArray(data.data) ? data.data : []);
+        setProjectFiels(filtered);
+      } else {
+        console.warn("No project messages fetched:", data?.message);
+        setProjectMessages([]);
+      }
+    } catch (err) {
+      console.error("Error fetching project messages:", err);
+      setProjectMessages([]);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "messages" || activeTab === "files") {
+      fetchProjectMessages();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, token, project]);
 
   // Safe formatter for numbers - prevents calling toLocaleString on undefined
   const fmt = (v: any, fallback = "0") => {
@@ -789,6 +861,38 @@ export default function ProjectDetailsPage({
   const bids = asArray<any>(safeProject.bids);
   const files = asArray<any>(safeProject.files);
   const messages = asArray<any>(safeProject.messages);
+  const currentUserId = currentUser?.id;
+  const msgsToRender =
+    projectMessages && projectMessages.length > 0 ? projectMessages : messages;
+
+  const router = useRouter();
+
+  const provider =
+    project?.provider ??
+    ({
+      id: project?.providerId,
+      name: project?.providerName ?? project?.provider?.name,
+      avatar: project?.provider?.avatarUrl ?? project?.providerAvatar,
+    } as any);
+
+  const handleContact = () => {
+    if (!provider || !provider.id) return;
+
+    const avatarUrl =
+      provider.avatar &&
+      provider.avatar !== "/placeholder.svg" &&
+      !provider.avatar.includes("/placeholder.svg")
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
+            provider.avatar.startsWith("/") ? "" : "/"
+          }${provider.avatar}`
+        : "";
+
+    router.push(
+      `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
+        provider.name || ""
+      )}&avatar=${encodeURIComponent(avatarUrl)}`
+    );
+  };
   // ⬇️ ADD THIS just after you define `project` (and `proposals` if present)
   const currency = project?.currency ?? "RM";
   const viewCount = Number(project?.viewCount ?? 0);
@@ -1421,95 +1525,6 @@ export default function ProjectDetailsPage({
     }
   };
 
-  // Process milestone payment
-  const handleProcessPayment = async () => {
-    if (!selectedMilestoneForPayment) return;
-    if (!stripe || !elements) {
-      toast({
-        title: "Payment failed",
-        description: "Stripe is not loaded yet. Try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setProcessingPayment(true);
-
-      // 1) Create PaymentIntent on backend
-      // Make sure milestone object contains projectId (fallback to project?.id)
-      const projectId = selectedMilestoneForPayment.projectId ?? project?.id;
-      if (!projectId) throw new Error("Missing project id for payment");
-
-      const createResp = await createPaymentIntentAPI({
-        projectId,
-        milestoneId: selectedMilestoneForPayment.id,
-        amount: Number(selectedMilestoneForPayment.amount),
-        currency: project?.currency ?? "MYR",
-      });
-
-      const { clientSecret, paymentId } = createResp;
-
-      if (!clientSecret || !paymentId) {
-        throw new Error("Missing clientSecret or paymentId from server");
-      }
-
-      // 2) Confirm PaymentIntent with CardElement (collects card data from customer)
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error("Could not find card input");
-
-      const confirmResult = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-        },
-        // optional: receipt_email: customerEmail,
-      });
-
-      if (confirmResult.error) {
-        // Payment failed or requires action
-        // Notify server that payment failed (optional)
-        try {
-          await finalizePaymentAPI({ paymentId, success: false });
-        } catch (err) {
-          console.warn("Failed to finalize failed payment in backend:", err);
-        }
-
-        throw new Error(confirmResult.error.message || "Payment failed");
-      }
-
-      const paymentIntent = confirmResult.paymentIntent;
-      if (paymentIntent?.status !== "succeeded") {
-        // If status is requires_action, you may need to handle 3DS flow. confirmCardPayment handles that automatically.
-        throw new Error(`Payment not completed: ${paymentIntent?.status}`);
-      }
-
-      // 3) Tell backend to mark payment as completed (and optionally transfer to provider)
-      await finalizePaymentAPI({ paymentId, success: true });
-
-      // Success UI
-      toast({
-        title: "Payment processed",
-        description: `Payment of RM ${selectedMilestoneForPayment.amount} has been processed successfully.`,
-      });
-
-      setPaymentDialogOpen(false);
-      setSelectedMilestoneForPayment(null);
-
-      // Refresh all project data including milestones
-      await refreshProjectData();
-    } catch (err) {
-      console.error("Payment error:", err);
-      toast({
-        title: "Payment failed",
-        description:
-          err instanceof Error ? err.message : "Could not process payment",
-        variant: "destructive",
-      });
-    } finally {
-      setProcessingPayment(false);
-    }
-  };
-
   return (
     <CustomerLayout>
       <div className="space-y-8">
@@ -1886,24 +1901,34 @@ export default function ProjectDetailsPage({
                             <div className="w-px h-16 bg-gray-200 mt-2" />
                           )}
                         </div>
-                        <div className="flex-1 pb-8">
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold">{milestone.title}</h3>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                className={getStatusColor(milestone.status)}
-                              >
-                                {getStatusText(milestone.status)}
-                              </Badge>
-                              <span className="text-sm font-medium">
-                                {fmt(milestone.amount)} {project.currency}
-                              </span>
+                        <div className="flex-1 min-w-0 pb-8">
+                          <div className="flex flex-col gap-2 mb-2">
+                            {/* Top Row */}
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold">
+                                {milestone.title}
+                              </h3>
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  className={getStatusColor(milestone.status)}
+                                >
+                                  {getStatusText(milestone.status)}
+                                </Badge>
+                                <span className="text-sm font-medium">
+                                  {fmt(milestone.amount)} {project.currency}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Description Row */}
+                            <div className="mb-3">
+                              <p className="text-gray-600 break-words">
+                                {milestone.description}
+                              </p>
                             </div>
                           </div>
-                          <p className="text-gray-600 mb-2">
-                            {milestone.description}
-                          </p>
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
+
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-4">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
                               Due:{" "}
@@ -2279,7 +2304,51 @@ export default function ProjectDetailsPage({
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>
+                          {milestone.status === "LOCKED" &&
+                            projectMilestones.findIndex(
+                              (m: any) =>
+                                m.status === "LOCKED" &&
+                                project.status === "IN_PROGRESS"
+                            ) === index && (
+                              <>
+                                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
 
+                                  <p className="text-sm text-amber-800">
+                                    {
+                                      // 🟡 CHECK PREVIOUS MILESTONE (if exists)
+                                      index > 0 &&
+                                      projectMilestones[index - 1].status !==
+                                        "APPROVED"
+                                        ? "You must approve the previous milestone before continuing to the next one."
+                                        : "You must complete the payment before the provider can start working."
+                                    }
+                                  </p>
+                                </div>
+                                <div className="mt-3">
+                                  <Button
+                                    size="sm"
+                                    disabled={
+                                      index > 0 &&
+                                      projectMilestones[index - 1].status !==
+                                        "APPROVED"
+                                        ? true
+                                        : false
+                                    }
+                                    onClick={() =>
+                                      handlePayMilestone(
+                                        milestone.id,
+                                        milestone.amount
+                                      )
+                                    }
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                  >
+                                    <DollarSign className="w-4 h-4 mr-2" />
+                                    Pay Now
+                                  </Button>
+                                </div>
+                              </>
+                            )}
                           {/* Action buttons only shown for SUBMITTED status */}
                           {milestone.status === "SUBMITTED" && (
                             <div className="mt-3 flex gap-2">
@@ -2302,23 +2371,6 @@ export default function ProjectDetailsPage({
                               >
                                 <AlertCircle className="w-4 h-4 mr-2" />
                                 Request Changes
-                              </Button>
-                            </div>
-                          )}
-                          {milestone.status === "APPROVED" && (
-                            <div className="mt-3 flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() =>
-                                  handlePayMilestone(
-                                    milestone.id,
-                                    milestone.amount
-                                  )
-                                }
-                                className="bg-blue-600 hover:bg-blue-700"
-                              >
-                                <DollarSign className="w-4 h-4 mr-2" />
-                                Pay Milestone
                               </Button>
                             </div>
                           )}
@@ -2862,9 +2914,72 @@ export default function ProjectDetailsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-500 text-center py-8">
-                  Message attachments will be available here once implemented
-                </p>
+                {(() => {
+                  const messageAttachments = projectFiles.flatMap(
+                    (message: any) =>
+                      Array.isArray(message.attachments)
+                        ? message.attachments.map((url: string) => ({
+                            url,
+                            senderName:
+                              message.sender?.name ||
+                              message.senderName ||
+                              "User",
+                            messageId: message.id,
+                            timestamp: message.createdAt || message.timestamp,
+                          }))
+                        : []
+                  );
+                  if (messageAttachments.length === 0) {
+                    return (
+                      <p className="text-sm text-gray-500 text-center py-8">
+                        No message attachments found
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="space-y-2">
+                      {messageAttachments.map((attachment, idx) => {
+                        const normalized = attachment.url.replace(/\\/g, "/");
+                        const fileName =
+                          normalized.split("/").pop() || `file-${idx + 1}`;
+
+                        // If attachment.url is already a full URL → use it
+                        const fullUrl =
+                          normalized.startsWith("http://") ||
+                          normalized.startsWith("https://")
+                            ? normalized
+                            : `${
+                                process.env.NEXT_PUBLIC_API_URL ||
+                                "http://localhost:4000"
+                              }/${normalized.replace(/^\//, "")}`;
+
+                        return (
+                          <a
+                            key={idx}
+                            href={fullUrl}
+                            download={fileName}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                          >
+                            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                              PDF
+                            </div>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                {fileName}
+                              </span>
+                              <span className="text-xs text-gray-500 leading-snug">
+                                From: {attachment.senderName} • Click to preview
+                                / download
+                              </span>
+                            </div>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>
@@ -2879,66 +2994,98 @@ export default function ProjectDetailsPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-3 ${
-                        message.sender === "You" ? "flex-row-reverse" : ""
-                      }`}
-                    >
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback>
-                          {message.sender.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
+                <div className="space-y-4 max-h-96 overflow-y-auto ">
+                  {msgsToRender.map((message: any) => {
+                    const isCurrentUser =
+                      String(message.senderId || message.sender?.id) ===
+                      String(currentUserId);
+                    const text = message.content ?? message.message ?? "";
+                    const ts = message.createdAt ?? message.timestamp ?? "";
+                    const avatarChar =
+                      (
+                        message.sender?.name ||
+                        message.senderName ||
+                        (isCurrentUser ? "You" : "User")
+                      )?.charAt?.(0) || "U";
+
+                    return (
                       <div
-                        className={`flex-1 max-w-xs ${
-                          message.sender === "You" ? "text-right" : ""
+                        key={message.id}
+                        className={`flex gap-3 ${
+                          isCurrentUser ? "flex-row-reverse" : ""
                         }`}
                       >
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback>{avatarChar}</AvatarFallback>
+                        </Avatar>
                         <div
-                          className={`p-3 rounded-lg ${
-                            message.sender === "You"
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-100"
+                          className={`flex-1 max-w-[14rem] ${
+                            isCurrentUser ? "text-right" : ""
                           }`}
                         >
-                          <p className="text-sm">{message.message}</p>
-                          {message.attachments &&
-                            message.attachments.length > 0 && (
-                              <div className="mt-2 pt-2 border-t border-opacity-20">
-                                {asArray<string>(message.attachments).map(
-                                  (attachment, index) => (
-                                    <div
-                                      key={index}
-                                      className="text-xs opacity-75"
-                                    >
-                                      📎 {attachment}
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            )}
+                          <div
+                            className={`p-3 rounded-lg ${
+                              isCurrentUser
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-100"
+                            }`}
+                          >
+                            <p className="text-sm">{text}</p>
+                            {message.attachments &&
+                              message.attachments.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-opacity-20 space-y-2">
+                                  {asArray<string>(message.attachments).map(
+                                    (attachment, index) => {
+                                      const url = getFullUrl(attachment);
+                                      const name =
+                                        url.split("/").pop() || `file-${index}`;
+
+                                      return (
+                                        <div key={index} className="text-xs">
+                                          {isImage(url) ? (
+                                            <img
+                                              src={url}
+                                              alt={name}
+                                              className="w-32 h-auto rounded border cursor-pointer"
+                                            />
+                                          ) : isPDF(url) ? (
+                                            <a
+                                              href={url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-2 text-blue-500 underline"
+                                            >
+                                              📄 {name}
+                                            </a>
+                                          ) : (
+                                            <a
+                                              href={url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-2 text-blue-500 underline"
+                                            >
+                                              📎 {name}
+                                            </a>
+                                          )}
+                                        </div>
+                                      );
+                                    }
+                                  )}
+                                </div>
+                              )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">{ts}</p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {message.timestamp}
-                        </p>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <Separator className="my-4" />
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Type your message..."
-                    className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <Button size="sm">
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
+                {messages.length > 0 && (
+                  <div className="flex justify-center gap-2">
+                    <Button onClick={handleContact}>Contact</Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

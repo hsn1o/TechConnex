@@ -15,9 +15,10 @@ import {
   Video,
   MoreVertical,
   Loader2,
+  FileText,
 } from "lucide-react";
 import io, { Socket } from "socket.io-client";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ProviderLayout } from "@/components/provider-layout";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -55,6 +56,13 @@ type Message = {
   receiver: User;
 };
 
+// New type for project association
+type ServiceRequest = {
+  id: string;
+  title: string;
+  status: string;
+};
+
 export default function CustomerMessagesPage() {
   const searchParams = useSearchParams();
   const userIdParam = searchParams.get("userId");
@@ -66,27 +74,86 @@ export default function CustomerMessagesPage() {
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState<ServiceRequest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
+  const [token, setToken] = useState<string>("");
+  const [user, setUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const selectedChatRef = useRef<string | null>(null);
+  const [showAttachmentPicker, setShowAttachmentPicker] = useState(false);
+  const [pendingAttachmentUrl, setPendingAttachmentUrl] = useState<
+    string | null
+  >(null);
 
-  // Get user data and token
-  const getAuthData = () => {
-    if (typeof window === "undefined") return { token: "", user: null };
-
-    try {
-      const token = localStorage.getItem("token");
-      const userJson = localStorage.getItem("user");
-      const user = userJson ? JSON.parse(userJson) : null;
-      return { token, user };
-    } catch {
-      return { token: "", user: null };
+  // Get user data and token on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const tokenFromStorage = localStorage.getItem("token");
+        const userJson = localStorage.getItem("user");
+        const userFromStorage = userJson ? JSON.parse(userJson) : null;
+        setToken(tokenFromStorage || "");
+        setUser(userFromStorage);
+      } catch (error) {
+        console.error("Error loading auth data:", error);
+      }
     }
-  };
+  }, []);
 
-  const { token, user } = getAuthData();
+  // Fetch open project requests for company
+  useEffect(() => {
+    if (!token) return;
+    const fetchProjects = async () => {
+      try {
+        const res = await fetch(`${API_URL}/provider/projects`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const data = await res.json();
+        if (data.success) {
+          const projects = data.projects ?? data.data;
+          const availableProjects = projects.filter(
+            (proj: any) =>
+              proj.status === "IN_PROGRESS" || proj.status === "DISPUTED"
+          );
+          setProjects(availableProjects);
+        }
+      } catch (error) {
+        console.error("Error fetching project requests", error);
+      }
+    };
+    fetchProjects();
+  }, [token]);
+
   const currentUserId = user?.id;
+  const router = useRouter();
+
+  const handleContact = () => {
+    if (!selectedChat) return;
+    const selectedConversation = conversations.find(
+      (c) => c.userId === selectedChat
+    );
+    if (!selectedConversation) return;
+
+    const avatarUrl =
+      selectedConversation.avatar &&
+      selectedConversation.avatar !== "/placeholder.svg" &&
+      !selectedConversation.avatar.includes("/placeholder.svg")
+        ? selectedConversation.avatar
+        : "";
+
+    router.push(
+      `/provider/messages?userId=${
+        selectedConversation.userId
+      }&name=${encodeURIComponent(
+        selectedConversation.name || ""
+      )}&avatar=${encodeURIComponent(avatarUrl)}`
+    );
+  };
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -135,35 +202,59 @@ export default function CustomerMessagesPage() {
     newSocket.on("receive_message", (message: Message) => {
       console.log("📨 Received message via socket:", message);
 
-      // Add message to current conversation if it matches
-      if (
-        selectedChat &&
-        (message.senderId === selectedChat ||
-          message.receiverId === selectedChat)
-      ) {
+      const otherUserId =
+        message.senderId === currentUserId
+          ? message.receiverId
+          : message.senderId;
+
+      // If this message is for the currently selected chat, add it to messages
+      if (selectedChatRef.current === otherUserId) {
         setMessages((prev) => {
           // Avoid duplicates
           if (prev.some((msg) => msg.id === message.id)) {
             return prev;
           }
+          console.log("✅ Adding message to current chat");
           return [...prev, message];
         });
       }
 
-      // Update conversations list
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.userId === message.senderId || conv.userId === message.receiverId
-            ? {
-                ...conv,
-                lastMessage: message.content,
-                lastMessageAt: message.createdAt,
-                unreadCount:
-                  conv.userId === selectedChat ? 0 : conv.unreadCount + 1,
-              }
-            : conv
-        )
-      );
+      // Always update conversations list with the latest message
+      setConversations((prev) => {
+        const updated = prev.map((conv) => {
+          if (conv.userId === otherUserId) {
+            return {
+              ...conv,
+              lastMessage: message.content,
+              lastMessageAt: message.createdAt,
+              unreadCount:
+                selectedChatRef.current === otherUserId
+                  ? 0
+                  : conv.unreadCount + 1,
+            };
+          }
+          return conv;
+        });
+
+        // If conversation doesn't exist, create it (for new conversations)
+        if (!updated.some((c) => c.userId === otherUserId)) {
+          return [
+            {
+              userId: otherUserId,
+              name: message.sender.name || message.receiver.name,
+              email: message.sender.email || message.receiver.email,
+              avatar: message.sender.avatar || message.receiver.avatar,
+              lastMessage: message.content,
+              lastMessageAt: message.createdAt,
+              unreadCount: selectedChatRef.current === otherUserId ? 0 : 1,
+              online: true,
+            },
+            ...updated,
+          ];
+        }
+
+        return updated;
+      });
     });
 
     newSocket.on("message_sent", (message: Message) => {
@@ -187,6 +278,35 @@ export default function CustomerMessagesPage() {
       }
     );
 
+    // Handle user online/offline status
+    newSocket.on("user_online", (data: { userId: string }) => {
+      console.log("🟢 User online:", data.userId);
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.userId === data.userId ? { ...conv, online: true } : conv
+        )
+      );
+    });
+
+    newSocket.on("user_offline", (data: { userId: string }) => {
+      console.log("🔴 User offline:", data.userId);
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.userId === data.userId ? { ...conv, online: false } : conv
+        )
+      );
+    });
+
+    newSocket.on("online_users", (data: { userIds: string[] }) => {
+      console.log("👥 Online users list:", data.userIds);
+      setConversations((prev) =>
+        prev.map((conv) => ({
+          ...conv,
+          online: data.userIds.includes(conv.userId),
+        }))
+      );
+    });
+
     newSocket.on("error", (error: { message: string }) => {
       console.error("Socket error:", error);
     });
@@ -196,7 +316,7 @@ export default function CustomerMessagesPage() {
     return () => {
       newSocket.close();
     };
-  }, [token, selectedChat]);
+  }, [token]);
 
   // Fetch conversations list
   const fetchConversations = async () => {
@@ -234,11 +354,15 @@ export default function CustomerMessagesPage() {
   };
 
   // Fetch messages for a specific conversation
-  const fetchMessages = async (otherUserId: string) => {
+  const fetchMessages = async (
+    otherUserId: string,
+    skipLoadingCheck = false
+  ) => {
     if (!token || !otherUserId) return;
+    if (loading && !skipLoadingCheck) return; // prevents re-fetching while still loading
 
     try {
-      setLoading(true);
+      if (!skipLoadingCheck) setLoading(true);
       const response = await fetch(
         `${API_URL}/messages?otherUserId=${otherUserId}`,
         {
@@ -266,28 +390,30 @@ export default function CustomerMessagesPage() {
     } catch (error) {
       console.error("Error fetching messages:", error);
     } finally {
-      setLoading(false);
+      if (!skipLoadingCheck) setLoading(false);
     }
   };
 
   // Load conversations on mount
   useEffect(() => {
     if (token) {
+      console.log("🔄 Loading conversations...");
       fetchConversations();
     }
   }, [token]);
 
-  // Handle URL parameters for direct chat links
+  // Handle URL parameters for direct chat links - only when conversations are ready
   useEffect(() => {
-    if (userIdParam && chatName) {
+    if (userIdParam && chatName && !loading && token) {
+      console.log("📍 URL params detected:", { userIdParam, chatName });
+
+      selectedChatRef.current = userIdParam;
       setSelectedChat(userIdParam);
 
-      // Check if this conversation already exists in the list
-      const existingConversation = conversations.find(
-        (c) => c.userId === userIdParam
-      );
-      if (!existingConversation) {
-        // Add to conversations list temporarily
+      // Add to conversations if not already there
+      const exists = conversations.some((c) => c.userId === userIdParam);
+      if (!exists) {
+        console.log("➕ Adding new conversation from URL params");
         setConversations((prev) => [
           ...prev,
           {
@@ -300,14 +426,19 @@ export default function CustomerMessagesPage() {
             online: true,
           },
         ]);
+      } else {
+        console.log("✅ Conversation already exists in list");
       }
 
-      fetchMessages(userIdParam);
+      // Fetch messages for this user
+      console.log("📨 Fetching messages for user:", userIdParam);
+      fetchMessages(userIdParam, true);
     }
-  }, [userIdParam, chatName, chatAvatar, conversations]);
+  }, [userIdParam, chatName, chatAvatar, token, loading, conversations.length]);
 
   // Handle conversation selection
   const handleSelectConversation = (conversation: Conversation) => {
+    selectedChatRef.current = conversation.userId;
     setSelectedChat(conversation.userId);
     fetchMessages(conversation.userId);
   };
@@ -333,20 +464,29 @@ export default function CustomerMessagesPage() {
       alert("File upload failed");
       return;
     }
-
-    // Send file message
-    const messageData = {
+    // Show project list picker for attachment if available
+    // Always show attachment picker after upload
+    setPendingAttachmentUrl(data.fileUrl);
+    setShowAttachmentPicker(true);
+    return;
+  };
+  // Helper to send attachment after project selection
+  const sendAttachmentMessage = (projectId?: string) => {
+    if (!pendingAttachmentUrl || !socket || !selectedChat) return;
+    const messageData: any = {
       senderId: currentUserId,
       receiverId: selectedChat,
+      projectId: projectId || null,
       messageType: "file",
-      attachments: [data.fileUrl],
+      attachments: [pendingAttachmentUrl],
     };
-
     socket.emit("send_message", messageData, (response: any) => {
       if (!response?.success) {
         alert("Failed to send file: " + response.error);
       }
     });
+    setPendingAttachmentUrl(null);
+    setShowAttachmentPicker(false);
   };
 
   // Send message
@@ -644,7 +784,7 @@ export default function CustomerMessagesPage() {
                         }`}
                       >
                         <div
-                          className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
+                          className={`flex items-end space-x-2 max-w-[14rem] ${
                             isOwn ? "flex-row-reverse space-x-reverse" : ""
                           }`}
                         >
@@ -716,6 +856,21 @@ export default function CustomerMessagesPage() {
                                   </div>
                                 );
                               })
+                            ) : message.messageType === "proposal" ? (
+                              <div className="flex flex-col bg-gray-50 border border-gray-200 rounded-lg shadow-sm p-4 space-y-2 max-w-xs">
+                                <div className="flex items-center space-x-2">
+                                  <FileText className="w-5 h-5 text-blue-500" />
+                                  <h4 className="text-sm font-semibold text-gray-900">
+                                    {message.content}
+                                  </h4>
+                                </div>
+                                <a
+                                  href={`/customer/project-requests/${message.attachments[0]}`}
+                                  className="mt-2 inline-block text-xs font-medium text-blue-600 hover:underline"
+                                >
+                                  View Project
+                                </a>
+                              </div>
                             ) : (
                               <p className="text-sm">{message.content}</p>
                             )}
@@ -746,10 +901,9 @@ export default function CustomerMessagesPage() {
                 </>
               )}
             </CardContent>
-
             {/* Input */}
             {selectedChat && (
-              <div className="border-t p-4">
+              <div className="border-t p-4 relative">
                 <div className="flex items-end space-x-2">
                   <div className="flex items-center gap-2">
                     <Button
@@ -762,7 +916,7 @@ export default function CustomerMessagesPage() {
                     <input
                       type="file"
                       ref={fileInputRef}
-                      className="hidden"
+                      className="sr-only"
                       onChange={handleFileSelect}
                     />
                   </div>
@@ -792,6 +946,36 @@ export default function CustomerMessagesPage() {
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
+                {showAttachmentPicker && (
+                  <div className="absolute bottom-16 left-4 bg-white border rounded-lg p-2 max-h-60 overflow-y-auto shadow-lg z-10 w-64">
+                    <div className="p-2 text-sm text-gray-700">
+                      This file is associated with a project. Please select a
+                      project to continue:
+                    </div>
+                    {projects.length > 0 ? (
+                      projects.map((proj) => (
+                        <div
+                          key={proj.id}
+                          className="p-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => sendAttachmentMessage(proj.id)}
+                        >
+                          <p className="text-sm font-medium">{proj.title}</p>
+                          <p className="text-xs text-gray-500">{proj.status}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">No open projects</p>
+                    )}
+                    <div className="p-2 border-t">
+                      <Button
+                        onClick={() => sendAttachmentMessage()}
+                        className="w-full"
+                      >
+                        Send without project
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </Card>

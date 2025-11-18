@@ -212,6 +212,8 @@ class ProviderProfileService {
       throw new Error(`Failed to get completed projects: ${error.message}`);
     }
   }
+
 }
+
 
 export default ProviderProfileService;

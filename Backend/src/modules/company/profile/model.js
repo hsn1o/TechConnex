@@ -32,7 +32,7 @@ class CompanyProfileModel {
                   reviewedAt: true,
                 },
                 orderBy: {
-                  uploadedAt: 'desc',
+                  uploadedAt: "desc",
                 },
               },
             },
@@ -78,7 +78,7 @@ class CompanyProfileModel {
                   reviewedAt: true,
                 },
                 orderBy: {
-                  uploadedAt: 'desc',
+                  uploadedAt: "desc",
                 },
               },
             },
@@ -128,7 +128,7 @@ class CompanyProfileModel {
                   reviewedAt: true,
                 },
                 orderBy: {
-                  uploadedAt: 'desc',
+                  uploadedAt: "desc",
                 },
               },
             },
@@ -212,7 +212,9 @@ class CompanyProfileModel {
       }
 
       // Count media gallery items
-      const mediaGalleryCount = Array.isArray(profile.mediaGallery) ? profile.mediaGallery.length : 0;
+      const mediaGalleryCount = Array.isArray(profile.mediaGallery)
+        ? profile.mediaGallery.length
+        : 0;
 
       // Define fields with weights (total should be 100)
       // Covering ALL database fields
@@ -221,36 +223,111 @@ class CompanyProfileModel {
         name: { weight: 4, label: "Company Name", value: user?.name },
         email: { weight: 4, label: "Email", value: user?.email },
         phone: { weight: 4, label: "Phone Number", value: user?.phone },
-        
+
         // Company Identity (28 points)
-        profileImageUrl: { weight: 5, label: "Profile Image", value: profile.profileImageUrl },
+        profileImageUrl: {
+          weight: 5,
+          label: "Profile Image",
+          value: profile.profileImageUrl,
+        },
         logoUrl: { weight: 4, label: "Company Logo", value: profile.logoUrl },
-        description: { weight: 8, label: "Company Description", value: profile.description, minLength: 50 },
+        description: {
+          weight: 8,
+          label: "Company Description",
+          value: profile.description,
+          minLength: 50,
+        },
         industry: { weight: 5, label: "Industry", value: profile.industry },
         location: { weight: 4, label: "Location", value: profile.location },
         website: { weight: 2, label: "Website", value: profile.website },
-        
+
         // Business Details (20 points)
-        companySize: { weight: 4, label: "Company Size", value: profile.companySize },
-        employeeCount: { weight: 3, label: "Employee Count", value: profile.employeeCount },
-        establishedYear: { weight: 3, label: "Established Year", value: profile.establishedYear },
-        annualRevenue: { weight: 3, label: "Annual Revenue", value: profile.annualRevenue },
-        fundingStage: { weight: 3, label: "Funding Stage", value: profile.fundingStage },
-        languages: { weight: 2, label: "Languages", value: profile.languages, minCount: 1 },
-        socialLinks: { weight: 2, label: "Social Links", value: profile.socialLinks },
-        
+        companySize: {
+          weight: 4,
+          label: "Company Size",
+          value: profile.companySize,
+        },
+        employeeCount: {
+          weight: 3,
+          label: "Employee Count",
+          value: profile.employeeCount,
+        },
+        establishedYear: {
+          weight: 3,
+          label: "Established Year",
+          value: profile.establishedYear,
+        },
+        annualRevenue: {
+          weight: 3,
+          label: "Annual Revenue",
+          value: profile.annualRevenue,
+        },
+        fundingStage: {
+          weight: 3,
+          label: "Funding Stage",
+          value: profile.fundingStage,
+        },
+        languages: {
+          weight: 2,
+          label: "Languages",
+          value: profile.languages,
+          minCount: 1,
+        },
+        socialLinks: {
+          weight: 2,
+          label: "Social Links",
+          value: profile.socialLinks,
+        },
+
         // Hiring Preferences (20 points)
-        preferredContractTypes: { weight: 5, label: "Preferred Contract Types", value: profile.preferredContractTypes, minCount: 1 },
-        averageBudgetRange: { weight: 4, label: "Average Budget Range", value: profile.averageBudgetRange },
-        remotePolicy: { weight: 4, label: "Remote Policy", value: profile.remotePolicy },
-        hiringFrequency: { weight: 4, label: "Hiring Frequency", value: profile.hiringFrequency },
-        categoriesHiringFor: { weight: 3, label: "Categories Hiring For", value: profile.categoriesHiringFor, minCount: 1 },
-        
+        preferredContractTypes: {
+          weight: 5,
+          label: "Preferred Contract Types",
+          value: profile.preferredContractTypes,
+          minCount: 1,
+        },
+        averageBudgetRange: {
+          weight: 4,
+          label: "Average Budget Range",
+          value: profile.averageBudgetRange,
+        },
+        remotePolicy: {
+          weight: 4,
+          label: "Remote Policy",
+          value: profile.remotePolicy,
+        },
+        hiringFrequency: {
+          weight: 4,
+          label: "Hiring Frequency",
+          value: profile.hiringFrequency,
+        },
+        categoriesHiringFor: {
+          weight: 3,
+          label: "Categories Hiring For",
+          value: profile.categoriesHiringFor,
+          minCount: 1,
+        },
+
         // Branding & Culture (15 points)
-        mission: { weight: 5, label: "Mission Statement", value: profile.mission },
-        values: { weight: 5, label: "Company Values", value: profile.values, minCount: 1 },
+        mission: {
+          weight: 5,
+          label: "Mission Statement",
+          value: profile.mission,
+        },
+        values: {
+          weight: 5,
+          label: "Company Values",
+          value: profile.values,
+          minCount: 1,
+        },
         benefits: { weight: 3, label: "Benefits", value: profile.benefits },
-        mediaGallery: { weight: 2, label: "Media Gallery", value: mediaGalleryCount, minCount: 1, isCount: true },
+        mediaGallery: {
+          weight: 2,
+          label: "Media Gallery",
+          value: mediaGalleryCount,
+          minCount: 1,
+          isCount: true,
+        },
       };
 
       let totalScore = 0;
@@ -262,16 +339,18 @@ class CompanyProfileModel {
         let isComplete = false;
         let suggestionMessage = null;
 
-        if (value === null || value === undefined || value === '') {
+        if (value === null || value === undefined || value === "") {
           isComplete = false;
           suggestionMessage = `Add your ${label.toLowerCase()}`;
         } else if (isCount) {
           // Handle count-based fields (mediaGallery)
-          const count = typeof value === 'number' ? value : 0;
+          const count = typeof value === "number" ? value : 0;
           if (minCount !== undefined) {
             isComplete = count >= minCount;
             if (!isComplete) {
-              suggestionMessage = `Add at least ${minCount} ${label.toLowerCase()}${count > 0 ? ` (currently ${count})` : ''}`;
+              suggestionMessage = `Add at least ${minCount} ${label.toLowerCase()}${
+                count > 0 ? ` (currently ${count})` : ""
+              }`;
             }
           } else {
             isComplete = count > 0;
@@ -284,7 +363,9 @@ class CompanyProfileModel {
           if (minCount !== undefined) {
             isComplete = count >= minCount;
             if (!isComplete) {
-              suggestionMessage = `Add at least ${minCount} ${label.toLowerCase()}${count > 0 ? ` (currently ${count})` : ''}`;
+              suggestionMessage = `Add at least ${minCount} ${label.toLowerCase()}${
+                count > 0 ? ` (currently ${count})` : ""
+              }`;
             }
           } else {
             isComplete = count > 0;
@@ -292,12 +373,14 @@ class CompanyProfileModel {
               suggestionMessage = `Add your ${label.toLowerCase()}`;
             }
           }
-        } else if (typeof value === 'string') {
+        } else if (typeof value === "string") {
           if (minLength !== undefined) {
             isComplete = value.trim().length >= minLength;
             if (!isComplete) {
               const currentLength = value.trim().length;
-              suggestionMessage = `${label} should be at least ${minLength} characters${currentLength > 0 ? ` (currently ${currentLength})` : ''}`;
+              suggestionMessage = `${label} should be at least ${minLength} characters${
+                currentLength > 0 ? ` (currently ${currentLength})` : ""
+              }`;
             }
           } else {
             isComplete = value.trim().length > 0;
@@ -305,23 +388,23 @@ class CompanyProfileModel {
               suggestionMessage = `Add your ${label.toLowerCase()}`;
             }
           }
-        } else if (typeof value === 'boolean') {
+        } else if (typeof value === "boolean") {
           isComplete = value === true;
           if (!isComplete) {
             suggestionMessage = `Complete your ${label.toLowerCase()}`;
           }
-        } else if (typeof value === 'number') {
+        } else if (typeof value === "number") {
           isComplete = value !== null && value !== undefined && value > 0;
           if (!isComplete) {
             suggestionMessage = `Add your ${label.toLowerCase()}`;
           }
-        } else if (typeof value === 'object' && value !== null) {
+        } else if (typeof value === "object" && value !== null) {
           // Handle JSON fields like socialLinks, benefits
           isComplete = Object.keys(value).length > 0;
           if (!isComplete) {
             suggestionMessage = `Add your ${label.toLowerCase()}`;
           }
-          } else {
+        } else {
           isComplete = value !== null && value !== undefined;
           if (!isComplete) {
             suggestionMessage = `Add your ${label.toLowerCase()}`;
@@ -337,18 +420,38 @@ class CompanyProfileModel {
 
       // Sort suggestions by priority (missing core fields first)
       const priorityOrder = [
-        'company description', 'industry', 'location', 'company size',
-        'profile image', 'company logo', 'preferred contract types',
-        'average budget range', 'remote policy', 'hiring frequency',
-        'categories hiring for', 'mission statement', 'company values',
-        'employee count', 'established year', 'annual revenue',
-        'funding stage', 'languages', 'social links', 'website',
-        'phone number', 'media gallery', 'benefits'
+        "company description",
+        "industry",
+        "location",
+        "company size",
+        "profile image",
+        "company logo",
+        "preferred contract types",
+        "average budget range",
+        "remote policy",
+        "hiring frequency",
+        "categories hiring for",
+        "mission statement",
+        "company values",
+        "employee count",
+        "established year",
+        "annual revenue",
+        "funding stage",
+        "languages",
+        "social links",
+        "website",
+        "phone number",
+        "media gallery",
+        "benefits",
       ];
-      
+
       suggestions.sort((a, b) => {
-        const aPriority = priorityOrder.findIndex(p => a.toLowerCase().includes(p));
-        const bPriority = priorityOrder.findIndex(p => b.toLowerCase().includes(p));
+        const aPriority = priorityOrder.findIndex((p) =>
+          a.toLowerCase().includes(p)
+        );
+        const bPriority = priorityOrder.findIndex((p) =>
+          b.toLowerCase().includes(p)
+        );
         if (aPriority === -1 && bPriority === -1) return 0;
         if (aPriority === -1) return 1;
         if (bPriority === -1) return -1;
@@ -362,10 +465,13 @@ class CompanyProfileModel {
         completion: Math.min(100, Math.round(totalScore)),
         suggestions: topSuggestions,
         totalFields: Object.keys(fieldWeights).length,
-        completedFields: Object.keys(fieldWeights).length - topSuggestions.length,
+        completedFields:
+          Object.keys(fieldWeights).length - topSuggestions.length,
       };
     } catch (error) {
-      throw new Error(`Failed to calculate profile completion: ${error.message}`);
+      throw new Error(
+        `Failed to calculate profile completion: ${error.message}`
+      );
     }
   }
 
@@ -373,7 +479,7 @@ class CompanyProfileModel {
   static async updateProfileCompletion(userId) {
     try {
       const completionData = await this.getProfileCompletion(userId);
-      
+
       await prisma.customerProfile.update({
         where: { userId },
         data: { completion: completionData.completion },
@@ -392,11 +498,11 @@ class CompanyProfileModel {
 
       // Apply filters
       if (filters.industry) {
-        where.industry = { contains: filters.industry, mode: 'insensitive' };
+        where.industry = { contains: filters.industry, mode: "insensitive" };
       }
 
       if (filters.location) {
-        where.location = { contains: filters.location, mode: 'insensitive' };
+        where.location = { contains: filters.location, mode: "insensitive" };
       }
 
       if (filters.companySize) {
@@ -433,13 +539,13 @@ class CompanyProfileModel {
                   reviewedAt: true,
                 },
                 orderBy: {
-                  uploadedAt: 'desc',
+                  uploadedAt: "desc",
                 },
               },
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: filters.limit || 50,
         skip: filters.skip || 0,
       });
@@ -455,20 +561,20 @@ class CompanyProfileModel {
     try {
       const where = {
         OR: [
-          { description: { contains: searchTerm, mode: 'insensitive' } },
-          { industry: { contains: searchTerm, mode: 'insensitive' } },
-          { location: { contains: searchTerm, mode: 'insensitive' } },
-          { mission: { contains: searchTerm, mode: 'insensitive' } },
+          { description: { contains: searchTerm, mode: "insensitive" } },
+          { industry: { contains: searchTerm, mode: "insensitive" } },
+          { location: { contains: searchTerm, mode: "insensitive" } },
+          { mission: { contains: searchTerm, mode: "insensitive" } },
         ],
       };
 
       // Apply additional filters
       if (filters.industry) {
-        where.industry = { contains: filters.industry, mode: 'insensitive' };
+        where.industry = { contains: filters.industry, mode: "insensitive" };
       }
 
       if (filters.location) {
-        where.location = { contains: filters.location, mode: 'insensitive' };
+        where.location = { contains: filters.location, mode: "insensitive" };
       }
 
       if (filters.companySize) {
@@ -501,13 +607,13 @@ class CompanyProfileModel {
                   reviewedAt: true,
                 },
                 orderBy: {
-                  uploadedAt: 'desc',
+                  uploadedAt: "desc",
                 },
               },
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: filters.limit || 50,
         skip: filters.skip || 0,
       });
@@ -515,35 +621,6 @@ class CompanyProfileModel {
       return profiles;
     } catch (error) {
       throw new Error(`Failed to search company profiles: ${error.message}`);
-    }
-  }
-
-  // Get KYC documents for a user
-  static async getKycDocuments(userId) {
-    try {
-      const documents = await prisma.kycDocument.findMany({
-        where: { userId },
-        orderBy: {
-          uploadedAt: 'desc',
-        },
-      });
-
-      return documents;
-    } catch (error) {
-      throw new Error(`Failed to get KYC documents: ${error.message}`);
-    }
-  }
-
-  // Get KYC document by ID
-  static async getKycDocumentById(documentId) {
-    try {
-      const document = await prisma.kycDocument.findUnique({
-        where: { id: documentId },
-      });
-
-      return document;
-    } catch (error) {
-      throw new Error(`Failed to get KYC document: ${error.message}`);
     }
   }
 
@@ -574,7 +651,7 @@ class CompanyProfileModel {
               reviewedAt: true,
             },
             orderBy: {
-              uploadedAt: 'desc',
+              uploadedAt: "desc",
             },
           },
         },

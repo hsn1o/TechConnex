@@ -10,9 +10,6 @@ import {
   getProfileStats,
   getPublicProfile,
   validateProfile,
-  getKycDocuments,
-  getKycDocumentById,
-  getUserWithKycData,
   getComprehensiveProfile,
   uploadProfileImage,
   uploadMediaGalleryImages,
@@ -33,11 +30,6 @@ router.post("/upload-media", authenticateToken, uploadCompanyMedia, uploadMediaG
 router.get("/completion", authenticateToken, getProfileCompletion);
 router.get("/stats", authenticateToken, getProfileStats);
 router.get("/comprehensive", authenticateToken, getComprehensiveProfile);
-
-// KYC document routes
-router.get("/kyc-documents", authenticateToken, getKycDocuments);
-router.get("/kyc-documents/:documentId", authenticateToken, getKycDocumentById);
-router.get("/user-kyc-data", authenticateToken, getUserWithKycData);
 
 // Public routes (no authentication required)
 router.get("/all", getAllProfiles);

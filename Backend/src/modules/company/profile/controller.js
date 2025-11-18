@@ -258,44 +258,6 @@ async function getKycDocuments(req, res) {
   }
 }
 
-// Get KYC document by ID
-async function getKycDocumentById(req, res) {
-  try {
-    const { documentId } = req.params;
-    const result = await CompanyProfileService.getKycDocumentById(documentId);
-    
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    console.error("Get KYC document by ID error:", error);
-    res.status(404).json({
-      success: false,
-      message: error.message,
-    });
-  }
-}
-
-// Get user with enhanced KYC data
-async function getUserWithKycData(req, res) {
-  try {
-    const userId = req.user.userId;
-    const result = await CompanyProfileService.getUserWithKycData(userId);
-    
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    console.error("Get user with KYC data error:", error);
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-}
-
 // Get comprehensive profile data including all user and KYC information
 async function getComprehensiveProfile(req, res) {
   try {
@@ -433,8 +395,6 @@ export {
   getPublicProfile,
   validateProfile,
   getKycDocuments,
-  getKycDocumentById,
-  getUserWithKycData,
   getComprehensiveProfile,
   uploadProfileImage,
   uploadMediaGalleryImages,

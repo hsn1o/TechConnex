@@ -492,7 +492,7 @@ export async function getProjectById(projectId, customerId) {
 
     // Calculate total spent (sum of PAID milestone amounts)
     const totalSpent = milestones
-      .filter((m) => m.status === "PAID")
+      .filter((m) => m.status !== "LOCKED")
       .reduce((sum, milestone) => sum + milestone.amount, 0);
 
     // Calculate days left until the last milestone due date
@@ -935,7 +935,21 @@ export async function approveIndividualMilestone(dto) {
         },
       },
     });
+    // 2️⃣ Check if *all* milestones for the project are approved
+    const remainingNotApproved = await prisma.milestone.count({
+      where: {
+        projectId: updatedMilestone.project.id,
+        NOT: { status: "APPROVED" }, // means any milestone NOT approved
+      },
+    });
 
+    // If none remaining → mark project as COMPLETED
+    if (remainingNotApproved === 0) {
+      await prisma.project.update({
+        where: { id: updatedMilestone.project.id },
+        data: { status: "COMPLETED" },
+      });
+    }
     // Create notification for provider
     await prisma.notification.create({
       data: {

@@ -32,19 +32,19 @@ class ProviderProfileModel {
                   reviewedAt: true,
                 },
                 orderBy: {
-                  uploadedAt: 'desc',
+                  uploadedAt: "desc",
                 },
               },
             },
           },
           certifications: {
             orderBy: {
-              issuedDate: 'desc',
+              issuedDate: "desc",
             },
           },
           portfolios: {
             orderBy: {
-              date: 'desc',
+              date: "desc",
             },
           },
           performance: true,
@@ -180,7 +180,7 @@ class ProviderProfileModel {
           workPreference: true,
           teamSize: true,
           certifications: {
-            select: { 
+            select: {
               id: true,
               name: true,
               issuer: true,
@@ -190,7 +190,7 @@ class ProviderProfileModel {
             },
           },
           portfolios: {
-            select: { 
+            select: {
               id: true,
               title: true,
               description: true,
@@ -238,14 +238,17 @@ class ProviderProfileModel {
       }
 
       // Count certifications with complete data
-      const completeCertifications = profile.certifications?.filter(cert => 
-        cert.name && cert.issuer && cert.issuedDate
-      ).length || 0;
-      
+      const completeCertifications =
+        profile.certifications?.filter(
+          (cert) => cert.name && cert.issuer && cert.issuedDate
+        ).length || 0;
+
       // Count portfolios with complete data
-      const completePortfolios = profile.portfolios?.filter(portfolio => 
-        portfolio.title && portfolio.description && portfolio.date
-      ).length || 0;
+      const completePortfolios =
+        profile.portfolios?.filter(
+          (portfolio) =>
+            portfolio.title && portfolio.description && portfolio.date
+        ).length || 0;
 
       // Define fields with weights (total should be 100)
       // Reorganized to cover ALL database fields
@@ -255,44 +258,95 @@ class ProviderProfileModel {
         email: { weight: 4, label: "Email", value: user?.email },
         phone: { weight: 4, label: "Phone Number", value: user?.phone },
         resume: { weight: 3, label: "Resume/CV", value: user?.resume?.fileUrl },
-        
+
         // Profile Identity (25 points)
-        profileImageUrl: { weight: 5, label: "Profile Image", value: profile.profileImageUrl },
-        bio: { weight: 8, label: "Bio/Description", value: profile.bio, minLength: 50 },
+        profileImageUrl: {
+          weight: 5,
+          label: "Profile Image",
+          value: profile.profileImageUrl,
+        },
+        bio: {
+          weight: 8,
+          label: "Bio/Description",
+          value: profile.bio,
+          minLength: 50,
+        },
         location: { weight: 5, label: "Location", value: profile.location },
-        availability: { weight: 4, label: "Availability Status", value: profile.availability },
-        languages: { weight: 3, label: "Languages", value: profile.languages, minCount: 1 },
-        
+        availability: {
+          weight: 4,
+          label: "Availability Status",
+          value: profile.availability,
+        },
+        languages: {
+          weight: 3,
+          label: "Languages",
+          value: profile.languages,
+          minCount: 1,
+        },
+
         // Skills & Expertise (15 points)
-        skills: { weight: 10, label: "Skills", value: profile.skills, minCount: 3 },
-        yearsExperience: { weight: 5, label: "Years of Experience", value: profile.yearsExperience },
-        
+        skills: {
+          weight: 10,
+          label: "Skills",
+          value: profile.skills,
+          minCount: 3,
+        },
+        yearsExperience: {
+          weight: 5,
+          label: "Years of Experience",
+          value: profile.yearsExperience,
+        },
+
         // Professional Details (20 points)
-        hourlyRate: { weight: 5, label: "Hourly Rate", value: profile.hourlyRate },
-        minimumProjectBudget: { weight: 4, label: "Minimum Project Budget", value: profile.minimumProjectBudget },
-        maximumProjectBudget: { weight: 4, label: "Maximum Project Budget", value: profile.maximumProjectBudget },
-        preferredProjectDuration: { weight: 4, label: "Preferred Project Duration", value: profile.preferredProjectDuration },
-        workPreference: { weight: 3, label: "Work Preference", value: profile.workPreference },
-        
+        hourlyRate: {
+          weight: 5,
+          label: "Hourly Rate",
+          value: profile.hourlyRate,
+        },
+        minimumProjectBudget: {
+          weight: 4,
+          label: "Minimum Project Budget",
+          value: profile.minimumProjectBudget,
+        },
+        maximumProjectBudget: {
+          weight: 4,
+          label: "Maximum Project Budget",
+          value: profile.maximumProjectBudget,
+        },
+        preferredProjectDuration: {
+          weight: 4,
+          label: "Preferred Project Duration",
+          value: profile.preferredProjectDuration,
+        },
+        workPreference: {
+          weight: 3,
+          label: "Work Preference",
+          value: profile.workPreference,
+        },
+
         // Team & Additional Info (10 points)
         teamSize: { weight: 3, label: "Team Size", value: profile.teamSize },
         website: { weight: 4, label: "Website", value: profile.website },
-        profileVideoUrl: { weight: 3, label: "Profile Video URL", value: profile.profileVideoUrl },
-        
-        // Credentials & Portfolio (15 points)
-        certifications: { 
-          weight: 8, 
-          label: "Certifications", 
-          value: completeCertifications, 
-          minCount: 1,
-          isCount: true 
+        profileVideoUrl: {
+          weight: 3,
+          label: "Profile Video URL",
+          value: profile.profileVideoUrl,
         },
-        portfolios: { 
-          weight: 7, 
-          label: "Portfolio Projects", 
-          value: completePortfolios, 
+
+        // Credentials & Portfolio (15 points)
+        certifications: {
+          weight: 8,
+          label: "Certifications",
+          value: completeCertifications,
           minCount: 1,
-          isCount: true 
+          isCount: true,
+        },
+        portfolios: {
+          weight: 7,
+          label: "Portfolio Projects",
+          value: completePortfolios,
+          minCount: 1,
+          isCount: true,
         },
       };
 
@@ -305,16 +359,18 @@ class ProviderProfileModel {
         let isComplete = false;
         let suggestionMessage = null;
 
-        if (value === null || value === undefined || value === '') {
+        if (value === null || value === undefined || value === "") {
           isComplete = false;
           suggestionMessage = `Add your ${label.toLowerCase()}`;
         } else if (isCount) {
           // Handle count-based fields (certifications, portfolios)
-          const count = typeof value === 'number' ? value : 0;
+          const count = typeof value === "number" ? value : 0;
           if (minCount !== undefined) {
             isComplete = count >= minCount;
             if (!isComplete) {
-              suggestionMessage = `Add at least ${minCount} ${label.toLowerCase()}${count > 0 ? ` (currently ${count})` : ''}`;
+              suggestionMessage = `Add at least ${minCount} ${label.toLowerCase()}${
+                count > 0 ? ` (currently ${count})` : ""
+              }`;
             }
           } else {
             isComplete = count > 0;
@@ -327,7 +383,9 @@ class ProviderProfileModel {
           if (minCount !== undefined) {
             isComplete = count >= minCount;
             if (!isComplete) {
-              suggestionMessage = `Add at least ${minCount} ${label.toLowerCase()}${count > 0 ? ` (currently ${count})` : ''}`;
+              suggestionMessage = `Add at least ${minCount} ${label.toLowerCase()}${
+                count > 0 ? ` (currently ${count})` : ""
+              }`;
             }
           } else {
             isComplete = count > 0;
@@ -335,12 +393,14 @@ class ProviderProfileModel {
               suggestionMessage = `Add your ${label.toLowerCase()}`;
             }
           }
-        } else if (typeof value === 'string') {
+        } else if (typeof value === "string") {
           if (minLength !== undefined) {
             isComplete = value.trim().length >= minLength;
             if (!isComplete) {
               const currentLength = value.trim().length;
-              suggestionMessage = `${label} should be at least ${minLength} characters${currentLength > 0 ? ` (currently ${currentLength})` : ''}`;
+              suggestionMessage = `${label} should be at least ${minLength} characters${
+                currentLength > 0 ? ` (currently ${currentLength})` : ""
+              }`;
             }
           } else {
             isComplete = value.trim().length > 0;
@@ -348,12 +408,12 @@ class ProviderProfileModel {
               suggestionMessage = `Add your ${label.toLowerCase()}`;
             }
           }
-        } else if (typeof value === 'boolean') {
+        } else if (typeof value === "boolean") {
           isComplete = value === true;
           if (!isComplete) {
             suggestionMessage = `Complete your ${label.toLowerCase()}`;
           }
-        } else if (typeof value === 'number') {
+        } else if (typeof value === "number") {
           isComplete = value !== null && value !== undefined && value > 0;
           if (!isComplete) {
             suggestionMessage = `Add your ${label.toLowerCase()}`;
@@ -374,16 +434,34 @@ class ProviderProfileModel {
 
       // Sort suggestions by priority (missing core fields first)
       const priorityOrder = [
-        'bio', 'location', 'skills', 'profile image', 'years of experience',
-        'hourly rate', 'languages', 'certifications', 'portfolio projects',
-        'resume', 'phone number', 'minimum project budget', 'maximum project budget',
-        'preferred project duration', 'work preference', 'team size',
-        'website', 'profile video', 'availability status'
+        "bio",
+        "location",
+        "skills",
+        "profile image",
+        "years of experience",
+        "hourly rate",
+        "languages",
+        "certifications",
+        "portfolio projects",
+        "resume",
+        "phone number",
+        "minimum project budget",
+        "maximum project budget",
+        "preferred project duration",
+        "work preference",
+        "team size",
+        "website",
+        "profile video",
+        "availability status",
       ];
-      
+
       suggestions.sort((a, b) => {
-        const aPriority = priorityOrder.findIndex(p => a.toLowerCase().includes(p));
-        const bPriority = priorityOrder.findIndex(p => b.toLowerCase().includes(p));
+        const aPriority = priorityOrder.findIndex((p) =>
+          a.toLowerCase().includes(p)
+        );
+        const bPriority = priorityOrder.findIndex((p) =>
+          b.toLowerCase().includes(p)
+        );
         if (aPriority === -1 && bPriority === -1) return 0;
         if (aPriority === -1) return 1;
         if (bPriority === -1) return -1;
@@ -397,10 +475,13 @@ class ProviderProfileModel {
         completion: Math.min(100, Math.round(totalScore)),
         suggestions: topSuggestions,
         totalFields: Object.keys(fieldWeights).length,
-        completedFields: Object.keys(fieldWeights).length - topSuggestions.length,
+        completedFields:
+          Object.keys(fieldWeights).length - topSuggestions.length,
       };
     } catch (error) {
-      throw new Error(`Failed to calculate profile completion: ${error.message}`);
+      throw new Error(
+        `Failed to calculate profile completion: ${error.message}`
+      );
     }
   }
 
@@ -408,7 +489,7 @@ class ProviderProfileModel {
   static async updateProfileCompletion(userId) {
     try {
       const completionData = await this.getProfileCompletion(userId);
-      
+
       await prisma.providerProfile.update({
         where: { userId },
         data: { completion: completionData.completion },
@@ -437,20 +518,23 @@ class ProviderProfileModel {
         },
       });
 
-      return profile || {
-        rating: 0,
-        totalReviews: 0,
-        totalProjects: 0,
-        totalEarnings: 0,
-        viewsCount: 0,
-        successRate: 0,
-        responseTime: 0,
-        completion: 0,
-      };
+      return (
+        profile || {
+          rating: 0,
+          totalReviews: 0,
+          totalProjects: 0,
+          totalEarnings: 0,
+          viewsCount: 0,
+          successRate: 0,
+          responseTime: 0,
+          completion: 0,
+        }
+      );
     } catch (error) {
       throw new Error(`Failed to get profile stats: ${error.message}`);
     }
   }
+
 }
 
 export default ProviderProfileModel;

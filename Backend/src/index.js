@@ -15,18 +15,35 @@ const io = new Server(httpServer, {
 
 // Socket middleware for authentication
 io.use(authenticateSocket);
+
+// Track connected users
+const connectedUsers = new Map();
+
 io.on("connection", (socket) => {
-  console.log("🟢 User connected:", socket.user?.userId, socket.id);
+  const userId = socket.user?.userId;
+  console.log("🟢 User connected:", userId, socket.id);
+
+  // Track user as online
+  connectedUsers.set(userId, socket.id);
 
   // Join user to their personal room
-  socket.join(socket.user.userId);
+  socket.join(userId);
 
+  // Notify all users that this user is online
+
+  // Send list of currently online users to the new connection
+  socket.emit("online_users", {
+    userIds: Array.from(connectedUsers.keys()),
+  });
+
+  // Notify all users that this user is online
+  io.emit("user_online", { userId });
   socket.on("send_message", async (data, callback) => {
     try {
       console.log("📤 Received send_message from user:", socket.user.userId);
       console.log("Message data:", data);
 
-      const { receiverId, content, messageType, attachments } = data;
+      const { receiverId, content, messageType, attachments, projectId } = data;
 
       // Validate required fields
       if (!receiverId) {
@@ -44,6 +61,7 @@ io.on("connection", (socket) => {
           content,
           messageType: messageType || "text",
           attachments: attachments || [],
+          ...(projectId != null ? { projectId } : {}),
         },
         socket.user.userId
       );
@@ -89,7 +107,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("🔴 User disconnected:", socket.user.userId, socket.id);
+    console.log("🔴 User disconnected:", socket.user?.userId, socket.id);
+
+    // Remove user from connected tracking
+    connectedUsers.delete(socket.user?.userId);
+
+    // Notify all users that this user is offline
+    io.emit("user_offline", { userId: socket.user?.userId });
   });
 });
 
@@ -99,4 +123,4 @@ httpServer.listen(PORT, () => {
 });
 
 // Make io available to other modules
-export { io };
+export { io, connectedUsers };

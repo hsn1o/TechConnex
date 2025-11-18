@@ -34,15 +34,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { 
-  ArrowLeft, 
-  MessageSquare, 
-  Calendar, 
-  DollarSign, 
-  Clock, 
-  User, 
-  MapPin, 
-  Globe, 
+import {
+  ArrowLeft,
+  MessageSquare,
+  Calendar,
+  DollarSign,
+  Clock,
+  User,
+  MapPin,
+  Globe,
   Star,
   CheckCircle,
   AlertCircle,
@@ -70,6 +70,7 @@ import {
 } from "@/lib/api";
 import { formatTimeline } from "@/lib/timeline-utils";
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
+import { Separator } from "@/components/separator";
 
 export default function ProviderProjectDetailsPage() {
   const params = useParams();
@@ -87,7 +88,7 @@ export default function ProviderProjectDetailsPage() {
     null
   );
   const [updating, setUpdating] = useState(false);
-  
+
   // Project milestone management
   const [milestoneEditorOpen, setMilestoneEditorOpen] = useState(false);
   const [projectMilestones, setProjectMilestones] = useState<Milestone[]>([]);
@@ -117,6 +118,23 @@ export default function ProviderProjectDetailsPage() {
   const [disputeUpdateAttachments, setDisputeUpdateAttachments] = useState<
     File[]
   >([]);
+  const [projectMessages, setProjectMessages] = useState<any[]>([]);
+  const [token, setToken] = useState<string>("");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Load auth from localStorage on mount
+  useEffect(() => {
+    setToken(localStorage.getItem("token") || "");
+    const user = localStorage.getItem("user");
+    if (user) {
+      try {
+        setCurrentUser(JSON.parse(user));
+      } catch (err) {
+        console.error("Failed to parse user from localStorage", err);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -124,7 +142,7 @@ export default function ProviderProjectDetailsPage() {
         setLoading(true);
         setError(null);
         const response = await getProviderProjectById(params.id as string);
-        
+
         if (response.success) {
           setProject(response.project);
 
@@ -163,7 +181,7 @@ export default function ProviderProjectDetailsPage() {
       try {
         const milestoneData = await getProviderProjectMilestones(project.id);
         setProjectMilestones(
-          Array.isArray(milestoneData.milestones) 
+          Array.isArray(milestoneData.milestones)
             ? milestoneData.milestones.map((m: any) => ({
                 ...m,
                 sequence: m.order,
@@ -211,6 +229,50 @@ export default function ProviderProjectDetailsPage() {
     );
   };
 
+  // Fetch messages between the two project participants when Messages tab is opened
+  const fetchProjectMessages = async () => {
+    if (!token || !project) return;
+    try {
+      const currentUserId = currentUser?.id;
+      const providerId = project.providerId || project.provider?.id;
+      const customerId = project.customerId || project.customer?.id;
+      const otherUserId =
+        String(currentUserId) === String(providerId) ? customerId : providerId;
+      if (!otherUserId) return;
+
+      const url = `${
+        process.env.NEXT_PUBLIC_API_URL || ""
+      }/messages?otherUserId=${otherUserId}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setProjectMessages(Array.isArray(data.data) ? data.data : []);
+      } else {
+        console.warn("No project messages fetched:", data?.message);
+        setProjectMessages([]);
+      }
+    } catch (err) {
+      console.error("Error fetching project messages:", err);
+      setProjectMessages([]);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "messages") {
+      fetchProjectMessages();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, token, project]);
+
+  // Safe formatter for numbers - prevents calling toLocaleString on undefined
+  const fmt = (v: any, fallback = "0") => {
+    if (v === null || v === undefined) return fallback;
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toLocaleString() : fallback;
+  };
+
   const updateProjectMilestone = (i: number, patch: Partial<Milestone>) => {
     setProjectMilestones((prev) =>
       normalizeMilestoneSequences(
@@ -253,9 +315,9 @@ export default function ProviderProjectDetailsPage() {
       setSavingMilestones(true);
       const payload = normalizeMilestoneSequences(projectMilestones).map(
         (m) => ({
-        ...m,
-        amount: Number(m.amount),
-        dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
+          ...m,
+          amount: Number(m.amount),
+          dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
         })
       );
       const res = await updateProviderProjectMilestones(project.id, payload);
@@ -299,7 +361,7 @@ export default function ProviderProjectDetailsPage() {
 
       // Refresh project data to get updated milestones
       await refreshProjectData();
-      
+
       if (res.locked) {
         toast({
           title: "Milestones approved and locked",
@@ -329,7 +391,7 @@ export default function ProviderProjectDetailsPage() {
         params.id as string,
         newStatus
       );
-      
+
       if (response.success) {
         setProject(response.project);
         toast({
@@ -401,6 +463,8 @@ export default function ProviderProjectDetailsPage() {
       console.error("Error refreshing project data:", err);
     }
   };
+  // Ensure a value is an array before mapping
+  const asArray = <T,>(v: any): T[] => (Array.isArray(v) ? v : []);
 
   const handleMilestoneUpdate = async (status: string) => {
     try {
@@ -428,13 +492,13 @@ export default function ProviderProjectDetailsPage() {
       }
 
       const response = await updateProviderMilestoneStatus(
-        selectedMilestone.id, 
-        status, 
+        selectedMilestone.id,
+        status,
         deliverables,
         submissionNote || undefined,
         submissionAttachment || undefined
       );
-      
+
       if (response.success) {
         // Refresh all project data including milestones
         await refreshProjectData();
@@ -762,6 +826,57 @@ export default function ProviderProjectDetailsPage() {
     );
   }
 
+  // Normalize project data to safe arrays to avoid runtime errors
+  const safeProject = project ?? {};
+  const skills = asArray<string>(safeProject.skills);
+  // Requirements and deliverables are now markdown strings
+  const requirements =
+    typeof safeProject.requirements === "string"
+      ? safeProject.requirements
+      : Array.isArray(safeProject.requirements)
+      ? safeProject.requirements.map((r: any) => `- ${r}`).join("\n")
+      : "";
+  const deliverables =
+    typeof safeProject.deliverables === "string"
+      ? safeProject.deliverables
+      : Array.isArray(safeProject.deliverables)
+      ? safeProject.deliverables.map((d: any) => `- ${d}`).join("\n")
+      : "";
+  const milestones = asArray<any>(safeProject.milestones);
+  const bids = asArray<any>(safeProject.bids);
+  const files = asArray<any>(safeProject.files);
+  const messages = asArray<any>(safeProject.messages);
+  const currentUserId = currentUser?.id;
+  const msgsToRender =
+    projectMessages && projectMessages.length > 0 ? projectMessages : messages;
+
+  const provider =
+    project?.provider ??
+    ({
+      id: project?.providerId,
+      name: project?.providerName ?? project?.provider?.name,
+      avatar: project?.provider?.avatarUrl ?? project?.providerAvatar,
+    } as any);
+
+  const handleContact = () => {
+    if (!provider || !provider.id) return;
+
+    const avatarUrl =
+      provider.avatar &&
+      provider.avatar !== "/placeholder.svg" &&
+      !provider.avatar.includes("/placeholder.svg")
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
+            provider.avatar.startsWith("/") ? "" : "/"
+          }${provider.avatar}`
+        : "";
+
+    router.push(
+      `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
+        provider.name || ""
+      )}&avatar=${encodeURIComponent(avatarUrl)}`
+    );
+  };
+
   return (
     <ProviderLayout>
       <div className="space-y-8">
@@ -818,7 +933,11 @@ export default function ProviderProjectDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            <Tabs defaultValue="overview" className="space-y-6">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="space-y-6"
+            >
               <TabsList>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="milestones">Milestones</TabsTrigger>
@@ -1046,8 +1165,8 @@ export default function ProviderProjectDetailsPage() {
                           >
                             Edit Milestones
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             onClick={handleApproveProjectMilestones}
                           >
                             Approve
@@ -1065,71 +1184,111 @@ export default function ProviderProjectDetailsPage() {
                               key={milestone.id}
                               className="border rounded-lg p-4"
                             >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
-                                  {milestone.order}
-                                </div>
-                                <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
+                                    {milestone.order}
+                                  </div>
+                                  <div>
                                     <h4 className="font-medium">
                                       {milestone.title}
                                     </h4>
                                     <p className="text-sm text-gray-600">
                                       {milestone.description}
                                     </p>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3">
                                   <Badge
                                     className={getMilestoneStatusColor(
                                       milestone.status
                                     )}
                                   >
-                                  {getMilestoneStatusText(milestone.status)}
-                                </Badge>
-                                <span className="text-sm font-medium">
-                                  {formatCurrency(milestone.amount)}
-                                </span>
+                                    {getMilestoneStatusText(milestone.status)}
+                                  </Badge>
+                                  <span className="text-sm font-medium">
+                                    {formatCurrency(milestone.amount)}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <div className="flex items-center justify-between text-sm text-gray-600">
                                 <span>
                                   Due: {formatDate(milestone.dueDate)}
                                 </span>
-                              <div className="flex items-center gap-2">
-                                {milestone.status === "PAID" && (
-                                  <div className="flex items-center gap-1 text-green-600">
-                                    <DollarSign className="w-4 h-4" />
+                                <div className="flex items-center gap-2">
+                                  {milestone.status === "PAID" && (
+                                    <div className="flex items-center gap-1 text-green-600">
+                                      <DollarSign className="w-4 h-4" />
                                       <span className="text-sm font-medium">
                                         Paid
                                       </span>
-                                  </div>
-                                )}
+                                    </div>
+                                  )}
                                   {milestone.status === "LOCKED" &&
                                     project.status === "IN_PROGRESS" && (
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => {
+                                      <div>
+                                        <Button size="sm" disabled={true}>
+                                          Start Work
+                                        </Button>
+                                      </div>
+                                    )}
+                                  {milestone.status === "LOCKED" &&
+                                    project.status === "IN_PROGRESS" &&
+                                    projectMilestones.findIndex(
+                                      (m: any) =>
+                                        m.status === "LOCKED" &&
+                                        project.status === "IN_PROGRESS"
+                                    ) === index && (
+                                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                                    )}
+                                  {milestone.status === "IN_PROGRESS" &&
+                                    project.status === "ESCROWED" && (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => {
                                           setSelectedMilestone(milestone);
                                           setIsMilestoneDialogOpen(true);
-                                    }}
-                                  >
-                                    Start Work
-                                  </Button>
-                                )}
-                                {milestone.status === "IN_PROGRESS" && (
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => {
+                                        }}
+                                      >
+                                        Start Work
+                                      </Button>
+                                    )}
+                                  {milestone.status === "IN_PROGRESS" && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
                                         setSelectedMilestone(milestone);
                                         setIsMilestoneDialogOpen(true);
-                                    }}
-                                  >
-                                    Submit
-                                  </Button>
-                                )}
+                                      }}
+                                    >
+                                      Submit
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+
+                              {/* Show warning for first locked milestone that complies */}
+                              {milestone.status === "LOCKED" &&
+                                project.status === "IN_PROGRESS" &&
+                                projectMilestones.findIndex(
+                                  (m: any) =>
+                                    m.status === "LOCKED" &&
+                                    project.status === "IN_PROGRESS"
+                                ) === index && (
+                                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                    <p className="text-sm text-amber-800">
+                                      {
+                                        // 🟡 CHECK PREVIOUS MILESTONE (if exists)
+                                        index > 0 &&
+                                        projectMilestones[index - 1].status !==
+                                          "APPROVED"
+                                          ? "You can't start this milestone until the previous milestone is approved by the client."
+                                          : "You can't start work until the client has paid."
+                                      }
+                                    </p>
+                                  </div>
+                                )}
 
                               {/* Show start deliverables if available (persists even after status changes) */}
                               {milestone.startDeliverables && (
@@ -1146,7 +1305,7 @@ export default function ProviderProjectDetailsPage() {
                                           milestone.startDeliverables
                                         )}
                                   </p>
-                          </div>
+                                </div>
                               )}
 
                               {/* Show submit deliverables if available (persists even after status changes) */}
@@ -1663,50 +1822,79 @@ export default function ProviderProjectDetailsPage() {
                 </Card>
               </TabsContent>
 
+              {/* Messages Tab */}
               <TabsContent value="messages" className="space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Project Messages</CardTitle>
                     <CardDescription>
-                      Communicate with your client
+                      Communication with your assigned provider
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {project.messages && project.messages.length > 0 ? (
-                      <div className="space-y-4">
-                        {project.messages.map((message: any, index: number) => (
-                          <div key={message.id} className="flex gap-3">
-                            <Avatar>
-                              <AvatarImage
-                                src={
-                                  message.sender?.avatar || "/placeholder.svg"
-                                }
-                              />
-                              <AvatarFallback>
-                                {message.sender?.name?.charAt(0) || "U"}
-                              </AvatarFallback>
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {msgsToRender.map((message: any) => {
+                        const isCurrentUser =
+                          String(message.senderId || message.sender?.id) ===
+                          String(currentUserId);
+                        const text = message.content ?? message.message ?? "";
+                        const ts = message.createdAt ?? message.timestamp ?? "";
+                        const avatarChar =
+                          (
+                            message.sender?.name ||
+                            message.senderName ||
+                            (isCurrentUser ? "You" : "User")
+                          )?.charAt?.(0) || "U";
+
+                        return (
+                          <div
+                            key={message.id}
+                            className={`flex gap-3 ${
+                              isCurrentUser ? "flex-row-reverse" : ""
+                            }`}
+                          >
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback>{avatarChar}</AvatarFallback>
                             </Avatar>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">
-                                  {message.sender?.name}
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                  {new Date(
-                                    message.createdAt
-                                  ).toLocaleDateString()}
-                                </span>
+                            <div
+                              className={`flex-1 max-w-[14rem] ${
+                                isCurrentUser ? "text-right" : ""
+                              }`}
+                            >
+                              <div
+                                className={`p-3 rounded-lg ${
+                                  isCurrentUser
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100"
+                                }`}
+                              >
+                                <p className="text-sm">{text}</p>
+                                {message.attachments &&
+                                  message.attachments.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-opacity-20">
+                                      {asArray<string>(message.attachments).map(
+                                        (attachment, index) => (
+                                          <div
+                                            key={index}
+                                            className="text-xs opacity-75"
+                                          >
+                                            📎 {attachment}
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
+                                  )}
                               </div>
-                              <p className="text-gray-700">{message.content}</p>
+                              <p className="text-xs text-gray-500 mt-1">{ts}</p>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-600 text-center py-8">
-                        No messages yet
-                      </p>
-                    )}
+                        );
+                      })}
+                    </div>
+                    <Separator className="my-4" />
+                    <div className="flex justify-center gap-2">
+                      <Button onClick={handleContact}>Contact</Button>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1776,7 +1964,7 @@ export default function ProviderProjectDetailsPage() {
                     </p>
                   </div>
                 </div>
-                
+
                 {project.customer?.customerProfile && (
                   <div className="space-y-2 text-sm">
                     {project.customer.customerProfile.industry && (
@@ -1794,9 +1982,9 @@ export default function ProviderProjectDetailsPage() {
                     {project.customer.customerProfile.website && (
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4 text-gray-400" />
-                        <a 
-                          href={project.customer.customerProfile.website} 
-                          target="_blank" 
+                        <a
+                          href={project.customer.customerProfile.website}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline"
                         >
@@ -1857,25 +2045,25 @@ export default function ProviderProjectDetailsPage() {
                   : "Submit Milestone"}
               </DialogTitle>
               <DialogDescription>
-                {selectedMilestone?.status === "LOCKED" 
-                  ? "Start working on this milestone" 
+                {selectedMilestone?.status === "LOCKED"
+                  ? "Start working on this milestone"
                   : "Submit your work for this milestone"}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {selectedMilestone?.status === "LOCKED" && (
-              <div>
+                <div>
                   <Label htmlFor="startDeliverables">
                     Deliverables / Plan (When Starting Work)
                   </Label>
-                <Textarea
+                  <Textarea
                     id="startDeliverables"
                     placeholder="Describe your plan and deliverables when starting this milestone..."
-                  value={milestoneDeliverables}
-                  onChange={(e) => setMilestoneDeliverables(e.target.value)}
-                  rows={4}
-                />
-              </div>
+                    value={milestoneDeliverables}
+                    onChange={(e) => setMilestoneDeliverables(e.target.value)}
+                    rows={4}
+                  />
+                </div>
               )}
 
               {selectedMilestone?.status === "IN_PROGRESS" && (
@@ -1940,7 +2128,7 @@ export default function ProviderProjectDetailsPage() {
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() =>
                   handleMilestoneUpdate(
                     selectedMilestone?.status === "LOCKED"
@@ -1972,7 +2160,7 @@ export default function ProviderProjectDetailsPage() {
             <DialogHeader>
               <DialogTitle>Edit Milestones</DialogTitle>
               <DialogDescription>
-                Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} · 
+                Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
                 Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
                 {milestoneApprovalState.milestonesLocked && " · LOCKED"}
               </DialogDescription>

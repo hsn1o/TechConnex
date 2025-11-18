@@ -1,29 +1,99 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Star, MapPin, Calendar, Award, Eye, Edit, Plus, Trash2, Upload, ExternalLink, CheckCircle, Loader2, X, Globe, Camera, AlertCircle } from "lucide-react"
-import { ProviderLayout } from "@/components/provider-layout"
-import { getProviderProfile, upsertProviderProfile, getProviderProfileStats, getProviderProfileCompletion, uploadProviderProfileImage, getProviderPortfolio, getMyCertifications, createCertification, updateCertification, deleteCertification } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
-import { useRef } from "react"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Star,
+  MapPin,
+  Calendar,
+  Award,
+  Eye,
+  Edit,
+  Plus,
+  Trash2,
+  Upload,
+  ExternalLink,
+  CheckCircle,
+  Loader2,
+  X,
+  Globe,
+  Camera,
+  AlertCircle,
+} from "lucide-react";
+import { ProviderLayout } from "@/components/provider-layout";
+import {
+  getProviderProfile,
+  upsertProviderProfile,
+  getProviderProfileStats,
+  getProviderProfileCompletion,
+  uploadProviderProfileImage,
+  getProviderPortfolio,
+  getMyCertifications,
+  createCertification,
+  updateCertification,
+  deleteCertification,
+  getUserIdFromToken,
+  getKycDocuments,
+  API_BASE,
+} from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { useRef } from "react";
+import VerificationSection from "@/components/customer/profile/sections/VerificationSection";
+import {
+  ProfileData,
+  Stats,
+  UploadedDocument,
+} from "@/components/customer/profile/types";
 
-export default function ProviderProfilePage() {
-  const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [uploadingImage, setUploadingImage] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+type Props = {
+  profileData?: ProfileData;
+  uploadedDocuments?: UploadedDocument[];
+  documentTypes?: DocumentType[];
+  stats?: Stats;
+};
+
+export default function ProviderProfilePage(props: Props = {}) {
+  const {
+    profileData: initialProfileData,
+    uploadedDocuments: initialUploadedDocuments,
+    documentTypes: initialDocumentTypes,
+    stats: initialStats,
+  } = props;
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [profileData, setProfileData] = useState<{
     name: string;
     email: string;
@@ -62,7 +132,7 @@ export default function ProviderProfilePage() {
     preferredProjectDuration: "",
     workPreference: "remote",
     teamSize: 1,
-  })
+  });
   const [profileStats, setProfileStats] = useState({
     rating: 0,
     totalReviews: 0,
@@ -72,54 +142,60 @@ export default function ProviderProfilePage() {
     successRate: 0,
     responseTime: 0,
     completion: 0,
-  })
-  const [profileCompletion, setProfileCompletion] = useState(0)
-  const [completionSuggestions, setCompletionSuggestions] = useState<string[]>([])
-  const { toast } = useToast()
-  
+  });
+  const [profileCompletion, setProfileCompletion] = useState(0);
+  const [completionSuggestions, setCompletionSuggestions] = useState<string[]>(
+    []
+  );
+  const { toast } = useToast();
+
   // State for input fields (similar to registration form)
-  const [customSkill, setCustomSkill] = useState("")
-  const [customLanguage, setCustomLanguage] = useState("")
-  const [newPortfolioUrl, setNewPortfolioUrl] = useState("")
-  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([])
-  
+  const [customSkill, setCustomSkill] = useState("");
+  const [customLanguage, setCustomLanguage] = useState("");
+  const [newPortfolioUrl, setNewPortfolioUrl] = useState("");
+  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+
   // State for portfolio projects
-  const [portfolioProjects, setPortfolioProjects] = useState<any[]>([])
-  const [loadingPortfolio, setLoadingPortfolio] = useState(false)
-  
+  const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
+  const [loadingPortfolio, setLoadingPortfolio] = useState(false);
+
   // State for certifications
-  const [certifications, setCertifications] = useState<any[]>([])
-  const [loadingCertifications, setLoadingCertifications] = useState(false)
-  const [showCertDialog, setShowCertDialog] = useState(false)
-  const [editingCertIndex, setEditingCertIndex] = useState<number | null>(null)
+  const [certifications, setCertifications] = useState<any[]>([]);
+  const [loadingCertifications, setLoadingCertifications] = useState(false);
+  const [showCertDialog, setShowCertDialog] = useState(false);
+  const [editingCertIndex, setEditingCertIndex] = useState<number | null>(null);
   const [certFormData, setCertFormData] = useState({
     name: "",
     issuer: "",
     issuedDate: "",
     serialNumber: "",
     sourceUrl: "",
-  })
+  });
   const [certFormErrors, setCertFormErrors] = useState<{
     name?: string;
     issuer?: string;
     issuedDate?: string;
     serialNumber?: string;
     sourceUrl?: string;
-  }>({})
+  }>({});
+  const [docs, setDocs] = useState<UploadedDocument[]>(
+    initialUploadedDocuments ?? []
+  );
 
   // Load profile data on component mount
   useEffect(() => {
     const loadProfileData = async () => {
       try {
-        setLoading(true)
-        const [profileResponse, statsResponse, completionResponse] = await Promise.all([
-          getProviderProfile(),
-          getProviderProfileStats(),
-          getProviderProfileCompletion()
-        ])
+        setLoading(true);
+        const [profileResponse, statsResponse, completionResponse] =
+          await Promise.all([
+            getProviderProfile(),
+            getProviderProfileStats(),
+            getProviderProfileCompletion(),
+          ]);
 
         if (profileResponse.success) {
-          const profile = profileResponse.data
+          const profile = profileResponse.data;
           setProfileData({
             name: profile.user?.name || "",
             email: profile.user?.email || "",
@@ -139,39 +215,39 @@ export default function ProviderProfilePage() {
             preferredProjectDuration: profile.preferredProjectDuration || "",
             workPreference: profile.workPreference || "remote",
             teamSize: profile.teamSize || 1,
-          })
-          
+          });
+
           // Load portfolio URLs if available
           if (profile.portfolioUrls) {
-            setPortfolioUrls(profile.portfolioUrls)
+            setPortfolioUrls(profile.portfolioUrls);
           } else if (profile.portfolio && Array.isArray(profile.portfolio)) {
             // Fallback for portfolio array structure
-            setPortfolioUrls(profile.portfolio)
+            setPortfolioUrls(profile.portfolio);
           }
         }
 
         if (statsResponse.success) {
-          setProfileStats(statsResponse.data)
+          setProfileStats(statsResponse.data);
         }
 
         if (completionResponse.success) {
-          setProfileCompletion(completionResponse.data.completion || 0)
-          setCompletionSuggestions(completionResponse.data.suggestions || [])
+          setProfileCompletion(completionResponse.data.completion || 0);
+          setCompletionSuggestions(completionResponse.data.suggestions || []);
         }
       } catch (error) {
-        console.error("Error loading profile data:", error)
+        console.error("Error loading profile data:", error);
         toast({
           title: "Error",
           description: "Failed to load profile data",
           variant: "destructive",
-        })
+        });
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadProfileData()
-  }, [toast])
+    loadProfileData();
+  }, [toast]);
 
   // Load portfolio projects
   useEffect(() => {
@@ -221,10 +297,85 @@ export default function ProviderProfilePage() {
     loadCertifications();
   }, [toast]);
 
+
+
+  // Fetch profile and kyc documents client-side when not provided via props
+  useEffect(() => {
+    if (initialProfileData) return; // server provided
+
+    setLoading(true);
+    (async () => {      
+        try {
+          const kycResp = await getKycDocuments();
+          const docsData = (kycResp?.data?.documents ??
+            kycResp?.data ??
+            []) as unknown[];
+          const mapped = docsData.map((d) => {
+            const item = d as Record<string, unknown>;
+            const fileUrl = item.fileUrl ? String(item.fileUrl) : undefined;
+            // Construct full URL if it's a relative path
+            const fullFileUrl =
+              fileUrl && fileUrl.startsWith("/")
+                ? `${API_BASE}${fileUrl}`
+                : fileUrl;
+            return {
+              id: String(item.id ?? ""),
+              name: String(item.filename ?? item.fileUrl ?? item.id ?? ""),
+              type: String(item.type ?? "document"),
+              size: String(item.size ?? "-"),
+              uploadDate: String(item.uploadedAt ?? item.uploadDate ?? ""),
+              // Normalize backend statuses (uploaded|verified|rejected) to our UI statuses
+              status: ((): "pending" | "approved" | "rejected" => {
+                const raw = String(item.status ?? "uploaded").toLowerCase();
+                if (raw === "verified" || raw === "approved") return "approved";
+                if (raw === "rejected") return "rejected";
+                return "pending"; // uploaded / uploaded-but-not-reviewed
+              })(),
+              rejectionReason: item.reviewNotes
+                ? String(item.reviewNotes)
+                : undefined,
+              // prefer the reviewer's display name when available (item.reviewer.name),
+              // otherwise fall back to any top-level reviewedBy value
+              reviewedBy:
+                item.reviewer && (item.reviewer as any).name
+                  ? String((item.reviewer as any).name)
+                  : item.reviewedBy
+                  ? String(item.reviewedBy)
+                  : undefined,
+              reviewedAt: item.reviewedAt
+                ? new Date(item.reviewedAt as any).toLocaleString("en-MY", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })
+                : undefined,
+              fileUrl: fullFileUrl,
+              reviewer: item.reviewer
+                ? {
+                    id: (item.reviewer as any).id,
+                    name: (item.reviewer as any).name,
+                    email: (item.reviewer as any).email,
+                  }
+                : null,
+            } as UploadedDocument;
+          });
+          setDocs(mapped);
+        } catch (err) {
+          console.warn("Failed to fetch KYC documents", err);
+        }
+       finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
   // Save profile data
   const handleSaveProfile = async () => {
     try {
-      setSaving(true)
+      setSaving(true);
       const response = await upsertProviderProfile({
         bio: profileData.bio,
         location: profileData.location,
@@ -241,56 +392,56 @@ export default function ProviderProfilePage() {
         preferredProjectDuration: profileData.preferredProjectDuration,
         workPreference: profileData.workPreference,
         teamSize: profileData.teamSize,
-      })
+      });
 
       if (response.success) {
         toast({
           title: "Success",
           description: "Profile updated successfully",
-        })
-        setIsEditing(false)
+        });
+        setIsEditing(false);
         // Reload completion percentage and suggestions
-        const completionResponse = await getProviderProfileCompletion()
+        const completionResponse = await getProviderProfileCompletion();
         if (completionResponse.success) {
-          setProfileCompletion(completionResponse.data.completion || 0)
-          setCompletionSuggestions(completionResponse.data.suggestions || [])
+          setProfileCompletion(completionResponse.data.completion || 0);
+          setCompletionSuggestions(completionResponse.data.suggestions || []);
         }
       }
     } catch (error) {
-      console.error("Error saving profile:", error)
+      console.error("Error saving profile:", error);
       toast({
         title: "Error",
         description: "Failed to save profile",
         variant: "destructive",
-      })
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   // Handle input changes
   const handleInputChange = (field: string, value: any) => {
-    setProfileData(prev => ({
+    setProfileData((prev) => ({
       ...prev,
-      [field]: value
-    }))
-  }
+      [field]: value,
+    }));
+  };
 
   // Handle skills array changes
   const handleSkillsChange = (skills: string[]) => {
-    setProfileData(prev => ({
+    setProfileData((prev) => ({
       ...prev,
-      skills
-    }))
-  }
+      skills,
+    }));
+  };
 
   // Handle languages array changes
   const handleLanguagesChange = (languages: string[]) => {
-    setProfileData(prev => ({
+    setProfileData((prev) => ({
       ...prev,
-      languages
-    }))
-  }
+      languages,
+    }));
+  };
 
   // Popular skills and languages (same as registration form)
   const popularSkills = [
@@ -326,7 +477,7 @@ export default function ProviderProfilePage() {
     "IoT",
     "AI/ML",
     "Data Science",
-  ]
+  ];
 
   const commonLanguages = [
     "English",
@@ -341,65 +492,74 @@ export default function ProviderProfilePage() {
     "Korean",
     "French",
     "German",
-  ]
+  ];
 
   // Handler functions for adding/removing items
   const handleAddCustomSkill = () => {
-    if (customSkill.trim() && !profileData.skills.includes(customSkill.trim())) {
-      handleSkillsChange([...profileData.skills, customSkill.trim()])
-      setCustomSkill("")
+    if (
+      customSkill.trim() &&
+      !profileData.skills.includes(customSkill.trim())
+    ) {
+      handleSkillsChange([...profileData.skills, customSkill.trim()]);
+      setCustomSkill("");
     }
-  }
+  };
 
   const handleRemoveSkill = (skill: string) => {
-    handleSkillsChange(profileData.skills.filter(s => s !== skill))
-  }
+    handleSkillsChange(profileData.skills.filter((s) => s !== skill));
+  };
 
   const handleSkillToggle = (skill: string) => {
     if (profileData.skills.includes(skill)) {
-      handleRemoveSkill(skill)
+      handleRemoveSkill(skill);
     } else {
-      handleSkillsChange([...profileData.skills, skill])
+      handleSkillsChange([...profileData.skills, skill]);
     }
-  }
+  };
 
   const handleAddCustomLanguage = () => {
-    if (customLanguage.trim() && !profileData.languages.includes(customLanguage.trim())) {
-      handleLanguagesChange([...profileData.languages, customLanguage.trim()])
-      setCustomLanguage("")
+    if (
+      customLanguage.trim() &&
+      !profileData.languages.includes(customLanguage.trim())
+    ) {
+      handleLanguagesChange([...profileData.languages, customLanguage.trim()]);
+      setCustomLanguage("");
     }
-  }
+  };
 
   const handleRemoveLanguage = (language: string) => {
-    handleLanguagesChange(profileData.languages.filter(l => l !== language))
-  }
+    handleLanguagesChange(profileData.languages.filter((l) => l !== language));
+  };
 
   const handleLanguageToggle = (language: string) => {
     if (profileData.languages.includes(language)) {
-      handleRemoveLanguage(language)
+      handleRemoveLanguage(language);
     } else {
-      handleLanguagesChange([...profileData.languages, language])
+      handleLanguagesChange([...profileData.languages, language]);
     }
-  }
+  };
 
   const handleAddPortfolioUrl = () => {
-    if (newPortfolioUrl.trim() && !portfolioUrls.includes(newPortfolioUrl.trim())) {
-      setPortfolioUrls([...portfolioUrls, newPortfolioUrl.trim()])
-      setNewPortfolioUrl("")
+    if (
+      newPortfolioUrl.trim() &&
+      !portfolioUrls.includes(newPortfolioUrl.trim())
+    ) {
+      setPortfolioUrls([...portfolioUrls, newPortfolioUrl.trim()]);
+      setNewPortfolioUrl("");
     }
-  }
+  };
 
   const handleRemovePortfolioUrl = (url: string) => {
-    setPortfolioUrls(portfolioUrls.filter(u => u !== url))
-  }
+    setPortfolioUrls(portfolioUrls.filter((u) => u !== url));
+  };
 
   const handleImageClick = () => {
-    fileInputRef.current?.click()
-  }
+    fileInputRef.current?.click();
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
@@ -407,8 +567,8 @@ export default function ProviderProfilePage() {
         title: "Invalid file type",
         description: "Please select an image file (JPEG, PNG, GIF, or WebP)",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     // Validate file size (5MB)
@@ -417,41 +577,41 @@ export default function ProviderProfilePage() {
         title: "File too large",
         description: "Please select an image smaller than 5MB",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setUploadingImage(true)
+    setUploadingImage(true);
     try {
-      const result = await uploadProviderProfileImage(file)
-      setProfileData(prev => ({
+      const result = await uploadProviderProfileImage(file);
+      setProfileData((prev) => ({
         ...prev,
         profileImageUrl: result.data.profileImageUrl,
-      }))
+      }));
       toast({
         title: "Success",
         description: "Profile image uploaded successfully",
-      })
+      });
       // Reload completion percentage and suggestions
-      const completionResponse = await getProviderProfileCompletion()
+      const completionResponse = await getProviderProfileCompletion();
       if (completionResponse.success) {
-        setProfileCompletion(completionResponse.data.completion || 0)
-        setCompletionSuggestions(completionResponse.data.suggestions || [])
+        setProfileCompletion(completionResponse.data.completion || 0);
+        setCompletionSuggestions(completionResponse.data.suggestions || []);
       }
     } catch (error: any) {
       toast({
         title: "Upload failed",
         description: error.message || "Failed to upload profile image",
         variant: "destructive",
-      })
+      });
     } finally {
-      setUploadingImage(false)
+      setUploadingImage(false);
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+        fileInputRef.current.value = "";
       }
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -461,7 +621,7 @@ export default function ProviderProfilePage() {
           <span className="ml-2">Loading profile...</span>
         </div>
       </ProviderLayout>
-    )
+    );
   }
 
   // Certification handlers
@@ -484,7 +644,9 @@ export default function ProviderProfilePage() {
     setCertFormData({
       name: cert.name || "",
       issuer: cert.issuer || "",
-      issuedDate: cert.issuedDate ? new Date(cert.issuedDate).toISOString().split('T')[0] : "",
+      issuedDate: cert.issuedDate
+        ? new Date(cert.issuedDate).toISOString().split("T")[0]
+        : "",
       serialNumber: cert.serialNumber || "",
       sourceUrl: cert.sourceUrl || "",
     });
@@ -494,23 +656,25 @@ export default function ProviderProfilePage() {
 
   const validateCertification = () => {
     const errors: typeof certFormErrors = {};
-    
+
     if (!certFormData.name.trim()) {
       errors.name = "Certification name is required";
     }
-    
+
     if (!certFormData.issuer.trim()) {
       errors.issuer = "Issuing organization is required";
     }
-    
+
     if (!certFormData.issuedDate) {
       errors.issuedDate = "Issue date is required";
     }
-    
+
     // At least one of serialNumber or sourceUrl must be provided
     if (!certFormData.serialNumber?.trim() && !certFormData.sourceUrl?.trim()) {
-      errors.serialNumber = "At least one of serial number or verification link is required";
-      errors.sourceUrl = "At least one of serial number or verification link is required";
+      errors.serialNumber =
+        "At least one of serial number or verification link is required";
+      errors.sourceUrl =
+        "At least one of serial number or verification link is required";
     }
 
     setCertFormErrors(errors);
@@ -547,10 +711,10 @@ export default function ProviderProfilePage() {
             setCertifications(certsResponse.data);
           }
           // Reload completion percentage and suggestions
-          const completionResponse = await getProviderProfileCompletion()
+          const completionResponse = await getProviderProfileCompletion();
           if (completionResponse.success) {
-            setProfileCompletion(completionResponse.data.completion || 0)
-            setCompletionSuggestions(completionResponse.data.suggestions || [])
+            setProfileCompletion(completionResponse.data.completion || 0);
+            setCompletionSuggestions(completionResponse.data.suggestions || []);
           }
         }
       } else {
@@ -567,10 +731,10 @@ export default function ProviderProfilePage() {
             setCertifications(certsResponse.data);
           }
           // Reload completion percentage and suggestions
-          const completionResponse = await getProviderProfileCompletion()
+          const completionResponse = await getProviderProfileCompletion();
           if (completionResponse.success) {
-            setProfileCompletion(completionResponse.data.completion || 0)
-            setCompletionSuggestions(completionResponse.data.suggestions || [])
+            setProfileCompletion(completionResponse.data.completion || 0);
+            setCompletionSuggestions(completionResponse.data.suggestions || []);
           }
         }
       }
@@ -617,10 +781,10 @@ export default function ProviderProfilePage() {
           setCertifications(certsResponse.data);
         }
         // Reload completion percentage and suggestions
-        const completionResponse = await getProviderProfileCompletion()
+        const completionResponse = await getProviderProfileCompletion();
         if (completionResponse.success) {
-          setProfileCompletion(completionResponse.data.completion || 0)
-          setCompletionSuggestions(completionResponse.data.suggestions || [])
+          setProfileCompletion(completionResponse.data.completion || 0);
+          setCompletionSuggestions(completionResponse.data.suggestions || []);
         }
       }
     } catch (error: any) {
@@ -651,7 +815,8 @@ export default function ProviderProfilePage() {
       client: "Sarah Chen",
       company: "Digital Solutions",
       rating: 5,
-      comment: "Outstanding developer! The mobile app was delivered on time and works flawlessly. Highly recommended!",
+      comment:
+        "Outstanding developer! The mobile app was delivered on time and works flawlessly. Highly recommended!",
       project: "Mobile Banking App",
       date: "2023-12-25",
       avatar: "/placeholder.svg?height=40&width=40",
@@ -661,12 +826,13 @@ export default function ProviderProfilePage() {
       client: "Mike Johnson",
       company: "Manufacturing Corp",
       rating: 4,
-      comment: "Great work on the cloud infrastructure. Ahmad is very knowledgeable and professional.",
+      comment:
+        "Great work on the cloud infrastructure. Ahmad is very knowledgeable and professional.",
       project: "Cloud Infrastructure Setup",
       date: "2023-12-05",
       avatar: "/placeholder.svg?height=40&width=40",
     },
-  ]
+  ];
 
   return (
     <ProviderLayout>
@@ -675,7 +841,9 @@ export default function ProviderProfilePage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600">Manage your professional profile and showcase your expertise</p>
+            <p className="text-gray-600">
+              Manage your professional profile and showcase your expertise
+            </p>
           </div>
           <div className="flex gap-3">
             <Button variant="outline">
@@ -703,9 +871,9 @@ export default function ProviderProfilePage() {
               </div>
             ) : (
               <Button onClick={() => setIsEditing(true)}>
-              <Edit className="w-4 h-4 mr-2" />
+                <Edit className="w-4 h-4 mr-2" />
                 Edit Profile
-            </Button>
+              </Button>
             )}
           </div>
         </div>
@@ -715,20 +883,31 @@ export default function ProviderProfilePage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-blue-900">Profile Completion</h3>
-                <p className="text-sm text-blue-700">Complete your profile to attract more clients</p>
+                <h3 className="font-semibold text-blue-900">
+                  Profile Completion
+                </h3>
+                <p className="text-sm text-blue-700">
+                  Complete your profile to attract more clients
+                </p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-blue-600">{profileCompletion}%</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {profileCompletion}%
+                </p>
               </div>
             </div>
             <Progress value={profileCompletion} className="h-2 mb-4" />
             {completionSuggestions.length > 0 && (
               <div className="mt-4">
-                <p className="text-sm font-medium text-blue-900 mb-2">To complete your profile:</p>
+                <p className="text-sm font-medium text-blue-900 mb-2">
+                  To complete your profile:
+                </p>
                 <ul className="space-y-1">
                   {completionSuggestions.map((suggestion, index) => (
-                    <li key={index} className="text-sm text-blue-700 flex items-start gap-2">
+                    <li
+                      key={index}
+                      className="text-sm text-blue-700 flex items-start gap-2"
+                    >
                       <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       <span>{suggestion}</span>
                     </li>
@@ -739,18 +918,21 @@ export default function ProviderProfilePage() {
             {profileCompletion === 100 && (
               <div className="mt-4 flex items-center gap-2 text-green-700">
                 <CheckCircle className="w-5 h-5" />
-                <span className="text-sm font-medium">Your profile is complete! 🎉</span>
+                <span className="text-sm font-medium">
+                  Your profile is complete! 🎉
+                </span>
               </div>
             )}
           </CardContent>
         </Card>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
             <TabsTrigger value="skills">Skills</TabsTrigger>
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
+            <TabsTrigger value="verification">Verification</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -766,15 +948,26 @@ export default function ProviderProfilePage() {
                     <div className="flex items-start space-x-6">
                       <div className="relative">
                         <Avatar className="w-24 h-24">
-                          <AvatarImage 
+                          <AvatarImage
                             src={
                               profileData.profileImageUrl
-                                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profileData.profileImageUrl.startsWith("/") ? "" : "/"}${profileData.profileImageUrl}`
+                                ? `${
+                                    process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                    "http://localhost:4000"
+                                  }${
+                                    profileData.profileImageUrl.startsWith("/")
+                                      ? ""
+                                      : "/"
+                                  }${profileData.profileImageUrl}`
                                 : "/placeholder.svg?height=96&width=96"
                             }
                           />
                           <AvatarFallback className="text-lg">
-                            {profileData.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'PR'}
+                            {profileData.name
+                              ?.split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase() || "PR"}
                           </AvatarFallback>
                         </Avatar>
                         {isEditing && (
@@ -786,8 +979,8 @@ export default function ProviderProfilePage() {
                               onChange={handleImageChange}
                               className="hidden"
                             />
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
                               onClick={handleImageClick}
                               disabled={uploadingImage}
@@ -810,7 +1003,9 @@ export default function ProviderProfilePage() {
                                 <Input
                                   id="name"
                                   value={profileData.name}
-                                  onChange={(e) => handleInputChange('name', e.target.value)}
+                                  onChange={(e) =>
+                                    handleInputChange("name", e.target.value)
+                                  }
                                 />
                               </div>
                               <div>
@@ -819,7 +1014,9 @@ export default function ProviderProfilePage() {
                                   id="email"
                                   type="email"
                                   value={profileData.email}
-                                  onChange={(e) => handleInputChange('email', e.target.value)}
+                                  onChange={(e) =>
+                                    handleInputChange("email", e.target.value)
+                                  }
                                 />
                               </div>
                             </div>
@@ -829,7 +1026,9 @@ export default function ProviderProfilePage() {
                                 <Input
                                   id="phone"
                                   value={profileData.phone}
-                                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                                  onChange={(e) =>
+                                    handleInputChange("phone", e.target.value)
+                                  }
                                 />
                               </div>
                               <div>
@@ -837,7 +1036,12 @@ export default function ProviderProfilePage() {
                                 <Input
                                   id="location"
                                   value={profileData.location}
-                                  onChange={(e) => handleInputChange('location', e.target.value)}
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      "location",
+                                      e.target.value
+                                    )
+                                  }
                                 />
                               </div>
                             </div>
@@ -846,7 +1050,9 @@ export default function ProviderProfilePage() {
                               <Textarea
                                 id="bio"
                                 value={profileData.bio}
-                                onChange={(e) => handleInputChange('bio', e.target.value)}
+                                onChange={(e) =>
+                                  handleInputChange("bio", e.target.value)
+                                }
                                 placeholder="Tell clients about your experience and expertise..."
                                 rows={4}
                               />
@@ -855,9 +1061,15 @@ export default function ProviderProfilePage() {
                         ) : (
                           <>
                             <div>
-                              <h2 className="text-2xl font-bold text-gray-900">{profileData.name}</h2>
-                              <p className="text-lg text-gray-600">{profileData.email}</p>
-                              <p className="text-gray-500">{profileData.phone}</p>
+                              <h2 className="text-2xl font-bold text-gray-900">
+                                {profileData.name}
+                              </h2>
+                              <p className="text-lg text-gray-600">
+                                {profileData.email}
+                              </p>
+                              <p className="text-gray-500">
+                                {profileData.phone}
+                              </p>
                             </div>
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <div className="flex items-center gap-1">
@@ -866,21 +1078,26 @@ export default function ProviderProfilePage() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                {profileStats.rating} ({profileStats.totalReviews} reviews)
+                                {profileStats.rating} (
+                                {profileStats.totalReviews} reviews)
                               </div>
                               <div className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
                                 Joined Jan 2023
                               </div>
                               <div className="flex items-center gap-1">
-                                <CheckCircle className={`w-4 h-4 ${
-                                  profileData.availability === "available" 
-                                    ? "text-green-500" 
-                                    : profileData.availability === "busy" 
-                                    ? "text-yellow-500" 
-                                    : "text-gray-400"
-                                }`} />
-                                <span className="capitalize">{profileData.availability || "available"}</span>
+                                <CheckCircle
+                                  className={`w-4 h-4 ${
+                                    profileData.availability === "available"
+                                      ? "text-green-500"
+                                      : profileData.availability === "busy"
+                                      ? "text-yellow-500"
+                                      : "text-gray-400"
+                                  }`}
+                                />
+                                <span className="capitalize">
+                                  {profileData.availability || "available"}
+                                </span>
                               </div>
                             </div>
                           </>
@@ -889,10 +1106,12 @@ export default function ProviderProfilePage() {
                     </div>
 
                     {!isEditing && (
-                    <div>
+                      <div>
                         <Label>Professional Bio</Label>
-                        <p className="text-gray-600 mt-2">{profileData.bio || "No bio provided"}</p>
-                    </div>
+                        <p className="text-gray-600 mt-2">
+                          {profileData.bio || "No bio provided"}
+                        </p>
+                      </div>
                     )}
 
                     {isEditing && (
@@ -903,22 +1122,33 @@ export default function ProviderProfilePage() {
                             id="hourlyRate"
                             type="number"
                             value={profileData.hourlyRate}
-                            onChange={(e) => handleInputChange('hourlyRate', Number(e.target.value))}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "hourlyRate",
+                                Number(e.target.value)
+                              )
+                            }
                           />
                         </div>
                         <div>
                           <Label htmlFor="availability">Availability</Label>
                           <Select
                             value={profileData.availability}
-                            onValueChange={(value) => handleInputChange('availability', value)}
+                            onValueChange={(value) =>
+                              handleInputChange("availability", value)
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="available">Available</SelectItem>
+                              <SelectItem value="available">
+                                Available
+                              </SelectItem>
                               <SelectItem value="busy">Busy</SelectItem>
-                              <SelectItem value="unavailable">Unavailable</SelectItem>
+                              <SelectItem value="unavailable">
+                                Unavailable
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -947,7 +1177,9 @@ export default function ProviderProfilePage() {
                     {loadingCertifications ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                        <span className="ml-2 text-gray-600">Loading certifications...</span>
+                        <span className="ml-2 text-gray-600">
+                          Loading certifications...
+                        </span>
                       </div>
                     ) : certifications.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
@@ -955,7 +1187,8 @@ export default function ProviderProfilePage() {
                         <p>No certifications added yet</p>
                         {isEditing && (
                           <p className="text-sm mt-2">
-                            Click "Add Certification" to add your professional certifications
+                            Click "Add Certification" to add your professional
+                            certifications
                           </p>
                         )}
                       </div>
@@ -974,7 +1207,12 @@ export default function ProviderProfilePage() {
                               </div>
                               <p className="text-sm text-gray-600">{cert.issuer}</p>
                                 <p className="text-xs text-gray-500">
-                                  Issued: {cert.issuedDate ? new Date(cert.issuedDate).toLocaleDateString() : "N/A"}
+                                  Issued:{" "}
+                                  {cert.issuedDate
+                                    ? new Date(
+                                        cert.issuedDate
+                                      ).toLocaleDateString()
+                                    : "N/A"}
                                 </p>
                                 {cert.serialNumber && (
                                   <p className="text-xs text-gray-500 mt-1">
@@ -995,17 +1233,19 @@ export default function ProviderProfilePage() {
                           </div>
                           {isEditing && (
                               <div className="flex gap-2 ml-4">
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => handleEditCertification(index)}
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => handleDeleteCertification(index)}
+                                  onClick={() =>
+                                    handleDeleteCertification(index)
+                                  }
                                 >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1057,7 +1297,9 @@ export default function ProviderProfilePage() {
                             id="sidebar-email"
                             type="email"
                             value={profileData.email}
-                            onChange={(e) => handleInputChange('email', e.target.value)}
+                            onChange={(e) =>
+                              handleInputChange("email", e.target.value)
+                            }
                           />
                         </div>
                         <div>
@@ -1065,7 +1307,9 @@ export default function ProviderProfilePage() {
                           <Input
                             id="sidebar-phone"
                             value={profileData.phone}
-                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                            onChange={(e) =>
+                              handleInputChange("phone", e.target.value)
+                            }
                           />
                         </div>
                         <div>
@@ -1073,7 +1317,9 @@ export default function ProviderProfilePage() {
                           <Input
                             id="sidebar-website"
                             value={profileData.website}
-                            onChange={(e) => handleInputChange('website', e.target.value)}
+                            onChange={(e) =>
+                              handleInputChange("website", e.target.value)
+                            }
                           />
                         </div>
                         <div className="space-y-4">
@@ -1081,11 +1327,13 @@ export default function ProviderProfilePage() {
                           <p className="text-sm text-gray-600">
                             Add languages you can communicate in
                           </p>
-                          
+
                           <div className="flex gap-2">
-                          <Input
+                            <Input
                               value={customLanguage}
-                              onChange={(e) => setCustomLanguage(e.target.value)}
+                              onChange={(e) =>
+                                setCustomLanguage(e.target.value)
+                              }
                               placeholder="Type a language and press Add"
                               onKeyPress={(e) =>
                                 e.key === "Enter" &&
@@ -1104,7 +1352,8 @@ export default function ProviderProfilePage() {
                           {profileData.languages.length > 0 && (
                             <div className="space-y-2">
                               <Label className="text-sm font-medium">
-                                Selected Languages ({profileData.languages.length})
+                                Selected Languages (
+                                {profileData.languages.length})
                               </Label>
                               <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-gray-50">
                                 {profileData.languages.map((language) => (
@@ -1115,7 +1364,9 @@ export default function ProviderProfilePage() {
                                     {language}
                                     <button
                                       type="button"
-                                      onClick={() => handleRemoveLanguage(language)}
+                                      onClick={() =>
+                                        handleRemoveLanguage(language)
+                                      }
                                       className="ml-1 hover:bg-green-800 rounded-full p-0.5"
                                     >
                                       <X className="w-3 h-3" />
@@ -1132,13 +1383,18 @@ export default function ProviderProfilePage() {
                             </Label>
                             <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-gray-50">
                               {commonLanguages
-                                .filter((language) => !profileData.languages.includes(language))
+                                .filter(
+                                  (language) =>
+                                    !profileData.languages.includes(language)
+                                )
                                 .map((language) => (
                                   <Badge
                                     key={language}
                                     variant="outline"
                                     className="cursor-pointer hover:bg-green-50 hover:border-green-300 transition-all duration-200"
-                                    onClick={() => handleLanguageToggle(language)}
+                                    onClick={() =>
+                                      handleLanguageToggle(language)
+                                    }
                                   >
                                     {language}
                                   </Badge>
@@ -1160,27 +1416,35 @@ export default function ProviderProfilePage() {
                         <div>
                           <p className="text-sm text-gray-600">Website</p>
                           {profileData.website ? (
-                          <a
-                            href={profileData.website}
-                            className="font-medium text-blue-600 hover:underline flex items-center gap-1"
-                          >
-                            {profileData.website}
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
+                            <a
+                              href={profileData.website}
+                              className="font-medium text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                              {profileData.website}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
                           ) : (
-                            <p className="font-medium text-gray-500">No website provided</p>
+                            <p className="font-medium text-gray-500">
+                              No website provided
+                            </p>
                           )}
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">Languages</p>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {profileData.languages.map((language, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
+                              <Badge
+                                key={index}
+                                variant="outline"
+                                className="text-xs"
+                              >
                                 {language}
                               </Badge>
                             ))}
                             {profileData.languages.length === 0 && (
-                              <p className="text-gray-500 text-sm">No languages specified</p>
+                              <p className="text-gray-500 text-sm">
+                                No languages specified
+                              </p>
                             )}
                           </div>
                         </div>
@@ -1198,7 +1462,8 @@ export default function ProviderProfilePage() {
                     {isEditing ? (
                       <>
                         <p className="text-sm text-gray-600">
-                          Add links to your GitHub, LinkedIn, or other professional profiles
+                          Add links to your GitHub, LinkedIn, or other
+                          professional profiles
                         </p>
                         <div className="flex gap-2">
                           <Input
@@ -1217,7 +1482,7 @@ export default function ProviderProfilePage() {
                             variant="outline"
                           >
                             <Plus className="w-4 h-4" />
-                        </Button>
+                          </Button>
                         </div>
 
                         {portfolioUrls.length > 0 && (
@@ -1241,7 +1506,9 @@ export default function ProviderProfilePage() {
                                   </a>
                                   <button
                                     type="button"
-                                    onClick={() => handleRemovePortfolioUrl(url)}
+                                    onClick={() =>
+                                      handleRemovePortfolioUrl(url)
+                                    }
                                     className="ml-2 text-red-500 hover:text-red-700"
                                   >
                                     <X className="w-4 h-4" />
@@ -1257,9 +1524,10 @@ export default function ProviderProfilePage() {
                             <Globe className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                             <p>No portfolio links added yet</p>
                             <p className="text-sm">
-                              Add links to showcase your work and professional profiles
+                              Add links to showcase your work and professional
+                              profiles
                             </p>
-                    </div>
+                          </div>
                         )}
                       </>
                     ) : (
@@ -1278,7 +1546,9 @@ export default function ProviderProfilePage() {
                             </a>
                           ))
                         ) : (
-                          <p className="text-gray-500 text-sm">No portfolio links added</p>
+                          <p className="text-gray-500 text-sm">
+                            No portfolio links added
+                          </p>
                         )}
                       </div>
                     )}
@@ -1294,22 +1564,29 @@ export default function ProviderProfilePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold">Portfolio</h2>
-                  <p className="text-gray-600">Showcase your completed projects</p>
+                  <p className="text-gray-600">
+                    Showcase your completed projects
+                  </p>
                 </div>
               </div>
 
               {loadingPortfolio ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                  <span className="ml-2 text-gray-600">Loading portfolio...</span>
+                  <span className="ml-2 text-gray-600">
+                    Loading portfolio...
+                  </span>
                 </div>
               ) : portfolioProjects.length === 0 ? (
                 <Card>
                   <CardContent className="p-12 text-center">
                     <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No completed projects yet</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      No completed projects yet
+                    </h3>
                     <p className="text-gray-600">
-                      Your completed projects will appear here automatically once you finish working on them.
+                      Your completed projects will appear here automatically
+                      once you finish working on them.
                     </p>
                   </CardContent>
                 </Card>
@@ -1347,7 +1624,11 @@ export default function ProviderProfilePage() {
                         <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
                           <span className="font-medium">{project.client}</span>
                           {project.completedDate && (
-                            <span>{new Date(project.completedDate).toLocaleDateString()}</span>
+                            <span>
+                              {new Date(
+                                project.completedDate
+                              ).toLocaleDateString()}
+                            </span>
                           )}
                       </div>
                         {project.approvedPrice && (
@@ -1369,13 +1650,15 @@ export default function ProviderProfilePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold">Skills & Expertise</h2>
-                  <p className="text-gray-600">Showcase your technical skills and expertise</p>
+                  <p className="text-gray-600">
+                    Showcase your technical skills and expertise
+                  </p>
                 </div>
                 {isEditing && (
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Skill
-                </Button>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Skill
+                  </Button>
                 )}
               </div>
 
@@ -1388,9 +1671,9 @@ export default function ProviderProfilePage() {
                         <p className="text-sm text-gray-600">
                           Add your technical skills and expertise
                         </p>
-                        
+
                         <div className="flex gap-2">
-                        <Input
+                          <Input
                             value={customSkill}
                             onChange={(e) => setCustomSkill(e.target.value)}
                             placeholder="Type a skill and press Add"
@@ -1439,7 +1722,9 @@ export default function ProviderProfilePage() {
                           </Label>
                           <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-3 border rounded-lg bg-gray-50">
                             {popularSkills
-                              .filter((skill) => !profileData.skills.includes(skill))
+                              .filter(
+                                (skill) => !profileData.skills.includes(skill)
+                              )
                               .map((skill) => (
                                 <Badge
                                   key={skill}
@@ -1452,22 +1737,33 @@ export default function ProviderProfilePage() {
                               ))}
                           </div>
                         </div>
-                        </div>
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="yearsExperience">Years of Experience</Label>
+                          <Label htmlFor="yearsExperience">
+                            Years of Experience
+                          </Label>
                           <Input
                             id="yearsExperience"
                             type="number"
                             value={profileData.yearsExperience}
-                            onChange={(e) => handleInputChange('yearsExperience', Number(e.target.value))}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "yearsExperience",
+                                Number(e.target.value)
+                              )
+                            }
                           />
-                      </div>
+                        </div>
                         <div>
-                          <Label htmlFor="workPreference">Work Preference</Label>
+                          <Label htmlFor="workPreference">
+                            Work Preference
+                          </Label>
                           <Select
                             value={profileData.workPreference}
-                            onValueChange={(value) => handleInputChange('workPreference', value)}
+                            onValueChange={(value) =>
+                              handleInputChange("workPreference", value)
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -1482,31 +1778,52 @@ export default function ProviderProfilePage() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="minimumProjectBudget">Minimum Project Budget (RM)</Label>
+                          <Label htmlFor="minimumProjectBudget">
+                            Minimum Project Budget (RM)
+                          </Label>
                           <Input
                             id="minimumProjectBudget"
                             type="number"
                             value={profileData.minimumProjectBudget}
-                            onChange={(e) => handleInputChange('minimumProjectBudget', Number(e.target.value))}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "minimumProjectBudget",
+                                Number(e.target.value)
+                              )
+                            }
                           />
                         </div>
                         <div>
-                          <Label htmlFor="maximumProjectBudget">Maximum Project Budget (RM)</Label>
+                          <Label htmlFor="maximumProjectBudget">
+                            Maximum Project Budget (RM)
+                          </Label>
                           <Input
                             id="maximumProjectBudget"
                             type="number"
                             value={profileData.maximumProjectBudget}
-                            onChange={(e) => handleInputChange('maximumProjectBudget', Number(e.target.value))}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "maximumProjectBudget",
+                                Number(e.target.value)
+                              )
+                            }
                           />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="preferredProjectDuration">Preferred Project Duration</Label>
+                          <Label htmlFor="preferredProjectDuration">
+                            Preferred Project Duration
+                          </Label>
                           <Input
                             id="preferredProjectDuration"
                             value={profileData.preferredProjectDuration}
-                            onChange={(e) => handleInputChange('preferredProjectDuration', e.target.value)}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "preferredProjectDuration",
+                                e.target.value
+                              )
+                            }
                             placeholder="e.g., 1-3 months, 3-6 months..."
                           />
                         </div>
@@ -1516,13 +1833,18 @@ export default function ProviderProfilePage() {
                             id="teamSize"
                             type="number"
                             value={profileData.teamSize}
-                            onChange={(e) => handleInputChange('teamSize', Number(e.target.value))}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "teamSize",
+                                Number(e.target.value)
+                              )
+                            }
                           />
                         </div>
                       </div>
                     </div>
-                    </CardContent>
-                  </Card>
+                  </CardContent>
+                </Card>
               ) : (
                 <div className="space-y-4">
                   <Card>
@@ -1530,51 +1852,77 @@ export default function ProviderProfilePage() {
                       <h3 className="font-semibold mb-4">Technical Skills</h3>
                       <div className="flex flex-wrap gap-2">
                         {profileData.skills.map((skill, index) => (
-                          <Badge key={index} variant="secondary" className="text-sm">
+                          <Badge
+                            key={index}
+                            variant="secondary"
+                            className="text-sm"
+                          >
                             {skill}
                           </Badge>
                         ))}
                         {profileData.skills.length === 0 && (
                           <p className="text-gray-500">No skills added yet</p>
                         )}
-              </div>
+                      </div>
                     </CardContent>
                   </Card>
-                  
+
                   <div className="grid md:grid-cols-2 gap-6">
                     <Card>
                       <CardContent className="p-6">
-                        <h3 className="font-semibold mb-4">Experience & Preferences</h3>
+                        <h3 className="font-semibold mb-4">
+                          Experience & Preferences
+                        </h3>
                         <div className="space-y-3">
                           <div>
-                            <p className="text-sm text-gray-600">Years of Experience</p>
-                            <p className="font-medium">{profileData.yearsExperience} years</p>
+                            <p className="text-sm text-gray-600">
+                              Years of Experience
+                            </p>
+                            <p className="font-medium">
+                              {profileData.yearsExperience} years
+                            </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600">Work Preference</p>
-                            <p className="font-medium capitalize">{profileData.workPreference}</p>
+                            <p className="text-sm text-gray-600">
+                              Work Preference
+                            </p>
+                            <p className="font-medium capitalize">
+                              {profileData.workPreference}
+                            </p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-600">Team Size</p>
-                            <p className="font-medium">{profileData.teamSize} person(s)</p>
+                            <p className="font-medium">
+                              {profileData.teamSize} person(s)
+                            </p>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card>
                       <CardContent className="p-6">
-                        <h3 className="font-semibold mb-4">Project Preferences</h3>
+                        <h3 className="font-semibold mb-4">
+                          Project Preferences
+                        </h3>
                         <div className="space-y-3">
                           <div>
-                            <p className="text-sm text-gray-600">Budget Range</p>
+                            <p className="text-sm text-gray-600">
+                              Budget Range
+                            </p>
                             <p className="font-medium">
-                              RM {profileData.minimumProjectBudget} - RM {profileData.maximumProjectBudget}
+                              RM {profileData.minimumProjectBudget} - RM{" "}
+                              {profileData.maximumProjectBudget}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600">Preferred Duration</p>
-                            <p className="font-medium">{profileData.preferredProjectDuration || "Not specified"}</p>
+                            <p className="text-sm text-gray-600">
+                              Preferred Duration
+                            </p>
+                            <p className="font-medium">
+                              {profileData.preferredProjectDuration ||
+                                "Not specified"}
+                            </p>
                           </div>
                         </div>
                       </CardContent>
@@ -1591,14 +1939,20 @@ export default function ProviderProfilePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold">Client Reviews</h2>
-                  <p className="text-gray-600">What clients say about working with you</p>
+                  <p className="text-gray-600">
+                    What clients say about working with you
+                  </p>
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-2">
                     <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                    <span className="text-2xl font-bold">{profileStats.rating}</span>
+                    <span className="text-2xl font-bold">
+                      {profileStats.rating}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-500">{profileStats.totalReviews} reviews</p>
+                  <p className="text-sm text-gray-500">
+                    {profileStats.totalReviews} reviews
+                  </p>
                 </div>
               </div>
 
@@ -1608,21 +1962,29 @@ export default function ProviderProfilePage() {
                     <CardContent className="p-6">
                       <div className="flex items-start space-x-4">
                         <Avatar>
-                          <AvatarImage src={review.avatar || "/placeholder.svg"} />
-                          <AvatarFallback>{review.client.charAt(0)}</AvatarFallback>
+                          <AvatarImage
+                            src={review.avatar || "/placeholder.svg"}
+                          />
+                          <AvatarFallback>
+                            {review.client.charAt(0)}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
                             <div>
                               <p className="font-semibold">{review.client}</p>
-                              <p className="text-sm text-gray-600">{review.company}</p>
+                              <p className="text-sm text-gray-600">
+                                {review.company}
+                              </p>
                             </div>
                             <div className="flex items-center gap-1">
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
                                   className={`w-4 h-4 ${
-                                    i < review.rating ? "text-yellow-400 fill-current" : "text-gray-300"
+                                    i < review.rating
+                                      ? "text-yellow-400 fill-current"
+                                      : "text-gray-300"
                                   }`}
                                 />
                               ))}
@@ -1641,7 +2003,14 @@ export default function ProviderProfilePage() {
               </div>
             </div>
           </TabsContent>
-
+          <TabsContent value="verification" className="space-y-6">
+            <VerificationSection
+              documents={docs}
+              documentType={"PROVIDER_ID"}
+              setDocuments={setDocs}
+              userId={getUserIdFromToken() || undefined}
+            />
+          </TabsContent>
         </Tabs>
 
         {/* Certification Dialog */}
@@ -1649,7 +2018,9 @@ export default function ProviderProfilePage() {
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingCertIndex !== null ? "Edit Certification" : "Add Certification"}
+                {editingCertIndex !== null
+                  ? "Edit Certification"
+                  : "Add Certification"}
               </DialogTitle>
               <DialogDescription>
                 Add your professional certifications to showcase your expertise
@@ -1664,7 +2035,8 @@ export default function ProviderProfilePage() {
                       Why add certifications?
                     </p>
                     <p className="text-sm text-blue-700">
-                      Certifications help build trust with clients and showcase your expertise in specific technologies.
+                      Certifications help build trust with clients and showcase
+                      your expertise in specific technologies.
                     </p>
                   </div>
                   </div>
@@ -1677,10 +2049,17 @@ export default function ProviderProfilePage() {
                     id="certName"
                     placeholder="e.g., AWS Certified Solutions Architect"
                     value={certFormData.name}
-                    onChange={(e) => setCertFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) =>
+                      setCertFormData((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
                   />
                   {certFormErrors.name && (
-                    <p className="text-xs text-red-600">{certFormErrors.name}</p>
+                    <p className="text-xs text-red-600">
+                      {certFormErrors.name}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -1689,10 +2068,17 @@ export default function ProviderProfilePage() {
                     id="certIssuer"
                     placeholder="e.g., Amazon Web Services"
                     value={certFormData.issuer}
-                    onChange={(e) => setCertFormData(prev => ({ ...prev, issuer: e.target.value }))}
+                    onChange={(e) =>
+                      setCertFormData((prev) => ({
+                        ...prev,
+                        issuer: e.target.value,
+                      }))
+                    }
                   />
                   {certFormErrors.issuer && (
-                    <p className="text-xs text-red-600">{certFormErrors.issuer}</p>
+                    <p className="text-xs text-red-600">
+                      {certFormErrors.issuer}
+                    </p>
                   )}
                 </div>
                   </div>
@@ -1703,26 +2089,38 @@ export default function ProviderProfilePage() {
                   id="certDate"
                   type="date"
                   value={certFormData.issuedDate}
-                  onChange={(e) => setCertFormData(prev => ({ ...prev, issuedDate: e.target.value }))}
+                  onChange={(e) =>
+                    setCertFormData((prev) => ({
+                      ...prev,
+                      issuedDate: e.target.value,
+                    }))
+                  }
                 />
                 {certFormErrors.issuedDate && (
-                  <p className="text-xs text-red-600">{certFormErrors.issuedDate}</p>
+                  <p className="text-xs text-red-600">
+                    {certFormErrors.issuedDate}
+                  </p>
                 )}
                   </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="certSerial">
-                    Serial Number (optional*)
-                  </Label>
+                  <Label htmlFor="certSerial">Serial Number (optional*)</Label>
                   <Input
                     id="certSerial"
                     placeholder="e.g. ABC-123-XYZ"
                     value={certFormData.serialNumber}
-                    onChange={(e) => setCertFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+                    onChange={(e) =>
+                      setCertFormData((prev) => ({
+                        ...prev,
+                        serialNumber: e.target.value,
+                      }))
+                    }
                   />
                   {certFormErrors.serialNumber && (
-                    <p className="text-xs text-red-600">{certFormErrors.serialNumber}</p>
+                    <p className="text-xs text-red-600">
+                      {certFormErrors.serialNumber}
+                    </p>
                   )}
               </div>
                 <div className="space-y-2">
@@ -1734,13 +2132,21 @@ export default function ProviderProfilePage() {
                     type="url"
                     placeholder="https://verify.issuer.com/cert/ABC-123"
                     value={certFormData.sourceUrl}
-                    onChange={(e) => setCertFormData(prev => ({ ...prev, sourceUrl: e.target.value }))}
+                    onChange={(e) =>
+                      setCertFormData((prev) => ({
+                        ...prev,
+                        sourceUrl: e.target.value,
+                      }))
+                    }
                   />
                   {certFormErrors.sourceUrl && (
-                    <p className="text-xs text-red-600">{certFormErrors.sourceUrl}</p>
+                    <p className="text-xs text-red-600">
+                      {certFormErrors.sourceUrl}
+                    </p>
                   )}
                   <p className="text-xs text-gray-500">
-                    *At least one of Serial Number or Verification Link is required.
+                    *At least one of Serial Number or Verification Link is
+                    required.
                   </p>
             </div>
               </div>
@@ -1763,10 +2169,7 @@ export default function ProviderProfilePage() {
               >
                 Cancel
               </Button>
-              <Button
-                onClick={handleSaveCertification}
-                disabled={saving}
-              >
+              <Button onClick={handleSaveCertification} disabled={saving}>
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1775,7 +2178,9 @@ export default function ProviderProfilePage() {
                 ) : (
                   <>
                     <Award className="w-4 h-4 mr-2" />
-                    {editingCertIndex !== null ? "Update Certification" : "Add Certification"}
+                    {editingCertIndex !== null
+                      ? "Update Certification"
+                      : "Add Certification"}
                   </>
                 )}
               </Button>
@@ -1784,5 +2189,5 @@ export default function ProviderProfilePage() {
         </Dialog>
       </div>
     </ProviderLayout>
-  )
+  );
 }

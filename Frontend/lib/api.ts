@@ -2,6 +2,32 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
 
+/**
+ * Extract userId from JWT token stored in localStorage
+ */
+export function getUserIdFromToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+
+  try {
+    // JWT format: header.payload.signature
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    // Decode payload (base64 decode)
+    const payload = JSON.parse(
+      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+    );
+    
+    // userId could be under different keys depending on backend
+    return payload.userId || payload.id || payload.sub || null;
+  } catch (err) {
+    console.warn("Failed to decode token:", err);
+    return null;
+  }
+}
+
 export async function uploadKyc(files: File[], type: "PROVIDER_ID" | "COMPANY_REG" | "COMPANY_DIRECTOR_ID") {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
@@ -138,7 +164,7 @@ export async function getKycDocuments() {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
 
-  const res = await fetch(`${API_BASE_URL}/company/profile/kyc-documents`, {
+  const res = await fetch(`${API_BASE_URL}/kyc/kyc-documents`, {
     method: "GET",
     headers: {
       "Authorization": `Bearer ${token}`,

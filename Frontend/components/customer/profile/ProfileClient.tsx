@@ -18,6 +18,8 @@ import {
   getCompanyProfile,
   getKycDocuments,
   getCompanyProfileCompletion,
+  getUserIdFromToken,
+  API_BASE,
 } from "@/lib/api";
 
 import ProfileOverview from "./sections/ProfileOverview";
@@ -52,7 +54,9 @@ export default function ProfileClient(props: Props = {}) {
     initialStats ?? null
   );
   const [profileCompletion, setProfileCompletion] = useState(0);
-  const [completionSuggestions, setCompletionSuggestions] = useState<string[]>([]);
+  const [completionSuggestions, setCompletionSuggestions] = useState<string[]>(
+    []
+  );
 
   const documentTypes: DocumentType[] = initialDocumentTypes ?? [
     {
@@ -182,36 +186,36 @@ export default function ProfileClient(props: Props = {}) {
 
     setIsLoading(true);
     (async () => {
-        try {
-          const [profileResp, completionResp] = await Promise.all([
-            getCompanyProfile(),
-            getCompanyProfileCompletion(),
-          ]);
-          
-          if (profileResp?.data) setProfile(profileResp.data);
+      try {
+        const [profileResp, completionResp] = await Promise.all([
+          getCompanyProfile(),
+          getCompanyProfileCompletion(),
+        ]);
 
-          if (profileResp?.data) {
-            const pd = profileResp.data as ProfileData;
-            const computed: Stats = {
-              projectsPosted: pd.customerProfile?.projectsPosted || 0,
-              rating: pd.customerProfile?.rating || 0,
-              reviewCount: pd.customerProfile?.reviewCount || 0,
-              totalSpend: pd.customerProfile?.totalSpend || "0",
-              completion: pd.customerProfile?.completion || 0,
-              lastActiveAt: pd.customerProfile?.lastActiveAt || "",
-              memberSince: new Date(pd.createdAt).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-              }),
-            };
-            setStatsState(computed);
-          }
+        if (profileResp?.data) setProfile(profileResp.data);
 
-          // Set completion and suggestions
-          if (completionResp?.success) {
-            setProfileCompletion(completionResp.data.completion || 0);
-            setCompletionSuggestions(completionResp.data.suggestions || []);
-          }
+        if (profileResp?.data) {
+          const pd = profileResp.data as ProfileData;
+          const computed: Stats = {
+            projectsPosted: pd.customerProfile?.projectsPosted || 0,
+            rating: pd.customerProfile?.rating || 0,
+            reviewCount: pd.customerProfile?.reviewCount || 0,
+            totalSpend: pd.customerProfile?.totalSpend || "0",
+            completion: pd.customerProfile?.completion || 0,
+            lastActiveAt: pd.customerProfile?.lastActiveAt || "",
+            memberSince: new Date(pd.createdAt).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+            }),
+          };
+          setStatsState(computed);
+        }
+
+        // Set completion and suggestions
+        if (completionResp?.success) {
+          setProfileCompletion(completionResp.data.completion || 0);
+          setCompletionSuggestions(completionResp.data.suggestions || []);
+        }
 
         try {
           const kycResp = await getKycDocuments();
@@ -220,19 +224,54 @@ export default function ProfileClient(props: Props = {}) {
             []) as unknown[];
           const mapped = docsData.map((d) => {
             const item = d as Record<string, unknown>;
+            const fileUrl = item.fileUrl ? String(item.fileUrl) : undefined;
+            // Construct full URL if it's a relative path
+            const fullFileUrl =
+              fileUrl && fileUrl.startsWith("/")
+                ? `${API_BASE}${fileUrl}`
+                : fileUrl;
             return {
               id: String(item.id ?? ""),
               name: String(item.filename ?? item.fileUrl ?? item.id ?? ""),
               type: String(item.type ?? "document"),
               size: String(item.size ?? "-"),
               uploadDate: String(item.uploadedAt ?? item.uploadDate ?? ""),
-              status: String(item.status ?? "pending") as
-                | "pending"
-                | "approved"
-                | "rejected",
+              // Normalize backend statuses (uploaded|verified|rejected) to our UI statuses
+              status: ((): "pending" | "approved" | "rejected" => {
+                const raw = String(item.status ?? "uploaded").toLowerCase();
+                if (raw === "verified" || raw === "approved") return "approved";
+                if (raw === "rejected") return "rejected";
+                return "pending"; // uploaded / uploaded-but-not-reviewed
+              })(),
               rejectionReason: item.reviewNotes
                 ? String(item.reviewNotes)
                 : undefined,
+              // prefer the reviewer's display name when available (item.reviewer.name),
+              // otherwise fall back to any top-level reviewedBy value
+              reviewedBy:
+                item.reviewer && (item.reviewer as any).name
+                  ? String((item.reviewer as any).name)
+                  : item.reviewedBy
+                  ? String(item.reviewedBy)
+                  : undefined,
+              reviewedAt: item.reviewedAt
+                ? new Date(item.reviewedAt as any).toLocaleString("en-MY", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })
+                : undefined,
+              fileUrl: fullFileUrl,
+              reviewer: item.reviewer
+                ? {
+                    id: (item.reviewer as any).id,
+                    name: (item.reviewer as any).name,
+                    email: (item.reviewer as any).email,
+                  }
+                : null,
             } as UploadedDocument;
           });
           setDocs(mapped);
@@ -342,20 +381,31 @@ export default function ProfileClient(props: Props = {}) {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-blue-900">Profile Completion</h3>
-              <p className="text-sm text-blue-700">Complete your profile to attract more providers</p>
+              <h3 className="font-semibold text-blue-900">
+                Profile Completion
+              </h3>
+              <p className="text-sm text-blue-700">
+                Complete your profile to attract more providers
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-blue-600">{profileCompletion}%</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {profileCompletion}%
+              </p>
             </div>
           </div>
           <Progress value={profileCompletion} className="h-2 mb-4" />
           {completionSuggestions.length > 0 && (
             <div className="mt-4">
-              <p className="text-sm font-medium text-blue-900 mb-2">To complete your profile:</p>
+              <p className="text-sm font-medium text-blue-900 mb-2">
+                To complete your profile:
+              </p>
               <ul className="space-y-1">
                 {completionSuggestions.map((suggestion, index) => (
-                  <li key={index} className="text-sm text-blue-700 flex items-start gap-2">
+                  <li
+                    key={index}
+                    className="text-sm text-blue-700 flex items-start gap-2"
+                  >
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span>{suggestion}</span>
                   </li>
@@ -366,7 +416,9 @@ export default function ProfileClient(props: Props = {}) {
           {profileCompletion === 100 && (
             <div className="mt-4 flex items-center gap-2 text-green-700">
               <CheckCircle className="w-5 h-5" />
-              <span className="text-sm font-medium">Your profile is complete! 🎉</span>
+              <span className="text-sm font-medium">
+                Your profile is complete! 🎉
+              </span>
             </div>
           )}
         </CardContent>
@@ -408,7 +460,8 @@ export default function ProfileClient(props: Props = {}) {
           <VerificationSection
             documents={docs}
             setDocuments={setDocs}
-            documentTypes={documentTypes}
+            documentType={"COMPANY_REG"}
+            userId={getUserIdFromToken() || undefined}
           />
         </TabsContent>
       </Tabs>
