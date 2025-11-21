@@ -20,6 +20,7 @@ import {
 import io, { Socket } from "socket.io-client";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ProviderLayout } from "@/components/provider-layout";
+import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -659,7 +660,20 @@ export default function CustomerMessagesPage() {
                       <div className="flex items-start space-x-3">
                         <div className="relative">
                           <Avatar>
-                            <AvatarImage src={conversation.avatar} />
+                            <AvatarImage
+                              src={
+                                conversation.avatar
+                                  ? `${
+                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                      "http://localhost:4000"
+                                    }${
+                                      conversation.avatar.startsWith("/")
+                                        ? ""
+                                        : "/"
+                                    }${conversation.avatar}`
+                                  : undefined
+                              }
+                            />
                             <AvatarFallback>
                               {conversation.name.charAt(0)}
                             </AvatarFallback>
@@ -718,7 +732,20 @@ export default function CustomerMessagesPage() {
                     <div className="flex items-center space-x-3">
                       <div className="relative">
                         <Avatar>
-                          <AvatarImage src={selectedConversation.avatar} />
+                          <AvatarImage
+                            src={
+                              selectedConversation.avatar
+                                ? `${
+                                    process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                    "http://localhost:4000"
+                                  }${
+                                    selectedConversation.avatar.startsWith("/")
+                                      ? ""
+                                      : "/"
+                                  }${selectedConversation.avatar}`
+                                : undefined
+                            }
+                          />
                           <AvatarFallback>
                             {selectedConversation.name.charAt(0)}
                           </AvatarFallback>
@@ -728,9 +755,12 @@ export default function CustomerMessagesPage() {
                         )}
                       </div>
                       <div>
-                        <h3 className="font-semibold">
+                        <Link
+                          href={`/provider/companies/${selectedConversation.userId}`}
+                          className="font-semibold text-lg hover:underline"
+                        >
                           {selectedConversation.name}
-                        </h3>
+                        </Link>
                         <p className="text-xs text-gray-500">
                           {selectedConversation.online
                             ? "Online"
@@ -745,9 +775,9 @@ export default function CustomerMessagesPage() {
                       <Button variant="outline" size="sm">
                         <Video className="w-4 h-4" />
                       </Button> */}
-                      <Button variant="outline" size="sm">
+                      {/* <Button variant="outline" size="sm">
                         <MoreVertical className="w-4 h-4" />
-                      </Button>
+                      </Button> */}
                     </div>
                   </>
                 ) : (

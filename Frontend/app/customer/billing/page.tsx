@@ -63,7 +63,9 @@ import {
 } from "lucide-react";
 import { CustomerLayout } from "@/components/customer-layout";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_BASE } from "@/lib/api";
+import Link from "next/link";
+import MilestonePayment from "@/components/MilestonePayment";
 
 export default function CustomerBillingPage() {
   const router = useRouter();
@@ -78,6 +80,12 @@ export default function CustomerBillingPage() {
   const [addBudgetOpen, setAddBudgetOpen] = useState(false);
   const [editBudgetOpen, setEditBudgetOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<any>(null);
+  const [selectedMilestoneForPayment, setSelectedMilestoneForPayment] =
+    useState<any>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const refreshProjectData = () => {
+    // TODO: implement data refresh after payment
+  };
 
   const [stats, setStats] = useState({
     totalSpent: 0,
@@ -91,29 +99,29 @@ export default function CustomerBillingPage() {
   const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   // Mock data
-const [invoices, setInvoices] = useState<any[]>([]);
-const [loadingInvoices, setLoadingInvoices] = useState(true);
-const [error, setError] = useState("");
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(true);
+  const [error, setError] = useState("");
 
-useEffect(() => {
-  const fetchInvoices = async () => {
-    try {
-      const data = await apiFetch("/company/billing/invoices");
-      setInvoices(data?.invoices || []);
-    } catch (err: unknown) {
-      console.error(err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to fetch invoices");
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const data = await apiFetch("/company/billing/invoices");
+        setInvoices(data?.invoices || []);
+      } catch (err: unknown) {
+        console.error(err);
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Failed to fetch invoices");
+        }
+      } finally {
+        setLoadingInvoices(false);
       }
-    } finally {
-      setLoadingInvoices(false);
-    }
-  };
+    };
 
-  fetchInvoices();
-}, []);
+    fetchInvoices();
+  }, []);
 
   const paymentMethods = [
     {
@@ -258,6 +266,67 @@ useEffect(() => {
     router.push(`/customer/billing/transactions/${transactionId}`);
   };
 
+  const handleDownloadReceipt = async (transactionId: string) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/company/billing/${transactionId}/receipt`
+      );
+      if (!res.ok) throw new Error("Failed to download receipt");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `receipt_${transactionId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Error downloading receipt",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportReport = async () => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`${API_BASE}/company/billing/export/report`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // if you use token auth
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to export report");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "billing_report.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Report Downloaded",
+        description: "Your billing report has been downloaded.",
+      });
+    } catch (e: any) {
+      console.error(e);
+      toast({
+        title: "Error exporting report",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleViewBudgetDetails = (budgetId: string) => {
     router.push(`/customer/billing/budgets/${budgetId}`);
   };
@@ -287,13 +356,13 @@ useEffect(() => {
     });
   };
 
-  const handlePayNow = (payment: any) => {
-    toast({
-      title: "Payment Processing",
-      description: `Processing payment of RM${
-        payment.amount.toLocaleString() ?? "0.00"
-      } for ${payment.project}`,
-    });
+  // Handle payment button click
+  const handlePayMilestone = (milestoneId: string, amount: number) => {
+    const milestone = upcomingPayments.find((m: any) => m.id === milestoneId);
+    if (milestone) {
+      setSelectedMilestoneForPayment(milestone);
+      setPaymentDialogOpen(true);
+    }
   };
 
   const handleAddPaymentMethod = () => {
@@ -329,10 +398,43 @@ useEffect(() => {
         ]);
 
         // Match structure expected by UI
-        setStats(overviewRes.data.stats || {});
+        setStats({
+          totalSpent: overviewRes.data.totalSpent,
+          pendingPayments: overviewRes.data.pendingPayments,
+          thisMonth: overviewRes.data.thisMonthSpent,
+          averageTransaction: overviewRes.data.averageTransaction,
+          completedPayments: overviewRes.data.recentTransactions.length,
+        });
         setBudgets(overviewRes.data.budgets || []);
-        setTransactions(txnRes.data || []);
-        setUpcomingPayments(upcomingRes.data || []);
+        setTransactions(
+          (txnRes.transactions || []).map((txn: any) => ({
+            id: txn.id,
+            description: txn.metadata?.milestoneTitle || "",
+            project: txn.project?.title || "",
+            provider: txn.metadata?.providerEmail || "",
+            milestone: txn.milestone?.title || "",
+            method: txn.method,
+            reference: txn.stripePaymentIntentId,
+            status: txn.status.toLowerCase(),
+            date: txn.createdAt,
+            amount: txn.amount,
+            type: "payment",
+          }))
+        );
+        setUpcomingPayments(
+          (upcomingRes.data || []).flatMap((project: any) =>
+            project.milestones.map((milestone: any, index: number) => ({
+              id: milestone.id,
+              projectId: project.id,
+              project: project.title,
+              milestone: milestone.title,
+              status: milestone.status,
+              amount: milestone.amount,
+              dueDate: milestone.dueDate,
+              sequence: index,
+            }))
+          )
+        );
       } catch (error) {
         console.error("Failed to fetch billing data:", error);
       } finally {
@@ -364,7 +466,7 @@ useEffect(() => {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportReport}>
               <Download className="w-4 h-4 mr-2" />
               Export Report
             </Button>
@@ -372,12 +474,12 @@ useEffect(() => {
               open={addPaymentMethodOpen}
               onOpenChange={setAddPaymentMethodOpen}
             >
-              <DialogTrigger asChild>
+              {/* <DialogTrigger asChild>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Payment Method
                 </Button>
-              </DialogTrigger>
+              </DialogTrigger> */}
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Payment Method</DialogTitle>
@@ -396,12 +498,12 @@ useEffect(() => {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
-            <TabsTrigger value="invoices">Invoices</TabsTrigger>
+            {/* <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="methods">Payment Methods</TabsTrigger>
-            <TabsTrigger value="budgets">Budgets</TabsTrigger>
+            <TabsTrigger value="budgets">Budgets</TabsTrigger> */}
           </TabsList>
 
           {/* Overview Tab */}
@@ -474,7 +576,7 @@ useEffect(() => {
                     <div>
                       <p className="text-sm text-gray-500">Avg. Transaction</p>
                       <p className="text-2xl font-bold">
-                        RM RM
+                        RM
                         {Math.round(
                           stats?.averageTransaction || 0
                         ).toLocaleString()}
@@ -550,9 +652,16 @@ useEffect(() => {
                           <Wallet className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold">{payment.project}</h3>
+                          <h3 className="font-semibold">
+                            <Link
+                              href={`/customer/projects/${payment.projectId}`}
+                              className="text-blue-600 hover:underline"
+                            >
+                              {payment.project}
+                            </Link>
+                          </h3>
                           <p className="text-sm text-gray-500">
-                            {payment.provider}
+                            {payment.milestone}
                           </p>
                           <p className="text-xs text-gray-400">
                             Due:{" "}
@@ -563,7 +672,7 @@ useEffect(() => {
                       <div className="text-right">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-lg font-bold text-gray-900">
-                            RM{payment.amount.toLocaleString() ?? "0.00"}
+                            RM{(payment.amount ?? 0).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -574,14 +683,23 @@ useEffect(() => {
                             </span>
                           </Badge>
                         </div>
-                        <Button
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => handlePayNow(payment)}
-                        >
-                          <Send className="w-3 h-3 mr-1" />
-                          Pay Now
-                        </Button>
+                        {(payment.sequence === 0 ||
+                          upcomingPayments.find(
+                            (p) =>
+                              p.projectId === payment.projectId &&
+                              p.sequence === payment.sequence - 1
+                          )?.status === "APPROVED") && (
+                          <Button
+                            size="sm"
+                            className="mt-2"
+                            onClick={() =>
+                              handlePayMilestone(payment.id, payment.amount)
+                            }
+                          >
+                            <Send className="w-3 h-3 mr-1" />
+                            Pay Now
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -679,7 +797,7 @@ useEffect(() => {
                       />
                     </div>
                   </div>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  {/* <Select value={filterStatus} onValueChange={setFilterStatus}>
                     <SelectTrigger className="w-full lg:w-48">
                       <Filter className="w-4 h-4 mr-2" />
                       <SelectValue />
@@ -691,7 +809,7 @@ useEffect(() => {
                       <SelectItem value="processing">Processing</SelectItem>
                       <SelectItem value="failed">Failed</SelectItem>
                     </SelectContent>
-                  </Select>
+                  </Select> */}
                   <Select value={filterPeriod} onValueChange={setFilterPeriod}>
                     <SelectTrigger className="w-full lg:w-48">
                       <Calendar className="w-4 h-4 mr-2" />
@@ -773,7 +891,11 @@ useEffect(() => {
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadReceipt(transaction.id)}
+                        >
                           <Download className="w-4 h-4 mr-2" />
                           Receipt
                         </Button>
@@ -803,7 +925,7 @@ useEffect(() => {
             )}
           </TabsContent>
 
-          <TabsContent value="invoices" className="space-y-6">
+          {/* <TabsContent value="invoices" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>All Invoices</CardTitle>
@@ -890,10 +1012,10 @@ useEffect(() => {
                 </Table>
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
 
           {/* Payment Methods Tab */}
-          <TabsContent value="methods" className="space-y-6">
+          {/* <TabsContent value="methods" className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               {paymentMethods.map((method) => (
                 <Card
@@ -973,10 +1095,10 @@ useEffect(() => {
                 </Card>
               ))}
             </div>
-          </TabsContent>
+          </TabsContent> */}
 
           {/* Budgets Tab */}
-          <TabsContent value="budgets" className="space-y-6">
+          {/* <TabsContent value="budgets" className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-semibold">Budget Management</h3>
@@ -1094,10 +1216,10 @@ useEffect(() => {
                   </Card>
                 );
               })}
-            </div>
+            </div> */}
 
-            {/* Budget Summary */}
-            <Card>
+          {/* Budget Summary */}
+          {/* <Card>
               <CardHeader>
                 <CardTitle>Budget Summary</CardTitle>
                 <CardDescription>Overall budget performance</CardDescription>
@@ -1140,7 +1262,7 @@ useEffect(() => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
         </Tabs>
 
         {/* Invoice Detail Dialog */}
@@ -1254,9 +1376,7 @@ useEffect(() => {
                     <div className="w-64 space-y-2">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Subtotal:</span>
-                        <span>
-                          RM{selectedInvoice.amount.toLocaleString()}
-                        </span>
+                        <span>RM{selectedInvoice.amount.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Tax (0%):</span>
@@ -1288,6 +1408,29 @@ useEffect(() => {
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Milestone Payment Dialog */}
+        <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+          <DialogContent className="sm:max-w-3xl w-full">
+            <MilestonePayment
+              milestone={{
+                id: selectedMilestoneForPayment?.id || "",
+                title: selectedMilestoneForPayment?.title || "",
+                amount: selectedMilestoneForPayment?.amount || 0,
+                projectId: selectedMilestoneForPayment?.projectId || "",
+              }}
+              type={"customer"}
+              onSuccess={() => {
+                setPaymentDialogOpen(false);
+                refreshProjectData();
+                toast({
+                  title: "Payment successful",
+                  description: "Milestone payment has been processed.",
+                });
+              }}
+            />
           </DialogContent>
         </Dialog>
 
@@ -1409,7 +1552,7 @@ function AddPaymentMethodForm({ onSubmit }: { onSubmit: () => void }) {
       </div>
       <DialogFooter>
         <Button variant="outline">Cancel</Button>
-        <Button onClick={onSubmit}>Add Payment Method</Button>
+        {/* <Button onClick={onSubmit}>Add Payment Method</Button> */}
       </DialogFooter>
     </div>
   );

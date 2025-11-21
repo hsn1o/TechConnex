@@ -81,8 +81,8 @@ export const getUserConversations = async (userId) => {
             name: true,
             email: true,
             role: true,
-            customerProfile: { select: { logoUrl: true } },
-            providerProfile: { select: { profileVideoUrl: true } },
+            customerProfile: { select: { profileImageUrl: true } },
+            providerProfile: { select: { profileImageUrl: true } },
           },
         },
         receiver: {
@@ -91,8 +91,8 @@ export const getUserConversations = async (userId) => {
             name: true,
             email: true,
             role: true,
-            customerProfile: { select: { logoUrl: true } },
-            providerProfile: { select: { profileVideoUrl: true } },
+            customerProfile: { select: { profileImageUrl: true } },
+            providerProfile: { select: { profileImageUrl: true } },
           },
         },
       },
@@ -110,9 +110,9 @@ export const getUserConversations = async (userId) => {
       // Determine avatar based on role
       let avatar = null;
       if (partner.role.includes("CUSTOMER")) {
-        avatar = partner.customerProfile?.logoUrl || null;
+        avatar = partner.customerProfile?.profileImageUrl || null;
       } else {
-        avatar = partner.providerProfile?.profileVideoUrl || null;
+        avatar = partner.providerProfile?.profileImageUrl || null;
       }
 
       if (

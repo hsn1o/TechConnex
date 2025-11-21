@@ -31,12 +31,13 @@ import {
   Calendar,
   Zap,
   CheckCircle,
+  Check,
   AlertCircle,
   Edit,
   Link,
 } from "lucide-react";
 import { RegistrationFormData, Certification } from "../page";
-import { Checkbox } from "@radix-ui/react-checkbox";
+import { Checkbox, CheckboxIndicator } from "@radix-ui/react-checkbox";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -212,7 +213,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
   editCertification,
   setEditCertification,
 }) => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
   const isStrongPassword = (pwd: string) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|;:'",.<>/?`~]).{8,}$/.test(
@@ -1828,13 +1829,17 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           <div className="flex items-start space-x-2 p-4 border rounded-lg bg-blue-50">
             <Checkbox
               id="terms"
-              className="mt-1"
+              className="w-5 h-5 border rounded bg-white focus:ring-blue-500"
               checked={formData.acceptedTerms}
               onCheckedChange={(checked) =>
                 handleBooleanInputChange("acceptedTerms", checked as boolean)
               }
               required
-            />
+            >
+              <CheckboxIndicator className="flex items-center justify-center">
+                <Check className="w-4 h-4 text-blue-600" />
+              </CheckboxIndicator>
+            </Checkbox>
             <Label
               htmlFor="terms"
               className="text-sm text-gray-700 leading-relaxed"
@@ -1854,6 +1859,14 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               Malaysian data protection laws.
             </Label>
           </div>
+          {!formData.acceptedTerms && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">
+                You must accept the Terms of Service and Privacy Policy to
+                continue.
+              </p>
+            </div>
+          )}
         </motion.div>
       );
 

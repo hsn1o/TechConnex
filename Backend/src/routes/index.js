@@ -31,9 +31,8 @@ import adminReportsRouter from "../modules/admin/reports/index.js";
 import adminDashboardRouter from "../modules/admin/dashboard/index.js";
 import disputesRouter from "../modules/disputes/index.js";
 import paymentRouter from "../modules/payment/index.js";
-import companyReviewsRouter from "../modules/company/reviews/index.js";
-import providerReviewsRouter from "../modules/provider/reviews/index.js";
 import KycRouter from "../modules/kyc/index.js";
+import notificationsRoutes from "../modules/notifications/index.js";
 // import providerCertificateRouter from "../modules/certifications/index.js";
 
 const router = express.Router();
@@ -95,6 +94,7 @@ router.use("/admin/dashboard", adminDashboardRouter);
 router.use("/disputes", disputesRouter);
 router.use("/payments", paymentRouter);
 router.use("/kyc", KycRouter);
+router.use("/notifications", notificationsRoutes);
 
 // Mount check-email under /api so frontend using NEXT_PUBLIC_API_BASE_URL that
 // points to http://host:PORT/api will be able to call `${API_BASE}/check-email`

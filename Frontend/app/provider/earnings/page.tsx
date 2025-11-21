@@ -29,18 +29,31 @@ import {
   Wallet,
   PieChart,
   BarChart3,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
+import { toast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 
 export default function ProviderEarningsPage() {
+  const router = useRouter();
   const [timeFilter, setTimeFilter] = useState("this-month");
   const [earningsData, setEarningsData] = useState<any>(null);
+  const [quickStats, setQuickStats] = useState<any>(null);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
+  const [monthlyEarnings, setMonthlyEarnings] = useState<any[]>([]);
+  const [bankAccount, setBankAccount] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [withdrawAmount, setWithdrawAmount] = useState(0);
   const [selectedBank, setSelectedBank] = useState<string | null>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawMessage, setWithdrawMessage] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newBankName, setNewBankName] = useState("");
+  const [newAccountNumber, setNewAccountNumber] = useState("");
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newSwiftCode, setNewSwiftCode] = useState("");
   const handleWithdraw = async () => {
     if (!selectedBank) {
       alert("Please select a bank account");
@@ -106,7 +119,7 @@ export default function ProviderEarningsPage() {
         }
 
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings`,
+          `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/overview`,
           {
             method: "GET",
             headers: {
@@ -121,6 +134,15 @@ export default function ProviderEarningsPage() {
         const data = await res.json();
         setEarningsData(data.earningsData);
         setRecentPayments(data.recentPayments);
+        setMonthlyEarnings(data.monthlyEarnings);
+        setQuickStats(data.quickStats);
+        // Use bankDetails returned from API
+        const _bd = data.bankDetails;
+        if (_bd && Object.values(_bd).some((val) => val)) {
+          setBankAccount([_bd]);
+        } else {
+          setBankAccount([]);
+        }
       } catch (err) {
         console.error("❌ Failed to fetch earnings:", err);
       } finally {
@@ -130,6 +152,62 @@ export default function ProviderEarningsPage() {
 
     fetchEarnings();
   }, []);
+
+  // Handlers to add or delete bank details
+  const handleAddBankDetails = async () => {
+    if (!newBankName || !newAccountNumber || !newAccountName || !newSwiftCode) {
+      alert("Please fill in all bank details");
+      return;
+    }
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            bankName: newBankName,
+            bankAccountNumber: newAccountNumber,
+            bankAccountName: newAccountName,
+            bankSwiftCode: newSwiftCode,
+          }),
+        }
+      );
+      if (!res.ok) throw new Error("Failed to add bank details");
+      const data = await res.json();
+      const _bd2 = data.bankDetails;
+      if (_bd2 && Object.values(_bd2).some((val) => val)) {
+        setBankAccount([_bd2]);
+      } else {
+        setBankAccount([]);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteBankDetails = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) throw new Error("Failed to delete bank details");
+      setBankAccount([]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (loading) {
     return (
@@ -176,6 +254,33 @@ export default function ProviderEarningsPage() {
       default:
         return status;
     }
+  };
+
+  const getCardIcon = (brand: string) => {
+    switch (brand.toLowerCase()) {
+      case "visa":
+        return "💳";
+      case "mastercard":
+        return "💳";
+      case "amex":
+        return "💳";
+      default:
+        return "💳";
+    }
+  };
+
+  const handleSetDefaultPaymentMethod = (methodId: string) => {
+    toast({
+      title: "Default Payment Method Updated",
+      description: "Your default payment method has been changed.",
+    });
+  };
+
+  const handleRemovePaymentMethod = (methodId: string) => {
+    toast({
+      title: "Payment Method Removed",
+      description: "The payment method has been removed from your account.",
+    });
   };
 
   return (
@@ -293,8 +398,9 @@ export default function ProviderEarningsPage() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="payments">Payment History</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            {/* <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
             <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
+            <TabsTrigger value="methods">Payment Methods</TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -311,18 +417,25 @@ export default function ProviderEarningsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {/* {monthlyEarnings.map((month, index) => (
-                        <div key={index} className="flex items-center justify-between">
+                      {monthlyEarnings.map((month) => (
+                        <div
+                          key={month.month}
+                          className="flex items-center justify-between"
+                        >
                           <div className="flex items-center space-x-3">
                             <div className="w-3 h-3 bg-blue-500 rounded-full" />
                             <span className="font-medium">{month.month}</span>
                           </div>
                           <div className="flex items-center space-x-4">
-                            <span className="text-sm text-gray-500">{month.projects} projects</span>
-                            <span className="font-semibold">RM{month.amount.toLocaleString()}</span>
+                            <span className="text-sm text-gray-500">
+                              {month.projects} projects
+                            </span>
+                            <span className="font-semibold">
+                              RM{month.amount.toLocaleString()}
+                            </span>
                           </div>
                         </div>
-                      ))} */}
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -399,19 +512,25 @@ export default function ProviderEarningsPage() {
                       <span className="text-sm text-gray-600">
                         Projects This Month
                       </span>
-                      <span className="font-semibold">6</span>
+                      <span className="font-semibold">
+                        {quickStats.projectsThisMonth.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">
                         Success Rate
                       </span>
-                      <span className="font-semibold">98%</span>
+                      <span className="font-semibold">
+                        {quickStats.successRate.toLocaleString()}%
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">
                         Repeat Clients
                       </span>
-                      <span className="font-semibold">67%</span>
+                      <span className="font-semibold">
+                        {quickStats.repeatClientsPercent.toLocaleString()}%
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -515,7 +634,13 @@ export default function ProviderEarningsPage() {
                             {getStatusText(payment.status)}
                           </Badge>
                         </div>
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            router.push(`/provider/earnings/transactions/${payment.id}`)
+                          }
+                        >
                           <Eye className="w-4 h-4 mr-2" />
                           Details
                         </Button>
@@ -528,7 +653,7 @@ export default function ProviderEarningsPage() {
           </TabsContent>
 
           {/* Analytics */}
-          <TabsContent value="analytics">
+          {/* <TabsContent value="analytics">
             <div className="grid md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -598,7 +723,7 @@ export default function ProviderEarningsPage() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+          </TabsContent> */}
 
           {/* Withdraw */}
           <TabsContent value="withdraw">
@@ -694,6 +819,167 @@ export default function ProviderEarningsPage() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </TabsContent>
+
+          {/* Payment Methods Tab */}
+          <TabsContent value="methods" className="space-y-6">
+            {bankAccount.length === 0 && !showAddForm && (
+              <div className="text-center p-6">
+                <p className="text-gray-500">No bank details found.</p>
+                <Button onClick={() => setShowAddForm(true)}>
+                  Add Bank Details
+                </Button>
+              </div>
+            )}
+            {showAddForm && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Add Bank Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newBankName}
+                      onChange={(e) => setNewBankName(e.target.value)}
+                      className="w-full border p-2 rounded"
+                      placeholder="e.g. Maybank"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      value={newAccountNumber}
+                      onChange={(e) => setNewAccountNumber(e.target.value)}
+                      className="w-full border p-2 rounded"
+                      placeholder="e.g. 1234567890"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Account Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newAccountName}
+                      onChange={(e) => setNewAccountName(e.target.value)}
+                      className="w-full border p-2 rounded"
+                      placeholder="e.g. John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      SWIFT Code
+                    </label>
+                    <input
+                      type="text"
+                      value={newSwiftCode}
+                      onChange={(e) => setNewSwiftCode(e.target.value)}
+                      className="w-full border p-2 rounded"
+                      placeholder="e.g. ABCDUS33"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleAddBankDetails}>Save</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAddForm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <div
+              className={`grid md:grid-cols-2 gap-6 ${
+                bankAccount.length === 0 ? "hidden" : ""
+              }`}
+            >
+              {bankAccount.map((method) => (
+                <Card
+                  key={method.id}
+                  className={method.isDefault ? "ring-2 ring-blue-500" : ""}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl">
+                          {method.type === "credit_card"
+                            ? getCardIcon(method.brand!)
+                            : "🏦"}
+                        </div>
+                        <div>
+                          {method.type === "credit_card" ? (
+                            <>
+                              <p className="font-semibold">
+                                {method.brand} •••• {method.last4}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                Expires{" "}
+                                {method
+                                  .expiryMonth!.toString()
+                                  .padStart(2, "0")}
+                                /{method.expiryYear}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-semibold">{method.bankName}</p>
+                              <p className="text-sm text-gray-500">
+                                Account •••• {method.last4}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {method.isDefault && (
+                        <Badge className="bg-blue-100 text-blue-800">
+                          Default
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">
+                      {method.type === "credit_card"
+                        ? method.name
+                        : method.accountName}
+                    </p>
+                    <div className="flex gap-2">
+                      {!method.isDefault && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleSetDefaultPaymentMethod(method.id)
+                          }
+                        >
+                          Set as Default
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm">
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 bg-transparent"
+                        onClick={() => handleRemovePaymentMethod(method.id)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
         </Tabs>

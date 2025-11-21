@@ -8,7 +8,9 @@ import {
   getPendingPayouts,
   getProviderEarnings,
 } from "./service.js";
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
 /**
  * POST /api/payments/initiate
  * Client initiates payment for a milestone

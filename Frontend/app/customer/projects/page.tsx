@@ -72,7 +72,7 @@ export default function CustomerProjectsPage() {
           page: 1,
           limit: 100, // Get all projects for now
         });
-        
+
         if (response.success) {
           setProjects(response.items || []);
         } else {
@@ -90,7 +90,17 @@ export default function CustomerProjectsPage() {
 
     fetchProjects();
   }, []);
-
+  const handleContact = (
+    providerId: string,
+    providerName: string,
+    providerAvatar: string
+  ) => {
+    router.push(
+      `/customer/messages?userId=${providerId}&name=${encodeURIComponent(
+        providerName
+      )}&avatar=${encodeURIComponent(providerAvatar || "")}`
+    );
+  };
   const getStatusColor = (status: string, type: string) => {
     // ServiceRequest statuses
     if (type === "ServiceRequest") {
@@ -103,7 +113,7 @@ export default function CustomerProjectsPage() {
           return "bg-gray-100 text-gray-800";
       }
     }
-    
+
     // Project statuses
     switch (status) {
       case "COMPLETED":
@@ -131,7 +141,7 @@ export default function CustomerProjectsPage() {
           return status;
       }
     }
-    
+
     // Project statuses
     switch (status) {
       case "COMPLETED":
@@ -224,39 +234,39 @@ export default function CustomerProjectsPage() {
     setIsEditDialogOpen(true);
   };
 
-const handleSaveProject = async () => {
-  if (!editingProject) return;
-  try {
-    // Prepare a minimal, safe payload: only send fields the user just edited.
-    const payload: any = {
-      title: editingProject.title,
-      description: editingProject.description,
-      category: editingProject.category,
+  const handleSaveProject = async () => {
+    if (!editingProject) return;
+    try {
+      // Prepare a minimal, safe payload: only send fields the user just edited.
+      const payload: any = {
+        title: editingProject.title,
+        description: editingProject.description,
+        category: editingProject.category,
         priority:
           editingProject.priority?.toLowerCase?.() || editingProject.priority,
-    };
+      };
 
-    // If you show separate min/max in your dialog later, include them here:
+      // If you show separate min/max in your dialog later, include them here:
       if (
         Number.isFinite(editingProject.budgetMin) &&
         Number.isFinite(editingProject.budgetMax)
       ) {
-      payload.budgetMin = Number(editingProject.budgetMin);
-      payload.budgetMax = Number(editingProject.budgetMax);
-    }
+        payload.budgetMin = Number(editingProject.budgetMin);
+        payload.budgetMax = Number(editingProject.budgetMax);
+      }
 
-    if (editingProject.timeline) payload.timeline = editingProject.timeline;
+      if (editingProject.timeline) payload.timeline = editingProject.timeline;
 
-    // If you add Requirements/Deliverables fields in the dialog later, send arrays:
-    // payload.requirements = toLines(editingRequirementsText);
-    // payload.deliverables = toLines(editingDeliverablesText);
+      // If you add Requirements/Deliverables fields in the dialog later, send arrays:
+      // payload.requirements = toLines(editingRequirementsText);
+      // payload.deliverables = toLines(editingDeliverablesText);
 
       const { project: updated } = await updateCompanyProject(
         editingProject.id,
         payload
       );
 
-    // Update local list
+      // Update local list
       setProjects((prev) =>
         prev.map((p) => (p.id === editingProject.id ? { ...p, ...updated } : p))
       );
@@ -265,18 +275,18 @@ const handleSaveProject = async () => {
         title: "Project Updated",
         description: "Changes saved successfully.",
       });
-    setIsEditDialogOpen(false);
-    setEditingProject(null);
-  } catch (err) {
-    console.error(err);
-    toast({
-      title: "Update failed",
+      setIsEditDialogOpen(false);
+      setEditingProject(null);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Update failed",
         description:
           err instanceof Error ? err.message : "Could not update project",
-      variant: "destructive",
-    });
-  }
-};
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDeleteProject = (projectId: number) => {
     toast({
@@ -527,21 +537,21 @@ const handleSaveProject = async () => {
                                 project.type
                               )}
                             >
-                          {getStatusText(project.status, project.type)}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {project.type}
-                        </Badge>
+                              {getStatusText(project.status, project.type)}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {project.type}
+                            </Badge>
                             <Badge
                               className={getPriorityColor(project.priority)}
                               variant="outline"
                             >
                               {project.priority}
-                          </Badge>
+                            </Badge>
                             {(project.priority === "High" ||
                               project.priority === "high") && (
                               <Badge variant="destructive">Urgent</Badge>
-                        )}
+                            )}
                           </div>
                           <CardDescription className="mt-1 line-clamp-3">
                             {project.description}
@@ -554,9 +564,23 @@ const handleSaveProject = async () => {
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-8 h-8">
                         <AvatarImage
-                          src={project.provider?.providerProfile?.profileImageUrl
-                            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.provider.providerProfile.profileImageUrl}`
-                            : "/placeholder.svg"}
+                          src={
+                            project.provider?.providerProfile?.profileImageUrl
+                              ? `${
+                                  process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                  "http://localhost:4000"
+                                }${
+                                  project.provider.providerProfile.profileImageUrl.startsWith(
+                                    "/"
+                                  )
+                                    ? ""
+                                    : "/"
+                                }${
+                                  project.provider.providerProfile
+                                    .profileImageUrl
+                                }`
+                              : "/placeholder.svg"
+                          }
                         />
                         <AvatarFallback>
                           {project.provider?.name
@@ -573,9 +597,9 @@ const handleSaveProject = async () => {
                             {project.provider.name}
                           </Link>
                         ) : (
-                        <p className="text-sm font-medium">
-                          {project.provider?.name || "No Provider Assigned"}
-                        </p>
+                          <p className="text-sm font-medium">
+                            {project.provider?.name || "No Provider Assigned"}
+                          </p>
                         )}
                         <p className="text-xs text-gray-500">
                           {project.category}
@@ -585,30 +609,34 @@ const handleSaveProject = async () => {
 
                     {project.type === "Project" &&
                       project.status === "IN_PROGRESS" && (
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
                             <span>Progress: {project.progress || 0}%</span>
-                          <span>
+                            <span>
                               {project.completedMilestones || 0}/
                               {project.totalMilestones || 0} milestones
-                          </span>
-                        </div>
-                        <Progress 
+                            </span>
+                          </div>
+                          <Progress
                             value={project.progress || 0}
-                          className="h-2" 
-                        />
-                      </div>
-                    )}
+                            className="h-2"
+                          />
+                        </div>
+                      )}
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <p className="text-gray-500">
-                          {project.type === "Project" && project.status === "IN_PROGRESS" && project.approvedPrice
+                          {project.type === "Project" &&
+                          project.status === "IN_PROGRESS" &&
+                          project.approvedPrice
                             ? "Approved Price"
                             : "Budget"}
                         </p>
                         <p className="font-semibold">
-                          {project.type === "Project" && project.status === "IN_PROGRESS" && project.approvedPrice
+                          {project.type === "Project" &&
+                          project.status === "IN_PROGRESS" &&
+                          project.approvedPrice
                             ? `RM${project.approvedPrice.toLocaleString()}`
                             : `RM${project.budgetMin.toLocaleString()} - RM${project.budgetMax.toLocaleString()}`}
                         </p>
@@ -637,13 +665,13 @@ const handleSaveProject = async () => {
 
                     {project.type === "Project" &&
                       project.status === "COMPLETED" && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm text-gray-500">Status:</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-gray-500">Status:</span>
                           <Badge className="bg-green-100 text-green-800">
                             Completed
                           </Badge>
-                      </div>
-                    )}
+                        </div>
+                      )}
 
                     <div className="flex gap-2 mt-auto">
                       <Button
@@ -660,8 +688,10 @@ const handleSaveProject = async () => {
                         size="sm"
                         variant="outline"
                         onClick={() =>
-                          router.push(
-                            `/customer/messages?project=${project.id}`
+                          handleContact(
+                            project.provider?.id,
+                            project.provider?.name,
+                            project.provider?.providerProfile?.profileImageUrl
                           )
                         }
                       >
@@ -695,8 +725,21 @@ const handleSaveProject = async () => {
                           <Avatar className="flex-shrink-0">
                             <AvatarImage
                               src={
-                                project.provider?.providerProfile?.profileImageUrl
-                                  ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.provider.providerProfile.profileImageUrl}`
+                                project.provider?.providerProfile
+                                  ?.profileImageUrl
+                                  ? `${
+                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                      "http://localhost:4000"
+                                    }${
+                                      project.provider.providerProfile.profileImageUrl.startsWith(
+                                        "/"
+                                      )
+                                        ? ""
+                                        : "/"
+                                    }${
+                                      project.provider.providerProfile
+                                        .profileImageUrl
+                                    }`
                                   : "/placeholder.svg"
                               }
                             />
@@ -737,7 +780,8 @@ const handleSaveProject = async () => {
                               {project.description}
                             </p>
                             <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
-                              {project.provider?.id && project.provider?.name ? (
+                              {project.provider?.id &&
+                              project.provider?.name ? (
                                 <Link
                                   href={`/customer/providers/${project.provider.id}`}
                                   className="hover:text-blue-600 hover:underline transition-colors"
@@ -745,7 +789,9 @@ const handleSaveProject = async () => {
                                   {project.provider.name}
                                 </Link>
                               ) : (
-                              <span>{project.provider?.name || "No Provider"}</span>
+                                <span>
+                                  {project.provider?.name || "No Provider"}
+                                </span>
                               )}
                               <span>•</span>
                               <span>{project.category}</span>
@@ -768,34 +814,38 @@ const handleSaveProject = async () => {
                         <div className="flex items-center space-x-6 flex-shrink-0">
                           <div className="text-right">
                             <p className="text-sm text-gray-500">
-                              {project.type === "Project" && project.status === "IN_PROGRESS" && project.approvedPrice
+                              {project.type === "Project" &&
+                              project.status === "IN_PROGRESS" &&
+                              project.approvedPrice
                                 ? "Approved Price"
                                 : "Budget"}
                             </p>
                             <p className="font-semibold">
-                              {project.type === "Project" && project.status === "IN_PROGRESS" && project.approvedPrice
+                              {project.type === "Project" &&
+                              project.status === "IN_PROGRESS" &&
+                              project.approvedPrice
                                 ? `RM${project.approvedPrice.toLocaleString()}`
                                 : `RM${project.budgetMin.toLocaleString()} - RM${project.budgetMax.toLocaleString()}`}
                             </p>
                           </div>
                           {project.type === "Project" &&
                             project.status === "IN_PROGRESS" && (
-                            <div className="w-24">
-                              <div className="flex justify-between text-xs mb-1">
-                                <span>
+                              <div className="w-24">
+                                <div className="flex justify-between text-xs mb-1">
+                                  <span>
                                     Progress: {project.progress || 0}%
                                   </span>
                                   <span>
                                     {project.completedMilestones || 0}/
                                     {project.totalMilestones || 0}
-                                </span>
-                              </div>
-                              <Progress 
+                                  </span>
+                                </div>
+                                <Progress
                                   value={project.progress || 0}
-                                className="h-2" 
-                              />
-                            </div>
-                          )}
+                                  className="h-2"
+                                />
+                              </div>
+                            )}
                           <div className="flex gap-2">
                             <Button
                               size="sm"
@@ -809,11 +859,15 @@ const handleSaveProject = async () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() =>
-                                router.push(
-                                  `/customer/messages?project=${project.id}`
-                                )
-                              }
+                              onClick={(e) => {
+                                e.preventDefault(); // prevents Link from triggering navigation
+                                handleContact(
+                                  project.provider?.id,
+                                  project.provider?.name,
+                                  project.provider?.providerProfile
+                                    ?.profileImageUrl
+                                );
+                              }}
                             >
                               <MessageSquare className="w-4 h-4" />
                             </Button>

@@ -1246,29 +1246,29 @@ export async function getProviderProfileCompletion() {
 }
 
 // Review API functions
-export async function getCompanyReviews(params?: {
-  page?: number;
-  limit?: number;
-  rating?: number;
-  search?: string;
-  sortBy?: string;
-  status?: string;
-}) {
-  const token = getToken();
-  if (!token) throw new Error("Not authenticated");
+// export async function getCompanyReviews(params?: {
+//   page?: number;
+//   limit?: number;
+//   rating?: number;
+//   search?: string;
+//   sortBy?: string;
+//   status?: string;
+// }) {
+//   const token = getToken();
+//   if (!token) throw new Error("Not authenticated");
 
-  const res = await fetch(`${API_BASE}/provider/profile/portfolio`, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
+//   const res = await fetch(`${API_BASE}/provider/profile/portfolio`, {
+//     method: "GET",
+//     headers: {
+//       "Authorization": `Bearer ${token}`,
+//       "Content-Type": "application/json",
+//     },
+//   });
   
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || "Failed to fetch portfolio");
-  return data;
-}
+//   const data = await res.json();
+//   if (!res.ok) throw new Error(data?.message || "Failed to fetch portfolio");
+//   return data;
+// }
 
 export async function getProviderCompletedProjects(providerId: string) {
   const token = getToken();
@@ -1297,8 +1297,7 @@ export async function getMyCertifications() {
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
-    },
-    body: JSON.stringify(reviewData),
+    }
   });
   
   const data = await res.json();
@@ -1322,7 +1321,7 @@ export async function createCertification(certificationData: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(reviewData),
+    body: JSON.stringify(certificationData),
   });
   
   const data = await res.json();
@@ -1446,7 +1445,7 @@ export async function getAdminUserById(userId: string) {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ content }),
+    // body: JSON.stringify({ content }),
   });
   
   const data = await res.json();
@@ -1659,8 +1658,7 @@ export async function getAdminDisputes(filters?: { status?: string; search?: str
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
-    },
-    body: JSON.stringify(reviewData),
+    }
   });
   
   const data = await res.json();
@@ -1770,8 +1768,7 @@ export async function getAdminProjects(filters?: { status?: string; search?: str
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
-    },
-    body: JSON.stringify(reviewData),
+    }
   });
   
   const data = await res.json();

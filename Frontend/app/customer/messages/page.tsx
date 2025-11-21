@@ -20,6 +20,8 @@ import {
 import { CustomerLayout } from "@/components/customer-layout";
 import io, { Socket } from "socket.io-client";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -87,6 +89,7 @@ export default function CustomerMessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const selectedChatRef = useRef<string | null>(null);
+  const router = useRouter();
 
   // Get user data and token on mount
   useEffect(() => {
@@ -425,6 +428,14 @@ export default function CustomerMessagesPage() {
     selectedChatRef.current = conversation.userId;
     setSelectedChat(conversation.userId);
     fetchMessages(conversation.userId);
+    // Update URL parameters to reflect selected chat
+    router.push(
+      `/customer/messages?userId=${
+        conversation.userId
+      }&name=${encodeURIComponent(
+        conversation.name
+      )}&avatar=${encodeURIComponent(conversation.avatar || "")}`
+    );
   };
 
   const handleFileSelect = async (
@@ -689,7 +700,20 @@ export default function CustomerMessagesPage() {
                       <div className="flex items-start space-x-3">
                         <div className="relative">
                           <Avatar>
-                            <AvatarImage src={conversation.avatar} />
+                            <AvatarImage
+                              src={
+                                conversation.avatar
+                                  ? `${
+                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                      "http://localhost:4000"
+                                    }${
+                                      conversation.avatar.startsWith("/")
+                                        ? ""
+                                        : "/"
+                                    }${conversation.avatar}`
+                                  : undefined
+                              }
+                            />
                             <AvatarFallback>
                               {conversation.name.charAt(0)}
                             </AvatarFallback>
@@ -748,7 +772,20 @@ export default function CustomerMessagesPage() {
                     <div className="flex items-center space-x-3">
                       <div className="relative">
                         <Avatar>
-                          <AvatarImage src={selectedConversation.avatar} />
+                          <AvatarImage
+                            src={
+                              selectedConversation.avatar
+                                ? `${
+                                    process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                    "http://localhost:4000"
+                                  }${
+                                    selectedConversation.avatar.startsWith("/")
+                                      ? ""
+                                      : "/"
+                                  }${selectedConversation.avatar}`
+                                : undefined
+                            }
+                          />
                           <AvatarFallback>
                             {selectedConversation.name.charAt(0)}
                           </AvatarFallback>
@@ -758,9 +795,12 @@ export default function CustomerMessagesPage() {
                         )}
                       </div>
                       <div>
-                        <h3 className="font-semibold">
+                        <Link
+                          href={`/customer/providers/${selectedConversation.userId}`}
+                          className="font-semibold text-lg hover:underline"
+                        >
                           {selectedConversation.name}
-                        </h3>
+                        </Link>
                         <p className="text-xs text-gray-500">
                           {selectedConversation.online
                             ? "Online"
@@ -775,9 +815,9 @@ export default function CustomerMessagesPage() {
                       <Button variant="outline" size="sm">
                         <Video className="w-4 h-4" />
                       </Button> */}
-                      <Button variant="outline" size="sm">
+                      {/* <Button variant="outline" size="sm">
                         <MoreVertical className="w-4 h-4" />
-                      </Button>
+                      </Button> */}
                     </div>
                   </>
                 ) : (
