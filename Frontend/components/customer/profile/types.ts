@@ -6,6 +6,16 @@ export type UploadedDocument = {
   uploadDate: string;
   status: "pending" | "approved" | "rejected";
   rejectionReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  fileUrl?: string;
+
+  // NEW FIELD: reviewer details
+  reviewer?: {
+    id: string;
+    name: string;
+    email?: string;
+  } | null;
 };
 
 export type ProfileData = {

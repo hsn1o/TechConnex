@@ -57,20 +57,27 @@ model User {
 }
 
 model Notification {
-  id        String   @id @default(uuid()) @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String   @db.Uuid // ✅ fix
+  id     String @id @default(uuid()) @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid // ✅ fix
+  title     String // proposal, payment, message, system
   type      String // proposal, payment, message, system
   content   String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+  metadata  Json? // Store additional payment info
 }
 
 model ProviderProfile {
-  id              String  @id @default(uuid()) @db.Uuid
-  user            User    @relation(fields: [userId], references: [id])
-  userId          String  @unique @db.Uuid
-  stripeAccountId String? // Only for providers after onboarding
+  id     String @id @default(uuid()) @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique @db.Uuid
+
+  // Bank account details for manual payouts
+  bankName          String? @map("bank_name")
+  bankAccountNumber String? @map("bank_account_number")
+  bankAccountName   String? @map("bank_account_name")
+  bankSwiftCode     String? @map("bank_swift_code")
 
   // Profile
   bio             String?
@@ -148,14 +155,14 @@ model CustomerProfile {
   userId String @unique @db.Uuid
 
   //Identity
-  description String?
-  industry    String?
-  location    String?
-  website     String? // 🆕 Personal or company site
-  logoUrl     String?  @map("logo_url")
-  profileImageUrl String? @map("profile_image_url") // 🆕 Profile image
-  socialLinks Json? // LinkedIn, Twitter, etc.
-  languages   String[] // 🆕 Spoken languages
+  description     String?
+  industry        String?
+  location        String?
+  website         String? // 🆕 Personal or company site
+  logoUrl         String?  @map("logo_url")
+  profileImageUrl String?  @map("profile_image_url") // 🆕 Profile image
+  socialLinks     Json? // LinkedIn, Twitter, etc.
+  languages       String[] // 🆕 Spoken languages
 
   // Business Profile
   companySize     String?  @map("company_size") @db.VarChar(50)
@@ -518,16 +525,29 @@ model Payment {
   milestoneId String?    @db.Uuid
 
   // Stripe info
-  stripePaymentIntentId String? // ID from Stripe
-  stripeTransferId      String? // For payout to provider
-  stripeRefundId        String? // If refunded/dispute
+  stripePaymentIntentId String? @map("stripe_payment_intent_id")
+  stripeTransferId      String? @map("stripe_transfer_id")
+  stripeRefundId        String? @map("stripe_refund_id")
+  stripeChargeId        String? @map("stripe_charge_id") // 👈 NEW: Track actual charge
 
-  amount    Float
-  currency  String        @default("MYR") @db.VarChar(3)
-  method    PaymentMethod
-  status    PaymentStatus
-  Invoice   Invoice?      @relation(fields: [invoiceId], references: [id])
-  invoiceId String?       @db.Uuid
+  amount            Float
+  currency          String        @default("MYR") @db.VarChar(3)
+  platformFeeAmount Float         @default(0) @map("platform_fee_amount") // 👈 NEW
+  providerAmount    Float         @map("provider_amount") // 👈 NEW: Amount after platform fee
+  method            PaymentMethod
+  status            PaymentStatus
+  Invoice           Invoice?      @relation(fields: [invoiceId], references: [id])
+  invoiceId         String?       @db.Uuid
+
+  // Escrow tracking
+  escrowedAt          DateTime? @map("escrowed_at") // 👈 NEW
+  releasedAt          DateTime? @map("released_at") // 👈 NEW
+  releaseScheduledFor DateTime? @map("release_scheduled_for") // 👈 NEW: For auto-release
+
+  // Bank transfer tracking (for provider payout)
+  bankTransferStatus String?   @map("bank_transfer_status") // pending, completed, failed
+  bankTransferDate   DateTime? @map("bank_transfer_date")
+  bankTransferRef    String?   @map("bank_transfer_ref") // Your internal reference
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -535,6 +555,28 @@ model Payment {
   Dispute Dispute[]
 
   Settings Settings[]
+
+  metadata Json? // Store additional payment info
+}
+
+// New model for tracking platform fees
+model PlatformFeeConfig {
+  id          String @id @default(uuid()) @db.Uuid
+  percentage  Float  @default(10.0) // 10% platform fee
+  fixedAmount Float  @default(0.0) // Fixed fee per transaction
+  minAmount   Float  @default(0.0) // Minimum fee
+  maxAmount   Float? // Maximum fee cap
+  currency    String @default("MYR")
+
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_fee_configs")
 }
 
 model Message {
@@ -580,12 +622,12 @@ model SavedProvider {
 
 // NEW: Saved companies/bookmarks
 model SavedCompany {
-  id         String   @id @default(uuid()) @db.Uuid
-  user       User     @relation("UserSavedCompanies", fields: [userId], references: [id], onDelete: Cascade)
-  userId     String   @db.Uuid
-  company    User     @relation("CompanySavedByProviders", fields: [companyId], references: [id], onDelete: Cascade)
-  companyId  String   @db.Uuid
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  user      User     @relation("UserSavedCompanies", fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  company   User     @relation("CompanySavedByProviders", fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String   @db.Uuid
+  createdAt DateTime @default(now())
 
   @@unique([userId, companyId])
   @@map("saved_companies")
@@ -723,11 +765,21 @@ enum PaymentMethod {
 }
 
 enum PaymentStatus {
+  PENDING // Payment initiated, not yet paid
+  IN_PROGRESS // Payment processing
+  ESCROWED // Funds held in platform Stripe account
+  RELEASED // Ready for payout to provider
+  TRANSFERRED // 👈 NEW: Money sent to provider
+  REFUNDED // Refunded to customer
+  FAILED // Payment failed
+}
+
+enum BankTransferStatus {
   PENDING
-  IN_PROGRESS // 🆕 add this
-  ESCROWED
-  RELEASED
-  REFUNDED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 
 enum MessageType {

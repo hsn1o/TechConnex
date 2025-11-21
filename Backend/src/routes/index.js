@@ -27,9 +27,13 @@ import adminSettingsRouter from "../modules/settings/admin/index.js";
 import adminUsersRouter from "../modules/admin/users/index.js";
 import adminDisputesRouter from "../modules/admin/disputes/index.js";
 import adminProjectsRouter from "../modules/admin/projects/index.js";
+import adminReportsRouter from "../modules/admin/reports/index.js";
+import adminDashboardRouter from "../modules/admin/dashboard/index.js";
 import disputesRouter from "../modules/disputes/index.js";
 import paymentRouter from "../modules/payment/index.js";
-
+import companyReviewsRouter from "../modules/company/reviews/index.js";
+import providerReviewsRouter from "../modules/provider/reviews/index.js";
+import KycRouter from "../modules/kyc/index.js";
 // import providerCertificateRouter from "../modules/certifications/index.js";
 
 const router = express.Router();
@@ -47,6 +51,7 @@ router.use("/company/project-requests", companyProjectRequestsRouter);
 router.use("/company/milestones", companyMilestonesRouter);
 router.use("/company/billing", companyBillingRouter);
 router.use("/company/reviews", companyReviewsRouter);
+
 router.use("/provider/proposals", providerSendProposalRouter);
 router.use("/provider/opportunities", providerOpportunitiesRouter);
 router.use("/provider/milestones", providerMilestonesRouter);
@@ -57,26 +62,39 @@ router.use("/provider/reviews", providerReviewsRouter);
 router.use("/resume", resumeRouter);
 router.use("/certifications", certificationsRouter);
 router.use("/provider/profile", providerProfileRouter);
+router.use("/provider/reviews", providerReviewsRouter);
+
 router.use("/messages", messagesRouter);
 // Serve static files from uploads directory with proper headers
-router.use("/uploads", express.static("uploads", {
-  setHeaders: (res, path) => {
-    // Set CORS headers for image files
-    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || 
-        path.endsWith('.gif') || path.endsWith('.webp')) {
-      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-  }
-}));
+router.use(
+  "/uploads",
+  express.static("uploads", {
+    setHeaders: (res, path) => {
+      // Set CORS headers for image files
+      if (
+        path.endsWith(".jpg") ||
+        path.endsWith(".jpeg") ||
+        path.endsWith(".png") ||
+        path.endsWith(".gif") ||
+        path.endsWith(".webp")
+      ) {
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+      }
+    },
+  })
+);
 router.use("/settings", settingsRouter);
 router.use("/admin", adminRouter);
 router.use("/admin/settings", adminSettingsRouter);
 router.use("/admin/users", adminUsersRouter);
 router.use("/admin/disputes", adminDisputesRouter);
 router.use("/admin/projects", adminProjectsRouter);
+router.use("/admin/reports", adminReportsRouter);
+router.use("/admin/dashboard", adminDashboardRouter);
 router.use("/disputes", disputesRouter);
 router.use("/payments", paymentRouter);
+router.use("/kyc", KycRouter);
 
 // Mount check-email under /api so frontend using NEXT_PUBLIC_API_BASE_URL that
 // points to http://host:PORT/api will be able to call `${API_BASE}/check-email`

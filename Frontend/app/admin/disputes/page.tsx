@@ -749,9 +749,9 @@ export default function AdminDisputesPage() {
                               {/* Resolution Notes */}
                 {selectedDispute.resolutionNotes && Array.isArray(selectedDispute.resolutionNotes) && selectedDispute.resolutionNotes.length > 0 && (
                                 <Card className="border-purple-200 bg-purple-50">
-                                  <CardHeader>
+                                <CardHeader>
                                     <CardTitle className="text-lg text-purple-800">Admin Resolution Notes</CardTitle>
-                                  </CardHeader>
+                                </CardHeader>
                                   <CardContent className="space-y-4">
                                     {selectedDispute.resolutionNotes.map((note: any, index: number) => {
                                       // Check if note contains "--- Admin Note ---" separator
@@ -762,7 +762,7 @@ export default function AdminDisputesPage() {
                                       
                                       return (
                                         <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
-                                          <div className="flex items-center gap-2 mb-2">
+                                        <div className="flex items-center gap-2 mb-2">
                                             <Avatar className="w-6 h-6">
                                               <AvatarFallback className="bg-purple-100 text-purple-700">
                                                 {note.adminName?.charAt(0) || "A"}
@@ -798,10 +798,10 @@ export default function AdminDisputesPage() {
                                         </div>
                                       );
                                     })}
-                                  </CardContent>
-                                </Card>
+                                </CardContent>
+                              </Card>
                               )}
-                              
+
                               {/* Legacy Resolution (for backward compatibility) */}
                 {selectedDispute.status === "RESOLVED" && selectedDispute.resolution && (!selectedDispute.resolutionNotes || !Array.isArray(selectedDispute.resolutionNotes) || selectedDispute.resolutionNotes.length === 0) && (
                                 <Card className="border-green-200 bg-green-50">

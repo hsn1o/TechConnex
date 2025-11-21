@@ -82,7 +82,33 @@ export default function AdminProjectsPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
+
+  const getStatusText = (status: string, type?: string) => {
+    // ServiceRequests are always "OPEN" (unmatched opportunities)
+    if (type === "serviceRequest") {
+      return "Open Opportunity"
+    }
+    
+    switch (status?.toUpperCase()) {
+      case "COMPLETED":
+        return "Completed"
+      case "IN_PROGRESS":
+        return "In Progress"
+      case "DISPUTED":
+        return "Disputed"
+      case "OPEN":
+        return "Open Opportunity"
+      default:
+        return status?.replace("_", " ") || status
+    }
+  }
+
+  const getStatusColor = (status: string, type?: string) => {
+    // ServiceRequests (unmatched opportunities)
+    if (type === "serviceRequest") {
+      return "bg-yellow-100 text-yellow-800"
+    }
+    
     switch (status?.toUpperCase()) {
       case "COMPLETED":
         return "bg-green-100 text-green-800"
@@ -95,20 +121,10 @@ export default function AdminProjectsPage() {
     }
   }
 
-  const getStatusText = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case "COMPLETED":
-        return "Completed"
-      case "IN_PROGRESS":
-        return "In Progress"
-      case "DISPUTED":
-        return "Disputed"
-      default:
-        return status?.replace("_", " ") || status
-    }
-  }
-
   const calculateProgress = (project: any) => {
+    // ServiceRequests don't have progress yet
+    if (project.type === "serviceRequest") return 0
+    
     if (!project.milestones || project.milestones.length === 0) return 0
     const completed = project.milestones.filter(
       (m: any) => m.status === "APPROVED" || m.status === "PAID"
@@ -120,8 +136,10 @@ export default function AdminProjectsPage() {
     const matchesSearch =
       project.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.provider?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || project.status === statusFilter
+      (project.provider?.name?.toLowerCase().includes(searchQuery.toLowerCase()) && project.type !== "serviceRequest")
+    const matchesStatus = statusFilter === "all" || 
+      (statusFilter === "OPEN" && project.type === "serviceRequest") ||
+      (statusFilter !== "OPEN" && project.status === statusFilter && project.type === "project")
     const matchesCategory =
       categoryFilter === "all" || project.category?.toLowerCase().includes(categoryFilter.toLowerCase())
     return matchesSearch && matchesStatus && matchesCategory
@@ -147,6 +165,11 @@ export default function AdminProjectsPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Projects</p>
                     <p className="text-2xl font-bold text-gray-900">{stats.totalProjects || 0}</p>
+                    {stats.openOpportunities > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {stats.openOpportunities} open opportunities
+                      </p>
+                    )}
                 </div>
                 <Briefcase className="w-8 h-8 text-blue-600" />
               </div>
@@ -244,6 +267,7 @@ export default function AdminProjectsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="OPEN">Open Opportunities</SelectItem>
                   <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                   <SelectItem value="COMPLETED">Completed</SelectItem>
                   <SelectItem value="DISPUTED">Disputed</SelectItem>
@@ -290,23 +314,37 @@ export default function AdminProjectsPage() {
                     </TableRow>
                   ) : (
                     filteredProjects.map((project) => {
+                      const isServiceRequest = project.type === "serviceRequest"
                       const progress = calculateProgress(project)
                       const disputesCount = project.Dispute?.length || 0
                       const completedMilestones =
                         project.milestones?.filter((m: any) => m.status === "APPROVED" || m.status === "PAID")
                           .length || 0
                       const totalMilestones = project.milestones?.length || 0
+                      const proposalsCount = project.proposalsCount || project.proposals?.length || 0
 
                       return (
                   <TableRow key={project.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{project.title}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{project.title}</p>
+                          {isServiceRequest && (
+                            <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                              Opportunity
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">{project.category}</p>
-                              {disputesCount > 0 && (
+                              {disputesCount > 0 && !isServiceRequest && (
                           <Badge className="bg-red-100 text-red-800 mt-1">
                             <AlertTriangle className="w-3 h-3 mr-1" />
                                   {disputesCount} dispute(s)
+                          </Badge>
+                        )}
+                        {isServiceRequest && proposalsCount > 0 && (
+                          <Badge className="bg-blue-100 text-blue-800 mt-1">
+                            {proposalsCount} {proposalsCount === 1 ? "proposal" : "proposals"}
                           </Badge>
                         )}
                       </div>
@@ -321,31 +359,44 @@ export default function AdminProjectsPage() {
                           </Avatar>
                                 <span className="text-sm">{project.customer?.name || "N/A"}</span>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Avatar className="w-6 h-6">
-                                  <AvatarFallback>
-                                    {project.provider?.name?.charAt(0) || "P"}
-                                  </AvatarFallback>
-                          </Avatar>
-                                <span className="text-sm">{project.provider?.name || "N/A"}</span>
-                        </div>
+                        {!isServiceRequest && (
+                          <div className="flex items-center space-x-2">
+                            <Avatar className="w-6 h-6">
+                                    <AvatarFallback>
+                                      {project.provider?.name?.charAt(0) || "P"}
+                                    </AvatarFallback>
+                            </Avatar>
+                                  <span className="text-sm">{project.provider?.name || "N/A"}</span>
+                          </div>
+                        )}
+                        {isServiceRequest && (
+                          <div className="text-xs text-gray-500 italic">
+                            Awaiting provider match
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
-                            <Badge className={getStatusColor(project.status)}>
-                              {getStatusText(project.status)}
+                            <Badge className={getStatusColor(project.status, project.type)}>
+                              {getStatusText(project.status, project.type)}
                             </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                                <span>{progress}%</span>
-                          <span>
-                                  {completedMilestones}/{totalMilestones}
-                          </span>
+                      {isServiceRequest ? (
+                        <div className="text-sm text-gray-500">
+                          N/A
                         </div>
-                              <Progress value={progress} className="h-2" />
-                      </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                                  <span>{progress}%</span>
+                            <span>
+                                    {completedMilestones}/{totalMilestones}
+                            </span>
+                          </div>
+                                <Progress value={progress} className="h-2" />
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div>
@@ -380,7 +431,7 @@ export default function AdminProjectsPage() {
                             View Details
                                   </Link>
                           </DropdownMenuItem>
-                                {disputesCount > 0 && (
+                                {disputesCount > 0 && !isServiceRequest && (
                                   <>
                           <DropdownMenuSeparator />
                                     <DropdownMenuItem asChild>
@@ -407,3 +458,4 @@ export default function AdminProjectsPage() {
     </AdminLayout>
   )
 }
+

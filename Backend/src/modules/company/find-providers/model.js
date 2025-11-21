@@ -431,18 +431,21 @@ export async function getSavedProviders(userId, page = 1, limit = 20) {
 
 // Get provider statistics
 export async function getProviderStats(providerId) {
+  // Get provider profile to access totalProjects from database
+  const providerProfile = await prisma.providerProfile.findUnique({
+    where: { userId: providerId },
+    select: { totalProjects: true },
+  });
+
+  // Use totalProjects from database (automatically updated when proposals are accepted)
+  const totalProjects = providerProfile?.totalProjects ?? 0;
+
   const [
-    totalProjects,
     completedProjects,
     totalReviews,
     averageRating,
     totalEarnings,
   ] = await Promise.all([
-    prisma.project.count({
-      where: {
-        providerId,
-      },
-    }),
     prisma.project.count({
       where: {
         providerId,

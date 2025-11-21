@@ -102,18 +102,18 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
         router.push("/auth/login");
         return;
       }
- const API_URL =
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       // Fetch user profile
       try {
-          const endpoint = `${API_URL}/provider/profile/`; // ✅ updated endpoint
+        const endpoint = `${API_URL}/provider/profile/`; // ✅ updated endpoint
         console.log("🌐 Fetching profile from:", endpoint);
 
         const res = await fetch(endpoint, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (!res.ok) {
           throw new Error("Failed to fetch profile");
         }
@@ -153,7 +153,7 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
     { name: "Opportunities", href: "/provider/opportunities", icon: Target },
     { name: "Find Companies", href: "/provider/companies", icon: Building2 },
     { name: "Messages", href: "/provider/messages", icon: MessageSquare },
-    { name: "Reviews", href: "/provider/reviews", icon: Star },
+    { name: "Reviews", href: "/provider/reviews", icon: MessageSquare },
     { name: "Earnings", href: "/provider/earnings", icon: DollarSign },
     { name: "Profile", href: "/provider/profile", icon: User },
     { name: "Settings", href: "/provider/settings", icon: Settings },
@@ -296,7 +296,7 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
                       {profile && profile.resume && profile.resume.fileUrl ? (
                         <AvatarImage
                           src={`/${profile.resume.fileUrl.replace(/\\/g, "/")}`}
-                          alt={profile.data.user.name|| "User"}
+                          alt={profile.data.user.name || "User"}
                         />
                       ) : (
                         <AvatarImage

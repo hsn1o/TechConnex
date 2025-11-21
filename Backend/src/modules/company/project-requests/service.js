@@ -1,6 +1,10 @@
 // src/modules/company/project-requests/service.js
 import { prisma } from "./model.js";
-import { GetProjectRequestsDto, AcceptProposalDto, RejectProposalDto } from "./dto.js";
+import {
+  GetProjectRequestsDto,
+  AcceptProposalDto,
+  RejectProposalDto,
+} from "./dto.js";
 
 export async function getProjectRequests(dto) {
   try {
@@ -248,7 +252,9 @@ export async function acceptProposal(dto) {
     });
 
     if (!proposal) {
-      throw new Error("Proposal not found or you don't have permission to accept it");
+      throw new Error(
+        "Proposal not found or you don't have permission to accept it"
+      );
     }
 
     // Guard rails
@@ -257,7 +263,9 @@ export async function acceptProposal(dto) {
     }
 
     if (proposal.serviceRequest.projectId) {
-      throw new Error("This service request has already been matched to a project");
+      throw new Error(
+        "This service request has already been matched to a project"
+      );
     }
 
     // Choose milestones based on useProviderMilestones flag
@@ -266,7 +274,7 @@ export async function acceptProposal(dto) {
 
     if (dto.useProviderMilestones && proposal.milestones.length > 0) {
       // Use provider milestones
-      chosenMilestones = proposal.milestones.map(m => ({
+      chosenMilestones = proposal.milestones.map((m) => ({
         title: m.title,
         description: m.description,
         amount: m.amount,
@@ -278,7 +286,7 @@ export async function acceptProposal(dto) {
       chosenMilestoneSource = "PROVIDER";
     } else if (proposal.serviceRequest.milestones.length > 0) {
       // Use company milestones
-      chosenMilestones = proposal.serviceRequest.milestones.map(m => ({
+      chosenMilestones = proposal.serviceRequest.milestones.map((m) => ({
         title: m.title,
         description: m.description,
         amount: m.amount,
@@ -290,15 +298,17 @@ export async function acceptProposal(dto) {
       chosenMilestoneSource = "COMPANY";
     } else {
       // Create default milestone
-      chosenMilestones = [{
-        title: "Full project",
-        description: "Complete project delivery",
-        amount: proposal.bidAmount,
-        dueDate: null,
-        order: 1,
-        status: "PENDING",
-        source: "FINAL",
-      }];
+      chosenMilestones = [
+        {
+          title: "Full project",
+          description: "Complete project delivery",
+          amount: proposal.bidAmount,
+          dueDate: null,
+          order: 1,
+          status: "PENDING",
+          source: "FINAL",
+        },
+      ];
       chosenMilestoneSource = "COMPANY";
     }
 
@@ -326,17 +336,17 @@ export async function acceptProposal(dto) {
           companyApproved: false,
           providerApproved: false,
           milestones: {
-            create: chosenMilestones.map(m => ({
+            create: chosenMilestones.map((m) => ({
               ...m,
               status: "DRAFT", // Start as DRAFT, not PENDING
             })),
           },
         },
         include: {
-          customer: { 
-            select: { 
+          customer: {
+            select: {
               id: true,
-              name: true, 
+              name: true,
               email: true,
               customerProfile: {
                 select: {
@@ -344,28 +354,42 @@ export async function acceptProposal(dto) {
                   industry: true,
                 },
               },
-            } 
+            },
           },
-          provider: { 
-            select: { 
+          provider: {
+            select: {
               id: true,
-              name: true, 
+              name: true,
               email: true,
-            providerProfile: {
-              select: {
-                rating: true,
-                totalProjects: true,
-                location: true,
-                profileImageUrl: true, // 🆕 Profile image
+              providerProfile: {
+                select: {
+                  rating: true,
+                  totalProjects: true,
+                  location: true,
+                  profileImageUrl: true, // 🆕 Profile image
+                },
               },
             },
-            } 
           },
           milestones: {
             orderBy: {
               order: "asc",
             },
           },
+        },
+      });
+
+      // Increment totalProjects in ProviderProfile
+      await tx.providerProfile.upsert({
+        where: { userId: proposal.providerId },
+        update: {
+          totalProjects: {
+            increment: 1,
+          },
+        },
+        create: {
+          userId: proposal.providerId,
+          totalProjects: 1,
         },
       });
 
@@ -399,6 +423,7 @@ export async function acceptProposal(dto) {
       await tx.notification.create({
         data: {
           userId: proposal.providerId,
+          title: "Proposal Accepted",
           type: "proposal",
           content: `Your proposal for "${proposal.serviceRequest.title}" has been accepted!`,
         },
@@ -431,7 +456,9 @@ export async function rejectProposal(dto) {
     });
 
     if (!proposal) {
-      throw new Error("Proposal not found or you don't have permission to reject it");
+      throw new Error(
+        "Proposal not found or you don't have permission to reject it"
+      );
     }
 
     // Persist rejection
@@ -444,8 +471,11 @@ export async function rejectProposal(dto) {
     await prisma.notification.create({
       data: {
         userId: proposal.providerId,
+        title: "proposal Update",
         type: "proposal",
-        content: `Your proposal for "${proposal.serviceRequest.title}" has been rejected.${dto.reason ? ` Reason: ${dto.reason}` : ""}`,
+        content: `Your proposal for "${
+          proposal.serviceRequest.title
+        }" has been rejected.${dto.reason ? ` Reason: ${dto.reason}` : ""}`,
       },
     });
 
@@ -486,7 +516,8 @@ export async function getProposalStats(customerId) {
       totalProposals,
       openRequests,
       matchedRequests,
-      averageProposalsPerRequest: stats.length > 0 ? totalProposals / stats.length : 0,
+      averageProposalsPerRequest:
+        stats.length > 0 ? totalProposals / stats.length : 0,
     };
   } catch (error) {
     console.error("Error fetching proposal stats:", error);

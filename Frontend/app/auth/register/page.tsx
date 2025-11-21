@@ -539,7 +539,7 @@ export default function SignupPage() {
       const requestData: any = {
         email: formData.email,
         password: formData.password,
-        name: formData.companyName,
+        name: userRole === "customer" ? formData.companyName: formData.name,
         phone: formData.phone || null,
       };
 

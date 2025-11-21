@@ -81,10 +81,19 @@ export default function AdminUsersPage() {
       if (searchQuery) filters.search = searchQuery
 
       const response = await getAdminUsers(filters)
+      console.log("Admin users response:", response)
       if (response.success) {
         setUsers(response.data || [])
+      } else {
+        console.error("Failed to load users:", response.error)
+        toast({
+          title: "Error",
+          description: response.error || "Failed to load users",
+          variant: "destructive",
+        })
       }
     } catch (error: any) {
+      console.error("Error loading users:", error)
       toast({
         title: "Error",
         description: error.message || "Failed to load users",
@@ -374,18 +383,34 @@ export default function AdminUsersPage() {
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <Avatar>
-                                <AvatarImage src="/placeholder.svg" />
-                                <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                          <AvatarImage 
+                            src={
+                              (isProvider && profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg")
+                                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
+                                : (isCustomer && profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg")
+                                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
+                                : (isCustomer && profile?.logoUrl && profile.logoUrl !== "/placeholder.svg")
+                                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.logoUrl.startsWith("/") ? "" : "/"}${profile.logoUrl}`
+                                : "/placeholder.svg"
+                            }
+                          />
+                          <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{user.name}</p>
-                                  {user.isVerified && <CheckCircle className="w-4 h-4 text-green-500" />}
+                            {user.isVerified && <CheckCircle className="w-4 h-4 text-green-500" />}
                           </div>
                           <p className="text-sm text-gray-500">{user.email}</p>
-                                {profile?.location && (
-                                  <p className="text-xs text-gray-400">{profile.location}</p>
-                                )}
+                          {profile?.location && (
+                            <p className="text-xs text-gray-400">{profile.location}</p>
+                          )}
+                          {isProvider && profile?.bio && (
+                            <p className="text-xs text-gray-400 line-clamp-1">{profile.bio}</p>
+                          )}
+                          {isCustomer && profile?.description && (
+                            <p className="text-xs text-gray-400 line-clamp-1">{profile.description}</p>
+                          )}
                         </div>
                       </div>
                     </TableCell>
