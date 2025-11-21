@@ -297,11 +297,11 @@ export default function CustomerSettingsPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="notifications" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        <Tabs defaultValue="privacy" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            {/* <TabsTrigger value="notifications">Notifications</TabsTrigger> */}
             <TabsTrigger value="privacy">Privacy</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
+            {/* <TabsTrigger value="billing">Billing</TabsTrigger> */}
             <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
 
@@ -447,7 +447,7 @@ export default function CustomerSettingsPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="profile-visibility">
                       Profile Visibility
                     </Label>
@@ -472,7 +472,7 @@ export default function CustomerSettingsPage() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
 
                   <Separator />
 
@@ -658,7 +658,7 @@ export default function CustomerSettingsPage() {
               </Card>
 
               <Card>
-                <CardHeader>
+                {/* <CardHeader>
                   <CardTitle>Two-Factor Authentication</CardTitle>
                   <CardDescription>
                     Add an extra layer of security to your account
@@ -682,7 +682,7 @@ export default function CustomerSettingsPage() {
                       </p>
                     )}
                   </div>
-                </CardContent>
+                </CardContent> */}
               </Card>
 
               <Card className="border-red-200">

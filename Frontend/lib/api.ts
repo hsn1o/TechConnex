@@ -1211,6 +1211,23 @@ export async function uploadProviderProfileImage(imageFile: File) {
   return data;
 }
 
+export async function getProviderPortfolio() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/profile/portfolio`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch portfolio");
+  return data;
+}
+
 export async function getProviderProfileStats() {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
