@@ -100,6 +100,12 @@ export default function ProviderOpportunitiesPage() {
     coverLetter?: string;
     milestones?: string;
     attachments?: string;
+    milestoneFields?: Record<number, {
+      title?: string;
+      description?: string;
+      amount?: string;
+      dueDate?: string;
+    }>;
   }>({});
 
   // Fetch opportunities from API
@@ -311,6 +317,12 @@ export default function ProviderOpportunitiesPage() {
       timelineUnit?: string;
       coverLetter?: string;
       milestones?: string;
+      milestoneFields?: Record<number, {
+        title?: string;
+        description?: string;
+        amount?: string;
+        dueDate?: string;
+      }>;
     } = {};
 
     const messages: string[] = [];
@@ -362,36 +374,63 @@ export default function ProviderOpportunitiesPage() {
     }
 
     // Milestones validation (REQUIRED)
+    const milestoneFieldErrors: Record<number, {
+      title?: string;
+      description?: string;
+      amount?: string;
+      dueDate?: string;
+    }> = {};
+
     if (form.milestones.length === 0) {
       newErrors.milestones = "At least one milestone is required.";
       messages.push("At least one milestone is required.");
     } else {
-      // each milestone needs title, amount>0, dueDate
+      // each milestone needs title, description, amount>0, dueDate
       form.milestones.forEach((m: Milestone, idx: number) => {
+        milestoneFieldErrors[idx] = {};
+        
         if (!m.title || !m.title.trim()) {
+          const errorMsg = "Title is required.";
+          milestoneFieldErrors[idx].title = errorMsg;
           messages.push(`Milestone #${idx + 1}: title is required.`);
+        }
+        if (!m.description || !m.description.trim()) {
+          const errorMsg = "Description is required.";
+          milestoneFieldErrors[idx].description = errorMsg;
+          messages.push(`Milestone #${idx + 1}: description is required.`);
         }
         if (
           m.amount == null ||
           isNaN(Number(m.amount)) ||
           Number(m.amount) <= 0
         ) {
+          const errorMsg = "Amount must be greater than 0.";
+          milestoneFieldErrors[idx].amount = errorMsg;
           messages.push(`Milestone #${idx + 1}: amount must be > 0.`);
         }
         if (!m.dueDate) {
+          const errorMsg = "Due date is required.";
+          milestoneFieldErrors[idx].dueDate = errorMsg;
           messages.push(`Milestone #${idx + 1}: due date is required.`);
         } else {
-          // Validate that due date is not in the past
+          // Validate that due date is not in the past (must be today or future)
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const dueDate = new Date(m.dueDate);
           dueDate.setHours(0, 0, 0, 0);
           
           if (dueDate < today) {
+            const errorMsg = "Due date cannot be in the past. Please select today or a future date.";
+            milestoneFieldErrors[idx].dueDate = errorMsg;
             messages.push(`Milestone #${idx + 1}: due date cannot be in the past. Please select today or a future date.`);
           }
         }
       });
+      
+      // Only add milestoneFieldErrors if there are any errors
+      if (Object.keys(milestoneFieldErrors).length > 0) {
+        newErrors.milestoneFields = milestoneFieldErrors;
+      }
 
       // sum rule: milestones total must equal bidAmount
       if (!isNaN(bidAmountNum) && bidAmountNum > 0) {
@@ -837,24 +876,23 @@ export default function ProviderOpportunitiesPage() {
                               View Details
                             </Button>
                           </Link>
-                          <Link href={`/provider/opportunities/${opportunity.id}`}>
+                          {opportunity.hasSubmitted ? (
                             <Button
                               size="sm"
-                              disabled={opportunity.hasSubmitted}
+                              disabled
                             >
-                              {opportunity.hasSubmitted ? (
-                                <>
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Submitted
-                                </>
-                              ) : (
-                                <>
-                                  <ThumbsUp className="w-4 h-4 mr-2" />
-                                  Submit Proposal
-                                </>
-                              )}
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Submitted
                             </Button>
-                          </Link>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleSubmitProposal(opportunity)}
+                            >
+                              <ThumbsUp className="w-4 h-4 mr-2" />
+                              Submit Proposal
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -1264,15 +1302,41 @@ export default function ProviderOpportunitiesPage() {
                             <Input type="number" value={i + 1} disabled />
                           </div>
                           <div className="md:col-span-4">
-                            <label className="text-sm font-medium">Title</label>
+                            <label className="text-sm font-medium">
+                              Title <span className="text-red-500">*</span>
+                            </label>
                             <Input
                               value={m.title}
-                              onChange={(e) =>
+                              onChange={(e) => {
                                 updateProposalMilestone(i, {
                                   title: e.target.value,
-                                })
+                                });
+                                // Clear error when user starts typing
+                                if (proposalErrors.milestoneFields?.[i]?.title) {
+                                  setProposalErrors(prev => ({
+                                    ...prev,
+                                    milestoneFields: {
+                                      ...prev.milestoneFields,
+                                      [i]: {
+                                        ...prev.milestoneFields?.[i],
+                                        title: undefined,
+                                      },
+                                    },
+                                  }));
+                                }
+                              }}
+                              placeholder="Milestone title (required)"
+                              className={
+                                proposalErrors.milestoneFields?.[i]?.title
+                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  : ""
                               }
                             />
+                            {proposalErrors.milestoneFields?.[i]?.title && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {proposalErrors.milestoneFields[i].title}
+                              </p>
+                            )}
                           </div>
                           <div className="md:col-span-3">
                             <label className="text-sm font-medium">
@@ -1281,16 +1345,39 @@ export default function ProviderOpportunitiesPage() {
                             <Input
                               type="number"
                               value={String(m.amount ?? 0)}
-                              onChange={(e) =>
+                              onChange={(e) => {
                                 updateProposalMilestone(i, {
                                   amount: Number(e.target.value),
-                                })
+                                });
+                                // Clear error when user starts typing
+                                if (proposalErrors.milestoneFields?.[i]?.amount) {
+                                  setProposalErrors(prev => ({
+                                    ...prev,
+                                    milestoneFields: {
+                                      ...prev.milestoneFields,
+                                      [i]: {
+                                        ...prev.milestoneFields?.[i],
+                                        amount: undefined,
+                                      },
+                                    },
+                                  }));
+                                }
+                              }}
+                              className={
+                                proposalErrors.milestoneFields?.[i]?.amount
+                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  : ""
                               }
                             />
+                            {proposalErrors.milestoneFields?.[i]?.amount && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {proposalErrors.milestoneFields[i].amount}
+                              </p>
+                            )}
                           </div>
                           <div className="md:col-span-4">
                             <label className="text-sm font-medium">
-                              Due Date
+                              Due Date <span className="text-red-500">*</span>
                             </label>
                             <Input
                               type="date"
@@ -1306,24 +1393,71 @@ export default function ProviderOpportunitiesPage() {
                                 updateProposalMilestone(i, {
                                   dueDate: selectedDate,
                                 });
+                                // Clear error when user selects a date
+                                if (proposalErrors.milestoneFields?.[i]?.dueDate) {
+                                  setProposalErrors(prev => ({
+                                    ...prev,
+                                    milestoneFields: {
+                                      ...prev.milestoneFields,
+                                      [i]: {
+                                        ...prev.milestoneFields?.[i],
+                                        dueDate: undefined,
+                                      },
+                                    },
+                                  }));
+                                }
                               }}
+                              className={
+                                proposalErrors.milestoneFields?.[i]?.dueDate
+                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  : ""
+                              }
                             />
+                            {proposalErrors.milestoneFields?.[i]?.dueDate && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {proposalErrors.milestoneFields[i].dueDate}
+                              </p>
+                            )}
                           </div>
                         </div>
 
                         <div>
                           <label className="text-sm font-medium">
-                            Description
+                            Description <span className="text-red-500">*</span>
                           </label>
                           <Textarea
                             rows={2}
                             value={m.description || ""}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               updateProposalMilestone(i, {
                                 description: e.target.value,
-                              })
+                              });
+                              // Clear error when user starts typing
+                              if (proposalErrors.milestoneFields?.[i]?.description) {
+                                setProposalErrors(prev => ({
+                                  ...prev,
+                                  milestoneFields: {
+                                    ...prev.milestoneFields,
+                                    [i]: {
+                                      ...prev.milestoneFields?.[i],
+                                      description: undefined,
+                                    },
+                                  },
+                                }));
+                              }
+                            }}
+                            placeholder="Milestone description (required)"
+                            className={
+                              proposalErrors.milestoneFields?.[i]?.description
+                                ? "border-red-500 focus-visible:ring-red-500"
+                                : ""
                             }
                           />
+                          {proposalErrors.milestoneFields?.[i]?.description && (
+                            <p className="text-xs text-red-600 mt-1">
+                              {proposalErrors.milestoneFields[i].description}
+                            </p>
+                          )}
                         </div>
 
                         <div className="flex justify-end">

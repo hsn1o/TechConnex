@@ -105,7 +105,17 @@ export default function OpportunityDetailsPage() {
     timelineUnit?: string;
     coverLetter?: string;
     milestones?: string;
+    attachments?: string;
+    milestoneFields?: Record<number, {
+      title?: string;
+      description?: string;
+      amount?: string;
+      dueDate?: string;
+    }>;
   }>({});
+
+  const MAX_FILES = 3;
+  const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
   useEffect(() => {
     if (opportunityId) {
@@ -131,10 +141,16 @@ export default function OpportunityDetailsPage() {
     }
   };
 
+  // Keep sequences clean and sorted
+  const normalizeDraftSequences = (items: Milestone[]) =>
+    items
+      .map((m, i) => ({ ...m, sequence: i + 1 }))
+      .sort((a, b) => a.sequence - b.sequence);
+
   const addMilestone = () => {
     setProposalData((prev) => ({
       ...prev,
-      milestones: [
+      milestones: normalizeDraftSequences([
         ...prev.milestones,
         {
           sequence: prev.milestones.length + 1,
@@ -143,15 +159,15 @@ export default function OpportunityDetailsPage() {
           amount: 0,
           dueDate: new Date().toISOString().slice(0, 10), // yyyy-mm-dd
         },
-      ],
+      ]),
     }));
   };
 
-  const updateMilestone = (index: number, field: keyof Milestone, value: any) => {
+  const updateMilestone = (index: number, patch: Partial<Milestone>) => {
     setProposalData((prev) => ({
       ...prev,
-      milestones: prev.milestones.map((m, i) =>
-        i === index ? { ...m, [field]: value } : m
+      milestones: normalizeDraftSequences(
+        prev.milestones.map((m, i) => (i === index ? { ...m, ...patch } : m))
       ),
     }));
   };
@@ -159,9 +175,9 @@ export default function OpportunityDetailsPage() {
   const removeMilestone = (index: number) => {
     setProposalData((prev) => ({
       ...prev,
-      milestones: prev.milestones
-        .filter((_, i) => i !== index)
-        .map((m, i) => ({ ...m, sequence: i + 1 })),
+      milestones: normalizeDraftSequences(
+        prev.milestones.filter((_, i) => i !== index)
+      ),
     }));
   };
 
@@ -172,19 +188,30 @@ export default function OpportunityDetailsPage() {
       timelineUnit?: string;
       coverLetter?: string;
       milestones?: string;
+      milestoneFields?: Record<number, {
+        title?: string;
+        description?: string;
+        amount?: string;
+        dueDate?: string;
+      }>;
     } = {};
+
+    const messages: string[] = [];
 
     // Bid amount: required, >0, and within budget range
     const bidAmountNum = Number(form.bidAmount);
     if (!form.bidAmount) {
       newErrors.bidAmount = "Bid amount is required.";
+      messages.push("Bid amount is required.");
     } else if (isNaN(bidAmountNum) || bidAmountNum <= 0) {
       newErrors.bidAmount = "Bid amount must be a positive number.";
+      messages.push("Bid amount must be a positive number.");
     } else if (opportunity) {
       const budgetMin = opportunity.budgetMin || 0;
       const budgetMax = opportunity.budgetMax || 0;
       if (bidAmountNum < budgetMin || bidAmountNum > budgetMax) {
         newErrors.bidAmount = `Bid amount must be between RM ${budgetMin.toLocaleString()} and RM ${budgetMax.toLocaleString()}.`;
+        messages.push(`Bid amount must be within the budget range (RM ${budgetMin.toLocaleString()} - RM ${budgetMax.toLocaleString()}).`);
       }
     }
 
@@ -192,12 +219,15 @@ export default function OpportunityDetailsPage() {
     const timelineAmountNum = Number(form.timelineAmount);
     if (!form.timelineAmount) {
       newErrors.timelineAmount = "Timeline amount is required.";
+      messages.push("Timeline amount is required.");
     } else if (isNaN(timelineAmountNum) || timelineAmountNum <= 0) {
       newErrors.timelineAmount = "Timeline amount must be greater than 0.";
+      messages.push("Timeline amount must be greater than 0.");
     }
-
+    
     if (!form.timelineUnit) {
       newErrors.timelineUnit = "Timeline unit is required.";
+      messages.push("Timeline unit is required.");
     } else if (opportunity && opportunity.timeline) {
       // Parse original timeline to days
       const timelineStr = opportunity.timeline.toLowerCase().trim();
@@ -208,7 +238,9 @@ export default function OpportunityDetailsPage() {
         const originalTimelineInDays = timelineToDays(amount, unit);
         const providerTimelineInDays = timelineToDays(timelineAmountNum, form.timelineUnit);
         if (providerTimelineInDays > originalTimelineInDays) {
-          newErrors.timelineAmount = `Your timeline must be equal to or less than the company's timeline (${opportunity.timeline}).`;
+          const originalTimelineDisplay = formatTimeline(opportunity.timeline) || `${originalTimelineInDays} days`;
+          newErrors.timelineAmount = `Your timeline must be equal to or less than the company's timeline (${originalTimelineDisplay}).`;
+          messages.push(`Your timeline must be equal to or less than the company's timeline (${originalTimelineDisplay}).`);
         }
       }
     }
@@ -216,85 +248,185 @@ export default function OpportunityDetailsPage() {
     // Cover letter: required, min length 20
     if (!form.coverLetter || form.coverLetter.trim().length < 20) {
       newErrors.coverLetter = "Cover letter must be at least 20 characters.";
+      messages.push("Cover letter must be at least 20 characters.");
     }
 
     // Milestones validation (REQUIRED)
+    const milestoneFieldErrors: Record<number, {
+      title?: string;
+      description?: string;
+      amount?: string;
+      dueDate?: string;
+    }> = {};
+
     if (form.milestones.length === 0) {
       newErrors.milestones = "At least one milestone is required.";
+      messages.push("At least one milestone is required.");
     } else {
-      // Validate each milestone
+      // each milestone needs title, description, amount>0, dueDate
       form.milestones.forEach((m: Milestone, idx: number) => {
+        milestoneFieldErrors[idx] = {};
+        
         if (!m.title || !m.title.trim()) {
-          newErrors.milestones = `Milestone #${idx + 1}: title is required.`;
+          const errorMsg = "Title is required.";
+          milestoneFieldErrors[idx].title = errorMsg;
+          messages.push(`Milestone #${idx + 1}: title is required.`);
         }
-        if (m.amount == null || isNaN(Number(m.amount)) || Number(m.amount) <= 0) {
-          newErrors.milestones = `Milestone #${idx + 1}: amount must be > 0.`;
+        if (!m.description || !m.description.trim()) {
+          const errorMsg = "Description is required.";
+          milestoneFieldErrors[idx].description = errorMsg;
+          messages.push(`Milestone #${idx + 1}: description is required.`);
+        }
+        if (
+          m.amount == null ||
+          isNaN(Number(m.amount)) ||
+          Number(m.amount) <= 0
+        ) {
+          const errorMsg = "Amount must be greater than 0.";
+          milestoneFieldErrors[idx].amount = errorMsg;
+          messages.push(`Milestone #${idx + 1}: amount must be > 0.`);
         }
         if (!m.dueDate) {
-          newErrors.milestones = `Milestone #${idx + 1}: due date is required.`;
+          const errorMsg = "Due date is required.";
+          milestoneFieldErrors[idx].dueDate = errorMsg;
+          messages.push(`Milestone #${idx + 1}: due date is required.`);
         } else {
-          // Validate due date is not in the past
+          // Validate that due date is not in the past (must be today or future)
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const dueDate = new Date(m.dueDate);
           dueDate.setHours(0, 0, 0, 0);
+          
           if (dueDate < today) {
-            newErrors.milestones = `Milestone #${idx + 1}: due date cannot be in the past.`;
+            const errorMsg = "Due date cannot be in the past. Please select today or a future date.";
+            milestoneFieldErrors[idx].dueDate = errorMsg;
+            messages.push(`Milestone #${idx + 1}: due date cannot be in the past. Please select today or a future date.`);
           }
         }
       });
+      
+      // Only add milestoneFieldErrors if there are any errors
+      if (Object.keys(milestoneFieldErrors).length > 0) {
+        newErrors.milestoneFields = milestoneFieldErrors;
+      }
+
+      // sum rule: milestones total must equal bidAmount
+      if (!isNaN(bidAmountNum) && bidAmountNum > 0) {
+        const sumMilestones = form.milestones.reduce(
+          (sum: number, m: Milestone) => {
+            const val = Number(m.amount);
+            if (!isNaN(val)) return sum + val;
+            return sum;
+          },
+          0
+        );
+
+        if (sumMilestones !== bidAmountNum) {
+          const msg = `Total of milestones (RM ${sumMilestones}) must equal your bid amount (RM ${bidAmountNum}).`;
+          newErrors.milestones = msg;
+          messages.push(msg);
+        }
+      }
     }
 
     setProposalErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return { fieldErrors: newErrors, messages };
   }
 
   const handleSubmitProposal = async () => {
-    if (!opportunity) return;
+    // 1. run validation
+    const { fieldErrors, messages } = validateProposal(proposalData);
 
-    if (!validateProposal(proposalData)) {
-      toast.error("Please fix the errors in your proposal");
+    // save inline field errors to state
+    setProposalErrors(fieldErrors);
+
+    // if there are validation problems, stop here and toast
+    if (messages.length > 0) {
+      toast.error(messages.map((m, i) => `• ${m}`).join("\n"));
       return;
+    }
+
+    // 2. make sure we have opportunity data
+    if (!opportunity) {
+      toast.error("Invalid opportunity data");
+      return;
+    }
+
+    // 3. attachments validation
+    if (proposalData.attachments.length > MAX_FILES) {
+      toast.error("You can only upload up to 3 attachments");
+      return;
+    }
+    for (const file of proposalData.attachments) {
+      if (file.size > MAX_SIZE_BYTES) {
+        toast.error(`"${file.name}" is larger than 10 MB`);
+        return;
+      }
     }
 
     try {
       setSubmittingProposal(true);
 
-      // Build timeline string and calculate days
-      const timelineData = buildTimelineData(
+      // Normalize milestones for the backend
+      const normalized = normalizeDraftSequences(proposalData.milestones).map(
+        (m: Milestone, idx: number) => ({
+          sequence: idx + 1,
+          title: (m.title || "").trim(),
+          description: m.description || "",
+          amount: Number(m.amount || 0),
+          dueDate: m.dueDate
+            ? new Date(m.dueDate).toISOString()
+            : new Date().toISOString(),
+        })
+      );
+
+      // Build multipart/form-data
+      const formDataToSend = new FormData();
+
+      formDataToSend.append("serviceRequestId", opportunity.id);
+
+      formDataToSend.append(
+        "bidAmount",
+        parseFloat(proposalData.bidAmount).toString()
+      );
+
+      // Build timeline data from amount and unit
+      const { timeline, timelineInDays } = buildTimelineData(
         Number(proposalData.timelineAmount),
         proposalData.timelineUnit
       );
+      
+      formDataToSend.append("deliveryTime", timelineInDays.toString());
+      formDataToSend.append("timeline", timeline);
+      formDataToSend.append("timelineInDays", timelineInDays.toString());
 
-      // Create FormData for proposal submission
-      const formData = new FormData();
-      formData.append("serviceRequestId", opportunity.id);
-      formData.append("coverLetter", proposalData.coverLetter);
-      formData.append("bidAmount", proposalData.bidAmount);
-      formData.append("timeline", timelineData.timeline);
-      formData.append("timelineInDays", timelineData.timelineInDays.toString());
+      formDataToSend.append("coverLetter", proposalData.coverLetter);
 
-      // Add milestones
-      proposalData.milestones.forEach((milestone, index) => {
-        formData.append(`milestones[${index}][title]`, milestone.title);
-        if (milestone.description) {
-          formData.append(`milestones[${index}][description]`, milestone.description);
-        }
-        formData.append(`milestones[${index}][amount]`, milestone.amount.toString());
-        formData.append(`milestones[${index}][dueDate]`, new Date(milestone.dueDate).toISOString());
-        formData.append(`milestones[${index}][order]`, (index + 1).toString());
+      normalized.forEach((m, idx) => {
+        formDataToSend.append(
+          `milestones[${idx}][sequence]`,
+          String(m.sequence)
+        );
+        formDataToSend.append(`milestones[${idx}][title]`, m.title);
+        formDataToSend.append(`milestones[${idx}][description]`, m.description);
+        formDataToSend.append(
+          `milestones[${idx}][amount]`,
+          m.amount != null ? String(m.amount) : "0"
+        );
+        formDataToSend.append(`milestones[${idx}][dueDate]`, m.dueDate);
       });
 
-      // Add attachments
       proposalData.attachments.forEach((file) => {
-        formData.append("attachments", file);
+        formDataToSend.append("attachments", file);
       });
 
-      const response = await sendProposal(formData);
+      const response = await sendProposal(formDataToSend);
 
       if (response.success) {
         toast.success("Proposal submitted successfully!");
         setIsProposalModalOpen(false);
+
+        // reset form + errors
         setProposalData({
           coverLetter: "",
           bidAmount: "",
@@ -303,6 +435,8 @@ export default function OpportunityDetailsPage() {
           milestones: [],
           attachments: [],
         });
+        setProposalErrors({});
+        
         // Reload opportunity to update hasProposed flag
         await loadOpportunity();
       } else {
@@ -310,20 +444,55 @@ export default function OpportunityDetailsPage() {
       }
     } catch (err: any) {
       console.error("Error submitting proposal:", err);
-      toast.error(err.message || "Failed to submit proposal");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to submit proposal"
+      );
     } finally {
       setSubmittingProposal(false);
     }
   };
 
-  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      setProposalData((prev) => ({
-        ...prev,
-        attachments: Array.from(files),
-      }));
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const incoming = Array.from(event.target.files || []);
+
+    if (incoming.length === 0) return;
+
+    // --- Reset previous attachment errors ---
+    setProposalErrors((prev) => ({ ...prev, attachments: undefined }));
+
+    // --- Check file sizes ---
+    for (const file of incoming) {
+      if (file.size > MAX_SIZE_BYTES) {
+        toast.error(`"${file.name}" is larger than 10 MB`);
+        setProposalErrors((prev) => ({
+          ...prev,
+          attachments: `"${file.name}" exceeds 10 MB.`,
+        }));
+        event.target.value = "";
+        return;
+      }
     }
+
+    setProposalData((prev) => {
+      const combined = [...prev.attachments, ...incoming];
+
+      // --- File count validation ---
+      if (combined.length > MAX_FILES) {
+        const errorMsg = `You can upload a maximum of ${MAX_FILES} files only. Remove some before adding new ones.`;
+        toast.error(errorMsg);
+        setProposalErrors((prev) => ({ ...prev, attachments: errorMsg }));
+        event.target.value = "";
+        return prev; // stop update
+      }
+
+      return {
+        ...prev,
+        attachments: combined,
+      };
+    });
+
+    // reset input
+    event.target.value = "";
   };
 
   const removeAttachment = (index: number) => {
@@ -425,7 +594,18 @@ export default function OpportunityDetailsPage() {
               </Button>
             ) : (
               <Button
-                onClick={() => setIsProposalModalOpen(true)}
+                onClick={() => {
+                  setIsProposalModalOpen(true);
+                  setProposalData({
+                    coverLetter: "",
+                    bidAmount: "",
+                    timelineAmount: "",
+                    timelineUnit: "",
+                    milestones: [],
+                    attachments: [],
+                  });
+                  setProposalErrors({});
+                }}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <ThumbsUp className="w-4 h-4 mr-2" />
@@ -720,23 +900,127 @@ export default function OpportunityDetailsPage() {
         </div>
 
         {/* Submit Proposal Dialog */}
-        <Dialog open={isProposalModalOpen} onOpenChange={setIsProposalModalOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <Dialog
+          open={isProposalModalOpen}
+          onOpenChange={setIsProposalModalOpen}
+        >
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Submit Proposal</DialogTitle>
+              <DialogTitle className="text-xl">Submit Proposal</DialogTitle>
               <DialogDescription>
-                Submit your proposal for: {opportunity.title}
+                Submit your proposal for "{opportunity.title}"
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6">
+              {/* Bid Amount */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bidAmount">Your Bid Amount (RM) *</Label>
+                  <Input
+                    id="bidAmount"
+                    type="number"
+                    placeholder="15000"
+                    value={proposalData.bidAmount}
+                    onChange={(e) =>
+                      setProposalData((prev) => ({
+                        ...prev,
+                        bidAmount: e.target.value,
+                      }))
+                    }
+                    className={
+                      proposalErrors.bidAmount
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
+                  />
+                  {proposalErrors.bidAmount && (
+                    <p className="text-xs text-red-600">
+                      {proposalErrors.bidAmount}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Client budget range: RM {opportunity.budgetMin?.toLocaleString() || "0"} - RM {opportunity.budgetMax?.toLocaleString() || "0"}
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="timeline">Delivery Timeline *</Label>
+                  <div className="flex gap-2">
+                  <Input
+                      id="timelineAmount"
+                      type="number"
+                      placeholder="e.g. 2"
+                      min="1"
+                      value={proposalData.timelineAmount}
+                    onChange={(e) =>
+                      setProposalData((prev) => ({
+                        ...prev,
+                          timelineAmount: e.target.value,
+                      }))
+                    }
+                    className={
+                        proposalErrors.timelineAmount
+                        ? "border-red-500 focus-visible:ring-red-500"
+                        : ""
+                    }
+                  />
+                    <Select
+                      value={proposalData.timelineUnit}
+                      onValueChange={(value: "day" | "week" | "month") =>
+                        setProposalData((prev) => ({
+                          ...prev,
+                          timelineUnit: value,
+                        }))
+                      }
+                    >
+                      <SelectTrigger
+                        className={
+                          proposalErrors.timelineUnit
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }
+                      >
+                        <SelectValue placeholder="Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Day(s)</SelectItem>
+                        <SelectItem value="week">Week(s)</SelectItem>
+                        <SelectItem value="month">Month(s)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {proposalErrors.timelineAmount && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {proposalErrors.timelineAmount}
+                    </p>
+                  )}
+                  {proposalErrors.timelineUnit && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {proposalErrors.timelineUnit}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Company timeline: {opportunity.timeline ? formatTimeline(opportunity.timeline) : "Not specified"}
+                  </p>
+                  {proposalData.timelineAmount && proposalData.timelineUnit && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Your timeline: {formatTimeline(proposalData.timelineAmount, proposalData.timelineUnit)}
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {/* Cover Letter */}
               <div>
-                <Label htmlFor="coverLetter">
-                  Cover Letter <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="coverLetter">Cover Letter *</Label>
                 <Textarea
                   id="coverLetter"
+                  placeholder="Introduce yourself and explain why you're the best fit for this project..."
+                  className={`min-h-[120px] ${
+                    proposalErrors.coverLetter
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }`}
                   value={proposalData.coverLetter}
                   onChange={(e) =>
                     setProposalData((prev) => ({
@@ -744,233 +1028,308 @@ export default function OpportunityDetailsPage() {
                       coverLetter: e.target.value,
                     }))
                   }
-                  rows={6}
-                  placeholder="Write a compelling cover letter (minimum 20 characters)..."
-                  className="mt-1"
                 />
                 {proposalErrors.coverLetter && (
-                  <p className="text-sm text-red-500 mt-1">
+                  <p className="text-xs text-red-600">
                     {proposalErrors.coverLetter}
                   </p>
                 )}
-              </div>
-
-              {/* Bid Amount */}
-              <div>
-                <Label htmlFor="bidAmount">
-                  Bid Amount (RM) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="bidAmount"
-                  type="number"
-                  value={proposalData.bidAmount}
-                  onChange={(e) =>
-                    setProposalData((prev) => ({
-                      ...prev,
-                      bidAmount: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter your bid amount"
-                  className="mt-1"
-                />
                 <p className="text-xs text-gray-500 mt-1">
-                  Budget range: {formatCurrency(opportunity.budgetMin || 0)} -{" "}
-                  {formatCurrency(opportunity.budgetMax || 0)}
+                  {proposalData.coverLetter.length}/1000 characters
                 </p>
-                {proposalErrors.bidAmount && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {proposalErrors.bidAmount}
-                  </p>
-                )}
               </div>
 
-              {/* Timeline */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="timelineAmount">
-                    Timeline Amount <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="timelineAmount"
-                    type="number"
-                    value={proposalData.timelineAmount}
-                    onChange={(e) =>
-                      setProposalData((prev) => ({
-                        ...prev,
-                        timelineAmount: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g., 2"
-                    className="mt-1"
-                  />
-                  {proposalErrors.timelineAmount && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {proposalErrors.timelineAmount}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="timelineUnit">
-                    Timeline Unit <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={proposalData.timelineUnit}
-                    onValueChange={(value: "day" | "week" | "month") =>
-                      setProposalData((prev) => ({
-                        ...prev,
-                        timelineUnit: value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="day">Day(s)</SelectItem>
-                      <SelectItem value="week">Week(s)</SelectItem>
-                      <SelectItem value="month">Month(s)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {proposalErrors.timelineUnit && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {proposalErrors.timelineUnit}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {opportunity.timeline && (
-                <p className="text-xs text-gray-500">
-                  Company's timeline: {formatTimeline(opportunity.timeline)}. Your
-                  timeline must be equal to or less than this.
-                </p>
-              )}
-
-              {/* Milestones */}
+              {/* Project Milestones (Required) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>
-                    Milestones <span className="text-red-500">*</span> (At least one
-                    required)
+                    Project Milestones <span className="text-red-500">*</span>
                   </Label>
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={addMilestone}
                   >
-                    <Zap className="w-4 h-4 mr-2" />
-                    Add Milestone
+                    + Add Milestone
                   </Button>
                 </div>
-                {proposalErrors.milestones && (
-                  <p className="text-sm text-red-500 mb-2">
-                    {proposalErrors.milestones}
+
+                {proposalData.milestones.length === 0 && (
+                  <p className={`text-sm ${
+                    proposalErrors.milestones ? "text-red-600 font-medium" : "text-gray-500"
+                  }`}>
+                    {proposalErrors.milestones || "At least one milestone is required. Click 'Add Milestone' to get started."}
                   </p>
                 )}
-                <div className="space-y-4">
-                  {proposalData.milestones.map((milestone, index) => (
-                    <Card key={index}>
-                      <CardContent className="pt-6">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium">
-                              Milestone #{milestone.sequence}
-                            </h4>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeMilestone(index)}
-                            >
-                              Remove
-                            </Button>
+
+                <div className="space-y-3">
+                  {proposalData.milestones.map((m, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="grid md:grid-cols-12 gap-3">
+                          <div className="md:col-span-1">
+                            <label className="text-sm font-medium">Seq</label>
+                            <Input type="number" value={i + 1} disabled />
                           </div>
-                          <div>
-                            <Label>Title *</Label>
+                          <div className="md:col-span-4">
+                            <label className="text-sm font-medium">
+                              Title <span className="text-red-500">*</span>
+                            </label>
                             <Input
-                              value={milestone.title}
-                              onChange={(e) =>
-                                updateMilestone(index, "title", e.target.value)
-                              }
-                              placeholder="Milestone title"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Description</Label>
-                            <Textarea
-                              value={milestone.description || ""}
-                              onChange={(e) =>
-                                updateMilestone(index, "description", e.target.value)
-                              }
-                              placeholder="Milestone description (optional)"
-                              rows={2}
-                              className="mt-1"
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label>Amount (RM) *</Label>
-                              <Input
-                                type="number"
-                                value={milestone.amount || ""}
-                                onChange={(e) =>
-                                  updateMilestone(
-                                    index,
-                                    "amount",
-                                    parseFloat(e.target.value) || 0
-                                  )
+                              value={m.title}
+                              onChange={(e) => {
+                                updateMilestone(i, {
+                                  title: e.target.value,
+                                });
+                                // Clear error when user starts typing
+                                if (proposalErrors.milestoneFields?.[i]?.title) {
+                                  setProposalErrors(prev => ({
+                                    ...prev,
+                                    milestoneFields: {
+                                      ...prev.milestoneFields,
+                                      [i]: {
+                                        ...prev.milestoneFields?.[i],
+                                        title: undefined,
+                                      },
+                                    },
+                                  }));
                                 }
-                                placeholder="0"
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label>Due Date *</Label>
-                              <Input
-                                type="date"
-                                value={milestone.dueDate}
-                                onChange={(e) =>
-                                  updateMilestone(index, "dueDate", e.target.value)
-                                }
-                                min={new Date().toISOString().slice(0, 10)}
-                                className="mt-1"
-                              />
-                            </div>
+                              }}
+                              placeholder="Milestone title (required)"
+                              className={
+                                proposalErrors.milestoneFields?.[i]?.title
+                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  : ""
+                              }
+                            />
+                            {proposalErrors.milestoneFields?.[i]?.title && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {proposalErrors.milestoneFields[i].title}
+                              </p>
+                            )}
                           </div>
+                          <div className="md:col-span-3">
+                            <label className="text-sm font-medium">
+                              Amount (RM)
+                            </label>
+                            <Input
+                              type="number"
+                              value={String(m.amount ?? 0)}
+                              onChange={(e) => {
+                                updateMilestone(i, {
+                                  amount: Number(e.target.value),
+                                });
+                                // Clear error when user starts typing
+                                if (proposalErrors.milestoneFields?.[i]?.amount) {
+                                  setProposalErrors(prev => ({
+                                    ...prev,
+                                    milestoneFields: {
+                                      ...prev.milestoneFields,
+                                      [i]: {
+                                        ...prev.milestoneFields?.[i],
+                                        amount: undefined,
+                                      },
+                                    },
+                                  }));
+                                }
+                              }}
+                              className={
+                                proposalErrors.milestoneFields?.[i]?.amount
+                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  : ""
+                              }
+                            />
+                            {proposalErrors.milestoneFields?.[i]?.amount && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {proposalErrors.milestoneFields[i].amount}
+                              </p>
+                            )}
+                          </div>
+                          <div className="md:col-span-4">
+                            <label className="text-sm font-medium">
+                              Due Date <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                              type="date"
+                              min={new Date().toISOString().split('T')[0]}
+                              value={(m.dueDate || "").slice(0, 10)}
+                              onChange={(e) => {
+                                const selectedDate = e.target.value;
+                                const today = new Date().toISOString().split('T')[0];
+                                if (selectedDate < today) {
+                                  toast.error("Due date cannot be in the past. Please select today or a future date.");
+                                  return;
+                                }
+                                updateMilestone(i, {
+                                  dueDate: selectedDate,
+                                });
+                                // Clear error when user selects a date
+                                if (proposalErrors.milestoneFields?.[i]?.dueDate) {
+                                  setProposalErrors(prev => ({
+                                    ...prev,
+                                    milestoneFields: {
+                                      ...prev.milestoneFields,
+                                      [i]: {
+                                        ...prev.milestoneFields?.[i],
+                                        dueDate: undefined,
+                                      },
+                                    },
+                                  }));
+                                }
+                              }}
+                              className={
+                                proposalErrors.milestoneFields?.[i]?.dueDate
+                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  : ""
+                              }
+                            />
+                            {proposalErrors.milestoneFields?.[i]?.dueDate && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {proposalErrors.milestoneFields[i].dueDate}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium">
+                            Description <span className="text-red-500">*</span>
+                          </label>
+                          <Textarea
+                            rows={2}
+                            value={m.description || ""}
+                            onChange={(e) => {
+                              updateMilestone(i, {
+                                description: e.target.value,
+                              });
+                              // Clear error when user starts typing
+                              if (proposalErrors.milestoneFields?.[i]?.description) {
+                                setProposalErrors(prev => ({
+                                  ...prev,
+                                  milestoneFields: {
+                                    ...prev.milestoneFields,
+                                    [i]: {
+                                      ...prev.milestoneFields?.[i],
+                                      description: undefined,
+                                    },
+                                  },
+                                }));
+                              }
+                            }}
+                            placeholder="Milestone description (required)"
+                            className={
+                              proposalErrors.milestoneFields?.[i]?.description
+                                ? "border-red-500 focus-visible:ring-red-500"
+                                : ""
+                            }
+                          />
+                          {proposalErrors.milestoneFields?.[i]?.description && (
+                            <p className="text-xs text-red-600 mt-1">
+                              {proposalErrors.milestoneFields[i].description}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => removeMilestone(i)}
+                          >
+                            Remove
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
-                {proposalData.milestones.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No milestones added. Click "Add Milestone" to add one.
+                {/* Milestones total check */}
+                {proposalData.milestones.length > 0 && (
+                  <div className="mt-4 rounded-md border p-3 text-sm">
+                    {(() => {
+                      const bidAmountNum = Number(proposalData.bidAmount || 0);
+                      const sumMilestones = proposalData.milestones.reduce(
+                        (sum, m) => {
+                          const val = Number(m.amount);
+                          if (!isNaN(val)) return sum + val;
+                          return sum;
+                        },
+                        0
+                      );
+
+                      const match =
+                        bidAmountNum > 0 && sumMilestones === bidAmountNum;
+
+                      return (
+                        <div className="flex justify-between flex-wrap gap-2">
+                          <div>
+                            <div className="font-medium">
+                              Milestones total: RM {sumMilestones || 0}
+                            </div>
+                            <div>Your bid: RM {bidAmountNum || 0}</div>
+                          </div>
+                          <div
+                            className={
+                              "text-xs font-semibold " +
+                              (match ? "text-green-600" : "text-red-600")
+                            }
+                          >
+                            {match
+                              ? "Total matches bid ✅"
+                              : "Total does not match bid ❗"}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+                {proposalErrors.milestones && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {proposalErrors.milestones}
                   </p>
                 )}
               </div>
 
-              {/* Attachments */}
+              {/* File Attachments */}
               <div>
-                <Label htmlFor="attachments">Attachments (Optional)</Label>
-                <Input
-                  id="attachments"
-                  type="file"
-                  multiple
-                  onChange={handleAttachmentChange}
-                  className="mt-1"
-                />
+                <Label>Attachments (Optional)</Label>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 text-center ${
+                    proposalErrors.attachments
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300"
+                  }`}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                    accept=".pdf,.doc,.docx,.txt,.jpg,.png"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <Paperclip className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">
+                      Click to upload portfolio, resume, or relevant documents
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PDF, DOC, DOCX, TXT, JPG, PNG (Max 10MB each)
+                    </p>
+                  </label>
+                </div>
+
+                {/* Uploaded Files */}
                 {proposalData.attachments.length > 0 && (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-3 space-y-2">
                     {proposalData.attachments.map((file, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                        className="flex items-center justify-between bg-gray-50 p-2 rounded"
                       >
-                        <div className="flex items-center gap-2">
-                          <Paperclip className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm">{file.name}</span>
-                        </div>
+                        <span className="text-sm text-gray-700">
+                          {file.name}
+                        </span>
                         <Button
                           type="button"
                           variant="ghost"
@@ -983,7 +1342,35 @@ export default function OpportunityDetailsPage() {
                     ))}
                   </div>
                 )}
+                {proposalErrors.attachments && (
+                  <p className="text-xs text-red-600 mt-2">
+                    {proposalErrors.attachments}
+                  </p>
+                )}
               </div>
+
+              {/* Proposal Summary */}
+              <Card className="bg-gray-50">
+                <CardContent className="p-4">
+                  <h4 className="font-semibold mb-2">Proposal Summary</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Your Bid:</span>
+                      <span className="font-semibold">
+                        RM {proposalData.bidAmount || "0"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Timeline:</span>
+                      <span>{formatTimeline(proposalData.timelineAmount, proposalData.timelineUnit) || "Not specified"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Attachments:</span>
+                      <span>{proposalData.attachments.length} files</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <DialogFooter>
@@ -996,19 +1383,13 @@ export default function OpportunityDetailsPage() {
               <Button
                 onClick={handleSubmitProposal}
                 disabled={submittingProposal}
-                className="bg-blue-600 hover:bg-blue-700"
               >
                 {submittingProposal ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Submitting...
-                  </>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Submit Proposal
-                  </>
+                  <Send className="w-4 h-4 mr-2" />
                 )}
+                {submittingProposal ? "Submitting..." : "Submit Proposal"}
               </Button>
             </DialogFooter>
           </DialogContent>

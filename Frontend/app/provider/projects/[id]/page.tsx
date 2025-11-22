@@ -99,6 +99,13 @@ export default function ProviderProjectDetailsPage() {
     providerApproved: false,
     milestonesApprovedAt: null as string | null,
   });
+  const [milestoneErrors, setMilestoneErrors] = useState<Record<number, {
+    title?: string;
+    description?: string;
+    dueDate?: string;
+  }>>({});
+  const [originalProjectMilestones, setOriginalProjectMilestones] = useState<Milestone[]>([]);
+  const [milestoneFinalizeOpen, setMilestoneFinalizeOpen] = useState(false);
 
   // Dispute creation state
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
@@ -291,25 +298,72 @@ export default function ProviderProjectDetailsPage() {
   const handleSaveProjectMilestones = async () => {
     if (!project?.id) return;
 
-    // Validate due dates before saving
+    // Validate milestones
+    const errors: Record<number, { title?: string; description?: string; dueDate?: string }> = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const invalidMilestones = projectMilestones.filter((m) => {
-      if (!m.dueDate) return true;
-      const dueDate = new Date(m.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate < today;
+    let hasErrors = false;
+
+    projectMilestones.forEach((m, idx) => {
+      const milestoneErrors: { title?: string; description?: string; dueDate?: string } = {};
+      
+      if (!m.title || !m.title.trim()) {
+        milestoneErrors.title = "Title is required.";
+        hasErrors = true;
+      }
+      
+      if (!m.description || !m.description.trim()) {
+        milestoneErrors.description = "Description is required.";
+        hasErrors = true;
+      }
+      
+      if (!m.dueDate) {
+        milestoneErrors.dueDate = "Due date is required.";
+        hasErrors = true;
+      } else {
+        const dueDate = new Date(m.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate < today) {
+          milestoneErrors.dueDate = "Due date cannot be in the past. Please select today or a future date.";
+          hasErrors = true;
+        }
+      }
+      
+      if (Object.keys(milestoneErrors).length > 0) {
+        errors[idx] = milestoneErrors;
+      }
     });
 
-    if (invalidMilestones.length > 0) {
+    // Validate milestone sum equals bid amount
+    const bidAmount = project?.approvedPrice || 0;
+    if (bidAmount > 0) {
+      const sumMilestones = projectMilestones.reduce(
+        (sum: number, m: Milestone) => {
+          const val = Number(m.amount);
+          if (!isNaN(val)) return sum + val;
+          return sum;
+        },
+        0
+      );
+
+      if (sumMilestones !== bidAmount) {
+        const msg = `Total of milestones (RM ${sumMilestones.toLocaleString()}) must equal the bid amount (RM ${bidAmount.toLocaleString()}).`;
+        errors[-1] = { title: msg }; // Use -1 as a special index for general error
+        hasErrors = true;
+      }
+    }
+
+    if (hasErrors) {
+      setMilestoneErrors(errors);
       toast({
-        title: "Invalid Due Dates",
-        description:
-          "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        title: "Validation Error",
+        description: "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
         variant: "destructive",
       });
       return;
     }
+
+    setMilestoneErrors({});
 
     try {
       setSavingMilestones(true);
@@ -327,6 +381,26 @@ export default function ProviderProjectDetailsPage() {
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
+
+      // Refresh milestones from API
+      const milestoneData = await getProviderProjectMilestones(project.id);
+      const refreshedMilestones = Array.isArray(milestoneData.milestones)
+        ? milestoneData.milestones.map((m: any) => ({
+            ...m,
+            sequence: m.order,
+            submissionAttachmentUrl: m.submissionAttachmentUrl,
+            submissionNote: m.submissionNote,
+            submittedAt: m.submittedAt,
+            startDeliverables: m.startDeliverables,
+            submitDeliverables: m.submitDeliverables,
+            revisionNumber: m.revisionNumber,
+            submissionHistory: m.submissionHistory,
+          }))
+        : [];
+      
+      // Update both current and original milestones with fresh data
+      setProjectMilestones(refreshedMilestones);
+      setOriginalProjectMilestones(JSON.parse(JSON.stringify(refreshedMilestones)));
 
       // Refresh project data to get updated milestones
       await refreshProjectData();
@@ -362,18 +436,19 @@ export default function ProviderProjectDetailsPage() {
       // Refresh project data to get updated milestones
       await refreshProjectData();
 
-      if (res.locked) {
-        toast({
-          title: "Milestones approved and locked",
-          description: "Both parties have approved. Milestones are now locked.",
-        });
-        setMilestoneEditorOpen(false);
-      } else {
-        toast({
-          title: "Approved",
-          description: "Waiting for company to approve.",
-        });
-      }
+      // Always close the milestone editor dialog
+      setMilestoneEditorOpen(false);
+
+      // Toast feedback
+      toast({
+        title: "Milestones approved",
+        description: res.milestonesLocked
+          ? "Milestones are now locked. Work can start."
+          : "Waiting for company to approve.",
+      });
+
+      // Open the finalize/summary dialog
+      setMilestoneFinalizeOpen(true);
     } catch (e) {
       toast({
         title: "Approval failed",
@@ -427,21 +502,21 @@ export default function ProviderProjectDetailsPage() {
         params.id as string
       );
       if (milestoneData.milestones) {
-        setProjectMilestones(
-          Array.isArray(milestoneData.milestones)
-            ? milestoneData.milestones.map((m: any) => ({
-                ...m,
-                sequence: m.order,
-                submissionAttachmentUrl: m.submissionAttachmentUrl,
-                submissionNote: m.submissionNote,
-                submittedAt: m.submittedAt,
-                startDeliverables: m.startDeliverables,
-                submitDeliverables: m.submitDeliverables,
-                revisionNumber: m.revisionNumber,
-                submissionHistory: m.submissionHistory,
-              }))
-            : []
-        );
+        const loadedMilestones = Array.isArray(milestoneData.milestones)
+          ? milestoneData.milestones.map((m: any) => ({
+              ...m,
+              sequence: m.order,
+              submissionAttachmentUrl: m.submissionAttachmentUrl,
+              submissionNote: m.submissionNote,
+              submittedAt: m.submittedAt,
+              startDeliverables: m.startDeliverables,
+              submitDeliverables: m.submitDeliverables,
+              revisionNumber: m.revisionNumber,
+              submissionHistory: m.submissionHistory,
+            }))
+          : [];
+        setProjectMilestones(loadedMilestones);
+        setOriginalProjectMilestones(JSON.parse(JSON.stringify(loadedMilestones))); // Deep copy
         setMilestoneApprovalState({
           milestonesLocked: milestoneData.milestonesLocked,
           companyApproved: milestoneData.companyApproved,
@@ -1161,7 +1236,11 @@ export default function ProviderProjectDetailsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setMilestoneEditorOpen(true)}
+                            onClick={() => {
+                              // Store original milestones when opening editor
+                              setOriginalProjectMilestones(JSON.parse(JSON.stringify(projectMilestones)));
+                              setMilestoneEditorOpen(true);
+                            }}
                           >
                             Edit Milestones
                           </Button>
@@ -2167,6 +2246,13 @@ export default function ProviderProjectDetailsPage() {
             </DialogHeader>
 
             <div className="space-y-4">
+              {milestoneErrors[-1]?.title && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600 font-medium">
+                    {milestoneErrors[-1].title}
+                  </p>
+                </div>
+              )}
               {projectMilestones.map((m, i) => (
                 <Card key={i}>
                   <CardContent className="p-4 space-y-3">
@@ -2176,28 +2262,56 @@ export default function ProviderProjectDetailsPage() {
                         <Input type="number" value={i + 1} disabled />
                       </div>
                       <div className="md:col-span-4">
-                        <Label className="text-sm font-medium">Title</Label>
+                        <Label className="text-sm font-medium">
+                          Title <span className="text-red-500">*</span>
+                        </Label>
                         <Input
                           value={m.title}
-                          onChange={(e) =>
-                            updateProjectMilestone(i, { title: e.target.value })
+                          onChange={(e) => {
+                            updateProjectMilestone(i, { title: e.target.value });
+                            if (milestoneErrors[i]?.title) {
+                              setMilestoneErrors(prev => ({
+                                ...prev,
+                                [i]: { ...prev[i], title: undefined },
+                              }));
+                            }
+                          }}
+                          className={
+                            milestoneErrors[i]?.title
+                              ? "border-red-500 focus-visible:ring-red-500"
+                              : ""
                           }
                         />
+                        {milestoneErrors[i]?.title && (
+                          <p className="text-xs text-red-600 mt-1">
+                            {milestoneErrors[i].title}
+                          </p>
+                        )}
                       </div>
                       <div className="md:col-span-3">
                         <Label className="text-sm font-medium">Amount</Label>
                         <Input
                           type="number"
                           value={String(m.amount ?? 0)}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             updateProjectMilestone(i, {
                               amount: Number(e.target.value),
-                            })
-                          }
+                            });
+                            // Clear sum error when amount changes
+                            if (milestoneErrors[-1]) {
+                              setMilestoneErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors[-1];
+                                return newErrors;
+                              });
+                            }
+                          }}
                         />
                       </div>
                       <div className="md:col-span-4">
-                        <Label className="text-sm font-medium">Due Date</Label>
+                        <Label className="text-sm font-medium">
+                          Due Date <span className="text-red-500">*</span>
+                        </Label>
                         <Input
                           type="date"
                           min={new Date().toISOString().split("T")[0]}
@@ -2219,22 +2333,56 @@ export default function ProviderProjectDetailsPage() {
                             updateProjectMilestone(i, {
                               dueDate: selectedDate,
                             });
+                            if (milestoneErrors[i]?.dueDate) {
+                              setMilestoneErrors(prev => ({
+                                ...prev,
+                                [i]: { ...prev[i], dueDate: undefined },
+                              }));
+                            }
                           }}
+                          className={
+                            milestoneErrors[i]?.dueDate
+                              ? "border-red-500 focus-visible:ring-red-500"
+                              : ""
+                          }
                         />
+                        {milestoneErrors[i]?.dueDate && (
+                          <p className="text-xs text-red-600 mt-1">
+                            {milestoneErrors[i].dueDate}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div>
-                      <Label className="text-sm font-medium">Description</Label>
+                      <Label className="text-sm font-medium">
+                        Description <span className="text-red-500">*</span>
+                      </Label>
                       <Textarea
                         rows={2}
                         value={m.description || ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           updateProjectMilestone(i, {
                             description: e.target.value,
-                          })
+                          });
+                          if (milestoneErrors[i]?.description) {
+                            setMilestoneErrors(prev => ({
+                              ...prev,
+                              [i]: { ...prev[i], description: undefined },
+                            }));
+                          }
+                        }}
+                        className={
+                          milestoneErrors[i]?.description
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
                         }
                       />
+                      {milestoneErrors[i]?.description && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {milestoneErrors[i].description}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex justify-end">
@@ -2261,7 +2409,13 @@ export default function ProviderProjectDetailsPage() {
                   >
                     {savingMilestones ? "Saving..." : "Save Changes"}
                   </Button>
-                  <Button onClick={handleApproveProjectMilestones}>
+                  <Button 
+                    onClick={handleApproveProjectMilestones}
+                    disabled={
+                      JSON.stringify(normalizeMilestoneSequences(projectMilestones)) !== 
+                      JSON.stringify(normalizeMilestoneSequences(originalProjectMilestones))
+                    }
+                  >
                     Approve
                   </Button>
                 </div>
@@ -2269,6 +2423,92 @@ export default function ProviderProjectDetailsPage() {
             </div>
 
             <DialogFooter />
+          </DialogContent>
+        </Dialog>
+
+        {/* Milestones Finalized Dialog */}
+        <Dialog
+          open={milestoneFinalizeOpen}
+          onOpenChange={setMilestoneFinalizeOpen}
+        >
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl">Milestones Submitted</DialogTitle>
+              <DialogDescription>
+                These milestones are now awaiting final confirmation, or have been
+                locked if both sides approved.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 text-sm text-gray-700">
+              <div className="flex items-start gap-3">
+                <CheckCircle
+                  className={`w-5 h-5 flex-shrink-0 ${
+                    milestoneApprovalState.companyApproved
+                      ? "text-green-600"
+                      : "text-gray-400"
+                  }`}
+                />
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    Company Approved
+                  </div>
+                  <div>
+                    {milestoneApprovalState.companyApproved
+                      ? "The company approved the milestone plan."
+                      : "Waiting for company approval."}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    Provider Approved
+                  </div>
+                  <div>
+                    {milestoneApprovalState.providerApproved
+                      ? "You have approved the milestone plan."
+                      : "You haven't approved yet."}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle
+                  className={`w-5 h-5 flex-shrink-0 ${
+                    milestoneApprovalState.milestonesLocked
+                      ? "text-green-600"
+                      : "text-gray-400"
+                  }`}
+                />
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    Locked & Ready
+                  </div>
+                  <div>
+                    {milestoneApprovalState.milestonesLocked
+                      ? "Milestones are locked. Work can start and payments will follow these milestones."
+                      : "Milestones are not locked yet."}
+                  </div>
+                  {milestoneApprovalState.milestonesApprovedAt && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Locked at{" "}
+                      {new Date(
+                        milestoneApprovalState.milestonesApprovedAt
+                      ).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button onClick={() => setMilestoneFinalizeOpen(false)}>
+                Done
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 

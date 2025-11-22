@@ -121,6 +121,12 @@ export default function ProjectDetailsPage({
       providerApproved: false,
       milestonesApprovedAt: null as string | null,
     });
+  const [milestoneDraftErrors, setMilestoneDraftErrors] = useState<Record<number, {
+    title?: string;
+    description?: string;
+    dueDate?: string;
+  }>>({});
+  const [originalMilestonesDraft, setOriginalMilestonesDraft] = useState<Milestone[]>([]);
 
   const [activeTab, setActiveTab] = useState("overview");
   const [project, setProject] = useState<any>(null);
@@ -156,6 +162,12 @@ export default function ProjectDetailsPage({
     providerApproved: false,
     milestonesApprovedAt: null as string | null,
   });
+  const [milestoneErrors, setMilestoneErrors] = useState<Record<number, {
+    title?: string;
+    description?: string;
+    dueDate?: string;
+  }>>({});
+  const [originalProjectMilestones, setOriginalProjectMilestones] = useState<Milestone[]>([]);
 
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -594,21 +606,21 @@ export default function ProjectDetailsPage({
 
       // Refresh milestones
       const milestoneData = await getCompanyProjectMilestones(loadedProject.id);
-      setProjectMilestones(
-        Array.isArray(milestoneData.milestones)
-          ? milestoneData.milestones.map((m: any) => ({
-              ...m,
-              sequence: m.order,
-              submissionAttachmentUrl: m.submissionAttachmentUrl,
-              submissionNote: m.submissionNote,
-              submittedAt: m.submittedAt,
-              startDeliverables: m.startDeliverables,
-              submitDeliverables: m.submitDeliverables,
-              revisionNumber: m.revisionNumber,
-              submissionHistory: m.submissionHistory,
-            }))
-          : []
-      );
+      const loadedMilestones = Array.isArray(milestoneData.milestones)
+        ? milestoneData.milestones.map((m: any) => ({
+            ...m,
+            sequence: m.order,
+            submissionAttachmentUrl: m.submissionAttachmentUrl,
+            submissionNote: m.submissionNote,
+            submittedAt: m.submittedAt,
+            startDeliverables: m.startDeliverables,
+            submitDeliverables: m.submitDeliverables,
+            revisionNumber: m.revisionNumber,
+            submissionHistory: m.submissionHistory,
+          }))
+        : [];
+      setProjectMilestones(loadedMilestones);
+      setOriginalProjectMilestones(JSON.parse(JSON.stringify(loadedMilestones))); // Deep copy
       setMilestoneApprovalState({
         milestonesLocked: milestoneData.milestonesLocked,
         companyApproved: milestoneData.companyApproved,
@@ -946,25 +958,72 @@ export default function ProjectDetailsPage({
   const handleSaveProjectMilestones = async () => {
     if (!project?.id) return;
 
-    // Validate due dates before saving
+    // Validate milestones
+    const errors: Record<number, { title?: string; description?: string; dueDate?: string }> = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const invalidMilestones = projectMilestones.filter((m) => {
-      if (!m.dueDate) return true;
-      const dueDate = new Date(m.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate < today;
+    let hasErrors = false;
+
+    projectMilestones.forEach((m, idx) => {
+      const milestoneErrors: { title?: string; description?: string; dueDate?: string } = {};
+      
+      if (!m.title || !m.title.trim()) {
+        milestoneErrors.title = "Title is required.";
+        hasErrors = true;
+      }
+      
+      if (!m.description || !m.description.trim()) {
+        milestoneErrors.description = "Description is required.";
+        hasErrors = true;
+      }
+      
+      if (!m.dueDate) {
+        milestoneErrors.dueDate = "Due date is required.";
+        hasErrors = true;
+      } else {
+        const dueDate = new Date(m.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate < today) {
+          milestoneErrors.dueDate = "Due date cannot be in the past. Please select today or a future date.";
+          hasErrors = true;
+        }
+      }
+      
+      if (Object.keys(milestoneErrors).length > 0) {
+        errors[idx] = milestoneErrors;
+      }
     });
 
-    if (invalidMilestones.length > 0) {
+    // Validate milestone sum equals bid amount
+    const bidAmount = project?.approvedPrice || project?.bidAmount || 0;
+    if (bidAmount > 0) {
+      const sumMilestones = projectMilestones.reduce(
+        (sum: number, m: Milestone) => {
+          const val = Number(m.amount);
+          if (!isNaN(val)) return sum + val;
+          return sum;
+        },
+        0
+      );
+
+      if (sumMilestones !== bidAmount) {
+        const msg = `Total of milestones (RM ${sumMilestones.toLocaleString()}) must equal the bid amount (RM ${bidAmount.toLocaleString()}).`;
+        errors[-1] = { title: msg }; // Use -1 as a special index for general error
+        hasErrors = true;
+      }
+    }
+
+    if (hasErrors) {
+      setMilestoneErrors(errors);
       toast({
-        title: "Invalid Due Dates",
-        description:
-          "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        title: "Validation Error",
+        description: "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
         variant: "destructive",
       });
       return;
     }
+
+    setMilestoneErrors({});
 
     try {
       setSavingMilestones(true);
@@ -982,6 +1041,26 @@ export default function ProjectDetailsPage({
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
+
+      // Refresh milestones from API
+      const milestoneData = await getCompanyProjectMilestones(project.id);
+      const refreshedMilestones = Array.isArray(milestoneData.milestones)
+        ? milestoneData.milestones.map((m: any) => ({
+            ...m,
+            sequence: m.order,
+            submissionAttachmentUrl: m.submissionAttachmentUrl,
+            submissionNote: m.submissionNote,
+            submittedAt: m.submittedAt,
+            startDeliverables: m.startDeliverables,
+            submitDeliverables: m.submitDeliverables,
+            revisionNumber: m.revisionNumber,
+            submissionHistory: m.submissionHistory,
+          }))
+        : [];
+      
+      // Update both current and original milestones with fresh data
+      setProjectMilestones(refreshedMilestones);
+      setOriginalProjectMilestones(JSON.parse(JSON.stringify(refreshedMilestones)));
 
       // Refresh project data to get updated milestones
       await refreshProjectData();
@@ -1144,14 +1223,14 @@ export default function ProjectDetailsPage({
       // Immediately load project milestones for edit
       if (projectId) {
         const milestoneData = await getCompanyProjectMilestones(projectId);
-        setMilestonesDraft(
-          Array.isArray(milestoneData.milestones)
-            ? milestoneData.milestones.map((m: any) => ({
-                ...m,
-                sequence: m.order,
-              }))
-            : []
-        );
+        const loadedDraftMilestones = Array.isArray(milestoneData.milestones)
+          ? milestoneData.milestones.map((m: any) => ({
+              ...m,
+              sequence: m.order,
+            }))
+          : [];
+        setMilestonesDraft(loadedDraftMilestones);
+        setOriginalMilestonesDraft(JSON.parse(JSON.stringify(loadedDraftMilestones))); // Deep copy
         setMilestoneApprovalStateModal({
           milestonesLocked: milestoneData.milestonesLocked,
           companyApproved: milestoneData.companyApproved,
@@ -1182,25 +1261,75 @@ export default function ProjectDetailsPage({
   const handleSaveAcceptedMilestones = async () => {
     if (!activeProjectId) return;
 
-    // Validate due dates before saving
+    // Validate milestones
+    const errors: Record<number, { title?: string; description?: string; dueDate?: string }> = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const invalidMilestones = milestonesDraft.filter((m) => {
-      if (!m.dueDate) return true;
-      const dueDate = new Date(m.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate < today;
+    let hasErrors = false;
+
+    milestonesDraft.forEach((m, idx) => {
+      const milestoneErrors: { title?: string; description?: string; dueDate?: string } = {};
+      
+      if (!m.title || !m.title.trim()) {
+        milestoneErrors.title = "Title is required.";
+        hasErrors = true;
+      }
+      
+      if (!m.description || !m.description.trim()) {
+        milestoneErrors.description = "Description is required.";
+        hasErrors = true;
+      }
+      
+      if (!m.dueDate) {
+        milestoneErrors.dueDate = "Due date is required.";
+        hasErrors = true;
+      } else {
+        const dueDate = new Date(m.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate < today) {
+          milestoneErrors.dueDate = "Due date cannot be in the past. Please select today or a future date.";
+          hasErrors = true;
+        }
+      }
+      
+      if (Object.keys(milestoneErrors).length > 0) {
+        errors[idx] = milestoneErrors;
+      }
     });
 
-    if (invalidMilestones.length > 0) {
+    // Validate milestone sum equals bid amount
+    // Get bid amount from the project - we need to find it from the project data
+    // For now, we'll get it from the project state if available
+    const projectData = project || {};
+    const bidAmount = projectData.approvedPrice || projectData.bidAmount || 0;
+    if (bidAmount > 0) {
+      const sumMilestones = milestonesDraft.reduce(
+        (sum: number, m: Milestone) => {
+          const val = Number(m.amount);
+          if (!isNaN(val)) return sum + val;
+          return sum;
+        },
+        0
+      );
+
+      if (sumMilestones !== bidAmount) {
+        const msg = `Total of milestones (RM ${sumMilestones.toLocaleString()}) must equal the bid amount (RM ${bidAmount.toLocaleString()}).`;
+        errors[-1] = { title: msg }; // Use -1 as a special index for general error
+        hasErrors = true;
+      }
+    }
+
+    if (hasErrors) {
+      setMilestoneDraftErrors(errors);
       toast({
-        title: "Invalid Due Dates",
-        description:
-          "One or more milestones have due dates in the past. Please update them to today or a future date.",
+        title: "Validation Error",
+        description: "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
         variant: "destructive",
       });
       return;
     }
+
+    setMilestoneDraftErrors({});
 
     try {
       setSavingMilestonesModal(true);
@@ -1225,6 +1354,19 @@ export default function ProjectDetailsPage({
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
+      
+      // Refresh milestones from API
+      const milestoneData = await getCompanyProjectMilestones(activeProjectId);
+      const refreshedMilestones = Array.isArray(milestoneData.milestones)
+        ? milestoneData.milestones.map((m: any) => ({
+            ...m,
+            sequence: m.order,
+          }))
+        : [];
+      
+      // Update both current and original milestones with fresh data
+      setMilestonesDraft(refreshedMilestones);
+      setOriginalMilestonesDraft(JSON.parse(JSON.stringify(refreshedMilestones)));
 
       toast({
         title: "Milestones updated",
@@ -1878,7 +2020,11 @@ export default function ProjectDetailsPage({
                       <>
                         <Button
                           variant="outline"
-                          onClick={() => setMilestoneEditorOpen(true)}
+                          onClick={() => {
+                            // Store original milestones when opening editor
+                            setOriginalProjectMilestones(JSON.parse(JSON.stringify(projectMilestones)));
+                            setMilestoneEditorOpen(true);
+                          }}
                         >
                           Edit Milestones
                         </Button>
@@ -3232,6 +3378,13 @@ export default function ProjectDetailsPage({
           </DialogHeader>
 
           <div className="space-y-4">
+            {milestoneErrors[-1]?.title && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600 font-medium">
+                  {milestoneErrors[-1].title}
+                </p>
+              </div>
+            )}
             {projectMilestones.map((m, i) => (
               <Card key={i}>
                 <CardContent className="p-4 space-y-3">
@@ -3241,28 +3394,56 @@ export default function ProjectDetailsPage({
                       <Input type="number" value={i + 1} disabled />
                     </div>
                     <div className="md:col-span-4">
-                      <label className="text-sm font-medium">Title</label>
+                      <label className="text-sm font-medium">
+                        Title <span className="text-red-500">*</span>
+                      </label>
                       <Input
                         value={m.title}
-                        onChange={(e) =>
-                          updateProjectMilestone(i, { title: e.target.value })
+                        onChange={(e) => {
+                          updateProjectMilestone(i, { title: e.target.value });
+                          if (milestoneErrors[i]?.title) {
+                            setMilestoneErrors(prev => ({
+                              ...prev,
+                              [i]: { ...prev[i], title: undefined },
+                            }));
+                          }
+                        }}
+                        className={
+                          milestoneErrors[i]?.title
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
                         }
                       />
+                      {milestoneErrors[i]?.title && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {milestoneErrors[i].title}
+                        </p>
+                      )}
                     </div>
                     <div className="md:col-span-3">
                       <label className="text-sm font-medium">Amount</label>
                       <Input
                         type="number"
                         value={String(m.amount ?? 0)}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           updateProjectMilestone(i, {
                             amount: Number(e.target.value),
-                          })
-                        }
+                          });
+                          // Clear sum error when amount changes
+                          if (milestoneErrors[-1]) {
+                            setMilestoneErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors[-1];
+                              return newErrors;
+                            });
+                          }
+                        }}
                       />
                     </div>
                     <div className="md:col-span-4">
-                      <label className="text-sm font-medium">Due Date</label>
+                      <label className="text-sm font-medium">
+                        Due Date <span className="text-red-500">*</span>
+                      </label>
                       <Input
                         type="date"
                         min={new Date().toISOString().split("T")[0]}
@@ -3280,22 +3461,56 @@ export default function ProjectDetailsPage({
                             return;
                           }
                           updateProjectMilestone(i, { dueDate: selectedDate });
+                          if (milestoneErrors[i]?.dueDate) {
+                            setMilestoneErrors(prev => ({
+                              ...prev,
+                              [i]: { ...prev[i], dueDate: undefined },
+                            }));
+                          }
                         }}
+                        className={
+                          milestoneErrors[i]?.dueDate
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }
                       />
+                      {milestoneErrors[i]?.dueDate && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {milestoneErrors[i].dueDate}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium">Description</label>
+                    <label className="text-sm font-medium">
+                      Description <span className="text-red-500">*</span>
+                    </label>
                     <Textarea
                       rows={2}
                       value={m.description || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         updateProjectMilestone(i, {
                           description: e.target.value,
-                        })
+                        });
+                        if (milestoneErrors[i]?.description) {
+                          setMilestoneErrors(prev => ({
+                            ...prev,
+                            [i]: { ...prev[i], description: undefined },
+                          }));
+                        }
+                      }}
+                      className={
+                        milestoneErrors[i]?.description
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
                       }
                     />
+                    {milestoneErrors[i]?.description && (
+                      <p className="text-xs text-red-600 mt-1">
+                        {milestoneErrors[i].description}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex justify-end">
@@ -3322,7 +3537,13 @@ export default function ProjectDetailsPage({
                 >
                   {savingMilestones ? "Saving..." : "Save Changes"}
                 </Button>
-                <Button onClick={handleApproveProjectMilestones}>
+                <Button 
+                  onClick={handleApproveProjectMilestones}
+                  disabled={
+                    JSON.stringify(normalizeMilestoneSequences(projectMilestones)) !== 
+                    JSON.stringify(normalizeMilestoneSequences(originalProjectMilestones))
+                  }
+                >
                   Approve
                 </Button>
               </div>
@@ -3982,6 +4203,13 @@ export default function ProjectDetailsPage({
           </DialogHeader>
 
           <div className="space-y-4">
+            {milestoneDraftErrors[-1]?.title && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600 font-medium">
+                  {milestoneDraftErrors[-1].title}
+                </p>
+              </div>
+            )}
             {milestonesDraft.map((m, i) => (
               <Card key={i}>
                 <CardContent className="p-4 space-y-3">
@@ -3991,15 +4219,33 @@ export default function ProjectDetailsPage({
                       <Input type="number" value={i + 1} disabled />
                     </div>
                     <div className="md:col-span-4">
-                      <Label>Title</Label>
+                      <Label>
+                        Title <span className="text-red-500">*</span>
+                      </Label>
                       <Input
                         value={m.title}
                         onChange={(e) => {
                           const updated = [...milestonesDraft];
                           updated[i] = { ...updated[i], title: e.target.value };
                           setMilestonesDraft(updated);
+                          if (milestoneDraftErrors[i]?.title) {
+                            setMilestoneDraftErrors(prev => ({
+                              ...prev,
+                              [i]: { ...prev[i], title: undefined },
+                            }));
+                          }
                         }}
+                        className={
+                          milestoneDraftErrors[i]?.title
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }
                       />
+                      {milestoneDraftErrors[i]?.title && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {milestoneDraftErrors[i].title}
+                        </p>
+                      )}
                     </div>
                     <div className="md:col-span-3">
                       <Label>Amount</Label>
@@ -4013,11 +4259,21 @@ export default function ProjectDetailsPage({
                             amount: Number(e.target.value),
                           };
                           setMilestonesDraft(updated);
+                          // Clear sum error when amount changes
+                          if (milestoneDraftErrors[-1]) {
+                            setMilestoneDraftErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors[-1];
+                              return newErrors;
+                            });
+                          }
                         }}
                       />
                     </div>
                     <div className="md:col-span-4">
-                      <Label>Due Date</Label>
+                      <Label>
+                        Due Date <span className="text-red-500">*</span>
+                      </Label>
                       <Input
                         type="date"
                         min={new Date().toISOString().split("T")[0]}
@@ -4040,12 +4296,30 @@ export default function ProjectDetailsPage({
                             dueDate: selectedDate,
                           };
                           setMilestonesDraft(updated);
+                          if (milestoneDraftErrors[i]?.dueDate) {
+                            setMilestoneDraftErrors(prev => ({
+                              ...prev,
+                              [i]: { ...prev[i], dueDate: undefined },
+                            }));
+                          }
                         }}
+                        className={
+                          milestoneDraftErrors[i]?.dueDate
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : ""
+                        }
                       />
+                      {milestoneDraftErrors[i]?.dueDate && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {milestoneDraftErrors[i].dueDate}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div>
-                    <Label>Description</Label>
+                    <Label>
+                      Description <span className="text-red-500">*</span>
+                    </Label>
                     <Textarea
                       rows={2}
                       value={m.description || ""}
@@ -4056,8 +4330,24 @@ export default function ProjectDetailsPage({
                           description: e.target.value,
                         };
                         setMilestonesDraft(updated);
+                        if (milestoneDraftErrors[i]?.description) {
+                          setMilestoneDraftErrors(prev => ({
+                            ...prev,
+                            [i]: { ...prev[i], description: undefined },
+                          }));
+                        }
                       }}
+                      className={
+                        milestoneDraftErrors[i]?.description
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }
                     />
+                    {milestoneDraftErrors[i]?.description && (
+                      <p className="text-xs text-red-600 mt-1">
+                        {milestoneDraftErrors[i].description}
+                      </p>
+                    )}
                   </div>
                   <div className="flex justify-end">
                     <Button
@@ -4101,7 +4391,13 @@ export default function ProjectDetailsPage({
                 >
                   {savingMilestonesModal ? "Saving..." : "Save Changes"}
                 </Button>
-                <Button onClick={handleApproveAcceptedMilestones}>
+                <Button 
+                  onClick={handleApproveAcceptedMilestones}
+                  disabled={
+                    JSON.stringify(normalizeMilestoneSequences(milestonesDraft)) !== 
+                    JSON.stringify(normalizeMilestoneSequences(originalMilestonesDraft))
+                  }
+                >
                   Approve
                 </Button>
               </div>
