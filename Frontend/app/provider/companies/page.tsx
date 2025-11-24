@@ -3,22 +3,10 @@ import { ProviderLayout } from "@/components/provider-layout";
 import FindCompaniesClient from "@/components/provider/companies/FindCompaniesClient";
 
 export default async function CompaniesPage() {
-  let industries = [
-    { value: "all", label: "All Industries" },
-    { value: "technology", label: "Technology" },
-    { value: "finance", label: "Finance" },
-  ];
-
   let locations = [
     { value: "all", label: "All Locations" },
     { value: "kuala lumpur", label: "Kuala Lumpur" },
     { value: "selangor", label: "Selangor" },
-  ];
-
-  let companySizes = [
-    { value: "all", label: "All Company Sizes" },
-    { value: "1-10", label: "1-10 employees" },
-    { value: "11-50", label: "11-50 employees" },
   ];
 
   let ratings = [
@@ -35,9 +23,7 @@ export default async function CompaniesPage() {
     if (response.ok) {
       const data = await response.json();
       if (data.success) {
-        industries = data.industries || industries;
         locations = data.locations || locations;
-        companySizes = data.companySizes || companySizes;
         ratings = data.ratings || ratings;
       }
     }
@@ -49,9 +35,9 @@ export default async function CompaniesPage() {
   return (
     <ProviderLayout>
       <FindCompaniesClient
-        industries={industries}
+        industries={[]}
         locations={locations}
-        companySizes={companySizes}
+        companySizes={[]}
         ratings={ratings}
       />
     </ProviderLayout>

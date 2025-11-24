@@ -1734,17 +1734,19 @@ export default function ProjectDetailsPage({
                 View Dispute
               </Button>
             ) : (
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
-                onClick={() => setDisputeDialogOpen(true)}
-                disabled={
-                  project?.status === "DISPUTED" &&
-                  currentDispute?.status === "CLOSED"
-                }
-              >
-                <AlertCircle className="w-4 h-4 mr-2" />
-                Report Dispute
-              </Button>
+              project?.status !== "COMPLETED" && (
+                <Button
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => setDisputeDialogOpen(true)}
+                  disabled={
+                    project?.status === "DISPUTED" &&
+                    currentDispute?.status === "CLOSED"
+                  }
+                >
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Report Dispute
+                </Button>
+              )
             )}
           </div>
         </div>
@@ -1798,10 +1800,20 @@ export default function ProjectDetailsPage({
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">Days Left</p>
-                    <p className="text-2xl font-bold">{project.daysLeft}</p>
+                    <p className="text-sm text-gray-500">
+                      {project.daysLeft < 0 ? "Late" : "Days Left"}
+                    </p>
+                    <p className={`text-2xl font-bold ${
+                      project.daysLeft < 0 ? "text-red-600" : ""
+                    }`}>
+                      {project.daysLeft < 0 
+                        ? `Late ${Math.abs(project.daysLeft)} day${Math.abs(project.daysLeft) !== 1 ? 's' : ''}`
+                        : project.daysLeft}
+                    </p>
                   </div>
-                  <Calendar className="w-8 h-8 text-orange-600" />
+                  <Calendar className={`w-8 h-8 ${
+                    project.daysLeft < 0 ? "text-red-600" : "text-orange-600"
+                  }`} />
                 </div>
               </CardContent>
             </Card>

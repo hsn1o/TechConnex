@@ -23,10 +23,9 @@ export default function FindCompaniesClient({
   ratings: Option[];
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [industryFilter, setIndustryFilter] = useState(industries[0]?.value ?? "all");
   const [locationFilter, setLocationFilter] = useState(locations[0]?.value ?? "all");
-  const [companySizeFilter, setCompanySizeFilter] = useState(companySizes[0]?.value ?? "all");
   const [ratingFilter, setRatingFilter] = useState(ratings[0]?.value ?? "all");
+  const [sortBy, setSortBy] = useState("rating");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,9 +42,7 @@ export default function FindCompaniesClient({
     const params = new URLSearchParams();
     if (userId) params.append("userId", userId);
     if (searchQuery) params.append("search", searchQuery);
-    if (industryFilter !== "all") params.append("industry", industryFilter);
     if (locationFilter !== "all") params.append("location", locationFilter);
-    if (companySizeFilter !== "all") params.append("companySize", companySizeFilter);
     if (ratingFilter !== "all") params.append("rating", ratingFilter);
 
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -71,9 +68,25 @@ export default function FindCompaniesClient({
       })
       .catch((err) => console.error("Failed to fetch companies:", err))
       .finally(() => setLoading(false));
-  }, [searchQuery, industryFilter, locationFilter, companySizeFilter, ratingFilter]);
+  }, [searchQuery, locationFilter, ratingFilter]);
 
-  const filteredCompanies = companies; // backend handles filtering
+  // Sort companies based on selected option
+  const sortedCompanies = [...companies].sort((a, b) => {
+    switch (sortBy) {
+      case "rating":
+        return (b.rating || 0) - (a.rating || 0);
+      case "projects":
+        return (b.projectsPosted || 0) - (a.projectsPosted || 0);
+      case "spend":
+        return (b.totalSpend || 0) - (a.totalSpend || 0);
+      case "newest":
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      default:
+        return 0;
+    }
+  });
+
+  const filteredCompanies = sortedCompanies; // backend handles filtering, frontend handles sorting
 
   return (
     <div className="space-y-8">
@@ -96,7 +109,7 @@ export default function FindCompaniesClient({
       {/* Filters */}
       <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -107,34 +120,12 @@ export default function FindCompaniesClient({
               />
             </div>
 
-            <Select value={industryFilter} onValueChange={setIndustryFilter}>
-              <SelectTrigger><SelectValue placeholder="All Industries" /></SelectTrigger>
-              <SelectContent>
-                {industries.map((i) => (
-                  <SelectItem key={i.value} value={i.value}>
-                    {i.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={locationFilter} onValueChange={setLocationFilter}>
               <SelectTrigger><SelectValue placeholder="All Locations" /></SelectTrigger>
               <SelectContent>
                 {locations.map((l) => (
                   <SelectItem key={l.value} value={l.value}>
                     {l.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={companySizeFilter} onValueChange={setCompanySizeFilter}>
-              <SelectTrigger><SelectValue placeholder="All Sizes" /></SelectTrigger>
-              <SelectContent>
-                {companySizes.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -157,7 +148,7 @@ export default function FindCompaniesClient({
       {/* Results header */}
       <div className="flex items-center justify-between">
         <p className="text-gray-600">{filteredCompanies.length} companies found</p>
-        <Select defaultValue="rating">
+        <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-48"><SelectValue placeholder="Sort by" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="rating">Highest Rated</SelectItem>

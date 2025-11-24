@@ -189,8 +189,8 @@ export default function CustomerProjectsPage() {
         matchesStatus = project.status === "IN_PROGRESS";
       } else if (statusFilter === "completed") {
         matchesStatus = project.status === "COMPLETED";
-      } else if (statusFilter === "cancelled") {
-        matchesStatus = project.status === "CANCELLED";
+      } else if (statusFilter === "disputed") {
+        matchesStatus = project.status === "DISPUTED";
       } else {
         matchesStatus = project.status === statusFilter;
       }
@@ -467,8 +467,7 @@ export default function CustomerProjectsPage() {
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="on_hold">On Hold</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="disputed">Disputed</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
@@ -628,14 +627,14 @@ export default function CustomerProjectsPage() {
                       <div>
                         <p className="text-gray-500">
                           {project.type === "Project" &&
-                          project.status === "IN_PROGRESS" &&
+                          (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
                           project.approvedPrice
                             ? "Approved Price"
                             : "Budget"}
                         </p>
                         <p className="font-semibold">
                           {project.type === "Project" &&
-                          project.status === "IN_PROGRESS" &&
+                          (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
                           project.approvedPrice
                             ? `RM${project.approvedPrice.toLocaleString()}`
                             : `RM${project.budgetMin.toLocaleString()} - RM${project.budgetMax.toLocaleString()}`}
@@ -696,13 +695,6 @@ export default function CustomerProjectsPage() {
                         }
                       >
                         <MessageSquare className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditProject(project)}
-                      >
-                        <Edit className="w-4 h-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -815,14 +807,14 @@ export default function CustomerProjectsPage() {
                           <div className="text-right">
                             <p className="text-sm text-gray-500">
                               {project.type === "Project" &&
-                              project.status === "IN_PROGRESS" &&
+                              (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
                               project.approvedPrice
                                 ? "Approved Price"
                                 : "Budget"}
                             </p>
                             <p className="font-semibold">
                               {project.type === "Project" &&
-                              project.status === "IN_PROGRESS" &&
+                              (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
                               project.approvedPrice
                                 ? `RM${project.approvedPrice.toLocaleString()}`
                                 : `RM${project.budgetMin.toLocaleString()} - RM${project.budgetMax.toLocaleString()}`}
@@ -870,13 +862,6 @@ export default function CustomerProjectsPage() {
                               }}
                             >
                               <MessageSquare className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditProject(project)}
-                            >
-                              <Edit className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>

@@ -294,12 +294,6 @@ export default function CompanyDetailClient({
     <div className="space-y-8">
       {/* Back + Actions */}
       <div className="flex items-center justify-between">
-        <Link href="/provider/companies">
-          <Button variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to results
-          </Button>
-        </Link>
         <div className="flex gap-2">
           <Button
             variant={saved ? "default" : "outline"}

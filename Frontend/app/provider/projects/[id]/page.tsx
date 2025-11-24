@@ -982,7 +982,7 @@ export default function ProviderProjectDetailsPage() {
                 View Dispute
               </Button>
             ) : (
-              project.status === "IN_PROGRESS" && (
+              project.status !== "COMPLETED" && (
                 <Button
                   onClick={() => setDisputeDialogOpen(true)}
                   disabled={
