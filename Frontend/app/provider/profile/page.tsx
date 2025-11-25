@@ -149,6 +149,10 @@ export default function ProviderProfilePage(props: Props = {}) {
   );
   const { toast } = useToast();
 
+  // State for reviews
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
   // State for input fields (similar to registration form)
   const [customSkill, setCustomSkill] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
@@ -297,79 +301,109 @@ export default function ProviderProfilePage(props: Props = {}) {
     loadCertifications();
   }, [toast]);
 
-
-
   // Fetch profile and kyc documents client-side when not provided via props
   useEffect(() => {
     if (initialProfileData) return; // server provided
 
     setLoading(true);
-    (async () => {      
-        try {
-          const kycResp = await getKycDocuments();
-          const docsData = (kycResp?.data?.documents ??
-            kycResp?.data ??
-            []) as unknown[];
-          const mapped = docsData.map((d) => {
-            const item = d as Record<string, unknown>;
-            const fileUrl = item.fileUrl ? String(item.fileUrl) : undefined;
-            // Construct full URL if it's a relative path
-            const fullFileUrl =
-              fileUrl && fileUrl.startsWith("/")
-                ? `${API_BASE}${fileUrl}`
-                : fileUrl;
-            return {
-              id: String(item.id ?? ""),
-              name: String(item.filename ?? item.fileUrl ?? item.id ?? ""),
-              type: String(item.type ?? "document"),
-              size: String(item.size ?? "-"),
-              uploadDate: String(item.uploadedAt ?? item.uploadDate ?? ""),
-              // Normalize backend statuses (uploaded|verified|rejected) to our UI statuses
-              status: ((): "pending" | "approved" | "rejected" => {
-                const raw = String(item.status ?? "uploaded").toLowerCase();
-                if (raw === "verified" || raw === "approved") return "approved";
-                if (raw === "rejected") return "rejected";
-                return "pending"; // uploaded / uploaded-but-not-reviewed
-              })(),
-              rejectionReason: item.reviewNotes
-                ? String(item.reviewNotes)
+    (async () => {
+      try {
+        const kycResp = await getKycDocuments();
+        const docsData = (kycResp?.data?.documents ??
+          kycResp?.data ??
+          []) as unknown[];
+        const mapped = docsData.map((d) => {
+          const item = d as Record<string, unknown>;
+          const fileUrl = item.fileUrl ? String(item.fileUrl) : undefined;
+          // Construct full URL if it's a relative path
+          const fullFileUrl =
+            fileUrl && fileUrl.startsWith("/")
+              ? `${API_BASE}${fileUrl}`
+              : fileUrl;
+          return {
+            id: String(item.id ?? ""),
+            name: String(item.filename ?? item.fileUrl ?? item.id ?? ""),
+            type: String(item.type ?? "document"),
+            size: String(item.size ?? "-"),
+            uploadDate: String(item.uploadedAt ?? item.uploadDate ?? ""),
+            // Normalize backend statuses (uploaded|verified|rejected) to our UI statuses
+            status: ((): "pending" | "approved" | "rejected" => {
+              const raw = String(item.status ?? "uploaded").toLowerCase();
+              if (raw === "verified" || raw === "approved") return "approved";
+              if (raw === "rejected") return "rejected";
+              return "pending"; // uploaded / uploaded-but-not-reviewed
+            })(),
+            rejectionReason: item.reviewNotes
+              ? String(item.reviewNotes)
+              : undefined,
+            // prefer the reviewer's display name when available (item.reviewer.name),
+            // otherwise fall back to any top-level reviewedBy value
+            reviewedBy:
+              item.reviewer && (item.reviewer as any).name
+                ? String((item.reviewer as any).name)
+                : item.reviewedBy
+                ? String(item.reviewedBy)
                 : undefined,
-              // prefer the reviewer's display name when available (item.reviewer.name),
-              // otherwise fall back to any top-level reviewedBy value
-              reviewedBy:
-                item.reviewer && (item.reviewer as any).name
-                  ? String((item.reviewer as any).name)
-                  : item.reviewedBy
-                  ? String(item.reviewedBy)
-                  : undefined,
-              reviewedAt: item.reviewedAt
-                ? new Date(item.reviewedAt as any).toLocaleString("en-MY", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })
-                : undefined,
-              fileUrl: fullFileUrl,
-              reviewer: item.reviewer
-                ? {
-                    id: (item.reviewer as any).id,
-                    name: (item.reviewer as any).name,
-                    email: (item.reviewer as any).email,
-                  }
-                : null,
-            } as UploadedDocument;
-          });
-          setDocs(mapped);
-        } catch (err) {
-          console.warn("Failed to fetch KYC documents", err);
-        }
-       finally {
+            reviewedAt: item.reviewedAt
+              ? new Date(item.reviewedAt as any).toLocaleString("en-MY", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })
+              : undefined,
+            fileUrl: fullFileUrl,
+            reviewer: item.reviewer
+              ? {
+                  id: (item.reviewer as any).id,
+                  name: (item.reviewer as any).name,
+                  email: (item.reviewer as any).email,
+                }
+              : null,
+          } as UploadedDocument;
+        });
+        setDocs(mapped);
+      } catch (err) {
+        console.warn("Failed to fetch KYC documents", err);
+      } finally {
         setLoading(false);
       }
     })();
+  }, []);
+
+  // Fetch real reviews
+  const fetchReviews = async () => {
+    setLoadingReviews(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE}/provider/reviews?status=received`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Provider reviews received:", data);
+        setReviews(data.reviews || []);
+      } else {
+        console.error("Failed to fetch reviews:", response.status);
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
+  // Load reviews
+  useEffect(() => {
+    fetchReviews();
   }, []);
 
   // Save profile data
@@ -798,42 +832,6 @@ export default function ProviderProfilePage(props: Props = {}) {
     }
   };
 
-  const reviews = [
-    {
-      id: 1,
-      client: "John Doe",
-      company: "TechStart Sdn Bhd",
-      rating: 5,
-      comment:
-        "Ahmad delivered exceptional work on our e-commerce platform. His technical expertise and attention to detail exceeded our expectations.",
-      project: "E-commerce Platform Development",
-      date: "2024-01-20",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 2,
-      client: "Sarah Chen",
-      company: "Digital Solutions",
-      rating: 5,
-      comment:
-        "Outstanding developer! The mobile app was delivered on time and works flawlessly. Highly recommended!",
-      project: "Mobile Banking App",
-      date: "2023-12-25",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 3,
-      client: "Mike Johnson",
-      company: "Manufacturing Corp",
-      rating: 4,
-      comment:
-        "Great work on the cloud infrastructure. Ahmad is very knowledgeable and professional.",
-      project: "Cloud Infrastructure Setup",
-      date: "2023-12-05",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ];
-
   return (
     <ProviderLayout>
       <div className="space-y-8">
@@ -913,7 +911,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                     </li>
                   ))}
                 </ul>
-            </div>
+              </div>
             )}
             {profileCompletion === 100 && (
               <div className="mt-4 flex items-center gap-2 text-green-700">
@@ -990,7 +988,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                               ) : (
                                 <Camera className="w-4 h-4" />
                               )}
-                          </Button>
+                            </Button>
                           </>
                         )}
                       </div>
@@ -1193,19 +1191,26 @@ export default function ProviderProfilePage(props: Props = {}) {
                         )}
                       </div>
                     ) : (
-                    <div className="space-y-4">
-                      {certifications.map((cert, index) => (
-                          <div key={cert.id || index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="space-y-4">
+                        {certifications.map((cert, index) => (
+                          <div
+                            key={cert.id || index}
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
                             <div className="flex items-center space-x-3 flex-1">
                               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Award className="w-6 h-6 text-blue-600" />
-                            </div>
-                              <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium">{cert.name}</p>
-                                  {cert.verified && <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />}
+                                <Award className="w-6 h-6 text-blue-600" />
                               </div>
-                              <p className="text-sm text-gray-600">{cert.issuer}</p>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{cert.name}</p>
+                                  {cert.verified && (
+                                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  {cert.issuer}
+                                </p>
                                 <p className="text-xs text-gray-500">
                                   Issued:{" "}
                                   {cert.issuedDate
@@ -1229,9 +1234,9 @@ export default function ProviderProfilePage(props: Props = {}) {
                                     Verify Certificate ↗
                                   </a>
                                 )}
+                              </div>
                             </div>
-                          </div>
-                          {isEditing && (
+                            {isEditing && (
                               <div className="flex gap-2 ml-4">
                                 <Button
                                   variant="outline"
@@ -1247,13 +1252,13 @@ export default function ProviderProfilePage(props: Props = {}) {
                                     handleDeleteCertification(index)
                                   }
                                 >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
                               </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -1591,9 +1596,12 @@ export default function ProviderProfilePage(props: Props = {}) {
                   </CardContent>
                 </Card>
               ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {portfolioProjects.map((project) => (
-                  <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                    <Card
+                      key={project.id}
+                      className="hover:shadow-lg transition-shadow"
+                    >
                       <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-48 flex items-center justify-center rounded-t-lg">
                         <div className="text-center p-4">
                           <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -1602,25 +1610,36 @@ export default function ProviderProfilePage(props: Props = {}) {
                           <Badge variant="secondary" className="text-xs">
                             {project.category || "Project"}
                           </Badge>
+                        </div>
                       </div>
-                    </div>
-                    <CardContent className="p-4">
-                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">{project.title}</h3>
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{project.description || "No description provided"}</p>
-                        {project.technologies && project.technologies.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-3">
-                            {project.technologies.slice(0, 6).map((tech: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {tech}
-                          </Badge>
-                        ))}
-                            {project.technologies.length > 6 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{project.technologies.length - 6} more
-                              </Badge>
-                            )}
-                      </div>
-                        )}
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">
+                          {project.title}
+                        </h3>
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                          {project.description || "No description provided"}
+                        </p>
+                        {project.technologies &&
+                          project.technologies.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {project.technologies
+                                .slice(0, 6)
+                                .map((tech: string, index: number) => (
+                                  <Badge
+                                    key={index}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {tech}
+                                  </Badge>
+                                ))}
+                              {project.technologies.length > 6 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{project.technologies.length - 6} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
                           <span className="font-medium">{project.client}</span>
                           {project.completedDate && (
@@ -1630,16 +1649,16 @@ export default function ProviderProfilePage(props: Props = {}) {
                               ).toLocaleDateString()}
                             </span>
                           )}
-                      </div>
+                        </div>
                         {project.approvedPrice && (
                           <div className="text-sm text-green-600 font-semibold">
                             RM {Number(project.approvedPrice).toLocaleString()}
                           </div>
                         )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               )}
             </div>
           </TabsContent>
@@ -1957,49 +1976,97 @@ export default function ProviderProfilePage(props: Props = {}) {
               </div>
 
               <div className="space-y-6">
-                {reviews.map((review) => (
-                  <Card key={review.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start space-x-4">
-                        <Avatar>
-                          <AvatarImage
-                            src={review.avatar || "/placeholder.svg"}
-                          />
-                          <AvatarFallback>
-                            {review.client.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <p className="font-semibold">{review.client}</p>
-                              <p className="text-sm text-gray-600">
-                                {review.company}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${
-                                    i < review.rating
-                                      ? "text-yellow-400 fill-current"
-                                      : "text-gray-300"
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          <p className="text-gray-700 mb-2">{review.comment}</p>
-                          <div className="flex items-center justify-between text-sm text-gray-500">
-                            <span>{review.project}</span>
-                            <span>{review.date}</span>
-                          </div>
-                        </div>
-                      </div>
+                {loadingReviews ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  </div>
+                ) : reviews.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <Star className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No reviews yet
+                      </h3>
+                      <p className="text-gray-600">
+                        Complete projects and receive reviews from clients to
+                        build your reputation
+                      </p>
                     </CardContent>
                   </Card>
-                ))}
+                ) : (
+                  reviews.map((review) => (
+                    <Card key={review.id}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start space-x-4">
+                          <Avatar>
+                            <AvatarImage
+                              src={
+                                review.reviewer?.profileImageUrl ||
+                                "/placeholder.svg"
+                              }
+                            />
+                            <AvatarFallback>
+                              {review.reviewer?.name?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <div>
+                                <p className="font-semibold">
+                                  {review.reviewer?.name || "Anonymous"}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {review.reviewer?.email || ""}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="flex">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`w-4 h-4 ${
+                                        i < Math.round(review.rating)
+                                          ? "text-yellow-400 fill-current"
+                                          : "text-gray-300"
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-sm font-medium">
+                                  {review.rating.toFixed(1)}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-gray-700 mb-2">
+                              {review.content}
+                            </p>
+                            <div className="flex items-center justify-between text-sm text-gray-500">
+                              <span>
+                                Project: {review.project?.title || "N/A"}
+                              </span>
+                              <span>
+                                {new Date(
+                                  review.createdAt
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {review.ReviewReply &&
+                              review.ReviewReply.length > 0 && (
+                                <div className="mt-4 pl-4 border-l-2 border-blue-500">
+                                  <p className="text-sm font-medium text-gray-900 mb-1">
+                                    Your Reply:
+                                  </p>
+                                  <p className="text-sm text-gray-700">
+                                    {review.ReviewReply[0].content}
+                                  </p>
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             </div>
           </TabsContent>
@@ -2039,7 +2106,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                       your expertise in specific technologies.
                     </p>
                   </div>
-                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2081,7 +2148,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                     </p>
                   )}
                 </div>
-                  </div>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="certDate">Issue Date *</Label>
@@ -2101,7 +2168,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                     {certFormErrors.issuedDate}
                   </p>
                 )}
-                  </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -2122,7 +2189,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                       {certFormErrors.serialNumber}
                     </p>
                   )}
-              </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="certLink">
                     Verification Link (optional*)
@@ -2148,7 +2215,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                     *At least one of Serial Number or Verification Link is
                     required.
                   </p>
-            </div>
+                </div>
               </div>
             </div>
             <DialogFooter>

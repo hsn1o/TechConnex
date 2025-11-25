@@ -43,11 +43,18 @@ export async function getProvider(req, res) {
     });
     dto.validate();
 
-    const provider = await getProviderDetails(dto.providerId, dto.userId);
+    // Fetch provider details, portfolio, and reviews in parallel
+    const [provider, portfolioData, reviewsData] = await Promise.all([
+      getProviderDetails(dto.providerId, dto.userId),
+      getProviderPortfolio(dto.providerId).catch(() => []),
+      getProviderReviewsList(dto.providerId, 1, 10).catch(() => ({ reviews: [], pagination: {} })),
+    ]);
     
     res.json({
       success: true,
       provider,
+      portfolio: portfolioData,
+      reviews: reviewsData.reviews || [],
     });
   } catch (error) {
     console.error("Error in getProvider:", error);
