@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { AdminLayout } from "@/components/admin-layout";
 import {
   Card,
@@ -32,6 +33,7 @@ import {
   Users,
   Building2,
   User,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -44,11 +46,13 @@ interface Review {
     id: string;
     name: string;
     email: string;
+    role?: string[];
   };
   recipient: {
     id: string;
     name: string;
     email: string;
+    role?: string[];
   };
   project: {
     id: string;
@@ -381,11 +385,22 @@ function ReviewCard({
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-gray-900">
+                  <Link
+                    href={`/admin/users/${review.reviewer.id}`}
+                    className="font-semibold text-gray-900 hover:text-blue-600 hover:underline inline-flex items-center gap-1"
+                  >
                     {review.reviewer.name}
-                  </p>
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
                   <p className="text-sm text-gray-600">
-                    reviewed {review.recipient.name}
+                    reviewed{" "}
+                    <Link
+                      href={`/admin/users/${review.recipient.id}`}
+                      className="text-gray-900 hover:text-blue-600 hover:underline font-medium inline-flex items-center gap-1"
+                    >
+                      {review.recipient.name}
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -410,7 +425,16 @@ function ReviewCard({
               <p className="text-sm text-gray-700">{review.content}</p>
 
               <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span>Project: {review.project.title}</span>
+                <span className="inline-flex items-center gap-1">
+                  Project:{" "}
+                  <Link
+                    href={`/admin/projects/${review.project.id}`}
+                    className="text-gray-900 hover:text-blue-600 hover:underline font-medium inline-flex items-center gap-1"
+                  >
+                    {review.project.title}
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+                </span>
                 <span>•</span>
                 <span>{new Date(review.createdAt).toLocaleDateString()}</span>
                 {review.ReviewReply && review.ReviewReply.length > 0 && (
