@@ -4,6 +4,7 @@ import {
   removeMessage,
   sendMessage,
   getConversationList,
+  fetchProjectMessages,
 } from "./service.js";
 
 // Get messages - either all user messages or conversation with specific user
@@ -53,7 +54,7 @@ export const getConversations = async (req, res) => {
 
 export const createNewMessage = async (req, res) => {
   try {
-const userId = req.user.id || req.user.userId;
+    const userId = req.user.id || req.user.userId;
 
     const newMessage = await sendMessage(req.body, userId);
 
@@ -71,7 +72,7 @@ const userId = req.user.id || req.user.userId;
 export const markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-const userId = req.user.id || req.user.userId;
+    const userId = req.user.id || req.user.userId;
 
     const updated = await readMessage(id, userId);
     res.json({ success: true, data: updated });
@@ -83,11 +84,32 @@ const userId = req.user.id || req.user.userId;
 export const deleteMessage = async (req, res) => {
   try {
     const { id } = req.params;
-const userId = req.user.id || req.user.userId;
+    const userId = req.user.id || req.user.userId;
 
     await removeMessage(id, userId);
     res.json({ success: true, message: "Message deleted successfully" });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Get messages for a specific project (admin access)
+export const getProjectMessages = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id || req.user.userId;
+
+    const messages = await fetchProjectMessages(projectId, userId);
+
+    res.json({
+      success: true,
+      data: messages,
+    });
+  } catch (error) {
+    console.error("Get project messages error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch project messages",
+    });
   }
 };

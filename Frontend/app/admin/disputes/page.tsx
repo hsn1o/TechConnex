@@ -1,16 +1,35 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +37,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Search,
   Eye,
@@ -32,9 +51,11 @@ import {
   ArrowLeft,
   RefreshCw,
   Ban,
-} from "lucide-react"
-import { AdminLayout } from "@/components/admin-layout"
-import { useToast } from "@/hooks/use-toast"
+  MessageSquare,
+} from "lucide-react";
+import { AdminLayout } from "@/components/admin-layout";
+import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 import {
   getAdminDisputes,
   getAdminDisputeStats,
@@ -42,180 +63,271 @@ import {
   simulateDisputePayout,
   redoMilestone,
   resolveDispute,
-} from "@/lib/api"
-import Link from "next/link"
+} from "@/lib/api";
+import Link from "next/link";
 
 export default function AdminDisputesPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [disputes, setDisputes] = useState<any[]>([])
-  const [stats, setStats] = useState<any>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedDispute, setSelectedDispute] = useState<any>(null)
-  const [resolutionNotes, setResolutionNotes] = useState("")
-  const [refundAmount, setRefundAmount] = useState("")
-  const [releaseAmount, setReleaseAmount] = useState("")
-  const [actionLoading, setActionLoading] = useState(false)
-  const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [disputes, setDisputes] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedDispute, setSelectedDispute] = useState<any>(null);
+  const [resolutionNotes, setResolutionNotes] = useState("");
+  const [refundAmount, setRefundAmount] = useState("");
+  const [releaseAmount, setReleaseAmount] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
+  const [projectMessages, setProjectMessages] = useState<any[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [token, setToken] = useState<string>("");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    loadDisputes()
-    loadStats()
-  }, [statusFilter])
+    loadDisputes();
+    loadStats();
+  }, [statusFilter]);
+
+  // Load auth token from localStorage (client-side)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const t = localStorage.getItem("token") || "";
+      setToken(t);
+    } catch (e) {
+      console.error("Error loading auth info:", e);
+    }
+  }, []);
 
   useEffect(() => {
     // Debounce search
     const timer = setTimeout(() => {
       if (searchQuery || statusFilter !== "all") {
-        loadDisputes()
+        loadDisputes();
       }
-    }, 500)
+    }, 500);
 
-    return () => clearTimeout(timer)
-  }, [searchQuery])
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (viewDialogOpen && selectedDispute && token) {
+      fetchProjectMessages(selectedDispute.projectId);
+    }
+  }, [viewDialogOpen, selectedDispute, token]);
 
   const loadDisputes = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const response = await getAdminDisputes({
         status: statusFilter !== "all" ? statusFilter : undefined,
         search: searchQuery || undefined,
-      })
+      });
       if (response.success) {
-        setDisputes(response.data || [])
+        setDisputes(response.data || []);
       }
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to load disputes",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadStats = async () => {
     try {
-      const response = await getAdminDisputeStats()
+      const response = await getAdminDisputeStats();
       if (response.success) {
-        setStats(response.data)
+        setStats(response.data);
       }
     } catch (error: any) {
-      console.error("Failed to load stats:", error)
+      console.error("Failed to load stats:", error);
     }
-  }
+  };
 
   const handleViewDispute = async (disputeId: string) => {
     try {
-      const response = await getAdminDisputeById(disputeId)
+      const response = await getAdminDisputeById(disputeId);
       if (response.success) {
-        setSelectedDispute(response.data)
-        setViewDialogOpen(true)
+        setSelectedDispute(response.data);
+        setViewDialogOpen(true);
+        // Load messages when viewing dispute
+        if (response.data.projectId) {
+          fetchProjectMessages(response.data.projectId);
+        }
       }
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to load dispute details",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
-  const handleResolve = async (action: "refund" | "release" | "partial" | "redo" | "cancel") => {
-    if (!selectedDispute) return
+  // Fetch messages between the two project participants
+  const fetchProjectMessages = async (projectId: string) => {
+    if (!token) return;
+    try {
+      setLoadingMessages(true);
+      // Use the admin endpoint to get project messages
+      const url = `${
+        process.env.NEXT_PUBLIC_API_URL || ""
+      }/messages/project/${projectId}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data?.success) {
+        const allMessages = Array.isArray(data.data) ? data.data : [];
+        // Filter messages to only show those with the same projectId
+        const filteredMessages = allMessages;
+        setProjectMessages(filteredMessages);
+        setMessages(filteredMessages); // Also set messages for backward compatibility
+      } else {
+        console.warn("No project messages fetched:", data?.message);
+        setProjectMessages([]);
+        setMessages([]);
+      }
+    } catch (err) {
+      console.error("Error fetching project messages:", err);
+      setProjectMessages([]);
+      setMessages([]);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  const handleResolve = async (
+    action: "refund" | "release" | "partial" | "redo" | "cancel"
+  ) => {
+    if (!selectedDispute) return;
 
     try {
-      setActionLoading(true)
+      setActionLoading(true);
 
       if (action === "refund") {
-        const amount = selectedDispute.payment?.amount || selectedDispute.contestedAmount || 0
-        await simulateDisputePayout(selectedDispute.id, amount, 0, resolutionNotes || undefined)
+        const amount =
+          selectedDispute.payment?.amount ||
+          selectedDispute.contestedAmount ||
+          0;
+        await simulateDisputePayout(
+          selectedDispute.id,
+          amount,
+          0,
+          resolutionNotes || undefined
+        );
         toast({
           title: "Success",
           description: `Refund of RM${amount} processed successfully`,
-        })
+        });
       } else if (action === "release") {
-        const amount = selectedDispute.payment?.amount || selectedDispute.contestedAmount || 0
-        await simulateDisputePayout(selectedDispute.id, 0, amount, resolutionNotes || undefined)
+        const amount =
+          selectedDispute.payment?.amount ||
+          selectedDispute.contestedAmount ||
+          0;
+        await simulateDisputePayout(
+          selectedDispute.id,
+          0,
+          amount,
+          resolutionNotes || undefined
+        );
         toast({
           title: "Success",
           description: `Release of RM${amount} processed successfully`,
-        })
+        });
       } else if (action === "partial") {
-        const refund = parseFloat(refundAmount) || 0
-        const release = parseFloat(releaseAmount) || 0
+        const refund = parseFloat(refundAmount) || 0;
+        const release = parseFloat(releaseAmount) || 0;
         if (refund === 0 && release === 0) {
           toast({
             title: "Error",
             description: "Please specify refund or release amount",
             variant: "destructive",
-          })
-          return
+          });
+          return;
         }
-        await simulateDisputePayout(selectedDispute.id, refund, release, resolutionNotes || undefined)
+        await simulateDisputePayout(
+          selectedDispute.id,
+          refund,
+          release,
+          resolutionNotes || undefined
+        );
         toast({
           title: "Success",
           description: `Partial payout processed: Refund RM${refund}, Release RM${release}`,
-        })
+        });
       } else if (action === "redo") {
-        await redoMilestone(selectedDispute.id, resolutionNotes || undefined)
+        await redoMilestone(selectedDispute.id, resolutionNotes || undefined);
         toast({
           title: "Success",
           description: "Milestone returned to IN_PROGRESS",
-        })
+        });
       } else if (action === "cancel") {
-        await resolveDispute(selectedDispute.id, "REJECTED", resolutionNotes || "Dispute rejected")
+        await resolveDispute(
+          selectedDispute.id,
+          "REJECTED",
+          resolutionNotes || "Dispute rejected"
+        );
         toast({
           title: "Success",
           description: "Dispute rejected",
-        })
+        });
       }
 
-      setViewDialogOpen(false)
-      setPayoutDialogOpen(false)
-      setSelectedDispute(null)
-      setResolutionNotes("")
-      setRefundAmount("")
-      setReleaseAmount("")
-      loadDisputes()
-      loadStats()
+      setViewDialogOpen(false);
+      setPayoutDialogOpen(false);
+      setSelectedDispute(null);
+      setResolutionNotes("");
+      setRefundAmount("");
+      setReleaseAmount("");
+      loadDisputes();
+      loadStats();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Failed to process action",
         variant: "destructive",
-      })
+      });
     } finally {
-      setActionLoading(false)
+      setActionLoading(false);
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
       case "OPEN":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       case "UNDER_REVIEW":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "RESOLVED":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "CLOSED":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       case "REJECTED":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
-  const filteredDisputes = disputes // Backend handles filtering now
+  const filteredDisputes = disputes; // Backend handles filtering now
 
   const disputeAmount = (dispute: any) => {
-    return dispute.payment?.amount || dispute.contestedAmount || dispute.milestone?.amount || 0
-  }
+    return (
+      dispute.payment?.amount ||
+      dispute.contestedAmount ||
+      dispute.milestone?.amount ||
+      0
+    );
+  };
 
   return (
     <AdminLayout>
@@ -223,76 +335,96 @@ export default function AdminDisputesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dispute Management</h1>
-            <p className="text-gray-600">Resolve conflicts between customers and providers</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Dispute Management
+            </h1>
+            <p className="text-gray-600">
+              Resolve conflicts between customers and providers
+            </p>
           </div>
         </div>
 
         {/* Stats Cards */}
         {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Disputes</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalDisputes || 0}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Total Disputes
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {stats.totalDisputes || 0}
+                    </p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-orange-600" />
                 </div>
-                <AlertTriangle className="w-8 h-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Open</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.openDisputes || 0}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Open</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {stats.openDisputes || 0}
+                    </p>
+                  </div>
+                  <XCircle className="w-8 h-8 text-red-600" />
                 </div>
-                <XCircle className="w-8 h-8 text-red-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">In Review</p>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.inReviewDisputes || 0}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      In Review
+                    </p>
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {stats.inReviewDisputes || 0}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-yellow-600" />
                 </div>
-                <Clock className="w-8 h-8 text-yellow-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Resolved</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.resolvedDisputes || 0}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Resolved
+                    </p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {stats.resolvedDisputes || 0}
+                    </p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Value</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Total Value
+                    </p>
                     <p className="text-2xl font-bold text-purple-600">
                       RM{((stats.totalAmount || 0) / 1000).toFixed(0)}K
                     </p>
+                  </div>
+                  <DollarSign className="w-8 h-8 text-purple-600" />
                 </div>
-                <DollarSign className="w-8 h-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Filters */}
@@ -335,7 +467,9 @@ export default function AdminDisputesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Active Disputes ({filteredDisputes.length})</CardTitle>
-            <CardDescription>Review and resolve platform disputes</CardDescription>
+            <CardDescription>
+              Review and resolve platform disputes
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -343,90 +477,116 @@ export default function AdminDisputesPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Dispute</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Dispute</TableHead>
                     <TableHead>Project</TableHead>
-                  <TableHead>Participants</TableHead>
+                    <TableHead>Participants</TableHead>
                     <TableHead>Raised By</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filteredDisputes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                      <TableCell
+                        colSpan={8}
+                        className="text-center py-12 text-gray-500"
+                      >
                         No disputes found
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredDisputes.map((dispute) => (
-                  <TableRow key={dispute.id}>
-                    <TableCell>
-                      <div>
+                      <TableRow key={dispute.id}>
+                        <TableCell>
+                          <div>
                             <p className="font-medium">{dispute.reason}</p>
-                            <p className="text-sm text-gray-500 line-clamp-2">{dispute.description}</p>
+                            <p className="text-sm text-gray-500 line-clamp-2">
+                              {dispute.description}
+                            </p>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{dispute.project?.title || "N/A"}</p>
+                            <p className="font-medium">
+                              {dispute.project?.title || "N/A"}
+                            </p>
                             <Link href={`/admin/projects/${dispute.projectId}`}>
-                              <Button variant="link" size="sm" className="p-0 h-auto">
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="p-0 h-auto"
+                              >
                                 View Project
                               </Button>
                             </Link>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Avatar className="w-6 h-6">
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Avatar className="w-6 h-6">
                                 <AvatarFallback>
-                                  {dispute.project?.customer?.name?.charAt(0) || "C"}
+                                  {dispute.project?.customer?.name?.charAt(0) ||
+                                    "C"}
                                 </AvatarFallback>
-                          </Avatar>
-                              <span className="text-sm">{dispute.project?.customer?.name || "N/A"}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Avatar className="w-6 h-6">
+                              </Avatar>
+                              <span className="text-sm">
+                                {dispute.project?.customer?.name || "N/A"}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Avatar className="w-6 h-6">
                                 <AvatarFallback>
-                                  {dispute.project?.provider?.name?.charAt(0) || "P"}
+                                  {dispute.project?.provider?.name?.charAt(0) ||
+                                    "P"}
                                 </AvatarFallback>
-                          </Avatar>
-                              <span className="text-sm">{dispute.project?.provider?.name || "N/A"}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
+                              </Avatar>
+                              <span className="text-sm">
+                                {dispute.project?.provider?.name || "N/A"}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-6 h-6">
-                              <AvatarFallback>{dispute.raisedBy?.name?.charAt(0) || "U"}</AvatarFallback>
+                              <AvatarFallback>
+                                {dispute.raisedBy?.name?.charAt(0) || "U"}
+                              </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm">{dispute.raisedBy?.name || "N/A"}</span>
+                            <span className="text-sm">
+                              {dispute.raisedBy?.name || "N/A"}
+                            </span>
                           </div>
-                    </TableCell>
-                    <TableCell>
+                        </TableCell>
+                        <TableCell>
                           <Badge className={getStatusColor(dispute.status)}>
                             {dispute.status?.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                          <p className="font-medium">RM{disputeAmount(dispute).toLocaleString()}</p>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                            <p className="text-sm">{new Date(dispute.createdAt).toLocaleDateString()}</p>
-                            <p className="text-xs text-gray-500">
-                              Updated: {new Date(dispute.updatedAt).toLocaleDateString()}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">
+                            RM{disputeAmount(dispute).toLocaleString()}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="text-sm">
+                              {new Date(dispute.createdAt).toLocaleDateString()}
                             </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
+                            <p className="text-xs text-gray-500">
+                              Updated:{" "}
+                              {new Date(dispute.updatedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
                           <Button
                             variant="outline"
                             size="sm"
@@ -447,52 +607,68 @@ export default function AdminDisputesPage() {
 
         {/* View Dispute Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                          <DialogHeader>
-              <DialogTitle>Dispute Review - {selectedDispute?.reason}</DialogTitle>
-                            <DialogDescription>Review dispute details and provide resolution</DialogDescription>
-                          </DialogHeader>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Dispute Review - {selectedDispute?.reason}
+              </DialogTitle>
+              <DialogDescription>
+                Review dispute details and provide resolution
+              </DialogDescription>
+            </DialogHeader>
 
-                          {selectedDispute && (
-                            <div className="space-y-6">
-                              {/* Dispute Overview */}
-                              <div className="grid md:grid-cols-2 gap-6">
-                                <Card>
-                                  <CardHeader>
-                                    <CardTitle className="text-lg">Dispute Details</CardTitle>
-                                  </CardHeader>
-                                  <CardContent className="space-y-3">
-                                    <div>
+            {selectedDispute && (
+              <div className="space-y-6">
+                {/* Dispute Overview */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Dispute Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
                         <p className="font-medium">{selectedDispute.reason}</p>
-                        <p className="text-sm text-gray-500">Project: {selectedDispute.project?.title}</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Badge className={getStatusColor(selectedDispute.status)}>
+                        <p className="text-sm text-gray-500">
+                          Project: {selectedDispute.project?.title}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge
+                          className={getStatusColor(selectedDispute.status)}
+                        >
                           {selectedDispute.status?.replace("_", " ")}
-                                      </Badge>
-                                    </div>
-                                    <div className="text-sm space-y-1">
-                                      <p>
-                                        <span className="font-medium">Amount:</span> RM
+                        </Badge>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p>
+                          <span className="font-medium">Amount:</span> RM
                           {disputeAmount(selectedDispute).toLocaleString()}
-                                      </p>
-                                      <p>
+                        </p>
+                        <p>
                           <span className="font-medium">Created:</span>{" "}
-                          {new Date(selectedDispute.createdAt).toLocaleDateString()}
+                          {new Date(
+                            selectedDispute.createdAt
+                          ).toLocaleDateString()}
                         </p>
                         {selectedDispute.contestedAmount && (
                           <p>
-                            <span className="font-medium">Contested Amount:</span> RM
+                            <span className="font-medium">
+                              Contested Amount:
+                            </span>{" "}
+                            RM
                             {selectedDispute.contestedAmount.toLocaleString()}
                           </p>
                         )}
                       </div>
                       <div className="mt-3">
-                        <p className="font-medium mb-3">Description & Updates:</p>
+                        <p className="font-medium mb-3">
+                          Description & Updates:
+                        </p>
                         <div className="space-y-4">
                           {(() => {
                             // Parse description to show original and updates separately
-                            const description = selectedDispute.description || "";
+                            const description =
+                              selectedDispute.description || "";
                             const parts = description.split(/\n---\n/);
                             const originalDescription = parts[0]?.trim() || "";
                             const updates = parts.slice(1);
@@ -504,15 +680,21 @@ export default function AdminDisputesPage() {
                                   <div className="flex items-center gap-2 mb-2">
                                     <Avatar className="w-6 h-6">
                                       <AvatarFallback>
-                                        {selectedDispute.raisedBy?.name?.charAt(0) || "U"}
+                                        {selectedDispute.raisedBy?.name?.charAt(
+                                          0
+                                        ) || "U"}
                                       </AvatarFallback>
                                     </Avatar>
                                     <div>
                                       <p className="text-sm font-semibold text-gray-900">
-                                        {selectedDispute.raisedBy?.name || "Unknown User"}
+                                        {selectedDispute.raisedBy?.name ||
+                                          "Unknown User"}
                                       </p>
                                       <p className="text-xs text-gray-500">
-                                        Original dispute • {new Date(selectedDispute.createdAt).toLocaleString()}
+                                        Original dispute •{" "}
+                                        {new Date(
+                                          selectedDispute.createdAt
+                                        ).toLocaleString()}
                                       </p>
                                     </div>
                                   </div>
@@ -525,28 +707,50 @@ export default function AdminDisputesPage() {
                                 {updates.map((update: string, idx: number) => {
                                   // Parse update format: [Update by Name on Date]: content
                                   // Also handle old format: [Update by userId]: content
-                                  let match = update.match(/^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/);
+                                  let match = update.match(
+                                    /^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/
+                                  );
                                   let userName = "";
                                   let updateDate = "";
                                   let updateContent = "";
-                                  
+
                                   if (match) {
-                                    [, userName, updateDate, updateContent] = match;
+                                    [, userName, updateDate, updateContent] =
+                                      match;
                                   } else {
                                     // Try old format: [Update by userId]: content
-                                    const oldMatch = update.match(/^\[Update by (.+?)\]:\s*([\s\S]+)$/);
+                                    const oldMatch = update.match(
+                                      /^\[Update by (.+?)\]:\s*([\s\S]+)$/
+                                    );
                                     if (oldMatch) {
-                                      const [, userIdOrName, content] = oldMatch;
+                                      const [, userIdOrName, content] =
+                                        oldMatch;
                                       // Check if it's a UUID (old format)
-                                      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                                      const uuidRegex =
+                                        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
                                       if (uuidRegex.test(userIdOrName)) {
                                         // It's a UUID, try to match with customer or provider
-                                        if (selectedDispute.project?.customer?.id === userIdOrName) {
-                                          userName = selectedDispute.project?.customer?.name || "Customer";
-                                        } else if (selectedDispute.project?.provider?.id === userIdOrName) {
-                                          userName = selectedDispute.project?.provider?.name || "Provider";
-                                        } else if (selectedDispute.raisedBy?.id === userIdOrName) {
-                                          userName = selectedDispute.raisedBy?.name || "Unknown User";
+                                        if (
+                                          selectedDispute.project?.customer
+                                            ?.id === userIdOrName
+                                        ) {
+                                          userName =
+                                            selectedDispute.project?.customer
+                                              ?.name || "Customer";
+                                        } else if (
+                                          selectedDispute.project?.provider
+                                            ?.id === userIdOrName
+                                        ) {
+                                          userName =
+                                            selectedDispute.project?.provider
+                                              ?.name || "Provider";
+                                        } else if (
+                                          selectedDispute.raisedBy?.id ===
+                                          userIdOrName
+                                        ) {
+                                          userName =
+                                            selectedDispute.raisedBy?.name ||
+                                            "Unknown User";
                                         } else {
                                           userName = "Unknown User";
                                         }
@@ -564,11 +768,15 @@ export default function AdminDisputesPage() {
                                       updateDate = "Unknown Date";
                                     }
                                   }
-                                  
+
                                   // Determine if update is from customer or provider
-                                  const isCustomer = selectedDispute.project?.customer?.name === userName;
-                                  const isProvider = selectedDispute.project?.provider?.name === userName;
-                                  
+                                  const isCustomer =
+                                    selectedDispute.project?.customer?.name ===
+                                    userName;
+                                  const isProvider =
+                                    selectedDispute.project?.provider?.name ===
+                                    userName;
+
                                   return (
                                     <div
                                       key={idx}
@@ -620,272 +828,518 @@ export default function AdminDisputesPage() {
                       </div>
                       {selectedDispute.suggestedResolution && (
                         <div className="mt-3">
-                          <p className="font-medium mb-2">Suggested Resolution:</p>
-                          <p className="text-sm text-gray-700">{selectedDispute.suggestedResolution}</p>
+                          <p className="font-medium mb-2">
+                            Suggested Resolution:
+                          </p>
+                          <p className="text-sm text-gray-700">
+                            {selectedDispute.suggestedResolution}
+                          </p>
                         </div>
                       )}
-                                  </CardContent>
-                                </Card>
+                    </CardContent>
+                  </Card>
 
-                                <Card>
-                                  <CardHeader>
-                                    <CardTitle className="text-lg">Participants</CardTitle>
-                                  </CardHeader>
-                                  <CardContent className="space-y-4">
-                                    <div className="flex items-center gap-3 p-3 border rounded-lg">
-                                      <Avatar>
-                          <AvatarFallback>
-                            {selectedDispute.project?.customer?.name?.charAt(0) || "C"}
-                          </AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                          <p className="font-medium">{selectedDispute.project?.customer?.name || "N/A"}</p>
-                                        <p className="text-sm text-gray-500">Customer</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-3 border rounded-lg">
-                                      <Avatar>
-                          <AvatarFallback>
-                            {selectedDispute.project?.provider?.name?.charAt(0) || "P"}
-                          </AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                          <p className="font-medium">{selectedDispute.project?.provider?.name || "N/A"}</p>
-                                        <p className="text-sm text-gray-500">Provider</p>
-                                      </div>
-                                    </div>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Participants</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       <div className="flex items-center gap-3 p-3 border rounded-lg">
                         <Avatar>
-                          <AvatarFallback>{selectedDispute.raisedBy?.name?.charAt(0) || "U"}</AvatarFallback>
+                          <AvatarFallback>
+                            {selectedDispute.project?.customer?.name?.charAt(
+                              0
+                            ) || "C"}
+                          </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{selectedDispute.raisedBy?.name || "N/A"}</p>
+                          <p className="font-medium">
+                            {selectedDispute.project?.customer?.name || "N/A"}
+                          </p>
+                          <p className="text-sm text-gray-500">Customer</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Avatar>
+                          <AvatarFallback>
+                            {selectedDispute.project?.provider?.name?.charAt(
+                              0
+                            ) || "P"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">
+                            {selectedDispute.project?.provider?.name || "N/A"}
+                          </p>
+                          <p className="text-sm text-gray-500">Provider</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Avatar>
+                          <AvatarFallback>
+                            {selectedDispute.raisedBy?.name?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">
+                            {selectedDispute.raisedBy?.name || "N/A"}
+                          </p>
                           <p className="text-sm text-gray-500">Raised By</p>
                         </div>
                       </div>
-                      <Link href={`/admin/projects/${selectedDispute.projectId}`}>
+                      <Link
+                        href={`/admin/projects/${selectedDispute.projectId}`}
+                      >
                         <Button variant="outline" className="w-full">
                           <Eye className="w-4 h-4 mr-2" />
                           View Project Details
                         </Button>
                       </Link>
-                                  </CardContent>
-                                </Card>
-                              </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-                              {/* Evidence */}
-                {selectedDispute.attachments && selectedDispute.attachments.length > 0 && (
-                              <Card>
-                                <CardHeader>
-                                  <CardTitle className="text-lg">Evidence & Documents</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                  <div className="grid md:grid-cols-2 gap-4">
-                        {selectedDispute.attachments.map((url: string, index: number) => {
-                          // Extract filename from path
-                          const normalized = url.replace(/\\/g, "/");
-                          const filename = normalized.split("/").pop() || `Attachment ${index + 1}`;
-                          // Remove timestamp prefix if present (format: timestamp_filename.ext)
-                          const cleanFilename = filename.replace(/^\d+_/, "");
-                          
-                          // Try to find attachment metadata in description
-                          const attachmentMetadataMatch = selectedDispute.description?.match(
-                            new RegExp(`\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`, "g")
-                          );
-                          let uploadedBy = "Unknown User";
-                          let uploadedAt = "Unknown Date";
-                          
-                          if (attachmentMetadataMatch) {
-                            // Find matching metadata for this file
-                            for (const meta of attachmentMetadataMatch) {
-                              const metaMatch = meta.match(/\[Attachment: (.+?) uploaded by (.+?) on (.+?)\]/);
-                              if (metaMatch && metaMatch[1] === filename) {
-                                uploadedBy = metaMatch[2];
-                                uploadedAt = metaMatch[3];
-                                break;
+                {/* Evidence */}
+                {selectedDispute.attachments &&
+                  selectedDispute.attachments.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          Evidence & Documents
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {selectedDispute.attachments.map(
+                            (url: string, index: number) => {
+                              // Extract filename from path
+                              const normalized = url.replace(/\\/g, "/");
+                              const filename =
+                                normalized.split("/").pop() ||
+                                `Attachment ${index + 1}`;
+                              // Remove timestamp prefix if present (format: timestamp_filename.ext)
+                              const cleanFilename = filename.replace(
+                                /^\d+_/,
+                                ""
+                              );
+
+                              // Try to find attachment metadata in description
+                              const attachmentMetadataMatch =
+                                selectedDispute.description?.match(
+                                  new RegExp(
+                                    `\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`,
+                                    "g"
+                                  )
+                                );
+                              let uploadedBy = "Unknown User";
+                              let uploadedAt = "Unknown Date";
+
+                              if (attachmentMetadataMatch) {
+                                // Find matching metadata for this file
+                                for (const meta of attachmentMetadataMatch) {
+                                  const metaMatch = meta.match(
+                                    /\[Attachment: (.+?) uploaded by (.+?) on (.+?)\]/
+                                  );
+                                  if (metaMatch && metaMatch[1] === filename) {
+                                    uploadedBy = metaMatch[2];
+                                    uploadedAt = metaMatch[3];
+                                    break;
+                                  }
+                                }
                               }
+
+                              // Also check if it's from the original dispute creator
+                              if (
+                                uploadedBy === "Unknown User" &&
+                                index === 0 &&
+                                selectedDispute.attachments.length === 1
+                              ) {
+                                uploadedBy =
+                                  selectedDispute.raisedBy?.name ||
+                                  "Unknown User";
+                                uploadedAt = new Date(
+                                  selectedDispute.createdAt
+                                ).toLocaleString();
+                              }
+
+                              return (
+                                <div
+                                  key={index}
+                                  className="border rounded-lg p-4"
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-sm text-gray-900 truncate">
+                                          {cleanFilename}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          Uploaded by {uploadedBy} •{" "}
+                                          {uploadedAt}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={`${
+                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
+                                      "http://localhost:4000"
+                                    }${url.startsWith("/") ? url : `/${url}`}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full bg-transparent"
+                                    >
+                                      <Eye className="w-4 h-4 mr-2" />
+                                      View
+                                    </Button>
+                                  </a>
+                                </div>
+                              );
                             }
-                          }
-                          
-                          // Also check if it's from the original dispute creator
-                          if (uploadedBy === "Unknown User" && index === 0 && selectedDispute.attachments.length === 1) {
-                            uploadedBy = selectedDispute.raisedBy?.name || "Unknown User";
-                            uploadedAt = new Date(selectedDispute.createdAt).toLocaleString();
-                          }
-                          
-                          return (
-                                      <div key={index} className="border rounded-lg p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-sm text-gray-900 truncate">
-                                      {cleanFilename}
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                {/* Resolution Notes */}
+                {selectedDispute.resolutionNotes &&
+                  Array.isArray(selectedDispute.resolutionNotes) &&
+                  selectedDispute.resolutionNotes.length > 0 && (
+                    <Card className="border-purple-200 bg-purple-50">
+                      <CardHeader>
+                        <CardTitle className="text-lg text-purple-800">
+                          Admin Resolution Notes
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {selectedDispute.resolutionNotes.map(
+                          (note: any, index: number) => {
+                            // Check if note contains "--- Admin Note ---" separator
+                            const noteParts =
+                              note.note?.split(/\n--- Admin Note ---\n/) || [];
+                            const hasAdminNote = noteParts.length > 1;
+                            const resolutionResult = noteParts[0] || note.note;
+                            const adminNote = noteParts[1];
+
+                            return (
+                              <div
+                                key={index}
+                                className="bg-white p-4 rounded-lg border-l-4 border-purple-500"
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Avatar className="w-6 h-6">
+                                    <AvatarFallback className="bg-purple-100 text-purple-700">
+                                      {note.adminName?.charAt(0) || "A"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                      Resolution Note #{index + 1}
                                     </p>
                                     <p className="text-xs text-gray-500">
-                                      Uploaded by {uploadedBy} • {uploadedAt}
+                                      By {note.adminName || "Admin"} •{" "}
+                                      {new Date(
+                                        note.createdAt
+                                      ).toLocaleString()}
                                     </p>
                                   </div>
                                 </div>
-                                        </div>
-                              <a
-                                href={`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${url.startsWith("/") ? url : `/${url}`}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                <div className="space-y-3 mt-2">
+                                  {/* Resolution Result */}
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 mb-1">
+                                      Resolution Result:
+                                    </p>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">
+                                      {resolutionResult}
+                                    </p>
+                                  </div>
+                                  {/* Admin Note (if exists) */}
+                                  {hasAdminNote && adminNote && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-purple-600 mb-1">
+                                        Admin Note:
+                                      </p>
+                                      <p className="text-sm text-gray-700 whitespace-pre-wrap bg-purple-50 p-2 rounded border-l-2 border-purple-300">
+                                        {adminNote}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                {/* Legacy Resolution (for backward compatibility) */}
+                {selectedDispute.status === "RESOLVED" &&
+                  selectedDispute.resolution &&
+                  (!selectedDispute.resolutionNotes ||
+                    !Array.isArray(selectedDispute.resolutionNotes) ||
+                    selectedDispute.resolutionNotes.length === 0) && (
+                    <Card className="border-green-200 bg-green-50">
+                      <CardHeader>
+                        <CardTitle className="text-lg text-green-800">
+                          Resolution
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-green-700">
+                          {selectedDispute.resolution}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                {/* Messaging History */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Messaging History</CardTitle>
+                    <CardDescription>
+                      Communication between client and provider
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingMessages ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : projectMessages.length > 0 ? (
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {projectMessages.map((message: any) => {
+                          const isCustomer =
+                            String(message.senderId || message.sender?.id) ===
+                            String(selectedDispute.project?.customer?.id);
+                          const text = message.content ?? message.message ?? "";
+                          const ts =
+                            message.createdAt ?? message.timestamp ?? "";
+                          const avatarChar =
+                            (
+                              message.sender?.name ||
+                              message.senderName ||
+                              (isCustomer
+                                ? selectedDispute.project?.customer?.name?.charAt(
+                                    0
+                                  )
+                                : selectedDispute.project?.provider?.name?.charAt(
+                                    0
+                                  )) ||
+                              "U"
+                            )?.charAt?.(0) || "U";
+
+                          return (
+                            <div
+                              key={message.id}
+                              className={`flex gap-3 ${
+                                isCustomer ? "" : "flex-row-reverse"
+                              }`}
+                            >
+                              <Avatar className="w-8 h-8">
+                                <AvatarFallback>{avatarChar}</AvatarFallback>
+                              </Avatar>
+                              <div
+                                className={`flex-1 max-w-[14rem] ${
+                                  isCustomer ? "" : "text-right"
+                                }`}
                               >
-                                        <Button variant="outline" size="sm" className="w-full bg-transparent">
-                                          <Eye className="w-4 h-4 mr-2" />
-                                          View
-                                        </Button>
-                              </a>
+                                <div
+                                  className={`p-3 rounded-lg ${
+                                    isCustomer
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-gray-100"
+                                  }`}
+                                >
+                                  <p className="text-sm">{text}</p>
+                                  {message.attachments &&
+                                    message.attachments.length > 0 && (
+                                      <div className="mt-2 pt-2 border-t border-opacity-20 space-y-2">
+                                        {Array.isArray(message.attachments) &&
+                                          message.attachments.map(
+                                            (
+                                              attachment: string,
+                                              index: number
+                                            ) => {
+                                              const normalized =
+                                                attachment.replace(/\\/g, "/");
+                                              const fileName =
+                                                normalized.split("/").pop() ||
+                                                `file-${index}`;
+                                              const fullUrl =
+                                                normalized.startsWith(
+                                                  "http://"
+                                                ) ||
+                                                normalized.startsWith(
+                                                  "https://"
+                                                )
+                                                  ? normalized
+                                                  : `${
+                                                      process.env
+                                                        .NEXT_PUBLIC_API_URL ||
+                                                      "http://localhost:4000"
+                                                    }/${normalized.replace(
+                                                      /^\//,
+                                                      ""
+                                                    )}`;
+
+                                              const isImage = (file: string) =>
+                                                /\.(jpg|jpeg|png|gif|webp)$/i.test(
+                                                  file
+                                                );
+                                              const isPDF = (file: string) =>
+                                                /\.pdf$/i.test(file);
+
+                                              return (
+                                                <div
+                                                  key={index}
+                                                  className="text-xs"
+                                                >
+                                                  {isImage(fullUrl) ? (
+                                                    <img
+                                                      src={fullUrl}
+                                                      alt={fileName}
+                                                      className="w-32 h-auto rounded border cursor-pointer"
+                                                    />
+                                                  ) : isPDF(fullUrl) ? (
+                                                    <a
+                                                      href={fullUrl}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="flex items-center gap-2 text-blue-500 underline"
+                                                    >
+                                                      📄 {fileName}
+                                                    </a>
+                                                  ) : (
+                                                    <a
+                                                      href={fullUrl}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="flex items-center gap-2 text-blue-500 underline"
+                                                    >
+                                                      📎 {fileName}
+                                                    </a>
+                                                  )}
+                                                </div>
+                                              );
+                                            }
+                                          )}
                                       </div>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {new Date(ts).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
                           );
                         })}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                )}
-
-                              {/* Resolution Notes */}
-                {selectedDispute.resolutionNotes && Array.isArray(selectedDispute.resolutionNotes) && selectedDispute.resolutionNotes.length > 0 && (
-                                <Card className="border-purple-200 bg-purple-50">
-                                <CardHeader>
-                                    <CardTitle className="text-lg text-purple-800">Admin Resolution Notes</CardTitle>
-                                </CardHeader>
-                                  <CardContent className="space-y-4">
-                                    {selectedDispute.resolutionNotes.map((note: any, index: number) => {
-                                      // Check if note contains "--- Admin Note ---" separator
-                                      const noteParts = note.note?.split(/\n--- Admin Note ---\n/) || [];
-                                      const hasAdminNote = noteParts.length > 1;
-                                      const resolutionResult = noteParts[0] || note.note;
-                                      const adminNote = noteParts[1];
-                                      
-                                      return (
-                                        <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Avatar className="w-6 h-6">
-                                              <AvatarFallback className="bg-purple-100 text-purple-700">
-                                                {note.adminName?.charAt(0) || "A"}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                              <p className="text-sm font-semibold text-gray-900">
-                                                Resolution Note #{index + 1}
-                                              </p>
-                                              <p className="text-xs text-gray-500">
-                                                By {note.adminName || "Admin"} • {new Date(note.createdAt).toLocaleString()}
-                                              </p>
-                                            </div>
-                                          </div>
-                                          <div className="space-y-3 mt-2">
-                                            {/* Resolution Result */}
-                                            <div>
-                                              <p className="text-xs font-semibold text-gray-500 mb-1">Resolution Result:</p>
-                                              <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-2 rounded">
-                                                {resolutionResult}
-                                              </p>
-                                            </div>
-                                            {/* Admin Note (if exists) */}
-                                            {hasAdminNote && adminNote && (
-                                              <div>
-                                                <p className="text-xs font-semibold text-purple-600 mb-1">Admin Note:</p>
-                                                <p className="text-sm text-gray-700 whitespace-pre-wrap bg-purple-50 p-2 rounded border-l-2 border-purple-300">
-                                                  {adminNote}
-                                                </p>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                </CardContent>
-                              </Card>
-                              )}
-
-                              {/* Legacy Resolution (for backward compatibility) */}
-                {selectedDispute.status === "RESOLVED" && selectedDispute.resolution && (!selectedDispute.resolutionNotes || !Array.isArray(selectedDispute.resolutionNotes) || selectedDispute.resolutionNotes.length === 0) && (
-                                <Card className="border-green-200 bg-green-50">
-                                  <CardHeader>
-                                    <CardTitle className="text-lg text-green-800">Resolution</CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <p className="text-green-700">{selectedDispute.resolution}</p>
-                                  </CardContent>
-                                </Card>
-                              )}
-
-                              {/* Resolution Form */}
-                {selectedDispute.status !== "RESOLVED" && selectedDispute.status !== "CLOSED" && (
-                                <Card>
-                                  <CardHeader>
-                      <CardTitle className="text-lg">Resolution Actions</CardTitle>
-                                  </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <Button
-                          variant="outline"
-                          onClick={() => handleResolve("refund")}
-                          disabled={actionLoading}
-                          className="text-green-600 hover:text-green-700"
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          Refund (Company Wins)
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => handleResolve("release")}
-                          disabled={actionLoading}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Release (Provider Wins)
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setPayoutDialogOpen(true)}
-                          disabled={actionLoading}
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          Partial Split
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => handleResolve("redo")}
-                          disabled={actionLoading}
-                          className="text-yellow-600 hover:text-yellow-700"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Redo Milestone
-                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="resolution-notes">Resolution Notes (Optional)</Label>
-                                    <Textarea
-                          id="resolution-notes"
-                          placeholder="Enter resolution notes..."
-                                      value={resolutionNotes}
-                                      onChange={(e) => setResolutionNotes(e.target.value)}
-                          className="min-h-[80px]"
-                        />
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">
+                        No messages found for this project
+                      </p>
+                    )}
+                    <Separator className="my-4" />
+                    {projectMessages.length > 0 && (
+                      <div className="flex justify-center">
+                        <p className="text-sm text-gray-500">
+                          Viewing {projectMessages.length} messages between{" "}
+                          {selectedDispute.project?.customer?.name || "Client"}{" "}
+                          and{" "}
+                          {selectedDispute.project?.provider?.name ||
+                            "Provider"}
+                        </p>
                       </div>
-                      <Button
-                        variant="destructive"
-                        onClick={() => handleResolve("cancel")}
-                        disabled={actionLoading}
-                      >
-                        <Ban className="w-4 h-4 mr-2" />
-                        Reject Dispute
-                      </Button>
-                                  </CardContent>
-                                </Card>
-                              )}
-                            </div>
-                          )}
+                    )}
+                  </CardContent>
+                </Card>
+                {/* Resolution Form */}
+                {selectedDispute.status !== "RESOLVED" &&
+                  selectedDispute.status !== "CLOSED" && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          Resolution Actions
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleResolve("refund")}
+                            disabled={actionLoading}
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            Refund (Company Wins)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleResolve("release")}
+                            disabled={actionLoading}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Release (Provider Wins)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setPayoutDialogOpen(true)}
+                            disabled={actionLoading}
+                          >
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            Partial Split
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleResolve("redo")}
+                            disabled={actionLoading}
+                            className="text-yellow-600 hover:text-yellow-700"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Redo Milestone
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="resolution-notes">
+                            Resolution Notes (Optional)
+                          </Label>
+                          <Textarea
+                            id="resolution-notes"
+                            placeholder="Enter resolution notes..."
+                            value={resolutionNotes}
+                            onChange={(e) => setResolutionNotes(e.target.value)}
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleResolve("cancel")}
+                          disabled={actionLoading}
+                        >
+                          <Ban className="w-4 h-4 mr-2" />
+                          Reject Dispute
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+              </div>
+            )}
 
-                          <DialogFooter>
-              <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setViewDialogOpen(false)}
+              >
                 Close
-                                </Button>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -895,7 +1349,9 @@ export default function AdminDisputesPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Partial Payout</DialogTitle>
-              <DialogDescription>Specify refund and release amounts</DialogDescription>
+              <DialogDescription>
+                Specify refund and release amounts
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -919,7 +1375,9 @@ export default function AdminDisputesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="payout-resolution-notes">Resolution Notes (Optional)</Label>
+                <Label htmlFor="payout-resolution-notes">
+                  Resolution Notes (Optional)
+                </Label>
                 <Textarea
                   id="payout-resolution-notes"
                   placeholder="Enter resolution notes..."
@@ -930,10 +1388,16 @@ export default function AdminDisputesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setPayoutDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setPayoutDialogOpen(false)}
+              >
                 Cancel
-                                </Button>
-              <Button onClick={() => handleResolve("partial")} disabled={actionLoading}>
+              </Button>
+              <Button
+                onClick={() => handleResolve("partial")}
+                disabled={actionLoading}
+              >
                 {actionLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -943,10 +1407,10 @@ export default function AdminDisputesPage() {
                   "Process Payout"
                 )}
               </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
-  )
+  );
 }

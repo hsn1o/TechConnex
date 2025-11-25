@@ -1,4 +1,7 @@
 import * as messageModel from "./model.js";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export const fetchUserMessages = async (userId, otherUserId = null) => {
   if (!userId) {
@@ -108,4 +111,48 @@ export const getConversationList = async (userId) => {
     throw new Error("User ID is required");
   }
   return messageModel.getUserConversations(userId);
+};
+
+// Get messages for a specific project (admin access)
+export const fetchProjectMessages = async (projectId, userId) => {
+  if (!projectId) {
+    throw new Error("Project ID is required");
+  }
+
+  // Check if user is admin
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  if (!user || !user.role.includes("ADMIN")) {
+    throw new Error("Unauthorized: Admin access required");
+  }
+
+  // Get project to verify it exists and get customer/provider IDs
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      customerId: true,
+      providerId: true,
+      title: true,
+    },
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  if (!project.customerId || !project.providerId) {
+    throw new Error(
+      "Project does not have both customer and provider assigned"
+    );
+  }
+
+  // Get ALL messages between customer and provider (with or without projectId)
+  return messageModel.getMessagesBetweenUsers(
+    project.customerId,
+    project.providerId
+  );
 };

@@ -1,6 +1,34 @@
 "use client";
 
 import Link from "next/link";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +57,19 @@ import PortfolioGrid from "./sections/PortfolioGrid";
 import ReviewsList from "./sections/ReviewsList";
 import { useRouter } from "next/navigation";
 import { getProviderCompletedProjects } from "@/lib/api";
+import ProposalPopup from "./ProposalPopup";
+
+
+
+
+
+
+
+
+
+
+
+
 
 export default function ProviderDetailClient({
   provider,
@@ -42,6 +83,7 @@ export default function ProviderDetailClient({
   const [saved, setSaved] = useState<boolean>(!!provider.saved);
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
+  const [showProposalPopup, setShowProposalPopup] = useState(false);
   const router = useRouter();
 
   // Update saved state when provider prop changes (e.g., after refresh)
@@ -69,10 +111,13 @@ export default function ProviderDetailClient({
   }, [provider.id]);
 
   const handleContact = (provider: any) => {
-    const avatarUrl = provider.avatar && 
+    const avatarUrl =
+      provider.avatar &&
       provider.avatar !== "/placeholder.svg" &&
       !provider.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
+            provider.avatar.startsWith("/") ? "" : "/"
+          }${provider.avatar}`
         : "";
     router.push(
       `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
@@ -91,7 +136,39 @@ export default function ProviderDetailClient({
     }
   };
 
-  const handleSaveToggle = async () => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    const handleSaveToggle = async () => {
     try {
       const { userId, token } = getUserAndToken();
       if (!userId || !token) {
@@ -125,6 +202,19 @@ export default function ProviderDetailClient({
     }
   };
 
+  const handleRequestProposal = () => {
+    const { userId, token } = getUserAndToken();
+    if (!userId || !token) {
+      alert("Please login to request proposals");
+      return;
+    }
+    setShowProposalPopup(true);
+  };
+
+  const handleProposalSuccess = () => {
+    alert("Proposal sent successfully!");
+  };
+
   return (
     <div className="space-y-8">
       {/* Back + Actions */}
@@ -135,7 +225,8 @@ export default function ProviderDetailClient({
             onClick={handleSaveToggle}
             className={saved ? "bg-red-600 hover:bg-red-700 text-white" : ""}
           >
-            <Heart className={`w-4 h-4 mr-2 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}
+            <Heart className={`w-4 h-4 mr-2 ${saved ? "fill-current" : ""}`} />{" "}
+            {saved ? "Saved" : "Save"}
           </Button>
 
           <Button
@@ -155,14 +246,19 @@ export default function ProviderDetailClient({
         <CardContent className="p-6">
           <div className="flex items-start gap-5">
             <Avatar className="w-20 h-20">
-              <AvatarImage 
+              <AvatarImage
                 src={
-                  provider.avatar && 
+                  provider.avatar &&
                   provider.avatar !== "/placeholder.svg" &&
                   !provider.avatar.includes("/placeholder.svg")
-                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+                    ? `${
+                        process.env.NEXT_PUBLIC_API_BASE_URL ||
+                        "http://localhost:4000"
+                      }${provider.avatar.startsWith("/") ? "" : "/"}${
+                        provider.avatar
+                      }`
                     : "/placeholder.svg"
-                } 
+                }
               />
               <AvatarFallback>{provider.name?.[0]}</AvatarFallback>
             </Avatar>
@@ -243,20 +339,28 @@ export default function ProviderDetailClient({
               {loadingPortfolio ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                  <span className="ml-2 text-gray-600">Loading projects...</span>
+                  <span className="ml-2 text-gray-600">
+                    Loading projects...
+                  </span>
                 </div>
               ) : portfolioProjects.length === 0 ? (
                 <div className="text-center py-12">
                   <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No completed projects yet</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No completed projects yet
+                  </h3>
                   <p className="text-gray-600">
-                    Completed projects will appear here automatically once the provider finishes working on them.
+                    Completed projects will appear here automatically once the
+                    provider finishes working on them.
                   </p>
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 gap-6">
                   {portfolioProjects.map((project) => (
-                    <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                    <Card
+                      key={project.id}
+                      className="hover:shadow-lg transition-shadow"
+                    >
                       <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-48 flex items-center justify-center rounded-t-lg">
                         <div className="text-center p-4">
                           <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -268,26 +372,41 @@ export default function ProviderDetailClient({
                         </div>
                       </div>
                       <CardContent className="p-4">
-                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">{project.title}</h3>
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{project.description || "No description provided"}</p>
-                        {project.technologies && project.technologies.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {project.technologies.slice(0, 6).map((tech: string, index: number) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {tech}
-                              </Badge>
-                            ))}
-                            {project.technologies.length > 6 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{project.technologies.length - 6} more
-                              </Badge>
-                            )}
-                          </div>
-                        )}
+                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">
+                          {project.title}
+                        </h3>
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                          {project.description || "No description provided"}
+                        </p>
+                        {project.technologies &&
+                          project.technologies.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {project.technologies
+                                .slice(0, 6)
+                                .map((tech: string, index: number) => (
+                                  <Badge
+                                    key={index}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {tech}
+                                  </Badge>
+                                ))}
+                              {project.technologies.length > 6 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{project.technologies.length - 6} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         <div className="flex items-center justify-between text-sm text-gray-500">
                           <span className="font-medium">{project.client}</span>
                           {project.completedDate && (
-                            <span>{new Date(project.completedDate).toLocaleDateString()}</span>
+                            <span>
+                              {new Date(
+                                project.completedDate
+                              ).toLocaleDateString()}
+                            </span>
                           )}
                         </div>
                       </CardContent>
@@ -318,14 +437,30 @@ export default function ProviderDetailClient({
                 Start a project or send a message
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Link
-                href={`/customer/requests/new?providerId=${encodeURIComponent(
-                  provider.id
-                )}`}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <CardContent className="space-y-3">
+              <Button 
+                className="w-full" 
+                onClick={handleRequestProposal}
               >
-                <Button className="w-full">Request a Proposal</Button>
-              </Link>
+                Request a Proposal
+              </Button>
               <Link
                 href={`/customer/messages/new?to=${encodeURIComponent(
                   provider.id
@@ -362,7 +497,9 @@ export default function ProviderDetailClient({
               {provider.workPreference && (
                 <div>
                   <p className="text-gray-500">Work Preference</p>
-                  <p className="font-medium capitalize">{provider.workPreference}</p>
+                  <p className="font-medium capitalize">
+                    {provider.workPreference}
+                  </p>
                 </div>
               )}
               {provider.teamSize && provider.teamSize > 1 && (
@@ -371,11 +508,13 @@ export default function ProviderDetailClient({
                   <p className="font-medium">{provider.teamSize} members</p>
                 </div>
               )}
-              {(provider.minimumProjectBudget || provider.maximumProjectBudget) && (
+              {(provider.minimumProjectBudget ||
+                provider.maximumProjectBudget) && (
                 <div>
                   <p className="text-gray-500">Project Budget Range</p>
                   <p className="font-medium">
-                    {provider.minimumProjectBudget && provider.maximumProjectBudget
+                    {provider.minimumProjectBudget &&
+                    provider.maximumProjectBudget
                       ? `RM ${provider.minimumProjectBudget.toLocaleString()} - RM ${provider.maximumProjectBudget.toLocaleString()}`
                       : provider.minimumProjectBudget
                       ? `From RM ${provider.minimumProjectBudget.toLocaleString()}`
@@ -388,14 +527,20 @@ export default function ProviderDetailClient({
               {provider.preferredProjectDuration && (
                 <div>
                   <p className="text-gray-500">Preferred Project Duration</p>
-                  <p className="font-medium">{provider.preferredProjectDuration}</p>
+                  <p className="font-medium">
+                    {provider.preferredProjectDuration}
+                  </p>
                 </div>
               )}
               {provider.website && (
                 <div>
                   <p className="text-gray-500">Website</p>
                   <a
-                    href={provider.website.startsWith("http") ? provider.website : `https://${provider.website}`}
+                    href={
+                      provider.website.startsWith("http")
+                        ? provider.website
+                        : `https://${provider.website}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium text-blue-600 hover:underline"
@@ -404,12 +549,16 @@ export default function ProviderDetailClient({
                   </a>
                 </div>
               )}
-              {provider.certificationsCount && provider.certificationsCount > 0 && (
-                <div>
-                  <p className="text-gray-500">Certifications</p>
-                  <p className="font-medium">{provider.certificationsCount} certification{provider.certificationsCount !== 1 ? "s" : ""}</p>
-                </div>
-              )}
+              {provider.certificationsCount &&
+                provider.certificationsCount > 0 && (
+                  <div>
+                    <p className="text-gray-500">Certifications</p>
+                    <p className="font-medium">
+                      {provider.certificationsCount} certification
+                      {provider.certificationsCount !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                )}
             </CardContent>
           </Card>
 
@@ -428,7 +577,8 @@ export default function ProviderDetailClient({
                         <p className="font-medium">{cert.name}</p>
                         <p className="text-sm text-gray-500">{cert.issuer}</p>
                         <p className="text-xs text-gray-400">
-                          Issued: {new Date(cert.issuedDate).toLocaleDateString()}
+                          Issued:{" "}
+                          {new Date(cert.issuedDate).toLocaleDateString()}
                         </p>
                       </div>
                       {cert.verified && (
@@ -442,8 +592,21 @@ export default function ProviderDetailClient({
               </CardContent>
             </Card>
           )}
-        </div>
+
+
+
+
+                </div>
       </div>
+
+      {/* Proposal Popup */}
+      <ProposalPopup
+        providerId={provider.id}
+        providerName={provider.name}
+        isOpen={showProposalPopup}
+        onClose={() => setShowProposalPopup(false)}
+        onSuccess={handleProposalSuccess}
+      />
     </div>
   );
 }

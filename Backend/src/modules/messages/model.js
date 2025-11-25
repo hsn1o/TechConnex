@@ -192,3 +192,42 @@ export const getMessageById = async (id) => {
     },
   });
 };
+
+// Get messages between two users for a specific project
+export const getMessagesBetweenUsersForProject = async (
+  userId1,
+  userId2,
+  projectId
+) => {
+  return prisma.message.findMany({
+    where: {
+      OR: [
+        { senderId: userId1, receiverId: userId2, projectId },
+        { senderId: userId2, receiverId: userId1, projectId },
+      ],
+    },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          customerProfile: { select: { profileImageUrl: true } },
+          providerProfile: { select: { profileImageUrl: true } },
+        },
+      },
+      receiver: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          customerProfile: { select: { profileImageUrl: true } },
+          providerProfile: { select: { profileImageUrl: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+};

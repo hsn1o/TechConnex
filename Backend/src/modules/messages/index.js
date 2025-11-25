@@ -1,6 +1,13 @@
 // message/index.js
 import express from "express";
-import { createNewMessage, deleteMessage, getConversations, getMessages, markAsRead } from "./controller.js";
+import {
+  createNewMessage,
+  deleteMessage,
+  getConversations,
+  getMessages,
+  getProjectMessages,
+  markAsRead,
+} from "./controller.js";
 
 import { authenticateToken } from "../../middlewares/auth.js";
 import multer from "multer";
@@ -33,11 +40,16 @@ router.use(authenticateToken);
 // ✅ File upload route
 router.post("/upload", upload.single("file"), (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ success: false, message: "No file uploaded" });
+    return res
+      .status(400)
+      .json({ success: false, message: "No file uploaded" });
   }
 
-  const fileUrl = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
-  
+  const fileUrl = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
+    /\\/g,
+    "/"
+  )}`;
+
   res.json({
     success: true,
     fileUrl,
@@ -48,6 +60,7 @@ router.post("/upload", upload.single("file"), (req, res) => {
 
 router.get("/", getMessages); // GET /api/messages?otherUserId=... or just /api/messages for all
 router.get("/conversations", getConversations); // GET /api/messages/conversations
+router.get("/project/:projectId", getProjectMessages); // GET /api/messages/project/:projectId - for admin access
 router.post("/", createNewMessage); // POST /api/messages
 router.put("/:id/read", markAsRead); // PUT /api/messages/:id/read
 router.delete("/:id", deleteMessage); // DELETE /api/messages/:id
