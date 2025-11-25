@@ -303,17 +303,19 @@ export async function updateReview(dto) {
       throw new Error("Review not found or unauthorized");
     }
 
+    // Build update data object, only including fields that are provided
+    const updateData = {};
+    if (dto.content !== undefined) updateData.content = dto.content;
+    if (dto.rating !== undefined) updateData.rating = dto.rating;
+    if (dto.communicationRating !== undefined) updateData.communicationRating = dto.communicationRating;
+    if (dto.qualityRating !== undefined) updateData.qualityRating = dto.qualityRating;
+    if (dto.timelinessRating !== undefined) updateData.timelinessRating = dto.timelinessRating;
+    if (dto.professionalismRating !== undefined) updateData.professionalismRating = dto.professionalismRating;
+
     // Update the review
     const review = await prisma.review.update({
       where: { id: dto.reviewId },
-      data: {
-        content: dto.content,
-        rating: dto.rating,
-        communicationRating: dto.communicationRating,
-        qualityRating: dto.qualityRating,
-        timelinessRating: dto.timelinessRating,
-        professionalismRating: dto.professionalismRating
-      },
+      data: updateData,
       include: {
         reviewer: {
           select: {
@@ -368,12 +370,9 @@ export async function deleteReview(reviewId, userId) {
       throw new Error("Review not found or unauthorized");
     }
 
-    // Delete related replies and votes before the review to satisfy FK constraints
+    // Delete related replies before the review to satisfy FK constraints
     await prisma.$transaction([
       prisma.reviewReply.deleteMany({
-        where: { reviewId },
-      }),
-      prisma.reviewVote.deleteMany({
         where: { reviewId },
       }),
       prisma.review.delete({
@@ -398,16 +397,29 @@ export async function deleteReview(reviewId, userId) {
 // Create review reply
 export async function createReviewReply(dto) {
   try {
-    // Check if review exists and user is the recipient
-    const review = await prisma.review.findFirst({
-      where: {
-        id: dto.reviewId,
-        recipientId: dto.userId
+    // First, get the review to see who the recipient is
+    const review = await prisma.review.findUnique({
+      where: { id: dto.reviewId },
+      include: {
+        reviewer: true,
+        recipient: true
       }
     });
 
     if (!review) {
-      throw new Error("Review not found or unauthorized to reply");
+      throw new Error("Review not found");
+    }
+
+    console.log("🔍 Review reply attempt:", {
+      reviewId: dto.reviewId,
+      userId: dto.userId,
+      reviewerId: review.reviewerId,
+      recipientId: review.recipientId
+    });
+
+    // Check if user is the recipient of the review
+    if (review.recipientId !== dto.userId) {
+      throw new Error("Only the recipient of the review can reply to it");
     }
 
     // Check if reply already exists
@@ -530,10 +542,11 @@ export async function getCompletedProjectsForReview(customerId) {
 // Get review statistics for customer
 export async function getReviewStatistics(customerId) {
   try {
+    // Statistics for reviews RECEIVED by the company (from providers)
     const stats = await prisma.review.groupBy({
       by: ['rating'],
       where: {
-        reviewerId: customerId
+        recipientId: customerId // Reviews received by company from providers
       },
       _count: {
         rating: true
@@ -541,12 +554,16 @@ export async function getReviewStatistics(customerId) {
     });
 
     const totalReviews = await prisma.review.count({
-      where: { reviewerId: customerId }
+      where: { recipientId: customerId }
     });
 
     const averageRating = await prisma.review.aggregate({
-      where: { reviewerId: customerId },
+      where: { recipientId: customerId },
       _avg: { rating: true }
+    });
+
+    const givenReviews = await prisma.review.count({
+      where: { reviewerId: customerId }
     });
 
     const pendingProjects = await prisma.project.count({
@@ -562,8 +579,9 @@ export async function getReviewStatistics(customerId) {
     });
 
     return {
-      totalReviews,
-      averageRating: averageRating._avg.rating || 0,
+      totalReviews, // Reviews received by company
+      averageRating: averageRating._avg.rating || 0, // Average of reviews received
+      givenReviews, // Reviews given by company
       pendingReviews: pendingProjects,
       ratingDistribution: stats
     };

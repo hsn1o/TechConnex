@@ -8,13 +8,16 @@ CREATE TYPE "KycDocType" AS ENUM ('PROVIDER_ID', 'COMPANY_REG', 'COMPANY_DIRECTO
 CREATE TYPE "KycDocStatus" AS ENUM ('uploaded', 'verified', 'rejected');
 
 -- CreateEnum
-CREATE TYPE "DisputeStatus" AS ENUM ('OPEN', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED');
+CREATE TYPE "DisputeStatus" AS ENUM ('OPEN', 'UNDER_REVIEW', 'RESOLVED', 'REJECTED', 'CLOSED');
 
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('CUSTOMER', 'PROVIDER', 'ADMIN');
 
 -- CreateEnum
 CREATE TYPE "KycStatus" AS ENUM ('active', 'inactive', 'suspended', 'pending_verification');
+
+-- CreateEnum
+CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'SUSPENDED');
 
 -- CreateEnum
 CREATE TYPE "ServiceCategory" AS ENUM ('web_development', 'mobile_app_development', 'cloud_services', 'iot_solutions', 'data_analytics', 'cybersecurity', 'ui_ux_design', 'devops', 'ai_ml_solutions', 'system_integration');
@@ -26,13 +29,16 @@ CREATE TYPE "RequestStatus" AS ENUM ('OPEN', 'MATCHED', 'CLOSED');
 CREATE TYPE "ProjectStatus" AS ENUM ('IN_PROGRESS', 'COMPLETED', 'DISPUTED');
 
 -- CreateEnum
-CREATE TYPE "MilestoneStatus" AS ENUM ('DRAFT', 'PENDING', 'LOCKED', 'IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'PAID', 'REJECTED', 'CANCELLED');
+CREATE TYPE "MilestoneStatus" AS ENUM ('DRAFT', 'PENDING', 'LOCKED', 'IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'PAID', 'REJECTED', 'CANCELLED', 'DISPUTED');
 
 -- CreateEnum
 CREATE TYPE "PaymentMethod" AS ENUM ('FPX', 'STRIPE', 'EWALLET');
 
 -- CreateEnum
-CREATE TYPE "PaymentStatus" AS ENUM ('ESCROWED', 'RELEASED', 'REFUNDED');
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'ESCROWED', 'RELEASED', 'TRANSFERRED', 'REFUNDED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "BankTransferStatus" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "MessageType" AS ENUM ('text', 'file', 'system', 'proposal');
@@ -50,6 +56,7 @@ CREATE TABLE "User" (
     "phone" TEXT,
     "kycStatus" "KycStatus" NOT NULL DEFAULT 'pending_verification',
     "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    "status" "UserStatus" NOT NULL DEFAULT 'ACTIVE',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
@@ -59,10 +66,12 @@ CREATE TABLE "User" (
 CREATE TABLE "Notification" (
     "id" UUID NOT NULL,
     "userId" UUID NOT NULL,
+    "title" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "isRead" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "metadata" JSONB,
 
     CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
 );
@@ -71,6 +80,10 @@ CREATE TABLE "Notification" (
 CREATE TABLE "users" (
     "id" UUID NOT NULL,
     "userId" UUID NOT NULL,
+    "bank_name" TEXT,
+    "bank_account_number" TEXT,
+    "bank_account_name" TEXT,
+    "bank_swift_code" TEXT,
     "bio" TEXT,
     "location" TEXT,
     "hourlyRate" DOUBLE PRECISION,
@@ -78,6 +91,7 @@ CREATE TABLE "users" (
     "languages" TEXT[],
     "website" TEXT,
     "profileVideoUrl" TEXT,
+    "profile_image_url" TEXT,
     "rating" DECIMAL(3,2) NOT NULL DEFAULT 0.00,
     "total_reviews" INTEGER NOT NULL DEFAULT 0,
     "total_projects" INTEGER NOT NULL DEFAULT 0,
@@ -132,6 +146,7 @@ CREATE TABLE "companies" (
     "location" TEXT,
     "website" TEXT,
     "logo_url" TEXT,
+    "profile_image_url" TEXT,
     "socialLinks" JSONB,
     "languages" TEXT[],
     "company_size" VARCHAR(50),
@@ -217,6 +232,7 @@ CREATE TABLE "Review" (
     "communication_rating" INTEGER,
     "quality_rating" INTEGER,
     "timeliness_rating" INTEGER,
+    "professionalism_rating" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Review_pkey" PRIMARY KEY ("id")
@@ -231,17 +247,6 @@ CREATE TABLE "ReviewReply" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ReviewReply_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "ReviewVote" (
-    "id" UUID NOT NULL,
-    "reviewId" UUID NOT NULL,
-    "userId" UUID NOT NULL,
-    "value" INTEGER NOT NULL DEFAULT 1,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "ReviewVote_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -260,15 +265,15 @@ CREATE TABLE "service_requests" (
     "id" UUID NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "category" "ServiceCategory" NOT NULL,
+    "category" TEXT NOT NULL,
     "budgetMin" DOUBLE PRECISION NOT NULL,
     "budgetMax" DOUBLE PRECISION NOT NULL,
     "skills" TEXT[],
     "timeline" TEXT,
     "priority" TEXT,
     "ndaSigned" BOOLEAN NOT NULL DEFAULT false,
-    "requirements" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "deliverables" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "requirements" TEXT,
+    "deliverables" TEXT,
     "status" "RequestStatus" NOT NULL DEFAULT 'OPEN',
     "customerId" UUID NOT NULL,
     "projectId" UUID,
@@ -310,6 +315,7 @@ CREATE TABLE "Proposal" (
     "status" "ProposalStatus" NOT NULL DEFAULT 'PENDING',
     "deliveryTime" INTEGER NOT NULL,
     "coverLetter" TEXT NOT NULL,
+    "attachmentUrls" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "attachmentUrl" TEXT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(6) NOT NULL,
@@ -350,15 +356,15 @@ CREATE TABLE "Project" (
     "id" UUID NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "category" "ServiceCategory" NOT NULL,
+    "category" TEXT NOT NULL,
     "budgetMin" DOUBLE PRECISION NOT NULL,
     "budgetMax" DOUBLE PRECISION NOT NULL,
     "skills" TEXT[],
     "timeline" TEXT,
     "priority" TEXT,
     "ndaSigned" BOOLEAN NOT NULL DEFAULT false,
-    "requirements" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "deliverables" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "requirements" TEXT,
+    "deliverables" TEXT,
     "status" "ProjectStatus" NOT NULL,
     "customerId" UUID NOT NULL,
     "providerId" UUID NOT NULL,
@@ -414,9 +420,15 @@ CREATE TABLE "Milestone" (
     "paidAt" TIMESTAMP(3),
     "proposalId" UUID,
     "deliverables" JSONB,
+    "start_deliverables" JSONB,
+    "submit_deliverables" JSONB,
     "approvedAt" TIMESTAMP(3),
     "approvedBy" UUID,
     "submittedAt" TIMESTAMP(3),
+    "submission_attachment_url" TEXT,
+    "submission_note" TEXT,
+    "revision_number" INTEGER NOT NULL DEFAULT 0,
+    "submission_history" JSONB,
 
     CONSTRAINT "Milestone_pkey" PRIMARY KEY ("id")
 );
@@ -426,18 +438,45 @@ CREATE TABLE "Payment" (
     "id" UUID NOT NULL,
     "projectId" UUID NOT NULL,
     "milestoneId" UUID,
-    "stripePaymentIntentId" TEXT,
-    "stripeTransferId" TEXT,
-    "stripeRefundId" TEXT,
+    "stripe_payment_intent_id" TEXT,
+    "stripe_transfer_id" TEXT,
+    "stripe_refund_id" TEXT,
+    "stripe_charge_id" TEXT,
     "amount" DOUBLE PRECISION NOT NULL,
     "currency" VARCHAR(3) NOT NULL DEFAULT 'MYR',
+    "platform_fee_amount" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "provider_amount" DOUBLE PRECISION NOT NULL,
     "method" "PaymentMethod" NOT NULL,
     "status" "PaymentStatus" NOT NULL,
     "invoiceId" UUID,
+    "escrowed_at" TIMESTAMP(3),
+    "released_at" TIMESTAMP(3),
+    "release_scheduled_for" TIMESTAMP(3),
+    "bank_transfer_status" TEXT,
+    "bank_transfer_date" TIMESTAMP(3),
+    "bank_transfer_ref" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "metadata" JSONB,
+
+    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "platform_fee_configs" (
+    "id" UUID NOT NULL,
+    "percentage" DOUBLE PRECISION NOT NULL DEFAULT 10.0,
+    "fixedAmount" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    "minAmount" DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    "maxAmount" DOUBLE PRECISION,
+    "currency" TEXT NOT NULL DEFAULT 'MYR',
+    "effectiveFrom" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "effectiveTo" TIMESTAMP(3),
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "platform_fee_configs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -473,6 +512,16 @@ CREATE TABLE "saved_providers" (
 );
 
 -- CreateTable
+CREATE TABLE "saved_companies" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "companyId" UUID NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "saved_companies_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "KycDocument" (
     "id" UUID NOT NULL,
     "userId" UUID NOT NULL,
@@ -492,16 +541,56 @@ CREATE TABLE "KycDocument" (
 -- CreateTable
 CREATE TABLE "Dispute" (
     "id" UUID NOT NULL,
-    "paymentId" UUID NOT NULL,
+    "paymentId" UUID,
     "projectId" UUID NOT NULL,
     "raisedById" UUID NOT NULL,
+    "milestoneId" UUID,
     "reason" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "contestedAmount" DOUBLE PRECISION,
+    "suggestedResolution" TEXT,
+    "attachments" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "status" "DisputeStatus" NOT NULL DEFAULT 'OPEN',
     "resolution" TEXT,
+    "resolutionNotes" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Dispute_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AdminSettings" (
+    "id" SERIAL NOT NULL,
+    "platformName" TEXT NOT NULL,
+    "platformDescription" TEXT,
+    "supportEmail" TEXT NOT NULL,
+    "contactPhone" TEXT,
+    "platformUrl" TEXT,
+    "platformCommission" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "withdrawalFee" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "minimumWithdrawal" INTEGER NOT NULL DEFAULT 0,
+    "paymentProcessingTime" INTEGER NOT NULL DEFAULT 0,
+    "smtpHost" TEXT,
+    "smtpPort" INTEGER DEFAULT 587,
+    "smtpUsername" TEXT,
+    "smtpPassword" TEXT,
+    "emailNotifications" BOOLEAN NOT NULL DEFAULT true,
+    "smsNotifications" BOOLEAN NOT NULL DEFAULT false,
+    "pushNotifications" BOOLEAN NOT NULL DEFAULT true,
+    "marketingEmails" BOOLEAN NOT NULL DEFAULT true,
+    "twoFactorRequired" BOOLEAN NOT NULL DEFAULT false,
+    "sessionTimeout" INTEGER NOT NULL DEFAULT 30,
+    "passwordMinLength" INTEGER NOT NULL DEFAULT 8,
+    "maxLoginAttempts" INTEGER NOT NULL DEFAULT 5,
+    "maintenanceMode" BOOLEAN NOT NULL DEFAULT false,
+    "newRegistrations" BOOLEAN NOT NULL DEFAULT true,
+    "projectCreation" BOOLEAN NOT NULL DEFAULT true,
+    "paymentProcessing" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AdminSettings_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -534,9 +623,6 @@ CREATE INDEX "Certification_serialNumber_idx" ON "Certification"("serialNumber")
 CREATE UNIQUE INDEX "PerformanceStat_profileId_key" ON "PerformanceStat"("profileId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ReviewVote_reviewId_userId_key" ON "ReviewVote"("reviewId", "userId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Resume_userId_key" ON "Resume"("userId");
 
 -- CreateIndex
@@ -544,6 +630,9 @@ CREATE UNIQUE INDEX "invoices_invoice_number_key" ON "invoices"("invoice_number"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "saved_providers_userId_providerId_key" ON "saved_providers"("userId", "providerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "saved_companies_userId_companyId_key" ON "saved_companies"("userId", "companyId");
 
 -- CreateIndex
 CREATE INDEX "KycDocument_userId_idx" ON "KycDocument"("userId");
@@ -589,12 +678,6 @@ ALTER TABLE "ReviewReply" ADD CONSTRAINT "ReviewReply_reviewId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "ReviewReply" ADD CONSTRAINT "ReviewReply_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ReviewVote" ADD CONSTRAINT "ReviewVote_reviewId_fkey" FOREIGN KEY ("reviewId") REFERENCES "Review"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "ReviewVote" ADD CONSTRAINT "ReviewVote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Resume" ADD CONSTRAINT "Resume_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -672,16 +755,25 @@ ALTER TABLE "saved_providers" ADD CONSTRAINT "saved_providers_userId_fkey" FOREI
 ALTER TABLE "saved_providers" ADD CONSTRAINT "saved_providers_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "saved_companies" ADD CONSTRAINT "saved_companies_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "saved_companies" ADD CONSTRAINT "saved_companies_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "KycDocument" ADD CONSTRAINT "KycDocument_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Dispute" ADD CONSTRAINT "Dispute_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Dispute" ADD CONSTRAINT "Dispute_paymentId_fkey" FOREIGN KEY ("paymentId") REFERENCES "Payment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Dispute" ADD CONSTRAINT "Dispute_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Dispute" ADD CONSTRAINT "Dispute_raisedById_fkey" FOREIGN KEY ("raisedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Dispute" ADD CONSTRAINT "Dispute_milestoneId_fkey" FOREIGN KEY ("milestoneId") REFERENCES "Milestone"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_PaymentToSettings" ADD CONSTRAINT "_PaymentToSettings_A_fkey" FOREIGN KEY ("A") REFERENCES "Payment"("id") ON DELETE CASCADE ON UPDATE CASCADE;

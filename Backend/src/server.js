@@ -1,5 +1,5 @@
 // server.js
-import "dotenv/config.js";
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";

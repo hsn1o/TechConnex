@@ -423,7 +423,7 @@ export default function ProviderReviewsPage() {
             title="Average Rating"
             value={statsLoading ? "…" : stats.averageRating.toFixed(1) ?? "0.0"}
             icon={<Star className="h-8 w-8 text-yellow-500" />}
-            helper="Across all client feedback"
+            helper="From reviews received by companies"
           />
           <StatsCard
             title="Pending Reviews"
@@ -698,7 +698,12 @@ function ReviewCard({
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <RatingStars rating={review.rating || 0} />
+            <div className="flex items-center gap-2">
+              <RatingStars rating={review.rating || 0} />
+              <span className="text-sm font-semibold text-foreground">
+                {(review.rating || 0).toFixed(1)}
+              </span>
+            </div>
             <Badge variant="outline">
               {type === "given"
                 ? "You reviewed this company"
@@ -742,17 +747,18 @@ function ReviewCard({
           </div>
         )}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between relative z-10">
           <Badge variant="secondary">
             {type === "given" ? "Published" : "Received"}
           </Badge>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 relative z-10">
             {type === "given" && (
               <>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => onEdit?.(review)}
+                  className="relative z-50 pointer-events-auto"
                 >
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
@@ -761,6 +767,7 @@ function ReviewCard({
                   variant="outline"
                   size="sm"
                   onClick={() => onDelete?.(review)}
+                  className="relative z-50 pointer-events-auto"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
@@ -773,6 +780,7 @@ function ReviewCard({
                 size="sm"
                 onClick={() => onReply?.(review)}
                 disabled={Boolean(reply)}
+                className="relative z-10"
               >
                 <Reply className="mr-2 h-4 w-4" />
                 {reply ? "Replied" : "Reply"}

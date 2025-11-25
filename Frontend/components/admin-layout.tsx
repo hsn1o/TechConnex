@@ -21,6 +21,7 @@ import {
   CreditCard,
   LogOut,
   Zap,
+  Star,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ const NAV_ITEMS = [
   { name: "Dashboard", href: "/admin/dashboard", icon: Home },
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Projects", href: "/admin/projects", icon: Briefcase },
+  { name: "Reviews", href: "/admin/reviews", icon: Star },
   { name: "Verifications", href: "/admin/verifications", icon: Shield },
   { name: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
   { name: "Payments", href: "/admin/payments", icon: DollarSign },

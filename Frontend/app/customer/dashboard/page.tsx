@@ -62,7 +62,7 @@ export default function CustomerDashboard() {
     activeProjects: 0,
     completedProjects: 0,
     totalSpent: 0,
-    rating: null,
+    rating: 0,
   });
   // Use Project[] as the type for recentProjects
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
@@ -83,7 +83,7 @@ export default function CustomerDashboard() {
             activeProjects: statsResponse.stats.activeProjects || 0,
             completedProjects: statsResponse.stats.completedProjects || 0,
             totalSpent: statsResponse.stats.totalSpent || 0,
-            rating: null, // Not available in current API
+            rating: statsResponse.stats.averageRating || 0, // Average rating from reviews received
           });
         } else {
           // Set default stats if API call fails or returns no data
@@ -91,7 +91,7 @@ export default function CustomerDashboard() {
             activeProjects: 0,
             completedProjects: 0,
             totalSpent: 0,
-            rating: null,
+            rating: 0,
           });
         }
 
@@ -112,7 +112,16 @@ export default function CustomerDashboard() {
             budget: project.budgetMax,
             deadline: project.timeline,
             avatar: project.provider?.providerProfile?.profileImageUrl
-              ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.provider.providerProfile.profileImageUrl}`
+              ? `${
+                  process.env.NEXT_PUBLIC_API_BASE_URL ||
+                  "http://localhost:4000"
+                }${
+                  project.provider.providerProfile.profileImageUrl.startsWith(
+                    "/"
+                  )
+                    ? ""
+                    : "/"
+                }${project.provider.providerProfile.profileImageUrl}`
               : "/placeholder.svg?height=40&width=40",
             createdAt: project.createdAt,
             category: project.category,
@@ -144,9 +153,15 @@ export default function CustomerDashboard() {
                 completedJobs: provider.completedJobs || 0,
                 hourlyRate: provider.hourlyRate || 0,
                 location: provider.location || "Malaysia",
-                avatar: provider.avatar && provider.avatar !== "/placeholder.svg"
-                  ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
-                  : "/placeholder.svg?height=60&width=60",
+                avatar:
+                  provider.avatar && provider.avatar !== "/placeholder.svg"
+                    ? `${
+                        process.env.NEXT_PUBLIC_API_BASE_URL ||
+                        "http://localhost:4000"
+                      }${provider.avatar.startsWith("/") ? "" : "/"}${
+                        provider.avatar
+                      }`
+                    : "/placeholder.svg?height=60&width=60",
                 skills: provider.skills || [],
                 verified: provider.verified || false,
                 topRated: provider.topRated || false,
@@ -330,7 +345,7 @@ export default function CustomerDashboard() {
                   </p>
                   <div className="flex items-center gap-1">
                     <p className="text-2xl font-bold text-gray-900">
-                      {stats.rating !== null ? stats.rating : "-"}
+                      {stats.rating ? stats.rating.toFixed(1) : "0.0"}
                     </p>
                     <Star className="w-5 h-5 text-yellow-400 fill-current" />
                   </div>
