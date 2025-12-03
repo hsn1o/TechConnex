@@ -13,6 +13,7 @@ import {
   getCompanyProjectStats
 } from "./service.js";
 import { CreateProjectDto, GetProjectsDto, UpdateProjectDto  } from "./dto.js";
+import { generateCustomerProjectsPDF } from "../../../utils/projectsPdfGenerator.js";
 
 // POST /api/company/projects - Create a new project
 export async function createProjectController(req, res) {
@@ -368,6 +369,58 @@ export async function getCompanyProjectStatsController(req, res) {
   } catch (error) {
     console.error("Error in getCompanyProjectStatsController:", error);
     res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/company/projects/export - Export projects as PDF
+export async function exportProjectsController(req, res) {
+  try {
+    // Fetch all projects in batches to respect DTO validation (limit max 100)
+    const allProjects = [];
+    let page = 1;
+    const limit = 100; // Max allowed by DTO
+    let hasMore = true;
+
+    while (hasMore) {
+      const dto = new GetProjectsDto({
+        customerId: req.user.userId,
+        ...req.query,
+        page: page,
+        limit: limit,
+      });
+      dto.validate();
+
+      const result = await getProjects(dto);
+      const items = Array.isArray(result.items) ? result.items : [];
+      allProjects.push(...items);
+
+      // Check if there are more pages
+      const total = result.pagination?.total || 0;
+      const totalPages = result.pagination?.totalPages || 1;
+      hasMore = page < totalPages;
+      page++;
+    }
+
+    // Generate PDF
+    const pdfBuffer = await generateCustomerProjectsPDF(allProjects, {
+      search: req.query.search,
+      status: req.query.status,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="customer-projects-${Date.now()}.pdf"`
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error in exportProjectsController:", error);
+    res.status(500).json({
       success: false,
       message: error.message,
     });

@@ -33,7 +33,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
-import { getProviderProjects, getProviderProjectStats } from "@/lib/api";
+import { getProviderProjects, getProviderProjectStats, exportProviderProjects } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -164,7 +164,35 @@ export default function ProviderProjectsPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const blob = await exportProviderProjects({
+                    search: searchQuery,
+                    status: statusFilter !== "all" ? statusFilter.toUpperCase() : undefined,
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = `provider-projects-${Date.now()}.pdf`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  toast({
+                    title: "Export successful",
+                    description: "Projects exported as PDF",
+                  });
+                } catch (err) {
+                  toast({
+                    title: "Export failed",
+                    description: err instanceof Error ? err.message : "Failed to export projects",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
               <Filter className="w-4 h-4 mr-2" />
               Export Report
             </Button>

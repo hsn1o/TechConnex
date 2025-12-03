@@ -534,6 +534,34 @@ export async function getProjectRequestStats() {
   return data;
 }
 
+export async function exportCompanyProjectRequests(params?: {
+  search?: string;
+  proposalStatus?: string;
+  serviceRequestId?: string;
+}): Promise<Blob> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.append("search", params.search);
+  if (params?.proposalStatus) searchParams.append("proposalStatus", params.proposalStatus);
+  if (params?.serviceRequestId) searchParams.append("serviceRequestId", params.serviceRequestId);
+
+  const res = await fetch(`${API_BASE}/company/project-requests/export?${searchParams.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData?.message || "Failed to export requests");
+  }
+
+  return await res.blob();
+}
+
 /**
  * Get company project statistics (active projects, completed projects, total spent)
  */
@@ -552,6 +580,32 @@ export async function getCompanyProjectStats() {
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "Failed to fetch project stats");
   return data;
+}
+
+export async function exportCompanyProjects(params?: {
+  search?: string;
+  status?: string;
+}): Promise<Blob> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.append("search", params.search);
+  if (params?.status) searchParams.append("status", params.status);
+
+  const res = await fetch(`${API_BASE}/company/projects/export?${searchParams.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData?.message || "Failed to export projects");
+  }
+
+  return await res.blob();
 }
 
 // Provider projects API functions
@@ -585,6 +639,32 @@ export async function getProviderProjects(params?: {
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "Failed to fetch projects");
   return data;
+}
+
+export async function exportProviderProjects(params?: {
+  search?: string;
+  status?: string;
+}): Promise<Blob> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const searchParams = new URLSearchParams();
+  if (params?.search) searchParams.append("search", params.search);
+  if (params?.status) searchParams.append("status", params.status);
+
+  const res = await fetch(`${API_BASE}/provider/projects/export?${searchParams.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData?.message || "Failed to export projects");
+  }
+
+  return await res.blob();
 }
 
 export async function getProviderProjectById(id: string) {

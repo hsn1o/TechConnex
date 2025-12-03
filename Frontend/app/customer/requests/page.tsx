@@ -45,6 +45,7 @@ import {
   acceptProjectRequest,
   rejectProjectRequest,
   getProjectRequestStats,
+  exportCompanyProjectRequests,
 } from "@/lib/api";
 import {
   getCompanyProjectMilestones,
@@ -610,7 +611,36 @@ export default function CustomerRequestsPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const blob = await exportCompanyProjectRequests({
+                    search: searchQuery,
+                    proposalStatus: statusFilter !== "all" ? statusFilter.toUpperCase() : undefined,
+                    serviceRequestId: projectFilter !== "all" ? projectFilter : undefined,
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = `provider-requests-${Date.now()}.pdf`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  toast({
+                    title: "Export successful",
+                    description: "Requests exported as PDF",
+                  });
+                } catch (err) {
+                  toast({
+                    title: "Export failed",
+                    description: err instanceof Error ? err.message : "Failed to export requests",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>

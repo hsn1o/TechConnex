@@ -12,6 +12,7 @@ import {
   requestMilestoneChangesController,
   payMilestoneController,
   getCompanyProjectStatsController,
+  exportProjectsController,
 } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 
@@ -24,6 +25,7 @@ router.use(authenticateToken);
 router.post("/", createProjectController);
 router.get("/", getProjectsController);
 router.get("/stats", getCompanyProjectStatsController);
+router.get("/export", exportProjectsController);
 router.get("/:id", getProjectController);
 router.put("/:id/status", updateProjectStatusController);
 router.put("/:id", updateProjectDetailsController); // NEW

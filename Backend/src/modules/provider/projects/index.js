@@ -7,6 +7,7 @@ import {
   updateMilestoneStatusController,
   getProjectStatsController,
   getPerformanceMetricsController,
+  exportProjectsController,
 } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 import { uploadMilestoneAttachment } from "../../../middlewares/uploadMilestoneAttachment.js";
@@ -20,6 +21,7 @@ router.use(authenticateToken);
 router.get("/", getProjectsController);
 router.get("/stats", getProjectStatsController);
 router.get("/performance", getPerformanceMetricsController);
+router.get("/export", exportProjectsController);
 router.get("/:id", getProjectController);
 router.put("/:id/status", updateProjectStatusController);
 

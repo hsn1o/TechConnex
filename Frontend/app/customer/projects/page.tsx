@@ -48,7 +48,8 @@ import {
 import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
 import { useRouter } from "next/navigation";
-import { getCompanyProjects, updateCompanyProject } from "@/lib/api";
+import { getCompanyProjects, updateCompanyProject, exportCompanyProjects } from "@/lib/api";
+import { Download } from "lucide-react";
 
 export default function CustomerProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -357,6 +358,38 @@ export default function CustomerProjectsPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const blob = await exportCompanyProjects({
+                    search: searchQuery,
+                    status: statusFilter !== "all" ? statusFilter : undefined,
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = `customer-projects-${Date.now()}.pdf`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  toast({
+                    title: "Export successful",
+                    description: "Projects exported as PDF",
+                  });
+                } catch (err) {
+                  toast({
+                    title: "Export failed",
+                    description: err instanceof Error ? err.message : "Failed to export projects",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
             <Link href="/customer/projects/new">
               <Button>
                 <Plus className="w-4 h-4 mr-2" />

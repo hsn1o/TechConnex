@@ -8,6 +8,7 @@ import {
   getProviderPerformanceMetrics,
 } from "./service.js";
 import { GetProviderProjectsDto, UpdateProjectStatusDto, UpdateMilestoneStatusDto } from "./dto.js";
+import { generateProviderProjectsPDF } from "../../../utils/projectsPdfGenerator.js";
 
 // GET /api/provider/projects - Get all projects for a provider
 export async function getProjectsController(req, res) {
@@ -189,6 +190,58 @@ export async function getPerformanceMetricsController(req, res) {
   } catch (error) {
     console.error("Error in getPerformanceMetricsController:", error);
     res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/provider/projects/export - Export projects as PDF
+export async function exportProjectsController(req, res) {
+  try {
+    // Fetch all projects in batches to respect DTO validation (limit max 100)
+    const allProjects = [];
+    let page = 1;
+    const limit = 100; // Max allowed by DTO
+    let hasMore = true;
+
+    while (hasMore) {
+      const dto = new GetProviderProjectsDto({
+        ...req.query,
+        providerId: req.user.userId,
+        page: page,
+        limit: limit,
+      });
+      dto.validate();
+
+      const result = await getProviderProjects(dto);
+      const items = Array.isArray(result.projects) ? result.projects : [];
+      allProjects.push(...items);
+
+      // Check if there are more pages
+      const total = result.pagination?.total || 0;
+      const totalPages = result.pagination?.totalPages || 1;
+      hasMore = page < totalPages;
+      page++;
+    }
+
+    // Generate PDF
+    const pdfBuffer = await generateProviderProjectsPDF(allProjects, {
+      search: req.query.search,
+      status: req.query.status,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="provider-projects-${Date.now()}.pdf"`
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error in exportProjectsController:", error);
+    res.status(500).json({
       success: false,
       message: error.message,
     });

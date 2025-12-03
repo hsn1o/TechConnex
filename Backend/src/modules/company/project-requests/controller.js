@@ -7,6 +7,7 @@ import {
   getProposalStats,
 } from "./service.js";
 import { GetProjectRequestsDto, AcceptProposalDto, RejectProposalDto } from "./dto.js";
+import { generateCustomerRequestsPDF } from "../../../utils/projectsPdfGenerator.js";
 
 // GET /api/company/project-requests - Get all project requests (proposals) for a company
 export async function getProjectRequestsController(req, res) {
@@ -124,6 +125,60 @@ export async function getProposalStatsController(req, res) {
     });
   } catch (error) {
     console.error("Error in getProposalStatsController:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/company/project-requests/export - Export requests as PDF
+export async function exportRequestsController(req, res) {
+  try {
+    const dto = new GetProjectRequestsDto({
+      customerId: req.user.userId,
+      ...req.query,
+      page: 1,
+      limit: 1000, // Get all requests for export
+    });
+    dto.validate();
+
+    const result = await getProjectRequests(dto);
+    const proposals = result.proposals || [];
+
+    // Transform proposals to match frontend format
+    const requests = proposals.map((proposal) => {
+      const provider = proposal.provider || {};
+      const profile = provider.providerProfile || {};
+      return {
+        id: proposal.id,
+        providerName: provider.name || "N/A",
+        projectTitle: proposal.serviceRequest?.title || "N/A",
+        bidAmount: proposal.bidAmount || 0,
+        status: proposal.status || "PENDING",
+        providerRating: parseFloat(profile.rating || 0),
+        submittedAt: proposal.createdAt,
+        milestones: proposal.milestones || [],
+      };
+    });
+
+    // Generate PDF
+    const pdfBuffer = await generateCustomerRequestsPDF(requests, {
+      search: req.query.search,
+      status: req.query.proposalStatus,
+      project: req.query.serviceRequestId,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="provider-requests-${Date.now()}.pdf"`
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error in exportRequestsController:", error);
     res.status(500).json({
       success: false,
       message: error.message,
