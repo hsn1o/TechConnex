@@ -404,7 +404,7 @@ class CompanyProfileModel {
           if (!isComplete) {
             suggestionMessage = `Add your ${label.toLowerCase()}`;
           }
-        } else {
+          } else {
           isComplete = value !== null && value !== undefined;
           if (!isComplete) {
             suggestionMessage = `Add your ${label.toLowerCase()}`;
@@ -479,7 +479,7 @@ class CompanyProfileModel {
   static async updateProfileCompletion(userId) {
     try {
       const completionData = await this.getProfileCompletion(userId);
-
+      
       await prisma.customerProfile.update({
         where: { userId },
         data: { completion: completionData.completion },

@@ -516,7 +516,7 @@ export async function getProviderProjectStats(providerId) {
       }),
       prisma.review.aggregate({
         where: {
-          recipientId: providerId, // Reviews RECEIVED by provider from companies
+          project: { providerId },
         },
         _avg: { rating: true },
       }),

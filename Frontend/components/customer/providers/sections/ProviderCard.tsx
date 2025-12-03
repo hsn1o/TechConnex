@@ -121,7 +121,7 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-gray-600 mb-1">{provider.title}</p>
+            <p className="text-sm text-gray-600 mb-1">{provider.major || "ICT Professional"}</p>
             <p className="text-xs text-gray-500">{provider.company}</p>
           </div>
         </div>

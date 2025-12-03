@@ -25,6 +25,7 @@ async function createProviderUser(dto) {
         ? {
             create: {
               bio: dto.providerProfile.bio || "",
+              major: dto.providerProfile.major || null,
               location: dto.providerProfile.location || "",
               hourlyRate: dto.providerProfile.hourlyRate
                 ? new Prisma.Decimal(dto.providerProfile.hourlyRate)

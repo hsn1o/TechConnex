@@ -81,6 +81,7 @@ model ProviderProfile {
 
   // Profile
   bio             String?
+  major           String?  @db.VarChar(255) // 🆕 Major/Title field
   location        String?
   hourlyRate      Float?
   availability    String?  @db.VarChar(50)

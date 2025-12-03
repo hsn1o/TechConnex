@@ -888,6 +888,21 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
 
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="major">Major/Title *</Label>
+              <Input
+                id="major"
+                placeholder="e.g., Full Stack Developer, UI/UX Designer, Data Scientist..."
+                className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                value={formData.major}
+                onChange={(e) => handleInputChange("major", e.target.value)}
+                required
+              />
+              <p className="text-xs text-gray-500">
+                Your professional title or major specialization
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="bio">Professional Bio *</Label>
               <Textarea
                 id="bio"
@@ -1692,6 +1707,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               </p>
               <p>
                 <strong>Location:</strong> {formData.location}
+              </p>
+              <p>
+                <strong>Major/Title:</strong> {formData.major || "Not provided"}
               </p>
               <p>
                 <strong>Bio:</strong> {formData.bio}

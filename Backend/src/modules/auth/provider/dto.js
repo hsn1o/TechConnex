@@ -19,6 +19,7 @@ class RegisterProviderDto {
   mapProviderProfile(profile) {
     return {
       bio: profile.bio || "",
+      major: profile.major || null,
       location: profile.location || "",
       hourlyRate: profile.hourlyRate ? this.parseHourlyRate(profile.hourlyRate) : null,
       availability: profile.availability || null,

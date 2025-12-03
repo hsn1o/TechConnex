@@ -82,6 +82,7 @@ export type RegistrationFormData = {
 
   // Step 2: Profile Details
   bio: string;
+  major: string;
   location: string;
   website: string;
   profileVideoUrl: string;
@@ -164,6 +165,7 @@ export default function SignupPage() {
 
     // Step 2: Profile Details
     bio: "",
+    major: "",
     location: "",
     website: "",
     profileVideoUrl: "",
@@ -573,6 +575,7 @@ export default function SignupPage() {
       } else if (userRole === "provider") {
         requestData.providerProfile = {
           bio: formData.bio || "",
+          major: formData.major || null,
           location: formData.location || "",
           hourlyRate: formData.hourlyRate
             ? parseFloat(formData.hourlyRate)

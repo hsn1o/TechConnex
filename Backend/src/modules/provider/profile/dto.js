@@ -1,6 +1,7 @@
 class ProviderProfileDto {
   constructor(data) {
     this.bio = data.bio;
+    this.major = data.major;
     this.location = data.location;
     this.hourlyRate = data.hourlyRate;
     this.availability = data.availability;
@@ -172,6 +173,7 @@ class ProviderProfileDto {
     // The portfolios relation (ProjectPortfolio[]) is separate and requires full portfolio objects
     const updateData = {
       bio: this.bio,
+      major: this.major,
       location: this.location,
       hourlyRate: this.hourlyRate,
       availability: this.availability,
@@ -243,6 +245,7 @@ class ProviderProfileResponseDto {
     this.id = data.id;
     this.userId = data.userId;
     this.bio = data.bio;
+    this.major = data.major;
     this.location = data.location;
     this.hourlyRate = data.hourlyRate;
     this.availability = data.availability;
@@ -280,6 +283,7 @@ class ProviderProfileResponseDto {
       id: this.id,
       userId: this.userId,
       bio: this.bio,
+      major: this.major,
       location: this.location,
       hourlyRate: this.hourlyRate,
       availability: this.availability,

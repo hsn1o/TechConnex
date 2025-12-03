@@ -3,7 +3,7 @@ export type Provider = {
   name: string;
   email?: string;
   avatar?: string;
-  title?: string;
+  major?: string;
   company?: string;
   rating: number;
   reviewCount: number;

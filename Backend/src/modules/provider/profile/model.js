@@ -489,7 +489,7 @@ class ProviderProfileModel {
   static async updateProfileCompletion(userId) {
     try {
       const completionData = await this.getProfileCompletion(userId);
-
+      
       await prisma.providerProfile.update({
         where: { userId },
         data: { completion: completionData.completion },
@@ -520,14 +520,14 @@ class ProviderProfileModel {
 
       return (
         profile || {
-          rating: 0,
-          totalReviews: 0,
-          totalProjects: 0,
-          totalEarnings: 0,
-          viewsCount: 0,
-          successRate: 0,
-          responseTime: 0,
-          completion: 0,
+        rating: 0,
+        totalReviews: 0,
+        totalProjects: 0,
+        totalEarnings: 0,
+        viewsCount: 0,
+        successRate: 0,
+        responseTime: 0,
+        completion: 0,
         }
       );
     } catch (error) {

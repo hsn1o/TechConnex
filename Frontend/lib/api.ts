@@ -2245,23 +2245,13 @@ export async function updateProviderReview(reviewId: string, reviewData: {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
-  // Map frontend field names to backend field names for provider reviews
-  const backendData = {
-    content: reviewData.content,
-    rating: reviewData.rating,
-    communicationRating: reviewData.communicationRating,
-    clarityRating: reviewData.qualityRating, // Frontend uses qualityRating, backend expects clarityRating
-    paymentRating: reviewData.timelinessRating, // Frontend uses timelinessRating, backend expects paymentRating
-    professionalismRating: reviewData.professionalismRating,
-  };
-
   const res = await fetch(`${API_BASE}/provider/reviews/${reviewId}`, {
     method: "PUT",
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(backendData),
+    body: JSON.stringify(reviewData),
   });
   
   const data = await res.json();
