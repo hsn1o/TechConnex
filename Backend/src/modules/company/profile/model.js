@@ -169,7 +169,6 @@ class CompanyProfileModel {
           industry: true,
           location: true,
           website: true,
-          logoUrl: true,
           profileImageUrl: true,
           socialLinks: true,
           languages: true,
@@ -226,13 +225,12 @@ class CompanyProfileModel {
 
         // Company Identity (28 points)
         profileImageUrl: {
-          weight: 5,
+          weight: 6,
           label: "Profile Image",
           value: profile.profileImageUrl,
         },
-        logoUrl: { weight: 4, label: "Company Logo", value: profile.logoUrl },
         description: {
-          weight: 8,
+          weight: 9,
           label: "Company Description",
           value: profile.description,
           minLength: 50,
@@ -240,6 +238,12 @@ class CompanyProfileModel {
         industry: { weight: 5, label: "Industry", value: profile.industry },
         location: { weight: 4, label: "Location", value: profile.location },
         website: { weight: 2, label: "Website", value: profile.website },
+        languages: {
+          weight: 2,
+          label: "Languages",
+          value: profile.languages,
+          minCount: 1,
+        },
 
         // Business Details (20 points)
         companySize: {
@@ -267,16 +271,17 @@ class CompanyProfileModel {
           label: "Funding Stage",
           value: profile.fundingStage,
         },
-        languages: {
-          weight: 2,
-          label: "Languages",
-          value: profile.languages,
-          minCount: 1,
-        },
         socialLinks: {
           weight: 2,
           label: "Social Links",
           value: profile.socialLinks,
+        },
+        mediaGallery: {
+          weight: 2,
+          label: "Media Gallery",
+          value: mediaGalleryCount,
+          minCount: 1,
+          isCount: true,
         },
 
         // Hiring Preferences (20 points)
@@ -308,26 +313,19 @@ class CompanyProfileModel {
           minCount: 1,
         },
 
-        // Branding & Culture (15 points)
+        // Branding & Culture (20 points)
         mission: {
-          weight: 5,
+          weight: 7,
           label: "Mission Statement",
           value: profile.mission,
         },
         values: {
-          weight: 5,
+          weight: 7,
           label: "Company Values",
           value: profile.values,
           minCount: 1,
         },
-        benefits: { weight: 3, label: "Benefits", value: profile.benefits },
-        mediaGallery: {
-          weight: 2,
-          label: "Media Gallery",
-          value: mediaGalleryCount,
-          minCount: 1,
-          isCount: true,
-        },
+        benefits: { weight: 6, label: "Benefits", value: profile.benefits },
       };
 
       let totalScore = 0;
@@ -425,7 +423,6 @@ class CompanyProfileModel {
         "location",
         "company size",
         "profile image",
-        "company logo",
         "preferred contract types",
         "average budget range",
         "remote policy",

@@ -1188,7 +1188,7 @@ export default function CustomerRequestsPage() {
                   </div>
 
                   {/* Portfolio */}
-                  <div>
+                  {/* <div>
                     <h4 className="font-semibold mb-2">Portfolio</h4>
                     <div className="space-y-2">
                       {asArray<string>(selectedRequest.portfolio).map(
@@ -1205,7 +1205,7 @@ export default function CustomerRequestsPage() {
                         )
                       )}
                     </div>
-                  </div>
+                  </div> */}
                   {/* Proposed Milestones */}
                   {selectedRequest.milestones &&
                     selectedRequest.milestones.length > 0 && (

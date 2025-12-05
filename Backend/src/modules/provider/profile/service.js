@@ -139,7 +139,7 @@ class ProviderProfileService {
     }
   }
 
-  // Get completed projects for portfolio
+  // Get completed projects for portfolio (platform projects)
   static async getCompletedProjects(userId) {
     try {
       // Import PrismaClient and create instance
@@ -160,7 +160,6 @@ class ProviderProfileService {
                 select: {
                   companySize: true,
                   industry: true,
-                  logoUrl: true,
                   profileImageUrl: true,
                 },
               },
@@ -210,6 +209,168 @@ class ProviderProfileService {
       return portfolioProjects;
     } catch (error) {
       throw new Error(`Failed to get completed projects: ${error.message}`);
+    }
+  }
+
+  // Get external portfolio items (ProjectPortfolio)
+  static async getPortfolioItems(userId) {
+    try {
+      const { PrismaClient } = await import("@prisma/client");
+      const prisma = new PrismaClient();
+
+      // First get the provider profile to get profileId
+      const profile = await prisma.providerProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+
+      if (!profile) {
+        throw new Error("Provider profile not found");
+      }
+
+      const portfolioItems = await prisma.projectPortfolio.findMany({
+        where: { profileId: profile.id },
+        orderBy: { date: "desc" },
+      });
+
+      await prisma.$disconnect();
+      return portfolioItems;
+    } catch (error) {
+      throw new Error(`Failed to get portfolio items: ${error.message}`);
+    }
+  }
+
+  // Create portfolio item
+  static async createPortfolioItem(userId, portfolioData) {
+    try {
+      const { PrismaClient } = await import("@prisma/client");
+      const prisma = new PrismaClient();
+
+      // Validate required fields
+      if (!portfolioData.title || !portfolioData.description || !portfolioData.date) {
+        throw new Error("Title, description, and date are required");
+      }
+
+      // Get the provider profile to get profileId
+      const profile = await prisma.providerProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+
+      if (!profile) {
+        throw new Error("Provider profile not found");
+      }
+
+      const portfolioItem = await prisma.projectPortfolio.create({
+        data: {
+          profileId: profile.id,
+          title: portfolioData.title,
+          description: portfolioData.description,
+          techStack: portfolioData.techStack || [],
+          client: portfolioData.client || null,
+          date: new Date(portfolioData.date),
+          imageUrl: portfolioData.imageUrl || null,
+          externalUrl: portfolioData.externalUrl || null,
+        },
+      });
+
+      // Update profile completion
+      await ProviderProfileModel.updateProfileCompletion(userId);
+
+      await prisma.$disconnect();
+      return portfolioItem;
+    } catch (error) {
+      throw new Error(`Failed to create portfolio item: ${error.message}`);
+    }
+  }
+
+  // Update portfolio item
+  static async updatePortfolioItem(userId, portfolioId, portfolioData) {
+    try {
+      const { PrismaClient } = await import("@prisma/client");
+      const prisma = new PrismaClient();
+
+      // Get the provider profile to verify ownership
+      const profile = await prisma.providerProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+
+      if (!profile) {
+        throw new Error("Provider profile not found");
+      }
+
+      // Verify the portfolio item belongs to this provider
+      const existingItem = await prisma.projectPortfolio.findUnique({
+        where: { id: portfolioId },
+        select: { profileId: true },
+      });
+
+      if (!existingItem || existingItem.profileId !== profile.id) {
+        throw new Error("Portfolio item not found or access denied");
+      }
+
+      const updateData = {};
+      if (portfolioData.title !== undefined) updateData.title = portfolioData.title;
+      if (portfolioData.description !== undefined) updateData.description = portfolioData.description;
+      if (portfolioData.techStack !== undefined) updateData.techStack = portfolioData.techStack;
+      if (portfolioData.client !== undefined) updateData.client = portfolioData.client;
+      if (portfolioData.date !== undefined) updateData.date = new Date(portfolioData.date);
+      if (portfolioData.imageUrl !== undefined) updateData.imageUrl = portfolioData.imageUrl;
+      if (portfolioData.externalUrl !== undefined) updateData.externalUrl = portfolioData.externalUrl;
+
+      const portfolioItem = await prisma.projectPortfolio.update({
+        where: { id: portfolioId },
+        data: updateData,
+      });
+
+      // Update profile completion
+      await ProviderProfileModel.updateProfileCompletion(userId);
+
+      await prisma.$disconnect();
+      return portfolioItem;
+    } catch (error) {
+      throw new Error(`Failed to update portfolio item: ${error.message}`);
+    }
+  }
+
+  // Delete portfolio item
+  static async deletePortfolioItem(userId, portfolioId) {
+    try {
+      const { PrismaClient } = await import("@prisma/client");
+      const prisma = new PrismaClient();
+
+      // Get the provider profile to verify ownership
+      const profile = await prisma.providerProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+
+      if (!profile) {
+        throw new Error("Provider profile not found");
+      }
+
+      // Verify the portfolio item belongs to this provider
+      const existingItem = await prisma.projectPortfolio.findUnique({
+        where: { id: portfolioId },
+        select: { profileId: true },
+      });
+
+      if (!existingItem || existingItem.profileId !== profile.id) {
+        throw new Error("Portfolio item not found or access denied");
+      }
+
+      await prisma.projectPortfolio.delete({
+        where: { id: portfolioId },
+      });
+
+      // Update profile completion
+      await ProviderProfileModel.updateProfileCompletion(userId);
+
+      await prisma.$disconnect();
+      return { success: true };
+    } catch (error) {
+      throw new Error(`Failed to delete portfolio item: ${error.message}`);
     }
   }
 

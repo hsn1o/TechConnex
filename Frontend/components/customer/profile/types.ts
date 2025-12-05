@@ -30,7 +30,6 @@ export type ProfileData = {
     industry?: string;
     location?: string;
     website?: string;
-    logoUrl?: string;
     profileImageUrl?: string;
     socialLinks?: string[];
     languages?: string[];

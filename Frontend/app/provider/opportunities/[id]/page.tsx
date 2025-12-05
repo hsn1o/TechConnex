@@ -566,8 +566,7 @@ export default function OpportunityDetailsPage() {
 
   // Get client profile image
   const clientAvatar =
-    opportunity.customer?.customerProfile?.profileImageUrl ||
-    opportunity.customer?.customerProfile?.logoUrl;
+    opportunity.customer?.customerProfile?.profileImageUrl;
 
   const clientAvatarUrl = clientAvatar
     ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${clientAvatar.startsWith("/") ? "" : "/"}${clientAvatar}`

@@ -34,7 +34,7 @@ export async function findProviders(req, res) {
   }
 }
 
-// GET /api/providers/:id - Get provider details
+// GET /api/providers/:id - Get provider details (with portfolio and reviews)
 export async function getProvider(req, res) {
   try {
     const dto = new ProviderDetailDto({
@@ -43,11 +43,18 @@ export async function getProvider(req, res) {
     });
     dto.validate();
 
-    const provider = await getProviderDetails(dto.providerId, dto.userId);
+    // Get all data in parallel (provider, portfolio, reviews)
+    const [provider, portfolio, reviewsResult] = await Promise.all([
+      getProviderDetails(dto.providerId, dto.userId),
+      getProviderPortfolio(dto.providerId).catch(() => []), // Return empty array if portfolio fails
+      getProviderReviewsList(dto.providerId, 1, 5).catch(() => ({ reviews: [] })), // Get first 5 reviews, return empty if fails
+    ]);
     
     res.json({
       success: true,
       provider,
+      portfolio: portfolio || [],
+      reviews: reviewsResult?.reviews || [],
     });
   } catch (error) {
     console.error("Error in getProvider:", error);

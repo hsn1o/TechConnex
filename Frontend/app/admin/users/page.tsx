@@ -389,8 +389,6 @@ export default function AdminUsersPage() {
                                 ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
                                 : (isCustomer && profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg")
                                 ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
-                                : (isCustomer && profile?.logoUrl && profile.logoUrl !== "/placeholder.svg")
-                                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.logoUrl.startsWith("/") ? "" : "/"}${profile.logoUrl}`
                                 : "/placeholder.svg"
                             }
                           />

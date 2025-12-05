@@ -140,7 +140,6 @@ export async function findCompanies(filters) {
             description: true,
             website: true,
             profileImageUrl: true, // 🆕 Profile image
-            logoUrl: true, // 🆕 Logo
             employeeCount: true,
             establishedYear: true,
             annualRevenue: true,
@@ -231,7 +230,6 @@ export async function getCompanyById(companyId, userId = null) {
           description: true,
           website: true,
           profileImageUrl: true, // 🆕 Profile image
-          logoUrl: true, // 🆕 Logo
           employeeCount: true,
           establishedYear: true,
           annualRevenue: true,

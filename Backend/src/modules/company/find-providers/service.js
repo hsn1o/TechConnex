@@ -47,7 +47,7 @@ export async function searchProviders(filters) {
       workPreference: user.providerProfile?.workPreference || "remote",
       teamSize: user.providerProfile?.teamSize || 1,
       website: user.providerProfile?.website || null,
-      profileVideoUrl: user.providerProfile?.profileVideoUrl || null,
+      portfolioLinks: user.providerProfile?.portfolioLinks || [],
       certificationsCount: user.providerProfile?.certifications?.length || 0,
       certifications: (user.providerProfile?.certifications || []).map(cert => ({
         id: cert.id,
@@ -108,7 +108,7 @@ export async function getProviderDetails(providerId, userId = null) {
       workPreference: provider.providerProfile?.workPreference || "remote",
       teamSize: provider.providerProfile?.teamSize || 1,
       website: provider.providerProfile?.website || null,
-      profileVideoUrl: provider.providerProfile?.profileVideoUrl || null,
+      portfolioLinks: provider.providerProfile?.portfolioLinks || [],
       certificationsCount: provider.providerProfile?.certifications?.length || 0,
       certifications: (provider.providerProfile?.certifications || []).map(cert => ({
         id: cert.id,
@@ -126,19 +126,35 @@ export async function getProviderDetails(providerId, userId = null) {
   }
 }
 
-// Get provider portfolio
+// Get provider portfolio (external work)
 export async function getProviderPortfolio(providerId) {
   try {
     const provider = await getProviderById(providerId);
     
-    // Transform portfolio items
-    const portfolio = (provider.providerProfile?.portfolios || []).map((item) => ({
-      id: item.id,
-      title: item.title,
-      cover: item.imageUrl || "/placeholder.svg",
-      url: item.externalUrl || "#",
-      tags: item.techStack || [],
-    }));
+    // Transform portfolio items (external work from ProjectPortfolio)
+    const portfolio = (provider.providerProfile?.portfolios || []).map((item) => {
+      // Normalize image URL - handle both relative paths and full URLs
+      let coverUrl = "/placeholder.svg";
+      if (item.imageUrl) {
+        const normalizedUrl = item.imageUrl.replace(/\\/g, "/");
+        coverUrl = normalizedUrl.startsWith("http") 
+          ? normalizedUrl 
+          : normalizedUrl.startsWith("/")
+          ? normalizedUrl
+          : `/${normalizedUrl}`;
+      }
+      
+      return {
+        id: item.id,
+        title: item.title,
+        description: item.description || "",
+        cover: coverUrl,
+        url: item.externalUrl || "#",
+        tags: item.techStack || [],
+        client: item.client || null,
+        date: item.date ? new Date(item.date).toISOString().split('T')[0] : null,
+      };
+    });
 
     return portfolio;
   } catch (error) {
@@ -335,7 +351,7 @@ export async function getSavedProvidersService(userId, page = 1, limit = 20) {
       workPreference: user.providerProfile?.workPreference || "remote",
       teamSize: user.providerProfile?.teamSize || 1,
       website: user.providerProfile?.website || null,
-      profileVideoUrl: user.providerProfile?.profileVideoUrl || null,
+      portfolioLinks: user.providerProfile?.portfolioLinks || [],
       certificationsCount: user.providerProfile?.certifications?.length || 0,
       certifications: (user.providerProfile?.certifications || []).map(cert => ({
         id: cert.id,

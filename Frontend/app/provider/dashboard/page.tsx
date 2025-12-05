@@ -375,10 +375,7 @@ export default function ProviderDashboard() {
                                   (project.customer?.customerProfile?.profileImageUrl && 
                                    project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
                                     ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
-                                    : (project.customer?.customerProfile?.logoUrl && 
-                                        project.customer.customerProfile.logoUrl !== "/placeholder.svg")
-                                      ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.logoUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.logoUrl}`
-                                      : "/placeholder.svg"
+                                    : "/placeholder.svg"
                                 }
                               />
                               <AvatarFallback>

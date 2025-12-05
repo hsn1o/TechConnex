@@ -155,7 +155,7 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                   src={
                     value.customerProfile?.profileImageUrl 
                       ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${value.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${value.customerProfile.profileImageUrl}`
-                      : value.customerProfile?.logoUrl || "/placeholder.svg?height=96&width=96"
+                      : "/placeholder.svg?height=96&width=96"
                   } 
                 />
               <AvatarFallback className="text-lg">
@@ -307,24 +307,6 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                   <p className="text-xs text-gray-500 mt-1">You can enter with or without https://</p>
                 </div>
               </div>
-            </div>
-            <div>
-              <Label htmlFor="logoUrl">Logo URL</Label>
-              <Input
-                id="logoUrl"
-                type="url"
-                value={value.customerProfile?.logoUrl || ""}
-                disabled={!isEditing}
-                onChange={(e) => onChange({ 
-                  ...value, 
-                  customerProfile: { 
-                    ...value.customerProfile || {}, 
-                    logoUrl: e.target.value 
-                  } 
-                })}
-                placeholder="https://example.com/logo.png"
-              />
-              <p className="text-xs text-gray-500 mt-1">URL to your company logo image</p>
             </div>
           </div>
 
@@ -478,17 +460,21 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
           )}
 
           {/* Display languages when not editing */}
-          {!isEditing && value.customerProfile?.languages && value.customerProfile.languages.length > 0 && (
+          {!isEditing && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Languages</h3>
-              <div className="flex flex-wrap gap-2">
-                {value.customerProfile.languages.map((lang, index) => (
-                  <Badge key={index} variant="secondary">
-                    {lang}
-                  </Badge>
-                ))}
-              </div>
-        </div>
+              {value.customerProfile?.languages && value.customerProfile.languages.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {value.customerProfile.languages.map((lang, index) => (
+                    <Badge key={index} variant="secondary">
+                      {lang}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 italic">No languages added yet</p>
+              )}
+            </div>
           )}
       </CardContent>
     </Card>

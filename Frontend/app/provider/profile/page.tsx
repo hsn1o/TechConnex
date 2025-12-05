@@ -48,6 +48,7 @@ import {
   Globe,
   Camera,
   AlertCircle,
+  FileText,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
 import {
@@ -57,6 +58,11 @@ import {
   getProviderProfileCompletion,
   uploadProviderProfileImage,
   getProviderPortfolio,
+  getProviderPortfolioItems,
+  createPortfolioItem,
+  updatePortfolioItem,
+  deletePortfolioItem,
+  uploadPortfolioImage,
   getMyCertifications,
   createCertification,
   updateCertification,
@@ -94,6 +100,8 @@ export default function ProviderProfilePage(props: Props = {}) {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const portfolioImageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPortfolioImage, setUploadingPortfolioImage] = useState(false);
   const [profileData, setProfileData] = useState<{
     name: string;
     email: string;
@@ -103,7 +111,7 @@ export default function ProviderProfilePage(props: Props = {}) {
     location: string;
     hourlyRate: number;
     website: string;
-    profileVideoUrl: string;
+    portfolioLinks: string[];
     profileImageUrl: string;
     languages: string[];
     availability: string;
@@ -123,7 +131,7 @@ export default function ProviderProfilePage(props: Props = {}) {
     location: "",
     hourlyRate: 0,
     website: "",
-    profileVideoUrl: "",
+    portfolioLinks: [],
     profileImageUrl: "",
     languages: [],
     availability: "available",
@@ -154,12 +162,32 @@ export default function ProviderProfilePage(props: Props = {}) {
   // State for input fields (similar to registration form)
   const [customSkill, setCustomSkill] = useState("");
   const [customLanguage, setCustomLanguage] = useState("");
-  const [newPortfolioUrl, setNewPortfolioUrl] = useState("");
-  const [portfolioUrls, setPortfolioUrls] = useState<string[]>([]);
+  const [newPortfolioLink, setNewPortfolioLink] = useState("");
 
-  // State for portfolio projects
+  // State for portfolio projects (platform projects)
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
+  
+  // State for portfolio items (external work)
+  const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
+  const [loadingPortfolioItems, setLoadingPortfolioItems] = useState(false);
+  const [showPortfolioDialog, setShowPortfolioDialog] = useState(false);
+  const [editingPortfolioIndex, setEditingPortfolioIndex] = useState<number | null>(null);
+  const [portfolioFormData, setPortfolioFormData] = useState({
+    title: "",
+    description: "",
+    techStack: [] as string[],
+    client: "",
+    date: "",
+    imageUrl: "",
+    externalUrl: "",
+  });
+  const [newTechStack, setNewTechStack] = useState("");
+  const [portfolioFormErrors, setPortfolioFormErrors] = useState<{
+    title?: string;
+    description?: string;
+    date?: string;
+  }>({});
 
   // State for certifications
   const [certifications, setCertifications] = useState<any[]>([]);
@@ -207,7 +235,7 @@ export default function ProviderProfilePage(props: Props = {}) {
             location: profile.location || "",
             hourlyRate: profile.hourlyRate || 0,
             website: profile.website || "",
-            profileVideoUrl: profile.profileVideoUrl || "",
+            portfolioLinks: profile.portfolioLinks || [],
             profileImageUrl: profile.profileImageUrl || "",
             languages: profile.languages || [],
             availability: profile.availability || "available",
@@ -220,12 +248,12 @@ export default function ProviderProfilePage(props: Props = {}) {
             teamSize: profile.teamSize || 1,
           });
 
-          // Load portfolio URLs if available
-          if (profile.portfolioUrls) {
-            setPortfolioUrls(profile.portfolioUrls);
-          } else if (profile.portfolio && Array.isArray(profile.portfolio)) {
-            // Fallback for portfolio array structure
-            setPortfolioUrls(profile.portfolio);
+          // Load portfolio links if available
+          if (profile.portfolioLinks && Array.isArray(profile.portfolioLinks)) {
+            setProfileData((prev) => ({
+              ...prev,
+              portfolioLinks: profile.portfolioLinks,
+            }));
           }
         }
 
@@ -274,6 +302,30 @@ export default function ProviderProfilePage(props: Props = {}) {
     };
 
     loadPortfolio();
+  }, [toast]);
+
+  // Load portfolio items (external work)
+  useEffect(() => {
+    const loadPortfolioItems = async () => {
+      try {
+        setLoadingPortfolioItems(true);
+        const response = await getProviderPortfolioItems();
+        if (response.success && response.data) {
+          setPortfolioItems(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading portfolio items:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load portfolio items",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingPortfolioItems(false);
+      }
+    };
+
+    loadPortfolioItems();
   }, [toast]);
 
   // Load certifications
@@ -387,9 +439,8 @@ export default function ProviderProfilePage(props: Props = {}) {
         availability: profileData.availability,
         languages: profileData.languages,
         website: profileData.website,
-        profileVideoUrl: profileData.profileVideoUrl,
+        portfolioLinks: profileData.portfolioLinks,
         skills: profileData.skills,
-        portfolioUrls: portfolioUrls,
         yearsExperience: profileData.yearsExperience,
         minimumProjectBudget: profileData.minimumProjectBudget,
         maximumProjectBudget: profileData.maximumProjectBudget,
@@ -543,18 +594,24 @@ export default function ProviderProfilePage(props: Props = {}) {
     }
   };
 
-  const handleAddPortfolioUrl = () => {
+  const handleAddPortfolioLink = () => {
     if (
-      newPortfolioUrl.trim() &&
-      !portfolioUrls.includes(newPortfolioUrl.trim())
+      newPortfolioLink.trim() &&
+      !profileData.portfolioLinks.includes(newPortfolioLink.trim())
     ) {
-      setPortfolioUrls([...portfolioUrls, newPortfolioUrl.trim()]);
-      setNewPortfolioUrl("");
+      setProfileData((prev) => ({
+        ...prev,
+        portfolioLinks: [...prev.portfolioLinks, newPortfolioLink.trim()],
+      }));
+      setNewPortfolioLink("");
     }
   };
 
-  const handleRemovePortfolioUrl = (url: string) => {
-    setPortfolioUrls(portfolioUrls.filter((u) => u !== url));
+  const handleRemovePortfolioLink = (url: string) => {
+    setProfileData((prev) => ({
+      ...prev,
+      portfolioLinks: prev.portfolioLinks.filter((u) => u !== url),
+    }));
   };
 
   const handleImageClick = () => {
@@ -802,6 +859,126 @@ export default function ProviderProfilePage(props: Props = {}) {
     }
   };
 
+  // Portfolio Item Handlers
+  const validatePortfolioItem = () => {
+    const errors: typeof portfolioFormErrors = {};
+
+    if (!portfolioFormData.title.trim()) {
+      errors.title = "Title is required";
+    }
+
+    if (!portfolioFormData.description.trim()) {
+      errors.description = "Description is required";
+    }
+
+    if (!portfolioFormData.date) {
+      errors.date = "Date is required";
+    }
+
+    setPortfolioFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSavePortfolioItem = async () => {
+    if (!validatePortfolioItem()) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const portfolioData = {
+        title: portfolioFormData.title.trim(),
+        description: portfolioFormData.description.trim(),
+        techStack: portfolioFormData.techStack,
+        client: portfolioFormData.client?.trim() || undefined,
+        date: portfolioFormData.date,
+        imageUrl: portfolioFormData.imageUrl?.trim() || undefined,
+        externalUrl: portfolioFormData.externalUrl?.trim() || undefined,
+      };
+
+      if (editingPortfolioIndex !== null) {
+        // Update existing portfolio item
+        const itemId = portfolioItems[editingPortfolioIndex].id;
+        const response = await updatePortfolioItem(itemId, portfolioData);
+        if (response.success) {
+          toast({
+            title: "Success",
+            description: "Portfolio item updated successfully",
+          });
+          // Reload portfolio items
+          const itemsResponse = await getProviderPortfolioItems();
+          if (itemsResponse.success && itemsResponse.data) {
+            setPortfolioItems(itemsResponse.data);
+          }
+          // Reload completion percentage and suggestions
+          const completionResponse = await getProviderProfileCompletion();
+          if (completionResponse.success) {
+            setProfileCompletion(completionResponse.data.completion || 0);
+            setCompletionSuggestions(completionResponse.data.suggestions || []);
+          }
+        }
+      } else {
+        // Create new portfolio item
+        const response = await createPortfolioItem(portfolioData);
+        if (response.success) {
+          toast({
+            title: "Success",
+            description: "Portfolio item added successfully",
+          });
+          // Reload portfolio items
+          const itemsResponse = await getProviderPortfolioItems();
+          if (itemsResponse.success && itemsResponse.data) {
+            setPortfolioItems(itemsResponse.data);
+          }
+          // Reload completion percentage and suggestions
+          const completionResponse = await getProviderProfileCompletion();
+          if (completionResponse.success) {
+            setProfileCompletion(completionResponse.data.completion || 0);
+            setCompletionSuggestions(completionResponse.data.suggestions || []);
+          }
+        }
+      }
+
+      setShowPortfolioDialog(false);
+      setPortfolioFormData({
+        title: "",
+        description: "",
+        techStack: [],
+        client: "",
+        date: "",
+        imageUrl: "",
+        externalUrl: "",
+      });
+      setNewTechStack("");
+      setEditingPortfolioIndex(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save portfolio item",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddTechStack = () => {
+    if (newTechStack.trim() && !portfolioFormData.techStack.includes(newTechStack.trim())) {
+      setPortfolioFormData((prev) => ({
+        ...prev,
+        techStack: [...prev.techStack, newTechStack.trim()],
+      }));
+      setNewTechStack("");
+    }
+  };
+
+  const handleRemoveTechStack = (tech: string) => {
+    setPortfolioFormData((prev) => ({
+      ...prev,
+      techStack: prev.techStack.filter((t) => t !== tech),
+    }));
+  };
+
   const reviews = [
     {
       id: 1,
@@ -850,10 +1027,10 @@ export default function ProviderProfilePage(props: Props = {}) {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline">
+            {/* <Button variant="outline">
               <Eye className="w-4 h-4 mr-2" />
               Preview Profile
-            </Button>
+            </Button> */}
             {isEditing ? (
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsEditing(false)}>
@@ -1481,42 +1658,42 @@ export default function ProviderProfilePage(props: Props = {}) {
                 {/* Portfolio URLs */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Portfolio URLs</CardTitle>
+                    <CardTitle>Portfolio Links</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {isEditing ? (
                       <>
                         <p className="text-sm text-gray-600">
-                          Add links to your GitHub, LinkedIn, or other
+                          Add links to your GitHub, LinkedIn, portfolio website, or other
                           professional profiles
                         </p>
                         <div className="flex gap-2">
                           <Input
-                            value={newPortfolioUrl}
-                            onChange={(e) => setNewPortfolioUrl(e.target.value)}
+                            value={newPortfolioLink}
+                            onChange={(e) => setNewPortfolioLink(e.target.value)}
                             placeholder="https://github.com/yourusername"
                             type="url"
                             onKeyPress={(e) =>
                               e.key === "Enter" &&
-                              (e.preventDefault(), handleAddPortfolioUrl())
+                              (e.preventDefault(), handleAddPortfolioLink())
                             }
                           />
                           <Button
                             type="button"
-                            onClick={handleAddPortfolioUrl}
+                            onClick={handleAddPortfolioLink}
                             variant="outline"
                           >
                             <Plus className="w-4 h-4" />
-                        </Button>
+                          </Button>
                         </div>
 
-                        {portfolioUrls.length > 0 && (
+                        {profileData.portfolioLinks.length > 0 && (
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">
-                              Portfolio Links ({portfolioUrls.length})
+                              Portfolio Links ({profileData.portfolioLinks.length})
                             </Label>
                             <div className="space-y-2">
-                              {portfolioUrls.map((url, index) => (
+                              {profileData.portfolioLinks.map((url, index) => (
                                 <div
                                   key={index}
                                   className="flex items-center justify-between p-3 bg-gray-50 border rounded-lg"
@@ -1532,7 +1709,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      handleRemovePortfolioUrl(url)
+                                      handleRemovePortfolioLink(url)
                                     }
                                     className="ml-2 text-red-500 hover:text-red-700"
                                   >
@@ -1544,21 +1721,21 @@ export default function ProviderProfilePage(props: Props = {}) {
                           </div>
                         )}
 
-                        {portfolioUrls.length === 0 && (
+                        {profileData.portfolioLinks.length === 0 && (
                           <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
                             <Globe className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                             <p>No portfolio links added yet</p>
                             <p className="text-sm">
                               Add links to showcase your work and professional
-                              profiles
+                              profiles (e.g., GitHub, LinkedIn, portfolio website)
                             </p>
-                    </div>
+                          </div>
                         )}
                       </>
                     ) : (
                       <div className="space-y-2">
-                        {portfolioUrls.length > 0 ? (
-                          portfolioUrls.map((url, index) => (
+                        {profileData.portfolioLinks.length > 0 ? (
+                          profileData.portfolioLinks.map((url, index) => (
                             <a
                               key={index}
                               href={url}
@@ -1585,87 +1762,323 @@ export default function ProviderProfilePage(props: Props = {}) {
 
           {/* Portfolio */}
           <TabsContent value="portfolio">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">Portfolio</h2>
-                  <p className="text-gray-600">
-                    Showcase your completed projects
-                  </p>
-                </div>
-              </div>
-
-              {loadingPortfolio ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                  <span className="ml-2 text-gray-600">
-                    Loading portfolio...
-                  </span>
-                </div>
-              ) : portfolioProjects.length === 0 ? (
-                <Card>
-                  <CardContent className="p-12 text-center">
-                    <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      No completed projects yet
-                    </h3>
+            <div className="space-y-8">
+              {/* Projects Completed Section (Platform Projects) */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">Projects Completed</h2>
                     <p className="text-gray-600">
-                      Your completed projects will appear here automatically
-                      once you finish working on them.
+                      Projects you've completed on this platform
                     </p>
-                  </CardContent>
-                </Card>
-              ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {portfolioProjects.map((project) => (
-                  <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                      <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-48 flex items-center justify-center rounded-t-lg">
-                        <div className="text-center p-4">
-                          <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                            <Award className="w-8 h-8 text-blue-600" />
-                          </div>
-                          <Badge variant="secondary" className="text-xs">
-                            {project.category || "Project"}
-                          </Badge>
-                      </div>
-                    </div>
-                    <CardContent className="p-4">
-                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">{project.title}</h3>
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{project.description || "No description provided"}</p>
-                        {project.technologies && project.technologies.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-3">
-                            {project.technologies.slice(0, 6).map((tech: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {tech}
-                          </Badge>
-                        ))}
-                            {project.technologies.length > 6 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{project.technologies.length - 6} more
-                              </Badge>
-                            )}
-                      </div>
-                        )}
-                        <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
-                          <span className="font-medium">{project.client}</span>
-                          {project.completedDate && (
-                            <span>
-                              {new Date(
-                                project.completedDate
-                              ).toLocaleDateString()}
-                            </span>
-                          )}
-                      </div>
-                        {project.approvedPrice && (
-                          <div className="text-sm text-green-600 font-semibold">
-                            RM {Number(project.approvedPrice).toLocaleString()}
-                          </div>
-                        )}
+                  </div>
+                </div>
+
+                {loadingPortfolio ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-600">
+                      Loading projects...
+                    </span>
+                  </div>
+                ) : portfolioProjects.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <Award className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No completed projects yet
+                      </h3>
+                      <p className="text-gray-600">
+                        Your completed projects will appear here automatically
+                        once you finish working on them.
+                      </p>
                     </CardContent>
                   </Card>
-                ))}
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {portfolioProjects.map((project) => (
+                      <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                        <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-48 flex items-center justify-center rounded-t-lg">
+                          <div className="text-center p-4">
+                            <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                              <Award className="w-8 h-8 text-blue-600" />
+                            </div>
+                            <Badge variant="secondary" className="text-xs">
+                              {project.category || "Project"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold text-lg mb-2 line-clamp-1">{project.title}</h3>
+                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">{project.description || "No description provided"}</p>
+                          {project.technologies && project.technologies.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {project.technologies.slice(0, 6).map((tech: string, index: number) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {tech}
+                                </Badge>
+                              ))}
+                              {project.technologies.length > 6 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{project.technologies.length - 6} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                            <span className="font-medium">{project.client}</span>
+                            {project.completedDate && (
+                              <span>
+                                {new Date(project.completedDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          {project.approvedPrice && (
+                            <div className="text-sm text-green-600 font-semibold">
+                              RM {Number(project.approvedPrice).toLocaleString()}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
-              )}
+
+              {/* Portfolio Section (External Work) */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">Portfolio</h2>
+                    <p className="text-gray-600">
+                      Showcase your work and studies done outside this platform
+                    </p>
+                  </div>
+                  {isEditing && (
+                    <Button onClick={() => {
+                      setPortfolioFormData({
+                        title: "",
+                        description: "",
+                        techStack: [],
+                        client: "",
+                        date: "",
+                        imageUrl: "",
+                        externalUrl: "",
+                      });
+                      setNewTechStack("");
+                      setPortfolioFormErrors({});
+                      setEditingPortfolioIndex(null);
+                      setShowPortfolioDialog(true);
+                    }}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Portfolio Item
+                    </Button>
+                  )}
+                </div>
+
+                {loadingPortfolioItems ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-600">
+                      Loading portfolio items...
+                    </span>
+                  </div>
+                ) : portfolioItems.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No portfolio items yet
+                      </h3>
+                      <p className="text-gray-600">
+                        {isEditing 
+                          ? "Add your external work, studies, or projects to showcase your experience."
+                          : "No portfolio items added yet."}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {portfolioItems.map((item, index) => (
+                      <Card key={item.id} className="hover:shadow-lg transition-shadow">
+                        {item.imageUrl ? (
+                          <div className="relative h-48 overflow-hidden rounded-t-lg bg-gray-100">
+                            {(() => {
+                              // Normalize the URL - handle both relative paths and full URLs
+                              const normalizedUrl = item.imageUrl.replace(/\\/g, "/");
+                              const imageUrl = normalizedUrl.startsWith("http")
+                                ? normalizedUrl
+                                : normalizedUrl.startsWith("/")
+                                ? `${API_BASE}${normalizedUrl}`
+                                : `${API_BASE}/${normalizedUrl}`;
+                              
+                              // Check if it's an image file
+                              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(normalizedUrl);
+                              
+                              if (isImage) {
+                                return (
+                                  <img
+                                    src={imageUrl}
+                                    alt={item.title}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = "none";
+                                      // Show fallback if image fails
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `
+                                          <div class="w-full h-full flex items-center justify-center bg-gray-100">
+                                            <div class="text-center p-4">
+                                              <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                </svg>
+                                              </div>
+                                              <p class="text-xs text-gray-500">Image not available</p>
+                                            </div>
+                                          </div>
+                                        `;
+                                      }
+                                    }}
+                                  />
+                                );
+                              } else {
+                                // For non-image files, show a file icon
+                                return (
+                                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                    <div className="text-center p-4">
+                                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                        <FileText className="w-8 h-8 text-gray-400" />
+                                      </div>
+                                      <p className="text-xs text-gray-500 truncate max-w-[200px]">
+                                        {normalizedUrl.split("/").pop() || "File"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="relative bg-gradient-to-br from-green-50 to-teal-50 h-48 flex items-center justify-center rounded-t-lg">
+                            <div className="text-center p-4">
+                              <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                <Globe className="w-8 h-8 text-green-600" />
+                              </div>
+                              <Badge variant="secondary" className="text-xs">
+                                Portfolio
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="font-semibold text-lg line-clamp-1 flex-1">{item.title}</h3>
+                            {isEditing && (
+                              <div className="flex gap-1 ml-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setPortfolioFormData({
+                                      title: item.title,
+                                      description: item.description,
+                                      techStack: item.techStack || [],
+                                      client: item.client || "",
+                                      date: item.date ? new Date(item.date).toISOString().split('T')[0] : "",
+                                      imageUrl: item.imageUrl || "",
+                                      externalUrl: item.externalUrl || "",
+                                    });
+                                    setNewTechStack("");
+                                    setPortfolioFormErrors({});
+                                    setEditingPortfolioIndex(index);
+                                    setShowPortfolioDialog(true);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    if (confirm("Are you sure you want to delete this portfolio item?")) {
+                                      try {
+                                        await deletePortfolioItem(item.id);
+                                        toast({
+                                          title: "Success",
+                                          description: "Portfolio item deleted successfully",
+                                        });
+                                        // Reload portfolio items
+                                        const itemsResponse = await getProviderPortfolioItems();
+                                        if (itemsResponse.success && itemsResponse.data) {
+                                          setPortfolioItems(itemsResponse.data);
+                                        }
+                                        // Reload completion
+                                        try {
+                                          const completionResponse = await getProviderProfileCompletion();
+                                          if (completionResponse.success) {
+                                            setProfileCompletion(completionResponse.data.completion || 0);
+                                            setCompletionSuggestions(completionResponse.data.suggestions || []);
+                                          }
+                                        } catch (error) {
+                                          console.error("Failed to fetch completion:", error);
+                                        }
+                                      } catch (error: any) {
+                                        toast({
+                                          title: "Error",
+                                          description: error.message || "Failed to delete portfolio item",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description || "No description provided"}</p>
+                          {item.techStack && item.techStack.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {item.techStack.slice(0, 6).map((tech: string, techIndex: number) => (
+                                <Badge key={techIndex} variant="secondary" className="text-xs">
+                                  {tech}
+                                </Badge>
+                              ))}
+                              {item.techStack.length > 6 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{item.techStack.length - 6} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                            {item.client && <span className="font-medium">{item.client}</span>}
+                            {item.date && (
+                              <span>
+                                {new Date(item.date).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          {item.externalUrl && (
+                            <a
+                              href={item.externalUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                              View Project
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 
@@ -2206,6 +2619,342 @@ export default function ProviderProfilePage(props: Props = {}) {
                     {editingCertIndex !== null
                       ? "Update Certification"
                       : "Add Certification"}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Portfolio Item Dialog */}
+        <Dialog open={showPortfolioDialog} onOpenChange={setShowPortfolioDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingPortfolioIndex !== null
+                  ? "Edit Portfolio Item"
+                  : "Add Portfolio Item"}
+              </DialogTitle>
+              <DialogDescription>
+                Add your external work, studies, or projects to showcase your experience
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start">
+                  <AlertCircle className="w-5 h-5 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-green-800 font-medium">
+                      What is a Portfolio Item?
+                    </p>
+                    <p className="text-sm text-green-700">
+                      Portfolio items are work, studies, or projects you've completed outside this platform. 
+                      This is different from "Projects Completed" which shows your work done on this platform.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="portfolioTitle">Title *</Label>
+                  <Input
+                    id="portfolioTitle"
+                    placeholder="e.g., E-commerce Website for ABC Company"
+                    value={portfolioFormData.title}
+                    onChange={(e) =>
+                      setPortfolioFormData((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                  />
+                  {portfolioFormErrors.title && (
+                    <p className="text-xs text-red-600">
+                      {portfolioFormErrors.title}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="portfolioDescription">Description *</Label>
+                  <Textarea
+                    id="portfolioDescription"
+                    placeholder="Describe the project, your role, technologies used, and key achievements..."
+                    value={portfolioFormData.description}
+                    onChange={(e) =>
+                      setPortfolioFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    rows={4}
+                  />
+                  {portfolioFormErrors.description && (
+                    <p className="text-xs text-red-600">
+                      {portfolioFormErrors.description}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="portfolioClient">Client/Organization</Label>
+                    <Input
+                      id="portfolioClient"
+                      placeholder="e.g., ABC Company, University Name"
+                      value={portfolioFormData.client}
+                      onChange={(e) =>
+                        setPortfolioFormData((prev) => ({
+                          ...prev,
+                          client: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="portfolioDate">Date *</Label>
+                    <Input
+                      id="portfolioDate"
+                      type="date"
+                      value={portfolioFormData.date}
+                      onChange={(e) =>
+                        setPortfolioFormData((prev) => ({
+                          ...prev,
+                          date: e.target.value,
+                        }))
+                      }
+                    />
+                    {portfolioFormErrors.date && (
+                      <p className="text-xs text-red-600">
+                        {portfolioFormErrors.date}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="portfolioTechStack">Technologies Used</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="portfolioTechStack"
+                      placeholder="e.g., React, Node.js, MongoDB"
+                      value={newTechStack}
+                      onChange={(e) => setNewTechStack(e.target.value)}
+                      onKeyPress={(e) =>
+                        e.key === "Enter" &&
+                        (e.preventDefault(), handleAddTechStack())
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddTechStack}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {portfolioFormData.techStack.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {portfolioFormData.techStack.map((tech, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          {tech}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTechStack(tech)}
+                            className="ml-1 hover:text-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="portfolioImage">Image/File</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="portfolioImageUrl"
+                      type="text"
+                      placeholder="Image URL or upload a file"
+                      value={portfolioFormData.imageUrl}
+                      onChange={(e) =>
+                        setPortfolioFormData((prev) => ({
+                          ...prev,
+                          imageUrl: e.target.value,
+                        }))
+                      }
+                      disabled={uploadingPortfolioImage}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => portfolioImageInputRef.current?.click()}
+                      disabled={uploadingPortfolioImage}
+                    >
+                      {uploadingPortfolioImage ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <input
+                    ref={portfolioImageInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      // Validate file size (10MB)
+                      if (file.size > 10 * 1024 * 1024) {
+                        toast({
+                          title: "File too large",
+                          description: "Please select a file smaller than 10MB",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+
+                      setUploadingPortfolioImage(true);
+                      try {
+                        const result = await uploadPortfolioImage(file);
+                        if (result.success && result.data?.imageUrl) {
+                          setPortfolioFormData((prev) => ({
+                            ...prev,
+                            imageUrl: result.data.imageUrl,
+                          }));
+                          toast({
+                            title: "Success",
+                            description: "File uploaded successfully",
+                          });
+                        }
+                      } catch (error: any) {
+                        toast({
+                          title: "Upload failed",
+                          description: error.message || "Failed to upload file",
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setUploadingPortfolioImage(false);
+                        // Reset file input
+                        if (portfolioImageInputRef.current) {
+                          portfolioImageInputRef.current.value = "";
+                        }
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Optional: Upload an image or file (JPG, PNG, GIF, WebP, PDF, DOC, DOCX) or enter a URL. Max 10MB.
+                  </p>
+                  {portfolioFormData.imageUrl && (
+                    <div className="mt-2">
+                      {(() => {
+                        const normalizedUrl = portfolioFormData.imageUrl.replace(/\\/g, "/");
+                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(normalizedUrl);
+                        const imageUrl = normalizedUrl.startsWith("http")
+                          ? normalizedUrl
+                          : normalizedUrl.startsWith("/")
+                          ? `${API_BASE}${normalizedUrl}`
+                          : `${API_BASE}/${normalizedUrl}`;
+                        
+                        if (isImage) {
+                          return (
+                            <img
+                              src={imageUrl}
+                              alt="Portfolio preview"
+                              className="w-full h-32 object-cover rounded-lg border bg-gray-100"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = "none";
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = `
+                                    <div class="w-full h-32 flex items-center justify-center bg-gray-100 rounded-lg border">
+                                      <p class="text-sm text-gray-500">Image preview unavailable</p>
+                                    </div>
+                                  `;
+                                }
+                              }}
+                            />
+                          );
+                        } else {
+                          return (
+                            <div className="p-2 border rounded-lg bg-gray-50 flex items-center gap-2">
+                              <FileText className="w-5 h-5 text-gray-400" />
+                              <p className="text-sm text-gray-600 truncate">
+                                {normalizedUrl.split("/").pop() || "File"}
+                              </p>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="portfolioExternalUrl">External Link</Label>
+                  <Input
+                    id="portfolioExternalUrl"
+                    type="url"
+                    placeholder="https://example.com/project"
+                    value={portfolioFormData.externalUrl}
+                    onChange={(e) =>
+                      setPortfolioFormData((prev) => ({
+                        ...prev,
+                        externalUrl: e.target.value,
+                      }))
+                    }
+                  />
+                  <p className="text-xs text-gray-500">
+                    Optional: Link to view the project (GitHub, live site, etc.)
+                  </p>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPortfolioDialog(false);
+                  setPortfolioFormData({
+                    title: "",
+                    description: "",
+                    techStack: [],
+                    client: "",
+                    date: "",
+                    imageUrl: "",
+                    externalUrl: "",
+                  });
+                  setNewTechStack("");
+                  setEditingPortfolioIndex(null);
+                  setPortfolioFormErrors({});
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSavePortfolioItem} disabled={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {editingPortfolioIndex !== null
+                      ? "Update Portfolio Item"
+                      : "Add Portfolio Item"}
                   </>
                 )}
               </Button>

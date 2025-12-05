@@ -90,7 +90,6 @@ export default function AdminUserDetailPage() {
           industry: profile?.industry || "",
           location: profile?.location || "",
           website: profile?.website || "",
-          logoUrl: profile?.logoUrl || "",
           socialLinks: profile?.socialLinks || [],
           languages: profile?.languages || [],
           companySize: profile?.companySize || "",

@@ -7,7 +7,7 @@ class ProviderProfileDto {
     this.availability = data.availability;
     this.languages = data.languages || [];
     this.website = data.website;
-    this.profileVideoUrl = data.profileVideoUrl;
+    this.portfolioLinks = data.portfolioLinks || [];
     this.profileImageUrl = data.profileImageUrl; // 🆕 Profile image
     this.skills = data.skills || [];
     this.yearsExperience = data.yearsExperience;
@@ -16,7 +16,6 @@ class ProviderProfileDto {
     this.preferredProjectDuration = data.preferredProjectDuration;
     this.workPreference = data.workPreference;
     this.teamSize = data.teamSize;
-    this.portfolioUrls = data.portfolioUrls || [];
   }
 
   validate() {
@@ -47,15 +46,24 @@ class ProviderProfileDto {
       this.website = null; // Set to null if empty
     }
 
-    if (this.profileVideoUrl && this.profileVideoUrl.trim()) {
-      const normalizedProfileVideoUrl = this.normalizeUrl(this.profileVideoUrl);
-      if (!this.isValidUrl(normalizedProfileVideoUrl)) {
-        errors.push("Profile video URL must be a valid URL");
-      } else {
-        this.profileVideoUrl = normalizedProfileVideoUrl;
+    // Validate portfolio links
+    if (this.portfolioLinks && Array.isArray(this.portfolioLinks)) {
+      const invalidLinks = [];
+      this.portfolioLinks = this.portfolioLinks.map((link, index) => {
+        if (link && link.trim()) {
+          const normalizedLink = this.normalizeUrl(link.trim());
+          if (!this.isValidUrl(normalizedLink)) {
+            invalidLinks.push(`Portfolio link ${index + 1}`);
+            return link; // Keep original for now
+          }
+          return normalizedLink;
+        }
+        return link;
+      }).filter(Boolean); // Remove empty strings
+      
+      if (invalidLinks.length > 0) {
+        errors.push(`${invalidLinks.join(", ")} must be valid URLs`);
       }
-    } else {
-      this.profileVideoUrl = null; // Set to null if empty
     }
 
     if (this.hourlyRate && (this.hourlyRate < 0 || this.hourlyRate > 10000)) {
@@ -117,16 +125,23 @@ class ProviderProfileDto {
       }
     }
 
-    if (this.profileVideoUrl !== undefined) {
-      if (this.profileVideoUrl && this.profileVideoUrl.trim()) {
-        const normalizedProfileVideoUrl = this.normalizeUrl(this.profileVideoUrl);
-        if (!this.isValidUrl(normalizedProfileVideoUrl)) {
-          errors.push("Profile video URL must be a valid URL");
-        } else {
-          this.profileVideoUrl = normalizedProfileVideoUrl;
+    // Validate portfolio links (partial)
+    if (this.portfolioLinks !== undefined && Array.isArray(this.portfolioLinks)) {
+      const invalidLinks = [];
+      this.portfolioLinks = this.portfolioLinks.map((link, index) => {
+        if (link && link.trim()) {
+          const normalizedLink = this.normalizeUrl(link.trim());
+          if (!this.isValidUrl(normalizedLink)) {
+            invalidLinks.push(`Portfolio link ${index + 1}`);
+            return link; // Keep original for now
+          }
+          return normalizedLink;
         }
-      } else {
-        this.profileVideoUrl = null; // Set to null if empty
+        return link;
+      }).filter(Boolean); // Remove empty strings
+      
+      if (invalidLinks.length > 0) {
+        errors.push(`${invalidLinks.join(", ")} must be valid URLs`);
       }
     }
 
@@ -179,7 +194,7 @@ class ProviderProfileDto {
       availability: this.availability,
       languages: this.languages,
       website: this.website ? this.normalizeUrl(this.website) : this.website,
-      profileVideoUrl: this.profileVideoUrl ? this.normalizeUrl(this.profileVideoUrl) : this.profileVideoUrl,
+      portfolioLinks: this.portfolioLinks || [],
       profileImageUrl: this.profileImageUrl, // 🆕 Profile image (don't normalize as it's a file path, not a URL)
       skills: this.skills,
       yearsExperience: this.yearsExperience,
@@ -251,7 +266,7 @@ class ProviderProfileResponseDto {
     this.availability = data.availability;
     this.languages = data.languages;
     this.website = data.website;
-    this.profileVideoUrl = data.profileVideoUrl;
+    this.portfolioLinks = data.portfolioLinks || [];
     this.profileImageUrl = data.profileImageUrl; // 🆕 Profile image
     this.rating = data.rating;
     this.totalReviews = data.totalReviews;
@@ -289,7 +304,7 @@ class ProviderProfileResponseDto {
       availability: this.availability,
       languages: this.languages,
       website: this.website,
-      profileVideoUrl: this.profileVideoUrl,
+      portfolioLinks: this.portfolioLinks,
       profileImageUrl: this.profileImageUrl, // 🆕 Profile image
       rating: this.rating,
       totalReviews: this.totalReviews,

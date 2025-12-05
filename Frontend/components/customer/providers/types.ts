@@ -27,7 +27,7 @@ export type Provider = {
   workPreference?: string;
   teamSize?: number;
   website?: string | null;
-  profileVideoUrl?: string | null;
+  portfolioLinks?: string[];
   certificationsCount?: number;
   certifications?: Array<{
     id: string;
@@ -48,6 +48,9 @@ export type PortfolioItem = {
   cover: string;
   url?: string;
   tags?: string[];
+  description?: string;
+  client?: string | null;
+  date?: string | null;
 };
 
 export type Review = {

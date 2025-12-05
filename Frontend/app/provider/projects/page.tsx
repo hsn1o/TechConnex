@@ -420,22 +420,6 @@ export default function ProviderProjectsPage() {
                                         project.customer.customerProfile
                                           .profileImageUrl
                                       }`
-                                    : project.customer?.customerProfile
-                                        ?.logoUrl &&
-                                      project.customer.customerProfile
-                                        .logoUrl !== "/placeholder.svg"
-                                    ? `${
-                                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                        "http://localhost:4000"
-                                      }${
-                                        project.customer.customerProfile.logoUrl.startsWith(
-                                          "/"
-                                        )
-                                          ? ""
-                                          : "/"
-                                      }${
-                                        project.customer.customerProfile.logoUrl
-                                      }`
                                     : "/placeholder.svg"
                                 }
                               />
@@ -582,22 +566,6 @@ export default function ProviderProjectsPage() {
                                         project.customer.customerProfile
                                           .profileImageUrl
                                       }`
-                                    : project.customer?.customerProfile
-                                        ?.logoUrl &&
-                                      project.customer.customerProfile
-                                        .logoUrl !== "/placeholder.svg"
-                                    ? `${
-                                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                        "http://localhost:4000"
-                                      }${
-                                        project.customer.customerProfile.logoUrl.startsWith(
-                                          "/"
-                                        )
-                                          ? ""
-                                          : "/"
-                                      }${
-                                        project.customer.customerProfile.logoUrl
-                                      }`
                                     : "/placeholder.svg"
                                 }
                               />
@@ -743,22 +711,6 @@ export default function ProviderProjectsPage() {
                                         project.customer.customerProfile
                                           .profileImageUrl
                                       }`
-                                    : project.customer?.customerProfile
-                                        ?.logoUrl &&
-                                      project.customer.customerProfile
-                                        .logoUrl !== "/placeholder.svg"
-                                    ? `${
-                                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                        "http://localhost:4000"
-                                      }${
-                                        project.customer.customerProfile.logoUrl.startsWith(
-                                          "/"
-                                        )
-                                          ? ""
-                                          : "/"
-                                      }${
-                                        project.customer.customerProfile.logoUrl
-                                      }`
                                     : "/placeholder.svg"
                                 }
                               />
@@ -865,22 +817,6 @@ export default function ProviderProjectsPage() {
                                       }${
                                         project.customer.customerProfile
                                           .profileImageUrl
-                                      }`
-                                    : project.customer?.customerProfile
-                                        ?.logoUrl &&
-                                      project.customer.customerProfile
-                                        .logoUrl !== "/placeholder.svg"
-                                    ? `${
-                                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                        "http://localhost:4000"
-                                      }${
-                                        project.customer.customerProfile.logoUrl.startsWith(
-                                          "/"
-                                        )
-                                          ? ""
-                                          : "/"
-                                      }${
-                                        project.customer.customerProfile.logoUrl
                                       }`
                                     : "/placeholder.svg"
                                 }

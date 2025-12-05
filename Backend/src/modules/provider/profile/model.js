@@ -170,7 +170,7 @@ class ProviderProfileModel {
           availability: true,
           languages: true,
           website: true,
-          profileVideoUrl: true,
+          portfolioLinks: true,
           profileImageUrl: true,
           skills: true,
           yearsExperience: true,
@@ -327,10 +327,11 @@ class ProviderProfileModel {
         // Team & Additional Info (10 points)
         teamSize: { weight: 3, label: "Team Size", value: profile.teamSize },
         website: { weight: 4, label: "Website", value: profile.website },
-        profileVideoUrl: {
+        portfolioLinks: {
           weight: 3,
-          label: "Profile Video URL",
-          value: profile.profileVideoUrl,
+          label: "Portfolio Links",
+          value: profile.portfolioLinks,
+          minCount: 1,
         },
 
         // Credentials & Portfolio (15 points)
@@ -451,7 +452,7 @@ class ProviderProfileModel {
         "work preference",
         "team size",
         "website",
-        "profile video",
+        "portfolio links",
         "availability status",
       ];
 

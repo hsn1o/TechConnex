@@ -34,15 +34,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import {
-  ArrowLeft,
-  MessageSquare,
-  Calendar,
-  DollarSign,
-  Clock,
-  User,
-  MapPin,
-  Globe,
+import { 
+  ArrowLeft, 
+  MessageSquare, 
+  Calendar, 
+  DollarSign, 
+  Clock, 
+  User, 
+  MapPin, 
+  Globe, 
   Star,
   CheckCircle,
   AlertCircle,
@@ -88,7 +88,7 @@ export default function ProviderProjectDetailsPage() {
     null
   );
   const [updating, setUpdating] = useState(false);
-
+  
   // Project milestone management
   const [milestoneEditorOpen, setMilestoneEditorOpen] = useState(false);
   const [projectMilestones, setProjectMilestones] = useState<Milestone[]>([]);
@@ -149,7 +149,7 @@ export default function ProviderProjectDetailsPage() {
         setLoading(true);
         setError(null);
         const response = await getProviderProjectById(params.id as string);
-
+        
         if (response.success) {
           setProject(response.project);
 
@@ -188,7 +188,7 @@ export default function ProviderProjectDetailsPage() {
       try {
         const milestoneData = await getProviderProjectMilestones(project.id);
         setProjectMilestones(
-          Array.isArray(milestoneData.milestones)
+          Array.isArray(milestoneData.milestones) 
             ? milestoneData.milestones.map((m: any) => ({
                 ...m,
                 sequence: m.order,
@@ -369,9 +369,9 @@ export default function ProviderProjectDetailsPage() {
       setSavingMilestones(true);
       const payload = normalizeMilestoneSequences(projectMilestones).map(
         (m) => ({
-          ...m,
-          amount: Number(m.amount),
-          dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
+        ...m,
+        amount: Number(m.amount),
+        dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
         })
       );
       const res = await updateProviderProjectMilestones(project.id, payload);
@@ -432,15 +432,15 @@ export default function ProviderProjectDetailsPage() {
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
-
+      
       // Refresh project data to get updated milestones
       await refreshProjectData();
 
       // Always close the milestone editor dialog
-      setMilestoneEditorOpen(false);
+        setMilestoneEditorOpen(false);
 
       // Toast feedback
-      toast({
+        toast({
         title: "Milestones approved",
         description: res.milestonesLocked
           ? "Milestones are now locked. Work can start."
@@ -466,7 +466,7 @@ export default function ProviderProjectDetailsPage() {
         params.id as string,
         newStatus
       );
-
+      
       if (response.success) {
         setProject(response.project);
         toast({
@@ -567,13 +567,13 @@ export default function ProviderProjectDetailsPage() {
       }
 
       const response = await updateProviderMilestoneStatus(
-        selectedMilestone.id,
-        status,
+        selectedMilestone.id, 
+        status, 
         deliverables,
         submissionNote || undefined,
         submissionAttachment || undefined
       );
-
+      
       if (response.success) {
         // Refresh all project data including milestones
         await refreshProjectData();
@@ -957,10 +957,6 @@ export default function ProviderProjectDetailsPage() {
       <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900">
               {project.title}
@@ -1244,8 +1240,8 @@ export default function ProviderProjectDetailsPage() {
                           >
                             Edit Milestones
                           </Button>
-                          <Button
-                            size="sm"
+                          <Button 
+                            size="sm" 
                             onClick={handleApproveProjectMilestones}
                           >
                             Approve
@@ -1263,46 +1259,46 @@ export default function ProviderProjectDetailsPage() {
                               key={milestone.id}
                               className="border rounded-lg p-4"
                             >
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
-                                    {milestone.order}
-                                  </div>
-                                  <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
+                                  {milestone.order}
+                                </div>
+                                <div>
                                     <h4 className="font-medium">
                                       {milestone.title}
                                     </h4>
                                     <p className="text-sm text-gray-600">
                                       {milestone.description}
                                     </p>
-                                  </div>
                                 </div>
-                                <div className="flex items-center gap-3">
+                              </div>
+                              <div className="flex items-center gap-3">
                                   <Badge
                                     className={getMilestoneStatusColor(
                                       milestone.status
                                     )}
                                   >
-                                    {getMilestoneStatusText(milestone.status)}
-                                  </Badge>
-                                  <span className="text-sm font-medium">
-                                    {formatCurrency(milestone.amount)}
-                                  </span>
-                                </div>
+                                  {getMilestoneStatusText(milestone.status)}
+                                </Badge>
+                                <span className="text-sm font-medium">
+                                  {formatCurrency(milestone.amount)}
+                                </span>
                               </div>
-                              <div className="flex items-center justify-between text-sm text-gray-600">
+                            </div>
+                            <div className="flex items-center justify-between text-sm text-gray-600">
                                 <span>
                                   Due: {formatDate(milestone.dueDate)}
                                 </span>
-                                <div className="flex items-center gap-2">
-                                  {milestone.status === "PAID" && (
-                                    <div className="flex items-center gap-1 text-green-600">
-                                      <DollarSign className="w-4 h-4" />
+                              <div className="flex items-center gap-2">
+                                {milestone.status === "PAID" && (
+                                  <div className="flex items-center gap-1 text-green-600">
+                                    <DollarSign className="w-4 h-4" />
                                       <span className="text-sm font-medium">
                                         Paid
                                       </span>
-                                    </div>
-                                  )}
+                                  </div>
+                                )}
                                   {milestone.status === "LOCKED" &&
                                     project.status === "IN_PROGRESS" && (
                                       <div>
@@ -1322,29 +1318,29 @@ export default function ProviderProjectDetailsPage() {
                                     )}
                                   {milestone.status === "IN_PROGRESS" &&
                                     project.status === "ESCROWED" && (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => {
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => {
                                           setSelectedMilestone(milestone);
                                           setIsMilestoneDialogOpen(true);
-                                        }}
-                                      >
-                                        Start Work
-                                      </Button>
-                                    )}
-                                  {milestone.status === "IN_PROGRESS" && (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
+                                    }}
+                                  >
+                                    Start Work
+                                  </Button>
+                                )}
+                                {milestone.status === "IN_PROGRESS" && (
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => {
                                         setSelectedMilestone(milestone);
                                         setIsMilestoneDialogOpen(true);
-                                      }}
-                                    >
-                                      Submit
-                                    </Button>
-                                  )}
-                                </div>
+                                    }}
+                                  >
+                                    Submit
+                                  </Button>
+                                )}
                               </div>
+                            </div>
 
                               {/* Show warning for first locked milestone that complies */}
                               {milestone.status === "LOCKED" &&
@@ -1366,7 +1362,7 @@ export default function ProviderProjectDetailsPage() {
                                           : "You can't start work until the client has paid."
                                       }
                                     </p>
-                                  </div>
+                          </div>
                                 )}
 
                               {/* Show start deliverables if available (persists even after status changes) */}
@@ -1958,14 +1954,14 @@ export default function ProviderProjectDetailsPage() {
                                             className="text-xs opacity-75"
                                           >
                                             📎 {attachment}
-                                          </div>
+                              </div>
                                         )
                                       )}
-                                    </div>
-                                  )}
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">{ts}</p>
                             </div>
+                                  )}
+                          </div>
+                              <p className="text-xs text-gray-500 mt-1">{ts}</p>
+                      </div>
                           </div>
                         );
                       })}
@@ -2007,19 +2003,6 @@ export default function ProviderProjectDetailsPage() {
                             }${
                               project.customer.customerProfile.profileImageUrl
                             }`
-                          : project.customer?.customerProfile?.logoUrl &&
-                            project.customer.customerProfile.logoUrl !==
-                              "/placeholder.svg"
-                          ? `${
-                              process.env.NEXT_PUBLIC_API_BASE_URL ||
-                              "http://localhost:4000"
-                            }${
-                              project.customer.customerProfile.logoUrl.startsWith(
-                                "/"
-                              )
-                                ? ""
-                                : "/"
-                            }${project.customer.customerProfile.logoUrl}`
                           : "/placeholder.svg"
                       }
                     />
@@ -2043,7 +2026,7 @@ export default function ProviderProjectDetailsPage() {
                     </p>
                   </div>
                 </div>
-
+                
                 {project.customer?.customerProfile && (
                   <div className="space-y-2 text-sm">
                     {project.customer.customerProfile.industry && (
@@ -2061,9 +2044,9 @@ export default function ProviderProjectDetailsPage() {
                     {project.customer.customerProfile.website && (
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4 text-gray-400" />
-                        <a
-                          href={project.customer.customerProfile.website}
-                          target="_blank"
+                        <a 
+                          href={project.customer.customerProfile.website} 
+                          target="_blank" 
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline"
                         >
@@ -2124,25 +2107,25 @@ export default function ProviderProjectDetailsPage() {
                   : "Submit Milestone"}
               </DialogTitle>
               <DialogDescription>
-                {selectedMilestone?.status === "LOCKED"
-                  ? "Start working on this milestone"
+                {selectedMilestone?.status === "LOCKED" 
+                  ? "Start working on this milestone" 
                   : "Submit your work for this milestone"}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {selectedMilestone?.status === "LOCKED" && (
-                <div>
+              <div>
                   <Label htmlFor="startDeliverables">
                     Deliverables / Plan (When Starting Work)
                   </Label>
-                  <Textarea
+                <Textarea
                     id="startDeliverables"
                     placeholder="Describe your plan and deliverables when starting this milestone..."
-                    value={milestoneDeliverables}
-                    onChange={(e) => setMilestoneDeliverables(e.target.value)}
-                    rows={4}
-                  />
-                </div>
+                  value={milestoneDeliverables}
+                  onChange={(e) => setMilestoneDeliverables(e.target.value)}
+                  rows={4}
+                />
+              </div>
               )}
 
               {selectedMilestone?.status === "IN_PROGRESS" && (
@@ -2207,7 +2190,7 @@ export default function ProviderProjectDetailsPage() {
               >
                 Cancel
               </Button>
-              <Button
+              <Button 
                 onClick={() =>
                   handleMilestoneUpdate(
                     selectedMilestone?.status === "LOCKED"
@@ -2239,7 +2222,7 @@ export default function ProviderProjectDetailsPage() {
             <DialogHeader>
               <DialogTitle>Edit Milestones</DialogTitle>
               <DialogDescription>
-                Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
+                Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} · 
                 Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
                 {milestoneApprovalState.milestonesLocked && " · LOCKED"}
               </DialogDescription>
@@ -2452,7 +2435,7 @@ export default function ProviderProjectDetailsPage() {
                 <div>
                   <div className="font-semibold text-gray-900">
                     Company Approved
-                  </div>
+      </div>
                   <div>
                     {milestoneApprovalState.companyApproved
                       ? "The company approved the milestone plan."

@@ -165,9 +165,6 @@ export default function ProviderOpportunitiesPage() {
                 if (profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg") {
                   return `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`;
                 }
-                if (profile?.logoUrl && profile.logoUrl !== "/placeholder.svg") {
-                  return `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.logoUrl.startsWith("/") ? "" : "/"}${profile.logoUrl}`;
-                }
                 return "/placeholder.svg?height=40&width=40";
               })(),
               urgent: opportunity.priority === "High",

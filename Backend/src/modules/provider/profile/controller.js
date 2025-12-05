@@ -165,7 +165,7 @@ class ProviderProfileController {
     }
   }
 
-  // GET /api/provider/profile/portfolio - Get completed projects for portfolio
+  // GET /api/provider/profile/portfolio - Get completed projects for portfolio (platform projects)
   static async getPortfolio(req, res) {
     try {
       const userId = req.user.userId;
@@ -178,6 +178,121 @@ class ProviderProfileController {
       });
     } catch (error) {
       console.error("Error in getPortfolio:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // GET /api/provider/profile/portfolio-items - Get external portfolio items
+  static async getPortfolioItems(req, res) {
+    try {
+      const userId = req.user.userId;
+      const items = await ProviderProfileService.getPortfolioItems(userId);
+      
+      res.json({
+        success: true,
+        message: "Portfolio items retrieved successfully",
+        data: items,
+      });
+    } catch (error) {
+      console.error("Error in getPortfolioItems:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // POST /api/provider/profile/portfolio-items - Create portfolio item
+  static async createPortfolioItem(req, res) {
+    try {
+      const userId = req.user.userId;
+      const portfolioData = req.body;
+      
+      const item = await ProviderProfileService.createPortfolioItem(userId, portfolioData);
+      
+      res.json({
+        success: true,
+        message: "Portfolio item created successfully",
+        data: item,
+      });
+    } catch (error) {
+      console.error("Error in createPortfolioItem:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // PUT /api/provider/profile/portfolio-items/:id - Update portfolio item
+  static async updatePortfolioItem(req, res) {
+    try {
+      const userId = req.user.userId;
+      const portfolioId = req.params.id;
+      const portfolioData = req.body;
+      
+      const item = await ProviderProfileService.updatePortfolioItem(userId, portfolioId, portfolioData);
+      
+      res.json({
+        success: true,
+        message: "Portfolio item updated successfully",
+        data: item,
+      });
+    } catch (error) {
+      console.error("Error in updatePortfolioItem:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // DELETE /api/provider/profile/portfolio-items/:id - Delete portfolio item
+  static async deletePortfolioItem(req, res) {
+    try {
+      const userId = req.user.userId;
+      const portfolioId = req.params.id;
+      
+      await ProviderProfileService.deletePortfolioItem(userId, portfolioId);
+      
+      res.json({
+        success: true,
+        message: "Portfolio item deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error in deletePortfolioItem:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // POST /api/provider/profile/portfolio-items/upload-image - Upload portfolio image/file
+  static async uploadPortfolioImage(req, res) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file provided",
+        });
+      }
+
+      // Get the file path (normalize slashes for cross-platform compatibility)
+      const filePath = req.file.path.replace(/\\/g, "/");
+      
+      res.json({
+        success: true,
+        message: "Portfolio file uploaded successfully",
+        data: {
+          imageUrl: filePath,
+        },
+      });
+    } catch (error) {
+      console.error("Error in uploadPortfolioImage:", error);
       res.status(400).json({
         success: false,
         message: error.message,

@@ -1308,6 +1308,114 @@ export async function getProviderPortfolio() {
   return data;
 }
 
+// Portfolio Items (External Work) API functions
+export async function getProviderPortfolioItems() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/profile/portfolio-items`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch portfolio items");
+  return data;
+}
+
+export async function createPortfolioItem(portfolioData: {
+  title: string;
+  description: string;
+  techStack?: string[];
+  client?: string;
+  date: string;
+  imageUrl?: string;
+  externalUrl?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/profile/portfolio-items`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(portfolioData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to create portfolio item");
+  return data;
+}
+
+export async function updatePortfolioItem(id: string, portfolioData: {
+  title?: string;
+  description?: string;
+  techStack?: string[];
+  client?: string;
+  date?: string;
+  imageUrl?: string;
+  externalUrl?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/profile/portfolio-items/${id}`, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(portfolioData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to update portfolio item");
+  return data;
+}
+
+export async function deletePortfolioItem(id: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/profile/portfolio-items/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to delete portfolio item");
+  return data;
+}
+
+export async function uploadPortfolioImage(imageFile: File) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const formData = new FormData();
+  formData.append("portfolioImage", imageFile);
+
+  const res = await fetch(`${API_BASE}/provider/profile/portfolio-items/upload-image`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      // Don't set Content-Type - let browser set it with boundary for FormData
+    },
+    body: formData,
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to upload portfolio file");
+  return data;
+}
+
 export async function getProviderProfileStats() {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
