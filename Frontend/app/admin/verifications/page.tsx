@@ -131,7 +131,7 @@ export default function AdminVerificationsPage() {
 
   // ===== UI state =====
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all"); // all | pending | approved | rejected | under_review
+  const [statusFilter, setStatusFilter] = useState("all"); // all | uploaded | verified | rejected
   const [typeFilter, setTypeFilter] = useState("all"); // all | provider | customer
   const [selectedUser, setSelectedUser] = useState<KycUser | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
@@ -235,7 +235,7 @@ export default function AdminVerificationsPage() {
             : "—",
 
           // Main status (latest upload)
-          _uiStatus: latestDoc ? uiDocStatus(latestDoc.status) : "pending",
+          _uiStatus: latestDoc ? uiDocStatus(latestDoc.status) : "uploaded",
 
           // Type role mapping
           _uiType:
@@ -282,7 +282,7 @@ export default function AdminVerificationsPage() {
         const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
         return dateB - dateA;
       })[0];
-      const s = latestDoc ? uiDocStatus(latestDoc.status) : "pending";
+      const s = latestDoc ? uiDocStatus(latestDoc.status) : "uploaded";
 
       if (s === "uploaded") pending++;
       if (s === "verified") approved++;
@@ -455,10 +455,9 @@ export default function AdminVerificationsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="uploaded">Pending Review</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="under_review">Under Review</SelectItem>
                 </SelectContent>
               </Select>
             </div>

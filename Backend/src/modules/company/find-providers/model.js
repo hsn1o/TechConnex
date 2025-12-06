@@ -125,12 +125,9 @@ export async function findProviders(filters) {
     };
   }
 
-  // Verified filter
-  if (verified) {
-    where.providerProfile = {
-      ...where.providerProfile,
-      isVerified: true,
-    };
+  // Verified filter (from User table)
+  if (verified !== undefined) {
+    where.isVerified = verified === true;
   }
 
   // Top rated filter

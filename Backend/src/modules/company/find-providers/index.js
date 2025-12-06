@@ -24,8 +24,10 @@ router.use(authenticateToken);
 router.get("/", findProviders);
 router.get("/filters", getFilters);
 
-// Individual provider endpoints
-router.get("/:id", getProvider);
+// Saved providers for user (must come before /:id routes)
+router.get("/users/:userId/saved-providers", getSavedProviders);
+
+// Individual provider endpoints (specific routes must come before generic /:id)
 router.get("/:id/full", getProviderFullDetails); // Combined endpoint for frontend
 router.get("/:id/portfolio", getProviderPortfolioController);
 router.get("/:id/completed-projects", getProviderCompletedProjectsController);
@@ -36,7 +38,7 @@ router.get("/:id/stats", getProviderStats);
 router.post("/:id/save", saveProvider);
 router.delete("/:id/save", unsaveProvider);
 
-// Saved providers for user
-router.get("/users/:userId/saved-providers", getSavedProviders);
+// Generic provider endpoint (must be last)
+router.get("/:id", getProvider);
 
 export default router;

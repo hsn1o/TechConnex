@@ -75,3 +75,54 @@ export const getReviewersByIds = async (ids = []) => {
     select: { id: true, name: true },
   });
 };
+
+// Update user verification status
+export const updateUserVerificationStatus = async (userId, isVerified) => {
+  return await prisma.user.update({
+    where: { id: userId },
+    data: { isVerified },
+  });
+};
+
+// Get user with KYC documents formatted for response
+export const getUserWithKycDocuments = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      providerProfile: true,
+      customerProfile: true,
+      KycDocument: {
+        orderBy: { uploadedAt: "desc" },
+      },
+    },
+  });
+
+  if (!user) return null;
+
+  // Format the response
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    kycStatus: user.kycStatus,
+    isVerified: user.isVerified,
+    providerProfile: user.providerProfile,
+    customerProfile: user.customerProfile,
+    kycDocuments: user.KycDocument.map((doc) => ({
+      id: doc.id,
+      type: doc.type,
+      status: doc.status,
+      fileUrl: doc.fileUrl,
+      filename: doc.filename,
+      mimeType: doc.mimeType,
+      uploadedAt: doc.uploadedAt,
+      reviewedAt: doc.reviewedAt,
+      reviewNotes: doc.reviewNotes,
+      reviewedBy: doc.reviewedBy,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+    })),
+  };
+};

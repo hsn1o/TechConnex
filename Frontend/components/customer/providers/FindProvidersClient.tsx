@@ -18,6 +18,7 @@ export default function FindProvidersClient({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [ratingFilter, setRatingFilter] = useState(ratings[0]?.value ?? "all");
+  const [verifiedFilter, setVerifiedFilter] = useState("all"); // all | verified | unverified
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +36,8 @@ export default function FindProvidersClient({
     if (userId) params.append("userId", userId);
     if (searchQuery) params.append("search", searchQuery);
     if (ratingFilter !== "all") params.append("rating", ratingFilter);
+    if (verifiedFilter === "verified") params.append("verified", "true");
+    if (verifiedFilter === "unverified") params.append("verified", "false");
 
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -52,7 +55,7 @@ export default function FindProvidersClient({
       })
       .catch((err) => console.error("Failed to fetch providers:", err))
       .finally(() => setLoading(false));
-  }, [searchQuery, ratingFilter]);
+  }, [searchQuery, ratingFilter, verifiedFilter]);
 
   const filteredProviders = providers; // backend handles filtering
 
@@ -74,7 +77,7 @@ export default function FindProvidersClient({
         </div>
       </div>
 
-      {/* Filters (Search + Rating only) */}
+      {/* Filters (Search + Rating + Verified) */}
       <Card>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -99,8 +102,14 @@ export default function FindProvidersClient({
               </SelectContent>
             </Select>
 
-            {/* spacer to keep grid nice on large screens */}
-            <div className="hidden lg:block" />
+            <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
+              <SelectTrigger><SelectValue placeholder="Verification Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Providers</SelectItem>
+                <SelectItem value="verified">Verified Only</SelectItem>
+                <SelectItem value="unverified">Unverified Only</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

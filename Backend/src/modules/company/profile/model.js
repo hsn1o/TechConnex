@@ -413,8 +413,8 @@ class CompanyProfileModel {
           totalScore += weight;
         } else if (suggestionMessage) {
           suggestions.push(suggestionMessage);
+          }
         }
-      }
 
       // Sort suggestions by priority (missing core fields first)
       const priorityOrder = [

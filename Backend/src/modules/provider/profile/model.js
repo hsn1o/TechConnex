@@ -402,7 +402,7 @@ class ProviderProfileModel {
               suggestionMessage = `${label} should be at least ${minLength} characters${
                 currentLength > 0 ? ` (currently ${currentLength})` : ""
               }`;
-            }
+        }
           } else {
             isComplete = value.trim().length > 0;
             if (!isComplete) {

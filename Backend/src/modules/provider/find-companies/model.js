@@ -14,6 +14,7 @@ export async function findCompanies(filters) {
     page,
     limit,
     companySize,
+    verified,
     userId,
   } = filters;
 
@@ -99,6 +100,11 @@ export async function findCompanies(filters) {
         mode: "insensitive",
       },
     };
+  }
+
+  // Verified filter (from User table)
+  if (verified !== undefined) {
+    where.isVerified = verified === true;
   }
 
   // Build order by

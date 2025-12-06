@@ -25,6 +25,7 @@ export default function FindCompaniesClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState(locations[0]?.value ?? "all");
   const [ratingFilter, setRatingFilter] = useState(ratings[0]?.value ?? "all");
+  const [verifiedFilter, setVerifiedFilter] = useState("all"); // all | verified | unverified
   const [sortBy, setSortBy] = useState("rating");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +45,8 @@ export default function FindCompaniesClient({
     if (searchQuery) params.append("search", searchQuery);
     if (locationFilter !== "all") params.append("location", locationFilter);
     if (ratingFilter !== "all") params.append("rating", ratingFilter);
+    if (verifiedFilter === "verified") params.append("verified", "true");
+    if (verifiedFilter === "unverified") params.append("verified", "false");
 
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -68,7 +71,7 @@ export default function FindCompaniesClient({
       })
       .catch((err) => console.error("Failed to fetch companies:", err))
       .finally(() => setLoading(false));
-  }, [searchQuery, locationFilter, ratingFilter]);
+  }, [searchQuery, locationFilter, ratingFilter, verifiedFilter]);
 
   // Sort companies based on selected option
   const sortedCompanies = [...companies].sort((a, b) => {
@@ -81,6 +84,11 @@ export default function FindCompaniesClient({
         return (b.totalSpend || 0) - (a.totalSpend || 0);
       case "newest":
         return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      case "verified":
+        // Sort verified companies first
+        if (a.verified && !b.verified) return -1;
+        if (!a.verified && b.verified) return 1;
+        return 0;
       default:
         return 0;
     }
@@ -106,10 +114,10 @@ export default function FindCompaniesClient({
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters (Search + Location + Rating + Verified) */}
       <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -141,6 +149,15 @@ export default function FindCompaniesClient({
                 ))}
               </SelectContent>
             </Select>
+
+            <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
+              <SelectTrigger><SelectValue placeholder="Verification Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Companies</SelectItem>
+                <SelectItem value="verified">Verified Only</SelectItem>
+                <SelectItem value="unverified">Unverified Only</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -152,6 +169,7 @@ export default function FindCompaniesClient({
           <SelectTrigger className="w-48"><SelectValue placeholder="Sort by" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="rating">Highest Rated</SelectItem>
+            <SelectItem value="verified">Verified First</SelectItem>
             <SelectItem value="projects">Most Projects</SelectItem>
             <SelectItem value="spend">Highest Spender</SelectItem>
             <SelectItem value="newest">Newest</SelectItem>

@@ -11,8 +11,16 @@ export default async function CompaniesPage() {
 
   let ratings = [
     { value: "all", label: "All Ratings" },
+    { value: "5.0+", label: "5.0 Stars" },
+    { value: "4.8+", label: "4.8+ Stars" },
     { value: "4.5+", label: "4.5+ Stars" },
     { value: "4.0+", label: "4.0+ Stars" },
+    { value: "3.5+", label: "3.5+ Stars" },
+    { value: "3.0+", label: "3.0+ Stars" },
+    { value: "2.5+", label: "2.5+ Stars" },
+    { value: "2.0+", label: "2.0+ Stars" },
+    { value: "1.5+", label: "1.5+ Stars" },
+    { value: "1.0+", label: "1.0+ Stars" },
   ];
 
   try {

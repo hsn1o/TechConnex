@@ -10,6 +10,14 @@ export class FindCompaniesDto {
     this.page = parseInt(data.page) || 1;
     this.limit = parseInt(data.limit) || 20;
     this.companySize = data.companySize || "all";
+    // Handle verified filter: "true" for verified, "false" for unverified, undefined for all
+    if (data.verified === "true") {
+      this.verified = true;
+    } else if (data.verified === "false") {
+      this.verified = false; // Explicitly unverified
+    } else {
+      this.verified = undefined; // All companies
+    }
     this.userId = data.userId || null; // For checking saved status
   }
 

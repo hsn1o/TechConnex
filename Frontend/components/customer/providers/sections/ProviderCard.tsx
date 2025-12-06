@@ -95,7 +95,7 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
               <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
             </Avatar>
             {provider.verified && (
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                 <svg
                   className="w-3 h-3 text-white"
                   fill="currentColor"

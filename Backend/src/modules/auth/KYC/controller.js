@@ -3,6 +3,8 @@ import {
   getKycDocumentByUserId,
   getReviewersByIds,
   updateKycDocumentStatus,
+  updateUserVerificationStatus,
+  getUserWithKycDocuments,
 } from "./model.js";
 import {
   createKycDocument,
@@ -116,14 +118,27 @@ export const reviewKycDocument = async (req, res) => {
 
     const status = approve ? "verified" : "rejected";
 
-    const updated = await updateKycDocumentStatus(document.id, {
+    // Update KYC document status
+    await updateKycDocumentStatus(document.id, {
       status,
       reviewNotes: notes,
       reviewedAt: new Date(),
       reviewedBy: req.user.id,
     });
 
-    res.status(200).json(updated);
+    // If document is verified, update user's isVerified status to true
+    if (approve && status === "verified") {
+      await updateUserVerificationStatus(userId, true);
+    }
+
+    // Fetch updated user with all KYC documents formatted for response
+    const updatedUser = await getUserWithKycDocuments(userId);
+    
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json(updatedUser);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

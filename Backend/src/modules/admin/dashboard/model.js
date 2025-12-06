@@ -35,8 +35,17 @@ export const dashboardModel = {
       prisma.dispute.count({ where: { status: "OPEN" } }),
       prisma.dispute.count({ where: { status: "UNDER_REVIEW" } }),
       
-      // Pending verifications (users with pending_verification status)
-      prisma.user.count({ where: { kycStatus: "pending_verification" } }),
+      // Pending verifications (users with pending_verification status AND uploaded documents)
+      prisma.user.count({ 
+        where: { 
+          kycStatus: "pending_verification",
+          KycDocument: {
+            some: {
+              status: "uploaded",
+            },
+          },
+        },
+      }),
       
       // Total revenue (sum of all released payments)
       prisma.payment.aggregate({
@@ -106,7 +115,6 @@ export const dashboardModel = {
         customerProfile: {
           select: {
             profileImageUrl: true,
-            logoUrl: true,
           },
         },
       },
@@ -198,7 +206,7 @@ export const dashboardModel = {
         action: `New ${isProvider ? "provider" : "customer"} registration`,
         time: user.createdAt,
         status: "pending",
-        avatar: profile?.profileImageUrl || profile?.logoUrl || null,
+        avatar: profile?.profileImageUrl || null,
       });
     });
 
@@ -249,9 +257,16 @@ export const dashboardModel = {
 
   async getPendingVerifications(limit = 5) {
     const users = await prisma.user.findMany({
-      where: { kycStatus: "pending_verification" },
+      where: { 
+        kycStatus: "pending_verification",
+        KycDocument: {
+          some: {
+            status: "uploaded",
+          },
+        },
+      },
       take: limit,
-      orderBy: { createdAt: "asc", }, // Oldest first
+      orderBy: { createdAt: "asc" }, // Oldest first
       include: {
         KycDocument: {
           where: { status: "uploaded" },
@@ -261,6 +276,7 @@ export const dashboardModel = {
             filename: true,
             uploadedAt: true,
           },
+          orderBy: { uploadedAt: "desc" },
         },
         providerProfile: {
           select: {
@@ -270,37 +286,40 @@ export const dashboardModel = {
         customerProfile: {
           select: {
             profileImageUrl: true,
-            logoUrl: true,
           },
         },
       },
     });
 
-    return users.map((user) => {
-      const isProvider = user.role?.includes("PROVIDER");
-      const profile = isProvider ? user.providerProfile : user.customerProfile;
-      const documents = user.KycDocument.map((doc) => {
-        switch (doc.type) {
-          case "PROVIDER_ID":
-            return "ID Document";
-          case "COMPANY_REG":
-            return "Company Registration";
-          case "COMPANY_DIRECTOR_ID":
-            return "Director ID";
-          default:
-            return doc.filename;
-        }
-      });
+    return users
+      .filter((user) => user.KycDocument && user.KycDocument.length > 0)
+      .map((user) => {
+        const isProvider = user.role?.includes("PROVIDER");
+        const profile = isProvider ? user.providerProfile : user.customerProfile;
+        const documents = user.KycDocument.map((doc) => {
+          switch (doc.type) {
+            case "PROVIDER_ID":
+              return "ID Document";
+            case "COMPANY_REG":
+              return "Company Registration";
+            case "COMPANY_DIRECTOR_ID":
+              return "Director ID";
+            default:
+              return doc.filename;
+          }
+        });
 
-      return {
-        id: user.id,
-        name: user.name,
-        type: isProvider ? "Provider" : "Customer",
-        submitted: user.createdAt,
-        documents,
-        avatar: profile?.profileImageUrl || profile?.logoUrl || null,
-      };
-    });
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          type: isProvider ? "Provider" : "Customer",
+          submitted: user.KycDocument[0]?.uploadedAt || user.createdAt,
+          documents,
+          documentCount: user.KycDocument.length,
+          avatar: profile?.profileImageUrl || null,
+        };
+      });
   },
 
   async getTopProviders(limit = 5) {
@@ -343,4 +362,3 @@ export const dashboardModel = {
 };
 
 export default prisma;
-

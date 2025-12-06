@@ -36,7 +36,7 @@ export async function searchProviders(filters) {
       skills: user.providerProfile?.skills || [],
       specialties: user.providerProfile?.skills?.slice(0, 3) || [],
       languages: user.providerProfile?.languages || ["English"],
-      verified: user.providerProfile?.isVerified || false,
+      verified: user.isVerified || false,
       topRated: user.providerProfile?.isFeatured || false,
       saved: user.isSaved || false, // Use saved status from backend
       // Additional public-safe fields
@@ -97,7 +97,7 @@ export async function getProviderDetails(providerId, userId = null) {
       skills: provider.providerProfile?.skills || [],
       specialties: provider.providerProfile?.skills?.slice(0, 3) || [],
       languages: provider.providerProfile?.languages || ["English"],
-      verified: provider.providerProfile?.isVerified || false,
+      verified: provider.isVerified || false,
       topRated: provider.providerProfile?.isFeatured || false,
       saved: provider.isSaved || false,
       // Additional public-safe fields
@@ -183,7 +183,6 @@ export async function getProviderCompletedProjects(providerId) {
               select: {
                 companySize: true,
                 industry: true,
-                logoUrl: true,
                 profileImageUrl: true,
               },
             },
@@ -340,7 +339,7 @@ export async function getSavedProvidersService(userId, page = 1, limit = 20) {
       skills: user.providerProfile?.skills || [],
       specialties: user.providerProfile?.skills?.slice(0, 3) || [],
       languages: user.providerProfile?.languages || ["English"],
-      verified: user.providerProfile?.isVerified || false,
+      verified: user.isVerified || false,
       topRated: user.providerProfile?.isFeatured || false,
       savedAt: user.savedAt,
       // Additional public-safe fields
@@ -435,9 +434,16 @@ export async function getFilterOptions() {
       ],
       ratings: [
         { value: "all", label: "All Ratings" },
+        { value: "5.0+", label: "5.0 Stars" },
+        { value: "4.8+", label: "4.8+ Stars" },
         { value: "4.5+", label: "4.5+ Stars" },
         { value: "4.0+", label: "4.0+ Stars" },
         { value: "3.5+", label: "3.5+ Stars" },
+        { value: "3.0+", label: "3.0+ Stars" },
+        { value: "2.5+", label: "2.5+ Stars" },
+        { value: "2.0+", label: "2.0+ Stars" },
+        { value: "1.5+", label: "1.5+ Stars" },
+        { value: "1.0+", label: "1.0+ Stars" },
       ],
     };
   } catch (error) {
@@ -461,8 +467,16 @@ export async function getFilterOptions() {
       ],
       ratings: [
         { value: "all", label: "All Ratings" },
+        { value: "5.0+", label: "5.0 Stars" },
+        { value: "4.8+", label: "4.8+ Stars" },
         { value: "4.5+", label: "4.5+ Stars" },
         { value: "4.0+", label: "4.0+ Stars" },
+        { value: "3.5+", label: "3.5+ Stars" },
+        { value: "3.0+", label: "3.0+ Stars" },
+        { value: "2.5+", label: "2.5+ Stars" },
+        { value: "2.0+", label: "2.0+ Stars" },
+        { value: "1.5+", label: "1.5+ Stars" },
+        { value: "1.0+", label: "1.0+ Stars" },
       ],
     };
   }

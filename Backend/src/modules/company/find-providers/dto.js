@@ -13,7 +13,14 @@ export class FindProvidersDto {
     this.maxRate = parseFloat(data.maxRate) || 10000;
     this.skills = Array.isArray(data.skills) ? data.skills : [];
     this.availability = data.availability || "all";
-    this.verified = data.verified === "true";
+    // Handle verified filter: "true" for verified, "false" for unverified, undefined for all
+    if (data.verified === "true") {
+      this.verified = true;
+    } else if (data.verified === "false") {
+      this.verified = false; // Explicitly unverified
+    } else {
+      this.verified = undefined; // All providers
+    }
     this.topRated = data.topRated === "true";
     this.userId = data.userId || null; // For checking saved status
   }

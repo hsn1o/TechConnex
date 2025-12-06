@@ -99,7 +99,7 @@ model ProviderProfile {
   successRate   Decimal @default(0.00) @map("success_rate") @db.Decimal(5, 2)
   responseTime  Int     @default(0) @map("response_time")
   isFeatured    Boolean @default(false) @map("is_featured")
-  isVerified    Boolean @default(false) @map("is_verified")
+ 
   completion    Int? // 🆕 Completion %
 
   //Skills & Work pref
