@@ -168,7 +168,7 @@ export default function ProviderOpportunitiesPage() {
                 return "/placeholder.svg?height=40&width=40";
               })(),
               urgent: opportunity.priority === "High",
-              verified: true,
+              verified: opportunity.customer?.isVerified || false,
               hasSubmitted: opportunity.hasProposed || false,
               // Convert requirements/deliverables: if array, convert to markdown; if string, use as-is
               requirements: typeof opportunity.requirements === "string" 
@@ -766,7 +766,8 @@ export default function ProviderOpportunitiesPage() {
                               </Badge>
                             )}
                             {opportunity.verified && (
-                              <Badge className="bg-blue-100 text-blue-800">
+                              <Badge className="bg-green-100 text-green-800">
+                                <CheckCircle className="w-3 h-3 mr-1" />
                                 Verified Client
                               </Badge>
                             )}

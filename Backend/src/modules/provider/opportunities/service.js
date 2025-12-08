@@ -42,16 +42,16 @@ export async function getOpportunities(dto) {
               id: true,
               name: true,
               email: true,
+              isVerified: true, // Include verified status from User table
               customerProfile: {
                 select: {
                   companySize: true,
                   industry: true,
                   location: true,
                   website: true,
-                  logoUrl: true,
-                  profileImageUrl: true, // 🆕 Profile image
+                  profileImageUrl: true, // Profile image
                   totalSpend: true,
-                  projectsPosted: true, // 🆕 Projects posted count
+                  projectsPosted: true, // Projects posted count
                 },
               },
             },
@@ -135,6 +135,7 @@ export async function getOpportunityById(opportunityId, providerId) {
             id: true,
             name: true,
             email: true,
+            isVerified: true, // Include verified status from User table
             customerProfile: {
               select: {
                 companySize: true,
@@ -142,10 +143,9 @@ export async function getOpportunityById(opportunityId, providerId) {
                 location: true,
                 website: true,
                 description: true,
-                logoUrl: true,
-                profileImageUrl: true, // 🆕 Profile image
+                profileImageUrl: true, // Profile image
                 totalSpend: true,
-                projectsPosted: true, // 🆕 Projects posted count
+                projectsPosted: true, // Projects posted count
               },
             },
           },

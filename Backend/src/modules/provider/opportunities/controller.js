@@ -8,8 +8,18 @@ import { GetOpportunitiesDto } from "./dto.js";
 // GET /api/provider/opportunities - Get all opportunities for providers
 export async function getOpportunitiesController(req, res) {
   try {
+    // Get user ID from JWT payload (could be userId or id)
+    const providerId = req.user?.userId || req.user?.id;
+    
+    if (!providerId) {
+      return res.status(401).json({
+        success: false,
+        message: "User ID not found in token",
+      });
+    }
+
     const dto = new GetOpportunitiesDto({
-      providerId: req.user.userId, // User ID from JWT payload
+      providerId,
       ...req.query,
     });
     dto.validate();
@@ -34,12 +44,20 @@ export async function getOpportunitiesController(req, res) {
 export async function getOpportunityController(req, res) {
   try {
     const opportunityId = req.params.id;
-    const providerId = req.user.userId; // User ID from JWT payload
+    // Get user ID from JWT payload (could be userId or id)
+    const providerId = req.user?.userId || req.user?.id;
 
     if (!opportunityId) {
       return res.status(400).json({
         success: false,
         message: "Opportunity ID is required",
+      });
+    }
+
+    if (!providerId) {
+      return res.status(401).json({
+        success: false,
+        message: "User ID not found in token",
       });
     }
 
