@@ -2060,7 +2060,7 @@ export default function ProjectDetailsPage({
                       <div key={milestone.id} className="flex gap-2 sm:gap-4">
                         <div className="flex flex-col items-center flex-shrink-0">
                           <div className="w-5 h-5 sm:w-6 sm:h-6">
-                            {getMilestoneStatusIcon(milestone.status)}
+                          {getMilestoneStatusIcon(milestone.status)}
                           </div>
                           {index < projectMilestones.length - 1 && (
                             <div className="w-px h-12 sm:h-16 bg-gray-200 mt-1 sm:mt-2" />
@@ -3357,27 +3357,27 @@ export default function ProjectDetailsPage({
               <div>
                 <Label className="text-sm sm:text-base">Requirements</Label>
                 <div className="mt-1.5">
-                  <RichEditor
-                    content={edit.requirements}
-                    onChange={(value) =>
-                      setEdit({ ...edit, requirements: value })
-                    }
-                    placeholder="Enter project requirements..."
-                    initialHeight={200}
-                  />
+                <RichEditor
+                  content={edit.requirements}
+                  onChange={(value) =>
+                    setEdit({ ...edit, requirements: value })
+                  }
+                  placeholder="Enter project requirements..."
+                  initialHeight={200}
+                />
                 </div>
               </div>
               <div>
                 <Label className="text-sm sm:text-base">Deliverables</Label>
                 <div className="mt-1.5">
-                  <RichEditor
-                    content={edit.deliverables}
-                    onChange={(value) =>
-                      setEdit({ ...edit, deliverables: value })
-                    }
-                    placeholder="Enter project deliverables..."
-                    initialHeight={200}
-                  />
+                <RichEditor
+                  content={edit.deliverables}
+                  onChange={(value) =>
+                    setEdit({ ...edit, deliverables: value })
+                  }
+                  placeholder="Enter project deliverables..."
+                  initialHeight={200}
+                />
                 </div>
               </div>
             </div>

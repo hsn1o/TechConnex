@@ -60,17 +60,17 @@ export default function FindProvidersClient({
   const filteredProviders = providers; // backend handles filtering
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Find ICT Professionals</h1>
-          <p className="text-gray-600">Discover and hire top-rated ICT experts for your projects</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Find ICT Professionals</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Discover and hire top-rated ICT experts for your projects</p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/customer/providers/saved">
-            <Button variant="outline">
-              <Heart className="w-4 h-4 mr-2" />
+        <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+          <Link href="/customer/providers/saved" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto text-xs sm:text-sm">
+              <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               Saved Providers
             </Button>
           </Link>
@@ -79,20 +79,20 @@ export default function FindProvidersClient({
 
       {/* Filters (Search + Rating + Verified) */}
       <Card>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <CardContent className="p-4 sm:p-5 lg:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 placeholder="Search by name, skills..."
-                className="pl-10"
+                className="pl-10 text-sm sm:text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
-              <SelectTrigger><SelectValue placeholder="All Ratings" /></SelectTrigger>
+              <SelectTrigger className="text-sm sm:text-base w-full"><SelectValue placeholder="All Ratings" /></SelectTrigger>
               <SelectContent>
                 {ratings.map((r) => (
                   <SelectItem key={r.value} value={r.value}>
@@ -103,7 +103,7 @@ export default function FindProvidersClient({
             </Select>
 
             <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
-              <SelectTrigger><SelectValue placeholder="Verification Status" /></SelectTrigger>
+              <SelectTrigger className="text-sm sm:text-base w-full"><SelectValue placeholder="Verification Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Providers</SelectItem>
                 <SelectItem value="verified">Verified Only</SelectItem>
@@ -115,10 +115,10 @@ export default function FindProvidersClient({
       </Card>
 
       {/* Results header */}
-      <div className="flex items-center justify-between">
-        <p className="text-gray-600">{filteredProviders.length} providers found</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <p className="text-sm sm:text-base text-gray-600">{filteredProviders.length} providers found</p>
         <Select defaultValue="rating">
-          <SelectTrigger className="w-48"><SelectValue placeholder="Sort by" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-48 text-sm sm:text-base"><SelectValue placeholder="Sort by" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="rating">Highest Rated</SelectItem>
             <SelectItem value="price-low">Price: Low to High</SelectItem>
@@ -130,9 +130,9 @@ export default function FindProvidersClient({
 
       {/* Grid */}
       {loading ? (
-        <p>Loading providers...</p>
+        <p className="text-sm sm:text-base text-gray-600 text-center py-8">Loading providers...</p>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
           {filteredProviders.map((p) => (
             <ProviderCard key={p.id} provider={p} />
           ))}

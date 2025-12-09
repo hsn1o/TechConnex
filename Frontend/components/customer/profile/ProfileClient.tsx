@@ -310,17 +310,17 @@ export default function ProfileClient(props: Props = {}) {
 
   if (isLoading && !profile) {
     return (
-      <div className="py-8">
-        <div className="text-center text-gray-600">Loading profile...</div>
+      <div className="py-6 sm:py-8 px-4 sm:px-6 lg:px-0">
+        <div className="text-center text-sm sm:text-base text-gray-600">Loading profile...</div>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="py-8">
-        <div className="text-center space-y-4">
-          <div className="text-gray-700">
+      <div className="py-6 sm:py-8 px-4 sm:px-6 lg:px-0">
+        <div className="text-center space-y-3 sm:space-y-4">
+          <div className="text-sm sm:text-base text-gray-700">
             No profile found for your account.
           </div>
           <div>
@@ -329,6 +329,7 @@ export default function ProfileClient(props: Props = {}) {
                 setProfile(defaultProfile);
                 setIsEditing(true);
               }}
+              className="text-xs sm:text-sm"
             >
               Create Profile
             </Button>
@@ -339,35 +340,36 @@ export default function ProfileClient(props: Props = {}) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600">Manage your account settings</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Profile</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage your account settings</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
           {isEditing ? (
             <>
               <Button
                 variant="outline"
                 onClick={() => setIsEditing(false)}
                 disabled={isSaving}
+                className="text-xs sm:text-sm w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
+              <Button onClick={handleSave} disabled={isSaving} className="text-xs sm:text-sm w-full sm:w-auto">
                 {isSaving ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" />
                 ) : (
-                  <Save className="w-4 h-4 mr-2" />
+                  <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 )}
                 {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)}>
-              <Edit className="w-4 h-4 mr-2" />
+            <Button onClick={() => setIsEditing(true)} className="text-xs sm:text-sm w-full sm:w-auto">
+              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               Edit Profile
             </Button>
           )}
@@ -376,45 +378,45 @@ export default function ProfileClient(props: Props = {}) {
 
       {/* Profile Completion */}
       <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-semibold text-blue-900">
+        <CardContent className="p-4 sm:p-5 lg:p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-sm sm:text-base text-blue-900">
                 Profile Completion
               </h3>
-              <p className="text-sm text-blue-700">
+              <p className="text-xs sm:text-sm text-blue-700 mt-0.5">
                 Complete your profile to attract more providers
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-blue-600">
+            <div className="text-left sm:text-right flex-shrink-0">
+              <p className="text-xl sm:text-2xl font-bold text-blue-600">
                 {profileCompletion}%
               </p>
             </div>
           </div>
-          <Progress value={profileCompletion} className="h-2 mb-4" />
+          <Progress value={profileCompletion} className="h-2 mb-3 sm:mb-4" />
           {completionSuggestions.length > 0 && (
-            <div className="mt-4">
-              <p className="text-sm font-medium text-blue-900 mb-2">
+            <div className="mt-3 sm:mt-4">
+              <p className="text-xs sm:text-sm font-medium text-blue-900 mb-1.5 sm:mb-2">
                 To complete your profile:
               </p>
               <ul className="space-y-1">
                 {completionSuggestions.map((suggestion, index) => (
                   <li
                     key={index}
-                    className="text-sm text-blue-700 flex items-start gap-2"
+                    className="text-xs sm:text-sm text-blue-700 flex items-start gap-1.5 sm:gap-2"
                   >
-                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span>{suggestion}</span>
+                    <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0" />
+                    <span className="break-words">{suggestion}</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
           {profileCompletion === 100 && (
-            <div className="mt-4 flex items-center gap-2 text-green-700">
-              <CheckCircle className="w-5 h-5" />
-              <span className="text-sm font-medium">
+            <div className="mt-3 sm:mt-4 flex items-center gap-1.5 sm:gap-2 text-green-700">
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="text-xs sm:text-sm font-medium">
                 Your profile is complete! 🎉
               </span>
             </div>
@@ -422,14 +424,14 @@ export default function ProfileClient(props: Props = {}) {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="profile" className="space-y-4 sm:space-y-5 lg:space-y-6">
+        <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="company">Company</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile" className="space-y-6">
+        <TabsContent value="profile" className="space-y-4 sm:space-y-5 lg:space-y-6">
           <ProfileOverview
             value={profile as ProfileData}
             onChange={setProfile}
@@ -442,7 +444,7 @@ export default function ProfileClient(props: Props = {}) {
           />
         </TabsContent>
 
-        <TabsContent value="company" className="space-y-6">
+        <TabsContent value="company" className="space-y-4 sm:space-y-5 lg:space-y-6">
           <CompanyInfo
             value={profile as ProfileData}
             onChange={setProfile}
@@ -454,7 +456,7 @@ export default function ProfileClient(props: Props = {}) {
           />
         </TabsContent>
 
-        <TabsContent value="verification" className="space-y-6">
+        <TabsContent value="verification" className="space-y-4 sm:space-y-5 lg:space-y-6">
           <VerificationSection
             documents={docs}
             setDocuments={setDocs}

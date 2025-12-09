@@ -599,18 +599,18 @@ export default function CustomerRequestsPage() {
 
   return (
     <CustomerLayout>
-      <div className="space-y-8">
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Provider Requests
             </h1>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600 mt-1">
               Manage requests from providers for your projects
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
             <Button
               variant="outline"
               onClick={async () => {
@@ -640,80 +640,81 @@ export default function CustomerRequestsPage() {
                   });
                 }
               }}
+              className="text-xs sm:text-sm w-full sm:w-auto"
             >
-              <Download className="w-4 h-4 mr-2" />
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               Export
             </Button>
-            <Button variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="text-xs sm:text-sm w-full sm:w-auto">
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               Refresh
             </Button>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-5 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
                     Total Requests
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
                     {displayStats.total}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <MessageSquare className="w-6 h-6 text-blue-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-5 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-xl sm:text-2xl font-bold text-yellow-600">
                     {displayStats.pending}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-yellow-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-5 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Accepted</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Accepted</p>
+                  <p className="text-xl sm:text-2xl font-bold text-green-600">
                     {displayStats.accepted}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Check className="w-6 h-6 text-green-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Check className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-5 lg:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Rejected</p>
-                  <p className="text-2xl font-bold text-red-600">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Rejected</p>
+                  <p className="text-xl sm:text-2xl font-bold text-red-600">
                     {displayStats.rejected}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <X className="w-6 h-6 text-red-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <X className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                 </div>
               </div>
             </CardContent>
@@ -722,8 +723,8 @@ export default function CustomerRequestsPage() {
 
         {/* Filters */}
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
+          <CardContent className="p-4 sm:p-5 lg:p-6">
+            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -731,13 +732,13 @@ export default function CustomerRequestsPage() {
                     placeholder="Search by provider name or project..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 text-sm sm:text-base"
                   />
                 </div>
               </div>
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:gap-4">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full sm:w-40 text-sm sm:text-base">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -749,7 +750,7 @@ export default function CustomerRequestsPage() {
                 </Select>
 
                 <Select value={projectFilter} onValueChange={setProjectFilter}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger className="w-full sm:w-48 text-sm sm:text-base">
                     <SelectValue placeholder="Project" />
                   </SelectTrigger>
                   <SelectContent>
@@ -763,7 +764,7 @@ export default function CustomerRequestsPage() {
                 </Select>
 
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-full sm:w-40 text-sm sm:text-base">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -780,44 +781,45 @@ export default function CustomerRequestsPage() {
         </Card>
 
         {/* Requests List */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {loading ? (
             <Card>
-              <CardContent className="p-12 text-center">
-                <Loader2 className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <CardContent className="p-8 sm:p-12 text-center">
+                <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4 animate-spin" />
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">
                   Loading requests...
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   Please wait while we fetch your provider requests.
                 </p>
               </CardContent>
             </Card>
           ) : error ? (
             <Card>
-              <CardContent className="p-12 text-center">
-                <X className="w-12 h-12 text-red-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <CardContent className="p-8 sm:p-12 text-center">
+                <X className="w-10 h-10 sm:w-12 sm:h-12 text-red-400 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">
                   Error loading requests
                 </h3>
-                <p className="text-gray-600 mb-4">{error}</p>
+                <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">{error}</p>
                 <Button
                   onClick={() => window.location.reload()}
                   variant="outline"
+                  className="text-xs sm:text-sm"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                  <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                   Retry
                 </Button>
               </CardContent>
             </Card>
           ) : filteredRequests.length === 0 ? (
             <Card>
-              <CardContent className="p-12 text-center">
-                <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <CardContent className="p-8 sm:p-12 text-center">
+                <MessageSquare className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5 sm:mb-2">
                   No requests found
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   No provider requests match your current filters.
                 </p>
               </CardContent>
@@ -828,11 +830,11 @@ export default function CustomerRequestsPage() {
                 key={request.id}
                 className="hover:shadow-md transition-shadow"
               >
-                <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row gap-6">
+                <CardContent className="p-4 sm:p-5 lg:p-6">
+                  <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6">
                     {/* Provider Info */}
-                    <div className="flex items-start space-x-4 flex-1">
-                      <Avatar className="w-12 h-12">
+                    <div className="flex items-start space-x-3 sm:space-x-4 flex-1">
+                      <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                         <AvatarImage
                           src={
                             request.providerAvatar && 
@@ -842,7 +844,7 @@ export default function CustomerRequestsPage() {
                               : "/placeholder.svg"
                           }
                         />
-                        <AvatarFallback>
+                        <AvatarFallback className="text-xs sm:text-sm">
                           {String(request.providerName || "")
                             .split(" ")
                             .filter(Boolean)
@@ -853,33 +855,33 @@ export default function CustomerRequestsPage() {
 
                       <div className="flex-1 min-w-0">
                         {/* Name + rating */}
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                          <h3 className="font-semibold text-sm sm:text-base text-gray-900">
                             {request.providerName}
                           </h3>
                           <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-sm text-gray-600">
+                            <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
+                            <span className="text-xs sm:text-sm text-gray-600">
                               {request.providerRating}
                             </span>
                           </div>
                         </div>
 
                         {/* Location + response time */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mb-2">
+                        <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 mb-1.5 sm:mb-2">
                           <div className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            {request.providerLocation || "—"}
+                            <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">{request.providerLocation || "—"}</span>
                           </div>
                         </div>
 
                         {/* Project title */}
-                        <p className="text-sm font-medium text-gray-900 mb-1">
+                        <p className="text-xs sm:text-sm font-medium text-gray-900 mb-1 break-words">
                           {request.projectTitle}
                         </p>
 
                         {/* Cover letter */}
-                        <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                        <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-1.5 sm:mb-2">
                           {request.coverLetter}
                         </p>
 
@@ -908,7 +910,7 @@ export default function CustomerRequestsPage() {
 
                         {/* ⬅ NEW: short experience line */}
                         {request.experience && (
-                          <p className="text-[12px] text-gray-500 mt-2 line-clamp-1">
+                          <p className="text-[11px] sm:text-[12px] text-gray-500 mt-1.5 sm:mt-2 line-clamp-1">
                             {request.experience} experience
                           </p>
                         )}
@@ -916,29 +918,29 @@ export default function CustomerRequestsPage() {
                     </div>
 
                     {/* Request Details */}
-                    <div className="lg:w-80 space-y-3">
+                    <div className="lg:w-80 space-y-2.5 sm:space-y-3">
                       <div className="flex justify-between items-center">
-                        <Badge className={getStatusColor(request.status)}>
+                        <Badge className={`text-xs ${getStatusColor(request.status)}`}>
                           {request.status.charAt(0).toUpperCase() +
                             request.status.slice(1)}
                         </Badge>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-xs sm:text-sm text-gray-500">
                           {request.submittedAt && !isNaN(new Date(request.submittedAt).getTime())
                             ? new Date(request.submittedAt).toLocaleDateString()
                             : "—"}
                         </span>
                       </div>
 
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                         <div>
-                          <p className="text-sm text-gray-600">Bid Amount</p>
-                          <p className="font-semibold text-lg">
+                          <p className="text-xs sm:text-sm text-gray-600">Bid Amount</p>
+                          <p className="font-semibold text-base sm:text-lg">
                             RM{fmt(request.bidAmount)}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">Timeline</p>
-                          <p className="font-medium">
+                        <div className="text-left sm:text-right">
+                          <p className="text-xs sm:text-sm text-gray-600">Timeline</p>
+                          <p className="font-medium text-sm sm:text-base">
                             {request.proposedTimeline}
                           </p>
                         </div>
@@ -947,18 +949,18 @@ export default function CustomerRequestsPage() {
 
 
                       {/* Action Buttons */}
-                      <div className="flex flex-wrap gap-2 pt-2">
+                      <div className="flex flex-col sm:flex-row flex-wrap gap-2 pt-2">
                         {/* View profile - always visible */}
                         <Link
                           href={`/customer/providers/${request.providerId}`}
-                          className="flex-1"
+                          className="flex-1 min-w-[120px]"
                         >
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-full"
+                            className="w-full text-xs sm:text-sm"
                           >
-                            <Eye className="w-4 h-4 mr-1" />
+                            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                             View Profile
                           </Button>
                         </Link>
@@ -968,9 +970,9 @@ export default function CustomerRequestsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleViewDetails(request)}
-                          className="flex-1"
+                          className="flex-1 min-w-[120px] text-xs sm:text-sm"
                         >
-                          <MessageSquare className="w-4 h-4 mr-1" />
+                          <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                           View Details
                         </Button>
 
@@ -980,13 +982,13 @@ export default function CustomerRequestsPage() {
                             <Button
                               size="sm"
                               onClick={() => handleAcceptRequest(request.id)}
-                              className="bg-green-600 hover:bg-green-700 flex-1"
+                              className="bg-green-600 hover:bg-green-700 flex-1 min-w-[120px] text-xs sm:text-sm"
                               disabled={processingId === request.id}
                             >
                               {processingId === request.id ? (
-                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 animate-spin" />
                               ) : (
-                                <Check className="w-4 h-4 mr-1" />
+                                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                               )}
                               {processingId === request.id
                                 ? "Accepting..."
@@ -1000,10 +1002,10 @@ export default function CustomerRequestsPage() {
                                 setSelectedRequest(request);
                                 setRejectDialogOpen(true);
                               }}
-                              className="text-red-600 hover:text-red-700 flex-1"
+                              className="text-red-600 hover:text-red-700 flex-1 min-w-[120px] text-xs sm:text-sm"
                               disabled={processingId === request.id}
                             >
-                              <X className="w-4 h-4 mr-1" />
+                              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                               Reject
                             </Button>
                           </>
@@ -1019,21 +1021,21 @@ export default function CustomerRequestsPage() {
 
         {/* View Details Dialog */}
         <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-xl sm:max-w-2xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
             {selectedRequest && (
               <>
                 <DialogHeader>
-                  <DialogTitle>Request Details</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-base sm:text-lg">Request Details</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm">
                     Detailed information about {selectedRequest.providerName}'s
                     request
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-5 lg:space-y-6">
                   {/* Provider Info */}
-                  <div className="flex items-start space-x-4">
-                    <Avatar className="w-16 h-16">
+                  <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+                    <Avatar className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0 mx-auto sm:mx-0">
                       <AvatarImage
                         src={
                           selectedRequest.providerAvatar && 
@@ -1052,42 +1054,41 @@ export default function CustomerRequestsPage() {
                       </AvatarFallback>
                     </Avatar>
 
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0 w-full sm:w-auto text-center sm:text-left">
                       {/* Name + rating */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div>
-                          <h3 className="text-xl font-semibold">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg lg:text-xl font-semibold break-words">
                             {selectedRequest.providerName}
                           </h3>
 
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
+                          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 mt-1">
                             <div className="flex items-center gap-1">
-                              <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                              <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
                               <span>
                                 {selectedRequest.providerRating} rating
                               </span>
                             </div>
 
                             <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
-                              {selectedRequest.providerLocation || "—"}
+                              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span className="truncate">{selectedRequest.providerLocation || "—"}</span>
                             </div>
 
                             <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {selectedRequest.providerResponseTime} response
-                              time
+                              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span className="truncate">{selectedRequest.providerResponseTime} response time</span>
                             </div>
                           </div>
 
                           {selectedRequest.experience && (
-                            <p className="text-sm text-gray-600 mt-2">
+                            <p className="text-xs sm:text-sm text-gray-600 mt-1.5 sm:mt-2 break-words">
                               {selectedRequest.experience} experience
                             </p>
                           )}
 
                           {/* ⬅ NEW: top skills inline preview */}
-                          <div className="flex flex-wrap gap-1 mt-2">
+                          <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2 justify-center sm:justify-start">
                             {asArray<string>(selectedRequest.skills)
                               .slice(0, 4)
                               .map((skill) => (
@@ -1117,14 +1118,14 @@ export default function CustomerRequestsPage() {
                         {/* ⬅ NEW: View profile button */}
                         <Link
                           href={`/customer/providers/${selectedRequest.providerId}`}
-                          className="self-start"
+                          className="self-center sm:self-start"
                         >
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex items-center"
+                            className="flex items-center text-xs sm:text-sm w-full sm:w-auto"
                           >
-                            <Eye className="w-4 h-4 mr-1" />
+                            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                             View Profile
                           </Button>
                         </Link>
@@ -1135,28 +1136,28 @@ export default function CustomerRequestsPage() {
                   <Separator />
 
                   {/* Project & Bid Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
                     <div>
-                      <h4 className="font-semibold mb-2">Project</h4>
-                      <p className="text-gray-900">
+                      <h4 className="font-semibold text-sm sm:text-base mb-1.5 sm:mb-2">Project</h4>
+                      <p className="text-xs sm:text-sm text-gray-900 break-words">
                         {selectedRequest.projectTitle}
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-2">Bid Amount</h4>
-                      <p className="text-2xl font-bold text-green-600">
+                      <h4 className="font-semibold text-sm sm:text-base mb-1.5 sm:mb-2">Bid Amount</h4>
+                      <p className="text-xl sm:text-2xl font-bold text-green-600">
                         RM{fmt(selectedRequest.bidAmount)}
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-2">Proposed Timeline</h4>
-                      <p className="text-gray-900">
+                      <h4 className="font-semibold text-sm sm:text-base mb-1.5 sm:mb-2">Proposed Timeline</h4>
+                      <p className="text-xs sm:text-sm text-gray-900">
                         {selectedRequest.proposedTimeline}
                       </p>
                     </div>
                     <div>
-                      <h4 className="font-semibold mb-2">Status</h4>
-                      <Badge className={getStatusColor(selectedRequest.status)}>
+                      <h4 className="font-semibold text-sm sm:text-base mb-1.5 sm:mb-2">Status</h4>
+                      <Badge className={`text-xs ${getStatusColor(selectedRequest.status)}`}>
                         {selectedRequest.status.charAt(0).toUpperCase() +
                           selectedRequest.status.slice(1)}
                       </Badge>
@@ -1167,9 +1168,9 @@ export default function CustomerRequestsPage() {
 
                   {/* Cover Letter */}
                   <div>
-                    <h4 className="font-semibold mb-2">Cover Letter</h4>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-gray-700 whitespace-pre-wrap">
+                    <h4 className="font-semibold text-sm sm:text-base mb-1.5 sm:mb-2">Cover Letter</h4>
+                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                      <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap break-words">
                         {selectedRequest.coverLetter}
                       </p>
                     </div>
@@ -1177,10 +1178,10 @@ export default function CustomerRequestsPage() {
 
                   {/* Skills */}
                   <div>
-                    <h4 className="font-semibold mb-2">Skills</h4>
-                    <div className="flex flex-wrap gap-2">
+                    <h4 className="font-semibold text-sm sm:text-base mb-1.5 sm:mb-2">Skills</h4>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {asArray<string>(selectedRequest.skills).map((skill) => (
-                        <Badge key={skill} variant="secondary">
+                        <Badge key={skill} variant="secondary" className="text-[10px] sm:text-xs">
                           {skill}
                         </Badge>
                       ))}
@@ -1210,11 +1211,11 @@ export default function CustomerRequestsPage() {
                   {selectedRequest.milestones &&
                     selectedRequest.milestones.length > 0 && (
                       <div>
-                        <h4 className="font-semibold mb-2">
+                        <h4 className="font-semibold text-sm sm:text-base mb-2">
                           Proposed Milestones
                         </h4>
 
-                        <div className="space-y-4">
+                        <div className="space-y-3 sm:space-y-4">
                           {selectedRequest.milestones
                             .sort((a, b) => a.order - b.order)
                             .map((m, idx) => (
@@ -1222,23 +1223,23 @@ export default function CustomerRequestsPage() {
                                 key={idx}
                                 className="border border-gray-200"
                               >
-                                <CardContent className="p-4 space-y-2">
+                                <CardContent className="p-3 sm:p-4 space-y-2">
                                   {/* Top row: title + amount */}
                                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <Badge variant="secondary">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <Badge variant="secondary" className="text-[10px] sm:text-xs flex-shrink-0">
                                         #{m.order || idx + 1}
                                       </Badge>
-                                      <span className="font-medium text-gray-900">
+                                      <span className="font-medium text-xs sm:text-sm text-gray-900 break-words">
                                         {m.title || "Untitled milestone"}
                                       </span>
                                     </div>
 
-                                    <div className="text-right">
-                                      <span className="text-sm text-gray-500 block">
+                                    <div className="text-left sm:text-right">
+                                      <span className="text-xs sm:text-sm text-gray-500 block">
                                         Amount
                                       </span>
-                                      <span className="text-lg font-semibold text-gray-900">
+                                      <span className="text-base sm:text-lg font-semibold text-gray-900">
                                         RM{" "}
                                         {Number(m.amount || 0).toLocaleString()}
                                       </span>
@@ -1248,15 +1249,15 @@ export default function CustomerRequestsPage() {
                                   {/* Description */}
                                   {m.description &&
                                     m.description.trim() !== "" && (
-                                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                      <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap break-words">
                                         {m.description}
                                       </p>
                                     )}
 
                                   {/* Dates */}
-                                  <div className="text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
+                                  <div className="text-xs sm:text-sm text-gray-600 flex flex-wrap gap-x-3 sm:gap-x-4 gap-y-1">
                                     <div className="flex items-center gap-1">
-                                      <Clock className="w-4 h-4" />
+                                      <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                                       <span>
                                         Due:{" "}
                                         {m.dueDate
@@ -1277,8 +1278,8 @@ export default function CustomerRequestsPage() {
                   {/* Attachments */}
                   {Array.isArray(selectedRequest.attachments) &&
                     selectedRequest.attachments.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="font-semibold mb-3 flex items-center text-gray-900">
+                      <div className="mt-4 sm:mt-5 lg:mt-6">
+                        <h4 className="font-semibold text-sm sm:text-base mb-2 sm:mb-3 flex items-center text-gray-900">
                           Attachments
                         </h4>
 
@@ -1303,28 +1304,28 @@ export default function CustomerRequestsPage() {
                                 download={fileName}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                                className="flex items-start gap-2 sm:gap-3 rounded-lg border border-gray-200 bg-white px-2.5 sm:px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                               >
                                 {/* Icon circle */}
-                                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                                <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-[10px] sm:text-xs font-medium">
                                   {/* If you want, you can make this dynamic based on extension */}
                                   PDF
                                 </div>
 
                                 {/* File info */}
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="text-xs sm:text-sm font-medium text-gray-900 break-all leading-snug">
                                     {fileName}
                                   </span>
-                                  <span className="text-xs text-gray-500 leading-snug">
+                                  <span className="text-[10px] sm:text-xs text-gray-500 leading-snug">
                                     Click to preview / download
                                   </span>
                                 </div>
 
                                 {/* Download icon on the far right */}
-                                <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                                <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700 flex-shrink-0">
                                   <svg
-                                    className="w-4 h-4"
+                                    className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth={2}
@@ -1345,18 +1346,18 @@ export default function CustomerRequestsPage() {
                     )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
                   {selectedRequest.status === "pending" && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                       <Button
                         variant="outline"
                         onClick={() => {
                           setRejectDialogOpen(true);
                           setViewDetailsOpen(false);
                         }}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 text-xs sm:text-sm w-full sm:w-auto"
                       >
-                        <X className="w-4 h-4 mr-2" />
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                         Reject
                       </Button>
                       <Button
@@ -1364,13 +1365,13 @@ export default function CustomerRequestsPage() {
                           handleAcceptRequest(selectedRequest.id);
                           setViewDetailsOpen(false);
                         }}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm w-full sm:w-auto"
                         disabled={processingId === selectedRequest.id}
                       >
                         {processingId === selectedRequest.id ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" />
                         ) : (
-                          <Check className="w-4 h-4 mr-2" />
+                          <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                         )}
                         {processingId === selectedRequest.id
                           ? "Accepting..."
@@ -1386,32 +1387,34 @@ export default function CustomerRequestsPage() {
 
         {/* Reject Dialog */}
         <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-xl sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Reject Request</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Reject Request</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Please provide a reason for rejecting this request. This will
                 help the provider improve their future proposals.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
-                <Label htmlFor="rejectReason">Reason for rejection</Label>
+                <Label htmlFor="rejectReason" className="text-sm sm:text-base">Reason for rejection</Label>
                 <Textarea
                   id="rejectReason"
                   placeholder="Please explain why you're rejecting this request..."
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   rows={4}
+                  className="text-sm sm:text-base mt-1.5"
                 />
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
                 onClick={() => setRejectDialogOpen(false)}
+                className="text-xs sm:text-sm w-full sm:w-auto"
               >
                 Cancel
               </Button>
@@ -1420,14 +1423,14 @@ export default function CustomerRequestsPage() {
                   selectedRequest &&
                   handleRejectRequest(selectedRequest.id, rejectReason)
                 }
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm w-full sm:w-auto"
                 disabled={
                   !rejectReason.trim() || processingId === selectedRequest?.id
                 }
               >
                 {processingId === selectedRequest?.id ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" />
                     Rejecting...
                   </>
                 ) : (
@@ -1440,34 +1443,34 @@ export default function CustomerRequestsPage() {
       </div>
 
       <Dialog open={milestonesOpen} onOpenChange={setMilestonesOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Milestones</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg">Edit Milestones</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
               Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
               {milestoneApprovalState.milestonesLocked && " · LOCKED"}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {milestoneErrors[-1]?.title && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600 font-medium">
+              <div className="p-2.5 sm:p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-xs sm:text-sm text-red-600 font-medium">
                   {milestoneErrors[-1].title}
                 </p>
               </div>
             )}
             {milestones.map((m, i) => (
               <Card key={i}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="grid md:grid-cols-12 gap-3">
-                    <div className="md:col-span-1">
-                      <Label>Seq</Label>
-                      <Input type="number" value={i + 1} disabled />
+                <CardContent className="p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-3">
+                    <div className="sm:col-span-1">
+                      <Label className="text-xs sm:text-sm">Seq</Label>
+                      <Input type="number" value={i + 1} disabled className="text-xs sm:text-sm" />
                     </div>
-                    <div className="md:col-span-4">
-                      <Label>
+                    <div className="sm:col-span-4">
+                      <Label className="text-xs sm:text-sm">
                         Title <span className="text-red-500">*</span>
                       </Label>
                       <Input
@@ -1481,11 +1484,11 @@ export default function CustomerRequestsPage() {
                             }));
                           }
                         }}
-                        className={
+                        className={`text-xs sm:text-sm ${
                           milestoneErrors[i]?.title
                             ? "border-red-500 focus-visible:ring-red-500"
                             : ""
-                        }
+                        }`}
                       />
                       {milestoneErrors[i]?.title && (
                         <p className="text-xs text-red-600 mt-1">
@@ -1493,8 +1496,8 @@ export default function CustomerRequestsPage() {
                         </p>
                       )}
                     </div>
-                    <div className="md:col-span-3">
-                      <Label>Amount</Label>
+                    <div className="sm:col-span-3">
+                      <Label className="text-xs sm:text-sm">Amount</Label>
                       <Input
                         type="number"
                         value={String(m.amount ?? 0)}
@@ -1509,10 +1512,11 @@ export default function CustomerRequestsPage() {
                             });
                           }
                         }}
+                        className="text-xs sm:text-sm"
                       />
                     </div>
-                    <div className="md:col-span-4">
-                      <Label>
+                    <div className="sm:col-span-4">
+                      <Label className="text-xs sm:text-sm">
                         Due Date <span className="text-red-500">*</span>
                       </Label>
                       <Input
@@ -1539,11 +1543,11 @@ export default function CustomerRequestsPage() {
                             }));
                           }
                         }}
-                        className={
+                        className={`text-xs sm:text-sm ${
                           milestoneErrors[i]?.dueDate
                             ? "border-red-500 focus-visible:ring-red-500"
                             : ""
-                        }
+                        }`}
                       />
                       {milestoneErrors[i]?.dueDate && (
                         <p className="text-xs text-red-600 mt-1">
@@ -1553,7 +1557,7 @@ export default function CustomerRequestsPage() {
                     </div>
                   </div>
                   <div>
-                    <Label>
+                    <Label className="text-xs sm:text-sm">
                       Description <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
@@ -1568,11 +1572,11 @@ export default function CustomerRequestsPage() {
                           }));
                         }
                       }}
-                      className={
+                      className={`text-xs sm:text-sm ${
                         milestoneErrors[i]?.description
                           ? "border-red-500 focus-visible:ring-red-500"
                           : ""
-                      }
+                      }`}
                     />
                     {milestoneErrors[i]?.description && (
                       <p className="text-xs text-red-600 mt-1">
@@ -1584,6 +1588,7 @@ export default function CustomerRequestsPage() {
                     <Button
                       variant="outline"
                       onClick={() => removeMilestone(i)}
+                      className="text-xs sm:text-sm"
                     >
                       Remove
                     </Button>
@@ -1592,15 +1597,16 @@ export default function CustomerRequestsPage() {
               </Card>
             ))}
 
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={addMilestone}>
+            <div className="flex flex-col sm:flex-row justify-between gap-2 sm:gap-0">
+              <Button variant="outline" onClick={addMilestone} className="text-xs sm:text-sm w-full sm:w-auto">
                 + Add Milestone
               </Button>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
                   onClick={handleSaveMilestones}
                   disabled={savingMilestones}
+                  className="text-xs sm:text-sm w-full sm:w-auto"
                 >
                   {savingMilestones ? "Saving..." : "Save Changes"}
                 </Button>
@@ -1610,6 +1616,7 @@ export default function CustomerRequestsPage() {
                     JSON.stringify(normalizeSequences(milestones)) !== 
                     JSON.stringify(normalizeSequences(originalMilestones))
                   }
+                  className="text-xs sm:text-sm w-full sm:w-auto"
                 >
                   Approve
                 </Button>
@@ -1624,29 +1631,29 @@ export default function CustomerRequestsPage() {
         open={milestoneFinalizeOpen}
         onOpenChange={setMilestoneFinalizeOpen}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl">Milestones Submitted</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg lg:text-xl">Milestones Submitted</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               These milestones are now awaiting final confirmation, or have been
               locked if both sides approved.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 text-sm text-gray-700">
-            <div className="flex items-start gap-3">
+          <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm text-gray-700">
+            <div className="flex items-start gap-2.5 sm:gap-3">
               <CheckCircle
-                className={`w-5 h-5 ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 ${
                   milestoneApprovalState.companyApproved
                     ? "text-green-600"
                     : "text-gray-400"
                 }`}
               />
-              <div>
+              <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-900">
                   Company Approved
                 </div>
-                <div>
+                <div className="break-words">
                   {milestoneApprovalState.companyApproved
                     ? "You have approved the milestone plan."
                     : "You haven't approved yet."}
@@ -1654,19 +1661,19 @@ export default function CustomerRequestsPage() {
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2.5 sm:gap-3">
               <CheckCircle
-                className={`w-5 h-5 ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 ${
                   milestoneApprovalState.providerApproved
                     ? "text-green-600"
                     : "text-gray-400"
                 }`}
               />
-              <div>
+              <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-900">
                   Provider Approved
                 </div>
-                <div>
+                <div className="break-words">
                   {milestoneApprovalState.providerApproved
                     ? "The provider approved the milestone plan."
                     : "Waiting for provider approval."}
@@ -1674,25 +1681,25 @@ export default function CustomerRequestsPage() {
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2.5 sm:gap-3">
               <CheckCircle
-                className={`w-5 h-5 ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 ${
                   milestoneApprovalState.milestonesLocked
                     ? "text-green-600"
                     : "text-gray-400"
                 }`}
               />
-              <div>
+              <div className="flex-1 min-w-0">
                 <div className="font-semibold text-gray-900">
                   Locked & Ready
                 </div>
-                <div>
+                <div className="break-words">
                   {milestoneApprovalState.milestonesLocked
                     ? "Milestones are locked. Work can start and payments follow these milestones."
                     : "Milestones are not locked yet."}
                 </div>
                 {milestoneApprovalState.milestonesApprovedAt && (
-                  <div className="text-xs text-gray-500 mt-1">
+                  <div className="text-[10px] sm:text-xs text-gray-500 mt-1">
                     Locked at{" "}
                     {new Date(
                       milestoneApprovalState.milestonesApprovedAt
@@ -1703,8 +1710,8 @@ export default function CustomerRequestsPage() {
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
-            <Button onClick={() => setMilestoneFinalizeOpen(false)}>
+          <DialogFooter className="pt-3 sm:pt-4">
+            <Button onClick={() => setMilestoneFinalizeOpen(false)} className="text-xs sm:text-sm w-full sm:w-auto">
               Done
             </Button>
           </DialogFooter>

@@ -140,17 +140,17 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
     <Card>
-      <CardHeader>
-        <CardTitle>Profile Overview</CardTitle>
-        <CardDescription>Your public profile information</CardDescription>
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-base sm:text-lg">Profile Overview</CardTitle>
+        <CardDescription className="text-xs sm:text-sm">Your public profile information</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 sm:space-y-5 lg:space-y-6 p-4 sm:p-6 pt-0">
         {/* Avatar & Basic */}
-        <div className="flex items-start gap-6">
-          <div className="relative">
-            <Avatar className="w-24 h-24">
+        <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5 lg:gap-6">
+          <div className="relative mx-auto sm:mx-0">
+            <Avatar className="w-20 h-20 sm:w-22 sm:h-22 lg:w-24 lg:h-24">
                 <AvatarImage 
                   src={
                     value.customerProfile?.profileImageUrl 
@@ -158,7 +158,7 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                       : "/placeholder.svg?height=96&width=96"
                   } 
                 />
-              <AvatarFallback className="text-lg">
+              <AvatarFallback className="text-base sm:text-lg">
                 {value.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'CO'}
               </AvatarFallback>
             </Avatar>
@@ -173,32 +173,32 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                   />
                   <Button 
                     size="sm" 
-                    className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0"
+                    className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 rounded-full w-7 h-7 sm:w-8 sm:h-8 p-0"
                     onClick={handleImageClick}
                     disabled={uploadingImage}
                   >
                     {uploadingImage ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
                     ) : (
-                <Camera className="w-4 h-4" />
+                <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     )}
               </Button>
                 </>
             )}
           </div>
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 space-y-3 sm:space-y-4 w-full">
             <div>
-              <Label htmlFor="companyName">Company Name</Label>
+              <Label htmlFor="companyName" className="text-sm sm:text-base">Company Name</Label>
               <Input
                 id="companyName"
                 value={value.name}
                   disabled={true}
-                  className="bg-gray-50"
+                  className="bg-gray-50 text-sm sm:text-base"
               />
                 <p className="text-xs text-gray-500 mt-1">Contact support to change company name</p>
             </div>
             <div>
-              <Label htmlFor="description">Company Description</Label>
+              <Label htmlFor="description" className="text-sm sm:text-base">Company Description</Label>
               <Textarea
                 id="description"
                   rows={4}
@@ -212,11 +212,12 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                   } 
                 })}
                 placeholder="Tell us about your company..."
+                className="text-sm sm:text-base"
               />
             </div>
               {memberSince && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Calendar className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span>Member since {memberSince}</span>
                 </div>
               )}
@@ -226,17 +227,17 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
         <Separator />
 
         {/* Contact */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Contact Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3 sm:space-y-4">
+          <h3 className="text-base sm:text-lg font-semibold">Contact Information</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm sm:text-base">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   id="email"
                   type="email"
-                    className="pl-10 bg-gray-50"
+                    className="pl-10 bg-gray-50 text-sm sm:text-base"
                   value={value.email}
                     disabled={true}
                 />
@@ -244,12 +245,12 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                 <p className="text-xs text-gray-500 mt-1">Contact support to change email</p>
             </div>
             <div>
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone" className="text-sm sm:text-base">Phone</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   id="phone"
-                    className="pl-10 bg-gray-50"
+                    className="pl-10 bg-gray-50 text-sm sm:text-base"
                     value={value.phone || ""}
                     disabled={true}
                 />
@@ -262,16 +263,16 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
         <Separator />
 
           {/* Location & Website */}
-        <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Location & Website</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold">Location & Website</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="location" className="text-sm sm:text-base">Location</Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 id="location"
-                className="pl-10"
+                className="pl-10 text-sm sm:text-base"
                     value={value.customerProfile?.location || ""}
                 disabled={!isEditing}
                 onChange={(e) => onChange({ 
@@ -286,13 +287,13 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
             </div>
           </div>
               <div>
-                <Label htmlFor="website">Website</Label>
+                <Label htmlFor="website" className="text-sm sm:text-base">Website</Label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     id="website"
                     type="url"
-                    className="pl-10"
+                    className="pl-10 text-sm sm:text-base"
                     value={value.customerProfile?.website || ""}
                     disabled={!isEditing}
                     onChange={(e) => onChange({ 
@@ -314,12 +315,12 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
 
           {/* Social Links */}
           {isEditing && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Social Links</h3>
-              <p className="text-sm text-gray-600">
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold">Social Links</h3>
+              <p className="text-xs sm:text-sm text-gray-600">
                 Add links to LinkedIn, Twitter, or other social media profiles
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   value={newSocialUrl}
                   onChange={(e) => setNewSocialUrl(e.target.value)}
@@ -329,13 +330,15 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                     e.key === "Enter" &&
                     (e.preventDefault(), handleAddSocialUrl())
                   }
+                  className="text-sm sm:text-base flex-1"
                 />
                 <Button
                   type="button"
                   onClick={handleAddSocialUrl}
                   variant="outline"
+                  className="text-xs sm:text-sm w-full sm:w-auto"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </Button>
               </div>
 

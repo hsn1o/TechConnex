@@ -347,15 +347,15 @@ export default function CompanyInfo({ value, onChange, isEditing, onCompletionUp
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-6">
       {/* Business Profile */}
     <Card>
-      <CardHeader>
-          <CardTitle>Business Profile</CardTitle>
-          <CardDescription>Core information about your company</CardDescription>
+      <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Business Profile</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Core information about your company</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <Label>Industry</Label>
             <Select

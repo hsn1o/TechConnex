@@ -126,16 +126,16 @@ export default function ProviderDetailClient({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
       {/* Back + Actions */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant={saved ? "default" : "outline"}
             onClick={handleSaveToggle}
-            className={saved ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+            className={`text-xs sm:text-sm w-full sm:w-auto ${saved ? "bg-red-600 hover:bg-red-700 text-white" : ""}`}
           >
-            <Heart className={`w-4 h-4 mr-2 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}
+            <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}
           </Button>
 
           <Button
@@ -143,8 +143,9 @@ export default function ProviderDetailClient({
               e.preventDefault(); // prevents Link from triggering navigation
               handleContact(provider);
             }}
+            className="text-xs sm:text-sm w-full sm:w-auto"
           >
-            <MessageSquare className="w-4 h-4 mr-2" />
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             Contact
           </Button>
         </div>
@@ -152,9 +153,9 @@ export default function ProviderDetailClient({
 
       {/* Header card */}
       <Card>
-        <CardContent className="p-6">
-          <div className="flex items-start gap-5">
-            <Avatar className="w-20 h-20">
+        <CardContent className="p-4 sm:p-5 lg:p-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
+            <Avatar className="w-16 h-16 sm:w-18 sm:h-18 lg:w-20 lg:h-20 flex-shrink-0 mx-auto sm:mx-0">
               <AvatarImage 
                 src={
                   provider.avatar && 
@@ -166,41 +167,41 @@ export default function ProviderDetailClient({
               />
               <AvatarFallback>{provider.name?.[0]}</AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">{provider.name}</h1>
+            <div className="flex-1 min-w-0 w-full sm:w-auto text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1.5 sm:mb-1">
+                <h1 className="text-xl sm:text-2xl font-bold break-words">{provider.name}</h1>
                 {provider.verified && (
-                  <Badge className="bg-green-100 text-green-800">
-                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                  <Badge className="bg-green-100 text-green-800 text-xs">
+                    <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                     Verified
                   </Badge>
                 )}
                 {provider.topRated && (
-                  <Badge className="bg-yellow-100 text-yellow-800">
+                  <Badge className="bg-yellow-100 text-yellow-800 text-xs">
                     Top Rated
                   </Badge>
                 )}
               </div>
-              <p className="text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600 break-words">
                 {provider.major || "ICT Professional"} • {provider.company}
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600">
                 <span className="flex items-center gap-1">
-                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                  <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
                   <b>{provider.rating}</b> ({provider.reviewCount})
                 </span>
                 <span className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" />
-                  {provider.location}
+                  <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="truncate">{provider.location}</span>
                 </span>
-                <span>RM{provider.hourlyRate}/hr</span>
-                <span>{provider.completedJobs} completed jobs</span>
+                <span className="whitespace-nowrap">RM{provider.hourlyRate}/hr</span>
+                <span className="whitespace-nowrap">{provider.completedJobs} completed jobs</span>
                 {provider.yearsExperience && provider.yearsExperience > 0 && (
-                  <span>{provider.yearsExperience} years experience</span>
+                  <span className="whitespace-nowrap">{provider.yearsExperience} years experience</span>
                 )}
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   {provider.languages?.map((l) => (
-                    <Badge key={l} variant="secondary" className="text-xs">
+                    <Badge key={l} variant="secondary" className="text-[10px] sm:text-xs">
                       {l}
                     </Badge>
                   ))}
@@ -208,11 +209,11 @@ export default function ProviderDetailClient({
               </div>
             </div>
           </div>
-          <Separator className="my-4" />
-          <p className="text-gray-800">{provider.bio}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <Separator className="my-3 sm:my-4" />
+          <p className="text-sm sm:text-base text-gray-800 break-words">{provider.bio}</p>
+          <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
             {provider.skills.map((s) => (
-              <Badge key={s} variant="secondary" className="text-xs">
+              <Badge key={s} variant="secondary" className="text-[10px] sm:text-xs">
                 {s}
               </Badge>
             ))}
@@ -221,73 +222,73 @@ export default function ProviderDetailClient({
       </Card>
 
       {/* Portfolio & Reviews */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-5 lg:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Portfolio</CardTitle>
-              <CardDescription>Recent work and case studies</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Portfolio</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Recent work and case studies</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0">
               <PortfolioGrid items={portfolio} />
             </CardContent>
           </Card>
 
           {/* Completed Projects */}
           <Card>
-            <CardHeader>
-              <CardTitle>Completed Projects</CardTitle>
-              <CardDescription>Showcase of completed work</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Completed Projects</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Showcase of completed work</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0">
               {loadingPortfolio ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                  <span className="ml-2 text-gray-600">Loading projects...</span>
+                <div className="flex items-center justify-center py-8 sm:py-12">
+                  <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-gray-400" />
+                  <span className="ml-2 text-xs sm:text-sm text-gray-600">Loading projects...</span>
                 </div>
               ) : portfolioProjects.length === 0 ? (
-                <div className="text-center py-12">
-                  <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No completed projects yet</h3>
-                  <p className="text-gray-600">
+                <div className="text-center py-8 sm:py-12 px-4">
+                  <Globe className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 text-gray-300" />
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">No completed projects yet</h3>
+                  <p className="text-xs sm:text-sm text-gray-600">
                     Completed projects will appear here automatically once the provider finishes working on them.
                   </p>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
                   {portfolioProjects.map((project) => (
                     <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                      <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-48 flex items-center justify-center rounded-t-lg">
-                        <div className="text-center p-4">
-                          <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                            <Award className="w-8 h-8 text-blue-600" />
+                      <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 h-40 sm:h-48 flex items-center justify-center rounded-t-lg">
+                        <div className="text-center p-3 sm:p-4">
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                            <Award className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
                           </div>
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-[10px] sm:text-xs">
                             {project.category || "Project"}
                           </Badge>
                         </div>
                       </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">{project.title}</h3>
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{project.description || "No description provided"}</p>
+                      <CardContent className="p-3 sm:p-4">
+                        <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-1.5 sm:mb-2 line-clamp-1">{project.title}</h3>
+                        <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 line-clamp-2">{project.description || "No description provided"}</p>
                         {project.technologies && project.technologies.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-3">
+                          <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
                             {project.technologies.slice(0, 6).map((tech: string, index: number) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
+                              <Badge key={index} variant="secondary" className="text-[10px] sm:text-xs">
                                 {tech}
                               </Badge>
                             ))}
                             {project.technologies.length > 6 && (
-                              <Badge variant="secondary" className="text-xs">
+                              <Badge variant="secondary" className="text-[10px] sm:text-xs">
                                 +{project.technologies.length - 6} more
                               </Badge>
                             )}
                           </div>
                         )}
-                        <div className="flex items-center justify-between text-sm text-gray-500">
-                          <span className="font-medium">{project.client}</span>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-xs sm:text-sm text-gray-500">
+                          <span className="font-medium truncate">{project.client}</span>
                           {project.completedDate && (
-                            <span>{new Date(project.completedDate).toLocaleDateString()}</span>
+                            <span className="whitespace-nowrap">{new Date(project.completedDate).toLocaleDateString()}</span>
                           )}
                         </div>
                       </CardContent>
@@ -299,39 +300,41 @@ export default function ProviderDetailClient({
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Reviews</CardTitle>
-              <CardDescription>What clients say</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Reviews</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">What clients say</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0">
               <ReviewsList reviews={reviews} />
             </CardContent>
           </Card>
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-5 lg:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Hire {provider.name.split(" ")[0]}</CardTitle>
-              <CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Hire {provider.name.split(" ")[0]}</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 Start a project or send a message
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 sm:space-y-3 p-4 sm:p-6 pt-0">
               <Link
                 href={`/customer/requests/new?providerId=${encodeURIComponent(
                   provider.id
                 )}`}
+                className="block"
               >
-                <Button className="w-full">Request a Proposal</Button>
+                <Button className="w-full text-xs sm:text-sm">Request a Proposal</Button>
               </Link>
               <Link
                 href={`/customer/messages/new?to=${encodeURIComponent(
                   provider.id
                 )}`}
+                className="block"
               >
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full text-xs sm:text-sm">
                   Send Message
                 </Button>
               </Link>
@@ -339,13 +342,13 @@ export default function ProviderDetailClient({
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Specialties</CardTitle>
-              <CardDescription>Best-fit project types</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Specialties</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Best-fit project types</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
+            <CardContent className="flex flex-wrap gap-1.5 sm:gap-2 p-4 sm:p-6 pt-0">
               {provider.specialties.map((sp) => (
-                <Badge key={sp} variant="secondary" className="text-xs">
+                <Badge key={sp} variant="secondary" className="text-[10px] sm:text-xs">
                   {sp}
                 </Badge>
               ))}
@@ -354,11 +357,11 @@ export default function ProviderDetailClient({
 
           {/* Additional Information Card */}
           <Card>
-            <CardHeader>
-              <CardTitle>Additional Information</CardTitle>
-              <CardDescription>Work preferences and details</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Additional Information</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Work preferences and details</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+            <CardContent className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm p-4 sm:p-6 pt-0">
               {provider.workPreference && (
                 <div>
                   <p className="text-gray-500">Work Preference</p>
@@ -416,23 +419,23 @@ export default function ProviderDetailClient({
           {/* Certifications List */}
           {provider.certifications && provider.certifications.length > 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle>Certifications</CardTitle>
-                <CardDescription>Verified credentials</CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Certifications</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Verified credentials</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2.5 sm:space-y-3 p-4 sm:p-6 pt-0">
                 {provider.certifications.map((cert) => (
-                  <div key={cert.id} className="border-b pb-3 last:border-0">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium">{cert.name}</p>
-                        <p className="text-sm text-gray-500">{cert.issuer}</p>
-                        <p className="text-xs text-gray-400">
+                  <div key={cert.id} className="border-b pb-2.5 sm:pb-3 last:border-0">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-xs sm:text-sm break-words">{cert.name}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 break-words">{cert.issuer}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-400">
                           Issued: {new Date(cert.issuedDate).toLocaleDateString()}
                         </p>
                       </div>
                       {cert.verified && (
-                        <Badge className="bg-green-100 text-green-800 text-xs">
+                        <Badge className="bg-green-100 text-green-800 text-[10px] sm:text-xs flex-shrink-0">
                           Verified
                         </Badge>
                       )}
