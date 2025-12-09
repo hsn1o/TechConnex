@@ -314,11 +314,11 @@ export default function CustomerProjectsPage() {
   if (loading) {
     return (
       <CustomerLayout>
-        <div className="space-y-8">
-          <div className="flex items-center justify-center py-12">
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
+          <div className="flex items-center justify-center py-8 sm:py-12">
             <div className="flex items-center space-x-2">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              <span>Loading projects...</span>
+              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+              <span className="text-sm sm:text-base">Loading projects...</span>
             </div>
           </div>
         </div>
@@ -329,14 +329,14 @@ export default function CustomerProjectsPage() {
   if (error) {
     return (
       <CustomerLayout>
-        <div className="space-y-8">
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
+          <div className="flex items-center justify-center py-8 sm:py-12">
+            <div className="text-center px-4">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                 Error loading projects
               </h3>
-              <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()}>
+              <p className="text-sm sm:text-base text-gray-600 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()} size="sm" className="sm:size-default">
                 Try Again
               </Button>
             </div>
@@ -348,16 +348,16 @@ export default function CustomerProjectsPage() {
 
   return (
     <CustomerLayout>
-      <div className="space-y-8">
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
-            <p className="text-gray-600">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Projects</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">
               Manage and track all your ICT projects
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               onClick={async () => {
@@ -386,12 +386,13 @@ export default function CustomerProjectsPage() {
                   });
                 }
               }}
+              className="w-full sm:w-auto"
             >
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
-            <Link href="/customer/projects/new">
-              <Button>
+            <Link href="/customer/projects/new" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 New Project
               </Button>
@@ -400,76 +401,76 @@ export default function CustomerProjectsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Total Projects</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Total Projects</p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-blue-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Active</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Active</p>
+                  <p className="text-xl sm:text-2xl font-bold text-blue-600 mt-1">
                     {stats.active}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-blue-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                  <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Completed</p>
-                  <p className="text-2xl font-bold text-green-600">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Completed</p>
+                  <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">
                     {stats.completed}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-green-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Pending</p>
+                  <p className="text-xl sm:text-2xl font-bold text-yellow-600 mt-1">
                     {stats.pending}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-yellow-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                  <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Disputed</p>
-                  <p className="text-2xl font-bold text-red-600">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Disputed</p>
+                  <p className="text-xl sm:text-2xl font-bold text-red-600 mt-1">
                     {stats.disputed}
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                  <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                 </div>
               </div>
             </CardContent>
@@ -478,21 +479,21 @@ export default function CustomerProjectsPage() {
 
         {/* Filters */}
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
+          <CardContent className="p-4 sm:p-5 lg:p-6">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex-1 w-full">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     placeholder="Search projects..."
-                    className="pl-10"
+                    className="pl-10 text-sm sm:text-base"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full lg:w-48">
+                <SelectTrigger className="w-full sm:w-48 text-sm sm:text-base">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -504,7 +505,7 @@ export default function CustomerProjectsPage() {
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full lg:w-48">
+                <SelectTrigger className="w-full sm:w-48 text-sm sm:text-base">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -521,12 +522,13 @@ export default function CustomerProjectsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center justify-end mt-4">
+            <div className="flex items-center justify-end mt-3 sm:mt-4">
               <div className="flex gap-2">
                 <Button
                   variant={viewMode === "grid" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setViewMode("grid")}
+                  className="text-xs sm:text-sm"
                 >
                   Grid
                 </Button>
@@ -534,6 +536,7 @@ export default function CustomerProjectsPage() {
                   variant={viewMode === "list" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setViewMode("list")}
+                  className="text-xs sm:text-sm"
                 >
                   List
                 </Button>
@@ -549,25 +552,25 @@ export default function CustomerProjectsPage() {
           className="space-y-6"
         >
           <TabsContent value="grid">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
               {sortedProjects.map((project) => (
                 <Card
                   key={project.id}
                   className="hover:shadow-lg transition-shadow flex flex-col h-full"
                 >
-                  <CardHeader>
+                  <CardHeader className="p-4 sm:p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <CardTitle className="text-lg">
+                            <CardTitle className="text-base sm:text-lg truncate">
                               {project.title}
                             </CardTitle>
                             <Badge
-                              className={getStatusColor(
+                              className={`${getStatusColor(
                                 project.status,
                                 project.type
-                              )}
+                              )} text-xs`}
                             >
                               {getStatusText(project.status, project.type)}
                             </Badge>
@@ -575,26 +578,26 @@ export default function CustomerProjectsPage() {
                               {project.type}
                             </Badge>
                             <Badge
-                              className={getPriorityColor(project.priority)}
+                              className={`${getPriorityColor(project.priority)} text-xs`}
                               variant="outline"
                             >
                               {project.priority}
                             </Badge>
                             {(project.priority === "High" ||
                               project.priority === "high") && (
-                              <Badge variant="destructive">Urgent</Badge>
+                              <Badge variant="destructive" className="text-xs">Urgent</Badge>
                             )}
                           </div>
-                          <CardDescription className="mt-1 line-clamp-3">
+                          <CardDescription className="mt-1 line-clamp-3 text-xs sm:text-sm">
                             {project.description}
                           </CardDescription>
                         </div>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4 flex-1 flex flex-col">
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="w-8 h-8">
+                  <CardContent className="space-y-3 sm:space-y-4 flex-1 flex flex-col p-4 sm:p-6 pt-0">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
                         <AvatarImage
                           src={
                             project.provider?.providerProfile?.profileImageUrl
@@ -620,20 +623,20 @@ export default function CustomerProjectsPage() {
                             : project.type.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         {project.provider?.id && project.provider?.name ? (
                           <Link
                             href={`/customer/providers/${project.provider.id}`}
-                            className="text-sm font-medium hover:text-blue-600 hover:underline transition-colors"
+                            className="text-xs sm:text-sm font-medium hover:text-blue-600 hover:underline transition-colors truncate block"
                           >
                             {project.provider.name}
                           </Link>
                         ) : (
-                          <p className="text-sm font-medium">
+                          <p className="text-xs sm:text-sm font-medium truncate">
                             {project.provider?.name || "No Provider Assigned"}
                           </p>
                         )}
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 truncate">
                           {project.category}
                         </p>
                       </div>
@@ -642,9 +645,9 @@ export default function CustomerProjectsPage() {
                     {project.type === "Project" &&
                       project.status === "IN_PROGRESS" && (
                         <div>
-                          <div className="flex justify-between text-sm mb-1">
+                          <div className="flex justify-between text-xs sm:text-sm mb-1 flex-wrap gap-1">
                             <span>Progress: {project.progress || 0}%</span>
-                            <span>
+                            <span className="text-xs">
                               {project.completedMilestones || 0}/
                               {project.totalMilestones || 0} milestones
                             </span>
@@ -656,39 +659,39 @@ export default function CustomerProjectsPage() {
                         </div>
                       )}
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-500">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+                      <div className="min-w-0">
+                        <p className="text-gray-500 truncate">
                           {project.type === "Project" &&
                           (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
                           project.approvedPrice
                             ? "Approved Price"
                             : "Budget"}
                         </p>
-                        <p className="font-semibold">
+                        <p className="font-semibold truncate">
                           {project.type === "Project" &&
                           (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
                           project.approvedPrice
                             ? `RM${project.approvedPrice.toLocaleString()}`
-                            : `RM${project.budgetMin.toLocaleString()} - RM${project.budgetMax.toLocaleString()}`}
+                            : `RM${project.budgetMin?.toLocaleString() || 0} - RM${project.budgetMax?.toLocaleString() || 0}`}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-gray-500">Timeline</p>
-                        <p className="font-semibold">
+                      <div className="min-w-0">
+                        <p className="text-gray-500 truncate">Timeline</p>
+                        <p className="font-semibold truncate">
                           {project.timeline || "Not specified"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm text-gray-500">
+                    <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500 flex-wrap gap-1">
                       <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        Created:{" "}
-                        {new Date(project.createdAt).toLocaleDateString()}
+                        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                        <span className="truncate">Created:{" "}
+                        {new Date(project.createdAt).toLocaleDateString()}</span>
                       </div>
                       {project.type === "Project" && (
-                        <span>
+                        <span className="text-xs">
                           {project.completedMilestones || 0}/
                           {project.totalMilestones || 0} milestones
                         </span>
@@ -697,9 +700,9 @@ export default function CustomerProjectsPage() {
 
                     {project.type === "Project" &&
                       project.status === "COMPLETED" && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-gray-500">Status:</span>
-                          <Badge className="bg-green-100 text-green-800">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-xs sm:text-sm text-gray-500">Status:</span>
+                          <Badge className="bg-green-100 text-green-800 text-xs">
                             Completed
                           </Badge>
                         </div>
@@ -708,17 +711,18 @@ export default function CustomerProjectsPage() {
                     <div className="flex gap-2 mt-auto">
                       <Button
                         size="sm"
-                        className="flex-1"
+                        className="flex-1 text-xs sm:text-sm"
                         onClick={() =>
                           router.push(`/customer/projects/${project.id}`)
                         }
                       >
-                        <Eye className="w-4 h-4 mr-2" />
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                         View
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
+                        className="text-xs sm:text-sm"
                         onClick={() =>
                           handleContact(
                             project.provider?.id,
@@ -727,7 +731,7 @@ export default function CustomerProjectsPage() {
                           )
                         }
                       >
-                        <MessageSquare className="w-4 h-4" />
+                        <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -743,11 +747,11 @@ export default function CustomerProjectsPage() {
                   {sortedProjects.map((project) => (
                     <div
                       key={project.id}
-                      className="p-6 hover:bg-gray-50 transition-colors min-h-[200px] flex items-center"
+                      className="p-4 sm:p-5 lg:p-6 hover:bg-gray-50 transition-colors min-h-[200px] flex items-center"
                     >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center space-x-4 flex-1 min-w-0">
-                          <Avatar className="flex-shrink-0">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full gap-4 sm:gap-6">
+                        <div className="flex items-start sm:items-center space-x-3 sm:space-x-4 flex-1 min-w-0 w-full sm:w-auto">
+                          <Avatar className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12">
                             <AvatarImage
                               src={
                                 project.provider?.providerProfile
@@ -774,16 +778,16 @@ export default function CustomerProjectsPage() {
                                 : project.type.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-1 flex-wrap">
-                              <h3 className="font-semibold text-gray-900">
+                          <div className="flex-1 min-w-0 w-full sm:w-auto">
+                            <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-1 flex-wrap">
+                              <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
                                 {project.title}
                               </h3>
                               <Badge
-                                className={getStatusColor(
+                                className={`${getStatusColor(
                                   project.status,
                                   project.type
-                                )}
+                                )} text-xs`}
                               >
                                 {getStatusText(project.status, project.type)}
                               </Badge>
@@ -791,37 +795,37 @@ export default function CustomerProjectsPage() {
                                 {project.type}
                               </Badge>
                               <Badge
-                                className={getPriorityColor(project.priority)}
+                                className={`${getPriorityColor(project.priority)} text-xs`}
                                 variant="outline"
                               >
                                 {project.priority}
                               </Badge>
                               {(project.priority === "High" ||
                                 project.priority === "high") && (
-                                <Badge variant="destructive">Urgent</Badge>
+                                <Badge variant="destructive" className="text-xs">Urgent</Badge>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-3">
+                            <p className="text-xs sm:text-sm text-gray-600 mb-2 line-clamp-2 sm:line-clamp-3">
                               {project.description}
                             </p>
-                            <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
+                            <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 flex-wrap">
                               {project.provider?.id &&
                               project.provider?.name ? (
                                 <Link
                                   href={`/customer/providers/${project.provider.id}`}
-                                  className="hover:text-blue-600 hover:underline transition-colors"
+                                  className="hover:text-blue-600 hover:underline transition-colors truncate"
                                 >
                                   {project.provider.name}
                                 </Link>
                               ) : (
-                                <span>
+                                <span className="truncate">
                                   {project.provider?.name || "No Provider"}
                                 </span>
                               )}
-                              <span>•</span>
-                              <span>{project.category}</span>
-                              <span>•</span>
-                              <span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="truncate">{project.category}</span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="truncate">
                                 Created:{" "}
                                 {new Date(
                                   project.createdAt
@@ -829,34 +833,34 @@ export default function CustomerProjectsPage() {
                               </span>
                               {project.timeline && (
                                 <>
-                                  <span>•</span>
-                                  <span>Timeline: {project.timeline}</span>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="truncate">Timeline: {project.timeline}</span>
                                 </>
                               )}
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-6 flex-shrink-0">
-                          <div className="text-right">
-                            <p className="text-sm text-gray-500">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 lg:space-x-6 flex-shrink-0 w-full sm:w-auto">
+                          <div className="text-left sm:text-right w-full sm:w-auto">
+                            <p className="text-xs sm:text-sm text-gray-500">
                               {project.type === "Project" &&
                               (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
                               project.approvedPrice
                                 ? "Approved Price"
                                 : "Budget"}
                             </p>
-                            <p className="font-semibold">
+                            <p className="font-semibold text-sm sm:text-base">
                               {project.type === "Project" &&
                               (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
                               project.approvedPrice
                                 ? `RM${project.approvedPrice.toLocaleString()}`
-                                : `RM${project.budgetMin.toLocaleString()} - RM${project.budgetMax.toLocaleString()}`}
+                                : `RM${project.budgetMin?.toLocaleString() || 0} - RM${project.budgetMax?.toLocaleString() || 0}`}
                             </p>
                           </div>
                           {project.type === "Project" &&
                             project.status === "IN_PROGRESS" && (
-                              <div className="w-24">
-                                <div className="flex justify-between text-xs mb-1">
+                              <div className="w-full sm:w-24">
+                                <div className="flex justify-between text-xs mb-1 flex-wrap gap-1">
                                   <span>
                                     Progress: {project.progress || 0}%
                                   </span>
@@ -871,19 +875,21 @@ export default function CustomerProjectsPage() {
                                 />
                               </div>
                             )}
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 w-full sm:w-auto">
                             <Button
                               size="sm"
+                              className="flex-1 sm:flex-initial text-xs sm:text-sm"
                               onClick={() =>
                                 router.push(`/customer/projects/${project.id}`)
                               }
                             >
-                              <Eye className="w-4 h-4 mr-2" />
+                              <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                               View
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
+                              className="text-xs sm:text-sm"
                               onClick={(e) => {
                                 e.preventDefault(); // prevents Link from triggering navigation
                                 handleContact(
@@ -894,7 +900,7 @@ export default function CustomerProjectsPage() {
                                 );
                               }}
                             >
-                              <MessageSquare className="w-4 h-4" />
+                              <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </Button>
                           </div>
                         </div>
@@ -909,15 +915,15 @@ export default function CustomerProjectsPage() {
 
         {/* Edit Project Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Project</DialogTitle>
-              <DialogDescription>Update your project details</DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl">Edit Project</DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">Update your project details</DialogDescription>
             </DialogHeader>
             {editingProject && (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <Label htmlFor="edit-title">Project Title</Label>
+                  <Label htmlFor="edit-title" className="text-sm sm:text-base">Project Title</Label>
                   <Input
                     id="edit-title"
                     value={editingProject.title}
@@ -927,10 +933,11 @@ export default function CustomerProjectsPage() {
                         title: e.target.value,
                       })
                     }
+                    className="mt-1.5 text-sm sm:text-base"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-description">Description</Label>
+                  <Label htmlFor="edit-description" className="text-sm sm:text-base">Description</Label>
                   <Textarea
                     id="edit-description"
                     value={editingProject.description}
@@ -941,11 +948,12 @@ export default function CustomerProjectsPage() {
                       })
                     }
                     rows={3}
+                    className="mt-1.5 text-sm sm:text-base"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="edit-budget">Budget (RM)</Label>
+                    <Label htmlFor="edit-budget" className="text-sm sm:text-base">Budget (RM)</Label>
                     <Input
                       id="edit-budget"
                       type="number"
@@ -956,10 +964,11 @@ export default function CustomerProjectsPage() {
                           budget: Number.parseInt(e.target.value),
                         })
                       }
+                      className="mt-1.5 text-sm sm:text-base"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-deadline">Deadline</Label>
+                    <Label htmlFor="edit-deadline" className="text-sm sm:text-base">Deadline</Label>
                     <Input
                       id="edit-deadline"
                       type="date"
@@ -970,12 +979,13 @@ export default function CustomerProjectsPage() {
                           deadline: e.target.value,
                         })
                       }
+                      className="mt-1.5 text-sm sm:text-base"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="edit-priority">Priority</Label>
+                    <Label htmlFor="edit-priority" className="text-sm sm:text-base">Priority</Label>
                     <Select
                       value={editingProject.priority}
                       onValueChange={(value) =>
@@ -985,7 +995,7 @@ export default function CustomerProjectsPage() {
                         })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1.5 text-sm sm:text-base">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -996,7 +1006,7 @@ export default function CustomerProjectsPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="edit-category">Category</Label>
+                    <Label htmlFor="edit-category" className="text-sm sm:text-base">Category</Label>
                     <Select
                       value={editingProject.category}
                       onValueChange={(value) =>
@@ -1006,7 +1016,7 @@ export default function CustomerProjectsPage() {
                         })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="mt-1.5 text-sm sm:text-base">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1042,15 +1052,16 @@ export default function CustomerProjectsPage() {
                     }
                     className="rounded"
                   />
-                  <Label htmlFor="edit-urgent">Mark as urgent</Label>
+                  <Label htmlFor="edit-urgent" className="text-sm sm:text-base">Mark as urgent</Label>
                 </div>
-                <div className="flex gap-2 pt-4">
-                  <Button onClick={handleSaveProject} className="flex-1">
+                <div className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-4">
+                  <Button onClick={handleSaveProject} className="flex-1 sm:flex-initial text-sm sm:text-base">
                     Save Changes
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setIsEditDialogOpen(false)}
+                    className="text-sm sm:text-base"
                   >
                     Cancel
                   </Button>
@@ -1063,12 +1074,12 @@ export default function CustomerProjectsPage() {
         {/* Empty State */}
         {sortedProjects.length === 0 && (
           <Card>
-            <CardContent className="p-12 text-center">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <CardContent className="p-8 sm:p-10 lg:p-12 text-center">
+              <Calendar className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                 No projects found
               </h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-sm sm:text-base text-gray-600 mb-4">
                 {searchQuery || statusFilter !== "all"
                   ? "Try adjusting your search or filter criteria."
                   : "You haven't created any projects yet."}
@@ -1076,7 +1087,7 @@ export default function CustomerProjectsPage() {
 
               {!searchQuery && statusFilter === "all" && (
                 <Link href="/customer/projects/new">
-                  <Button>
+                  <Button className="text-sm sm:text-base">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Your First Project
                   </Button>

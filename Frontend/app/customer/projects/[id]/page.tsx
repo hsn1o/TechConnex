@@ -712,10 +712,10 @@ export default function ProjectDetailsPage({
   if (loading) {
     return (
       <CustomerLayout>
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-8 sm:py-12 px-4">
           <div className="flex items-center space-x-2">
-            <Loader2 className="w-6 h-6 animate-spin" />
-            <span>Loading project...</span>
+            <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+            <span className="text-sm sm:text-base">Loading project...</span>
           </div>
         </div>
       </CustomerLayout>
@@ -725,13 +725,13 @@ export default function ProjectDetailsPage({
   if (error || !project) {
     return (
       <CustomerLayout>
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-8 sm:py-12 px-4">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
               Error loading project
             </h3>
-            <p className="text-gray-600 mb-4">{error || "Project not found"}</p>
-            <Button onClick={() => window.location.reload()}>Try Again</Button>
+            <p className="text-sm sm:text-base text-gray-600 mb-4">{error || "Project not found"}</p>
+            <Button onClick={() => window.location.reload()} size="sm" className="sm:size-default">Try Again</Button>
           </div>
         </div>
       </CustomerLayout>
@@ -1669,35 +1669,35 @@ export default function ProjectDetailsPage({
 
   return (
     <CustomerLayout>
-      <div className="space-y-8">
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900">
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
                 {project.title}
               </h1>
               <Badge className={getStatusColor(project.status)}>
                 {getStatusText(project.status)}
               </Badge>
               {project.priority === "high" && (
-                <Badge variant="destructive">High Priority</Badge>
+                <Badge variant="destructive" className="text-xs sm:text-sm">High Priority</Badge>
               )}
               {project.isFeatured && (
-                <Badge className="bg-purple-100 text-purple-800">
+                <Badge className="bg-purple-100 text-purple-800 text-xs sm:text-sm">
                   Featured
                 </Badge>
               )}
             </div>
-            <p className="text-gray-600 mb-4">{project.description}</p>
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+            <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4 break-words">{project.description}</p>
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500">
               <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                Created: {new Date(project.createdAt).toLocaleDateString()}
+                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                {bidCount} bids
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span>{bidCount} bids</span>
               </div>
               {/* Date range only shown if startDate and endDate exist */}
               {project.startDate &&
@@ -1707,44 +1707,47 @@ export default function ProjectDetailsPage({
                 !isNaN(startDate.getTime()) &&
                 !isNaN(endDate.getTime()) && (
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    {startDate.toLocaleDateString()} -{" "}
-                    {endDate.toLocaleDateString()}
+                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="whitespace-nowrap">{startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}</span>
                   </div>
                 )}
             </div>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Project
+          <div className="flex flex-wrap gap-2 sm:gap-3 w-full lg:w-auto">
+            <Button variant="outline" onClick={() => setIsEditOpen(true)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="hidden sm:inline">Edit Project</span>
+              <span className="sm:hidden">Edit</span>
             </Button>
 
-            <Button variant="outline">
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Message Provider
+            <Button variant="outline" className="flex-1 sm:flex-initial text-xs sm:text-sm">
+              <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              <span className="hidden sm:inline">Message Provider</span>
+              <span className="sm:hidden">Message</span>
             </Button>
             {currentDispute ? (
               <Button
                 variant="outline"
-                className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-300"
+                className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-300 flex-1 sm:flex-initial text-xs sm:text-sm"
                 onClick={handleViewDispute}
               >
-                <Eye className="w-4 h-4 mr-2" />
-                View Dispute
+                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                <span className="hidden sm:inline">View Dispute</span>
+                <span className="sm:hidden">Dispute</span>
               </Button>
             ) : (
               project?.status !== "COMPLETED" && (
                 <Button
-                  className="bg-red-600 hover:bg-red-700 text-white"
+                  className="bg-red-600 hover:bg-red-700 text-white flex-1 sm:flex-initial text-xs sm:text-sm"
                   onClick={() => setDisputeDialogOpen(true)}
                   disabled={
                     project?.status === "DISPUTED" &&
                     currentDispute?.status === "CLOSED"
                   }
                 >
-                  <AlertCircle className="w-4 h-4 mr-2" />
-                  Report Dispute
+                  <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                  <span className="hidden sm:inline">Report Dispute</span>
+                  <span className="sm:hidden">Dispute</span>
                 </Button>
               )
             )}
@@ -1752,43 +1755,43 @@ export default function ProjectDetailsPage({
         </div>
 
         {/* Project Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Approved Price</p>
-                  <p className="text-2xl font-bold">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Approved Price</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1 break-words">
                     {currency} {fmt(project.approvedPrice || 0)}
                   </p>
                 </div>
-                <DollarSign className="w-8 h-8 text-green-600" />
+                <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-green-600 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Total Spent</p>
-                  <p className="text-2xl font-bold">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Total Spent</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1 break-words">
                     {currency} {fmt(project.totalSpent || 0)}
                   </p>
                 </div>
-                <DollarSign className="w-8 h-8 text-blue-600" />
+                <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-600 flex-shrink-0 ml-2" />
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Progress</p>
-                  <p className="text-2xl font-bold">{project.progress || 0}%</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Progress</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1">{project.progress || 0}%</p>
                 </div>
-                <div className="w-8 h-8 flex items-center justify-center">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 flex items-center justify-center flex-shrink-0 ml-2">
                   <div
-                    className="w-8 h-8 rounded-full border-4 border-purple-600 border-t-transparent animate-spin"
+                    className="w-full h-full rounded-full border-4 border-purple-600 border-t-transparent animate-spin"
                     style={{ animationDuration: "2s" }}
                   />
                 </div>
@@ -1797,13 +1800,13 @@ export default function ProjectDetailsPage({
           </Card>
           {project.daysLeft !== null && project.daysLeft !== undefined ? (
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-gray-500">
                       {project.daysLeft < 0 ? "Late" : "Days Left"}
                     </p>
-                    <p className={`text-2xl font-bold ${
+                    <p className={`text-lg sm:text-xl lg:text-2xl font-bold mt-1 ${
                       project.daysLeft < 0 ? "text-red-600" : ""
                     }`}>
                       {project.daysLeft < 0 
@@ -1811,7 +1814,7 @@ export default function ProjectDetailsPage({
                         : project.daysLeft}
                     </p>
                   </div>
-                  <Calendar className={`w-8 h-8 ${
+                  <Calendar className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 flex-shrink-0 ml-2 ${
                     project.daysLeft < 0 ? "text-red-600" : "text-orange-600"
                   }`} />
                 </div>
@@ -1819,13 +1822,13 @@ export default function ProjectDetailsPage({
             </Card>
           ) : (
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Days Left</p>
-                    <p className="text-2xl font-bold">—</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-gray-500">Days Left</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1">—</p>
                   </div>
-                  <Calendar className="w-8 h-8 text-gray-400" />
+                  <Calendar className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-gray-400 flex-shrink-0 ml-2" />
                 </div>
               </CardContent>
             </Card>
@@ -1835,14 +1838,14 @@ export default function ProjectDetailsPage({
         {/* Progress Bar */}
         {project.status === "in_progress" && (
           <Card>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold">Overall Progress</h3>
-                <span className="text-sm text-gray-500">
+            <CardContent className="p-4 sm:p-5 lg:p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                <h3 className="font-semibold text-sm sm:text-base">Overall Progress</h3>
+                <span className="text-xs sm:text-sm text-gray-500">
                   {project.progress}% Complete
                 </span>
               </div>
-              <Progress value={project.progress} className="h-3" />
+              <Progress value={project.progress} className="h-2 sm:h-3" />
             </CardContent>
           </Card>
         )}
@@ -1850,13 +1853,13 @@ export default function ProjectDetailsPage({
         {/* Assigned Provider */}
         {project.assignedProvider && (
           <Card>
-            <CardHeader>
-              <CardTitle>Assigned Provider</CardTitle>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl">Assigned Provider</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Avatar className="w-12 h-12">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                  <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                     <AvatarImage
                       src={
                         project.assignedProvider?.providerProfile
@@ -1882,28 +1885,28 @@ export default function ProjectDetailsPage({
                       {project.assignedProvider.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <h3 className="font-semibold">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm sm:text-base truncate">
                       {project.assignedProvider.name}
                     </h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500">
                       <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                        <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
                         <span>{project.assignedProvider.rating}</span>
                       </div>
-                      <span>•</span>
-                      <span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="truncate">
                         {project.assignedProvider.completedJobs} jobs completed
                       </span>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <MessageSquare className="w-4 h-4 mr-2" />
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                    <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                     Message
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
                     View Profile
                   </Button>
                 </div>
@@ -1916,37 +1919,37 @@ export default function ProjectDetailsPage({
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="space-y-6"
+          className="space-y-4 sm:space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="milestones">Milestones</TabsTrigger>
-            <TabsTrigger value="bids">Bids</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 h-auto">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-4">Overview</TabsTrigger>
+            <TabsTrigger value="milestones" className="text-xs sm:text-sm px-2 sm:px-4">Milestones</TabsTrigger>
+            <TabsTrigger value="bids" className="text-xs sm:text-sm px-2 sm:px-4">Bids</TabsTrigger>
+            <TabsTrigger value="files" className="text-xs sm:text-sm px-2 sm:px-4">Files</TabsTrigger>
+            <TabsTrigger value="messages" className="text-xs sm:text-sm px-2 sm:px-4">Messages</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Project Details</CardTitle>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="text-base sm:text-lg">Project Details</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
                   <div>
-                    <h4 className="font-medium mb-2">Category</h4>
-                    <Badge variant="secondary">{project.category}</Badge>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">Category</h4>
+                    <Badge variant="secondary" className="text-xs sm:text-sm">{project.category}</Badge>
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2">Timeline</h4>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">Timeline</h4>
                     <div className="space-y-2">
                       {project.originalTimeline && (
                         <div>
                           <p className="text-xs text-gray-500 mb-1">
                             Original Timeline (Company):
                           </p>
-                          <p className="text-sm text-gray-900 font-medium">
+                          <p className="text-xs sm:text-sm text-gray-900 font-medium">
                             {formatTimeline(project.originalTimeline)}
                           </p>
                         </div>
@@ -1956,7 +1959,7 @@ export default function ProjectDetailsPage({
                           <p className="text-xs text-gray-500 mb-1">
                             Provider's Proposed Timeline:
                           </p>
-                          <p className="text-sm text-gray-900 font-medium">
+                          <p className="text-xs sm:text-sm text-gray-900 font-medium">
                             {formatTimeline(
                               project.providerProposedTimeline,
                               "day"
@@ -1966,15 +1969,15 @@ export default function ProjectDetailsPage({
                       )}
                       {!project.originalTimeline &&
                         !project.providerProposedTimeline && (
-                          <p className="text-sm text-gray-600">Not specified</p>
+                          <p className="text-xs sm:text-sm text-gray-600">Not specified</p>
                         )}
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2">Required Skills</h4>
-                    <div className="flex flex-wrap gap-2">
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">Required Skills</h4>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {skills.map((skill) => (
-                        <Badge key={skill} variant="outline">
+                        <Badge key={skill} variant="outline" className="text-xs">
                           {skill}
                         </Badge>
                       ))}
@@ -1984,44 +1987,44 @@ export default function ProjectDetailsPage({
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Requirements</CardTitle>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="text-base sm:text-lg">Requirements</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-6 pt-0">
                   <MarkdownViewer
                     content={requirements}
                     emptyMessage="No requirements specified."
-                    className="text-sm"
+                    className="text-xs sm:text-sm"
                   />
                 </CardContent>
               </Card>
             </div>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Deliverables</CardTitle>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Deliverables</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6 pt-0">
                 <MarkdownViewer
                   content={deliverables}
                   emptyMessage="No deliverables specified."
-                  className="text-sm"
+                  className="text-xs sm:text-sm"
                 />
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Milestones Tab */}
-          <TabsContent value="milestones" className="space-y-6">
+          <TabsContent value="milestones" className="space-y-4 sm:space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Project Milestones</CardTitle>
-                <CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Project Milestones</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Track progress through key project milestones
                 </CardDescription>
                 {project?.type === "Project" && (
-                  <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <Badge variant="outline">
+                  <div className="flex flex-wrap items-center gap-2 mt-3 sm:mt-4">
+                    <Badge variant="outline" className="text-xs sm:text-sm">
                       Company{" "}
                       {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
                       Provider{" "}
@@ -2037,10 +2040,12 @@ export default function ProjectDetailsPage({
                             setOriginalProjectMilestones(JSON.parse(JSON.stringify(projectMilestones)));
                             setMilestoneEditorOpen(true);
                           }}
+                          size="sm"
+                          className="text-xs sm:text-sm"
                         >
                           Edit Milestones
                         </Button>
-                        <Button onClick={handleApproveProjectMilestones}>
+                        <Button onClick={handleApproveProjectMilestones} size="sm" className="text-xs sm:text-sm">
                           Approve
                         </Button>
                       </>
@@ -2048,64 +2053,62 @@ export default function ProjectDetailsPage({
                   </div>
                 )}
               </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <div className="space-y-4 sm:space-y-6">
                   {projectMilestones && projectMilestones.length > 0 ? (
                     projectMilestones.map((milestone, index) => (
-                      <div key={milestone.id} className="flex gap-4">
-                        <div className="flex flex-col items-center">
-                          {getMilestoneStatusIcon(milestone.status)}
+                      <div key={milestone.id} className="flex gap-2 sm:gap-4">
+                        <div className="flex flex-col items-center flex-shrink-0">
+                          <div className="w-5 h-5 sm:w-6 sm:h-6">
+                            {getMilestoneStatusIcon(milestone.status)}
+                          </div>
                           {index < projectMilestones.length - 1 && (
-                            <div className="w-px h-16 bg-gray-200 mt-2" />
+                            <div className="w-px h-12 sm:h-16 bg-gray-200 mt-1 sm:mt-2" />
                           )}
                         </div>
-                        <div className="flex-1 min-w-0 pb-8">
+                        <div className="flex-1 min-w-0 pb-6 sm:pb-8">
                           <div className="flex flex-col gap-2 mb-2">
                             {/* Top Row */}
-                            <div className="flex items-center justify-between">
-                              <h3 className="font-semibold">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                              <h3 className="font-semibold text-sm sm:text-base break-words">
                                 {milestone.title}
                               </h3>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <Badge
-                                  className={getStatusColor(milestone.status)}
+                                  className={`${getStatusColor(milestone.status)} text-xs`}
                                 >
                                   {getStatusText(milestone.status)}
                                 </Badge>
-                                <span className="text-sm font-medium">
+                                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
                                   {fmt(milestone.amount)} {project.currency}
                                 </span>
                               </div>
                             </div>
 
                             {/* Description Row */}
-                            <div className="mb-3">
-                              <p className="text-gray-600 break-words">
+                            <div className="mb-2 sm:mb-3">
+                              <p className="text-xs sm:text-sm text-gray-600 break-words">
                                 {milestone.description}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-4">
+                          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
                             <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              Due:{" "}
-                              {new Date(milestone.dueDate).toLocaleDateString()}
+                              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span>Due: {new Date(milestone.dueDate).toLocaleDateString()}</span>
                             </div>
                             {milestone.completedAt && (
                               <div className="flex items-center gap-1">
-                                <CheckCircle className="w-4 h-4" />
-                                Completed:{" "}
-                                {new Date(
-                                  milestone.completedAt
-                                ).toLocaleDateString()}
+                                <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                                <span>Completed: {new Date(milestone.completedAt).toLocaleDateString()}</span>
                               </div>
                             )}
                           </div>
                           {milestone.status === "in_progress" &&
                             milestone.progress && (
-                              <div className="mt-3">
-                                <div className="flex justify-between text-sm mb-1">
+                              <div className="mt-2 sm:mt-3">
+                                <div className="flex justify-between text-xs sm:text-sm mb-1">
                                   <span>Progress</span>
                                   <span>{milestone.progress}%</span>
                                 </div>
@@ -2499,9 +2502,9 @@ export default function ProjectDetailsPage({
                                         milestone.amount
                                       )
                                     }
-                                    className="bg-blue-600 hover:bg-blue-700"
+                                    className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm w-full sm:w-auto"
                                   >
-                                    <DollarSign className="w-4 h-4 mr-2" />
+                                    <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                                     Pay Now
                                   </Button>
                                 </div>
@@ -2509,15 +2512,15 @@ export default function ProjectDetailsPage({
                             )}
                           {/* Action buttons only shown for SUBMITTED status */}
                           {milestone.status === "SUBMITTED" && (
-                            <div className="mt-3 flex gap-2">
+                            <div className="mt-3 flex flex-col sm:flex-row gap-2">
                               <Button
                                 size="sm"
                                 onClick={() =>
                                   handleApproveIndividualMilestone(milestone.id)
                                 }
-                                className="bg-green-600 hover:bg-green-700"
+                                className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm w-full sm:w-auto"
                               >
-                                <CheckCircle className="w-4 h-4 mr-2" />
+                                <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                                 Approve Milestone
                               </Button>
                               <Button
@@ -2526,8 +2529,9 @@ export default function ProjectDetailsPage({
                                 onClick={() =>
                                   handleRequestChangesClick(milestone.id)
                                 }
+                                className="text-xs sm:text-sm w-full sm:w-auto"
                               >
-                                <AlertCircle className="w-4 h-4 mr-2" />
+                                <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                                 Request Changes
                               </Button>
                             </div>
@@ -2548,8 +2552,8 @@ export default function ProjectDetailsPage({
           {/* Bids Tab */}
           <TabsContent value="bids">
             <Card className="border border-gray-200 shadow-sm">
-              <CardHeader className="border-b bg-gray-50">
-                <CardTitle className="text-lg font-semibold flex items-center justify-between">
+              <CardHeader className="border-b bg-gray-50 p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg font-semibold flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <span>Received Proposals ({proposals.length})</span>
                   {bidsLoading && (
                     <span className="text-xs text-gray-500 font-normal">
@@ -2557,12 +2561,12 @@ export default function ProjectDetailsPage({
                     </span>
                   )}
                 </CardTitle>
-                <CardDescription className="text-sm text-gray-600">
+                <CardDescription className="text-xs sm:text-sm text-gray-600">
                   Review and manage proposals from providers
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 sm:p-5 lg:p-6 space-y-3 sm:space-y-4">
                 {bidsError && (
                   <div className="text-red-600 text-sm">{bidsError}</div>
                 )}
@@ -2575,11 +2579,11 @@ export default function ProjectDetailsPage({
                       key={p.id}
                       className="hover:shadow-md transition-shadow"
                     >
-                      <CardContent className="p-6">
-                        <div className="flex flex-col lg:flex-row gap-6">
+                      <CardContent className="p-4 sm:p-5 lg:p-6">
+                        <div className="flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6">
                           {/* Provider Info */}
-                          <div className="flex items-start space-x-4 flex-1">
-                            <Avatar className="w-12 h-12">
+                          <div className="flex items-start space-x-3 sm:space-x-4 flex-1 min-w-0">
+                            <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                               <AvatarImage
                                 src={
                                   p.providerAvatar &&
@@ -2600,31 +2604,31 @@ export default function ProjectDetailsPage({
                             </Avatar>
 
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-gray-900">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
                                   {p.providerName || "Provider"}
                                 </h3>
                                 <div className="flex items-center gap-1">
-                                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                  <span className="text-sm text-gray-600">
+                                  <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
+                                  <span className="text-xs sm:text-sm text-gray-600">
                                     {p.providerRating ?? "No rating"}
                                   </span>
                                 </div>
                               </div>
 
                               {p.providerResponseTime && (
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mb-2">
+                                <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 mb-2">
                                   {p.providerResponseTime && (
                                     <div className="flex items-center gap-1">
-                                      <Clock className="w-4 h-4" />
-                                      Responds in {p.providerResponseTime}
+                                      <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                                      <span>Responds in {p.providerResponseTime}</span>
                                     </div>
                                   )}
                                 </div>
                               )}
 
                               {p.coverLetter && (
-                                <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                                <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-2 break-words">
                                   {p.coverLetter}
                                 </p>
                               )}
@@ -2657,7 +2661,7 @@ export default function ProjectDetailsPage({
                           </div>
 
                           {/* Right column */}
-                          <div className="lg:w-80 space-y-3">
+                          <div className="lg:w-80 space-y-2 sm:space-y-3">
                             {/* Status + submitted date */}
                             <div className="flex justify-between items-center">
                               <Badge
@@ -2747,7 +2751,7 @@ export default function ProjectDetailsPage({
                             )}
 
                             {/* Actions */}
-                            <div className="flex flex-wrap gap-2 pt-2">
+                            <div className="flex flex-col sm:flex-row gap-2 pt-2">
                               {/* View Profile */}
                               <NextLink
                                 href={`/customer/providers/${p.providerId}`}
@@ -2756,9 +2760,9 @@ export default function ProjectDetailsPage({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="w-full"
+                                  className="w-full text-xs sm:text-sm"
                                 >
-                                  <Eye className="w-4 h-4 mr-1" />
+                                  <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                                   View Profile
                                 </Button>
                               </NextLink>
@@ -2767,7 +2771,7 @@ export default function ProjectDetailsPage({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1"
+                                className="flex-1 text-xs sm:text-sm"
                                 onClick={() => {
                                   // sync the dialog state to match requests page structure:
                                   setSelectedProposalDetails({
@@ -2828,13 +2832,13 @@ export default function ProjectDetailsPage({
                                   <Button
                                     size="sm"
                                     onClick={() => handleAcceptProposal(p)}
-                                    className="bg-green-600 hover:bg-green-700 flex-1"
+                                    className="bg-green-600 hover:bg-green-700 flex-1 text-xs sm:text-sm"
                                     disabled={processingId === p.id}
                                   >
                                     {processingId === p.id ? (
-                                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                      <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 animate-spin" />
                                     ) : (
-                                      <Check className="w-4 h-4 mr-1" />
+                                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                                     )}
                                     {processingId === p.id
                                       ? "Accepting..."
@@ -2845,10 +2849,10 @@ export default function ProjectDetailsPage({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleStartRejectProposal(p)}
-                                    className="text-red-600 hover:text-red-700 flex-1"
+                                    className="text-red-600 hover:text-red-700 flex-1 text-xs sm:text-sm"
                                     disabled={processingId === p.id}
                                   >
-                                    <X className="w-4 h-4 mr-1" />
+                                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                                     Reject
                                   </Button>
                                 </>
@@ -2865,16 +2869,16 @@ export default function ProjectDetailsPage({
           </TabsContent>
 
           {/* Files Tab */}
-          <TabsContent value="files" className="space-y-6">
+          <TabsContent value="files" className="space-y-4 sm:space-y-6">
             {/* Proposal Attachments Section */}
             <Card>
-              <CardHeader>
-                <CardTitle>Proposal Attachments</CardTitle>
-                <CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Proposal Attachments</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Files attached to accepted proposals
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6 pt-0">
                 {(() => {
                   // Get attachments from accepted proposals only
                   const acceptedProposals = proposals.filter(
@@ -3143,16 +3147,16 @@ export default function ProjectDetailsPage({
           </TabsContent>
 
           {/* Messages Tab */}
-          <TabsContent value="messages" className="space-y-6">
+          <TabsContent value="messages" className="space-y-4 sm:space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Project Messages</CardTitle>
-                <CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Project Messages</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Communication with your assigned provider
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto ">
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <div className="space-y-3 sm:space-y-4 max-h-96 overflow-y-auto">
                   {msgsToRender.map((message: any) => {
                     const isCurrentUser =
                       String(message.senderId || message.sender?.id) ===
@@ -3251,64 +3255,69 @@ export default function ProjectDetailsPage({
       </div>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">Edit Project</DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
             <div>
-              <Label>Title</Label>
+              <Label className="text-sm sm:text-base">Title</Label>
               <Input
                 value={edit.title}
                 onChange={(e) => setEdit({ ...edit, title: e.target.value })}
+                className="mt-1.5 text-sm sm:text-base"
               />
             </div>
 
             <div>
-              <Label>Description</Label>
+              <Label className="text-sm sm:text-base">Description</Label>
               <Textarea
                 rows={4}
                 value={edit.description}
                 onChange={(e) =>
                   setEdit({ ...edit, description: e.target.value })
                 }
+                className="mt-1.5 text-sm sm:text-base"
               />
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <div>
-                <Label>Category</Label>
+                <Label className="text-sm sm:text-base">Category</Label>
                 <Input
                   value={edit.category}
                   onChange={(e) =>
                     setEdit({ ...edit, category: e.target.value })
                   }
+                  className="mt-1.5 text-sm sm:text-base"
                 />
               </div>
               <div>
-                <Label>Priority</Label>
+                <Label className="text-sm sm:text-base">Priority</Label>
                 <Input
                   value={edit.priority}
                   onChange={(e) =>
                     setEdit({ ...edit, priority: e.target.value })
                   }
+                  className="mt-1.5 text-sm sm:text-base"
                 />
               </div>
               <div>
-                <Label>Timeline</Label>
+                <Label className="text-sm sm:text-base">Timeline</Label>
                 <Input
                   value={edit.timeline}
                   onChange={(e) =>
                     setEdit({ ...edit, timeline: e.target.value })
                   }
+                  className="mt-1.5 text-sm sm:text-base"
                 />
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label>Budget Min</Label>
+                <Label className="text-sm sm:text-base">Budget Min</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -3316,10 +3325,11 @@ export default function ProjectDetailsPage({
                   onChange={(e) =>
                     setEdit({ ...edit, budgetMin: e.target.value })
                   }
+                  className="mt-1.5 text-sm sm:text-base"
                 />
               </div>
               <div>
-                <Label>Budget Max</Label>
+                <Label className="text-sm sm:text-base">Budget Max</Label>
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -3327,69 +3337,75 @@ export default function ProjectDetailsPage({
                   onChange={(e) =>
                     setEdit({ ...edit, budgetMax: e.target.value })
                   }
+                  className="mt-1.5 text-sm sm:text-base"
                 />
               </div>
             </div>
 
             <div>
-              <Label>Skills (comma / new line)</Label>
+              <Label className="text-sm sm:text-base">Skills (comma / new line)</Label>
               <Textarea
                 rows={2}
                 placeholder="React, Node.js, PostgreSQL"
                 value={edit.skills}
                 onChange={(e) => setEdit({ ...edit, skills: e.target.value })}
+                className="mt-1.5 text-sm sm:text-base"
               />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label>Requirements</Label>
-                <RichEditor
-                  content={edit.requirements}
-                  onChange={(value) =>
-                    setEdit({ ...edit, requirements: value })
-                  }
-                  placeholder="Enter project requirements..."
-                  initialHeight={200}
-                />
+                <Label className="text-sm sm:text-base">Requirements</Label>
+                <div className="mt-1.5">
+                  <RichEditor
+                    content={edit.requirements}
+                    onChange={(value) =>
+                      setEdit({ ...edit, requirements: value })
+                    }
+                    placeholder="Enter project requirements..."
+                    initialHeight={200}
+                  />
+                </div>
               </div>
               <div>
-                <Label>Deliverables</Label>
-                <RichEditor
-                  content={edit.deliverables}
-                  onChange={(value) =>
-                    setEdit({ ...edit, deliverables: value })
-                  }
-                  placeholder="Enter project deliverables..."
-                  initialHeight={200}
-                />
+                <Label className="text-sm sm:text-base">Deliverables</Label>
+                <div className="mt-1.5">
+                  <RichEditor
+                    content={edit.deliverables}
+                    onChange={(value) =>
+                      setEdit({ ...edit, deliverables: value })
+                    }
+                    placeholder="Enter project deliverables..."
+                    initialHeight={200}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="w-full sm:w-auto text-sm sm:text-base">
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              <Edit className="w-4 h-4 mr-2" /> Save Changes
+            <Button onClick={handleSave} className="w-full sm:w-auto text-sm sm:text-base">
+              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={milestoneEditorOpen} onOpenChange={setMilestoneEditorOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Milestones</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Edit Milestones</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
               Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
               {milestoneApprovalState.milestonesLocked && " · LOCKED"}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {milestoneErrors[-1]?.title && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md">
                 <p className="text-sm text-red-600 font-medium">
@@ -3399,14 +3415,14 @@ export default function ProjectDetailsPage({
             )}
             {projectMilestones.map((m, i) => (
               <Card key={i}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="grid md:grid-cols-12 gap-3">
-                    <div className="md:col-span-1">
-                      <label className="text-sm font-medium">Seq</label>
-                      <Input type="number" value={i + 1} disabled />
+                <CardContent className="p-3 sm:p-4 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-1">
+                      <label className="text-xs sm:text-sm font-medium">Seq</label>
+                      <Input type="number" value={i + 1} disabled className="mt-1.5 text-sm sm:text-base" />
                     </div>
-                    <div className="md:col-span-4">
-                      <label className="text-sm font-medium">
+                    <div className="sm:col-span-12 md:col-span-4">
+                      <label className="text-xs sm:text-sm font-medium">
                         Title <span className="text-red-500">*</span>
                       </label>
                       <Input
@@ -3420,11 +3436,11 @@ export default function ProjectDetailsPage({
                             }));
                           }
                         }}
-                        className={
+                        className={`mt-1.5 text-sm sm:text-base ${
                           milestoneErrors[i]?.title
                             ? "border-red-500 focus-visible:ring-red-500"
                             : ""
-                        }
+                        }`}
                       />
                       {milestoneErrors[i]?.title && (
                         <p className="text-xs text-red-600 mt-1">
@@ -3432,8 +3448,8 @@ export default function ProjectDetailsPage({
                         </p>
                       )}
                     </div>
-                    <div className="md:col-span-3">
-                      <label className="text-sm font-medium">Amount</label>
+                    <div className="sm:col-span-12 md:col-span-3">
+                      <label className="text-xs sm:text-sm font-medium">Amount</label>
                       <Input
                         type="number"
                         value={String(m.amount ?? 0)}
@@ -3450,10 +3466,11 @@ export default function ProjectDetailsPage({
                             });
                           }
                         }}
+                        className="mt-1.5 text-sm sm:text-base"
                       />
                     </div>
-                    <div className="md:col-span-4">
-                      <label className="text-sm font-medium">
+                    <div className="sm:col-span-12 md:col-span-4">
+                      <label className="text-xs sm:text-sm font-medium">
                         Due Date <span className="text-red-500">*</span>
                       </label>
                       <Input
@@ -3480,11 +3497,11 @@ export default function ProjectDetailsPage({
                             }));
                           }
                         }}
-                        className={
+                        className={`mt-1.5 text-sm sm:text-base ${
                           milestoneErrors[i]?.dueDate
                             ? "border-red-500 focus-visible:ring-red-500"
                             : ""
-                        }
+                        }`}
                       />
                       {milestoneErrors[i]?.dueDate && (
                         <p className="text-xs text-red-600 mt-1">
@@ -3495,7 +3512,7 @@ export default function ProjectDetailsPage({
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium">
+                    <label className="text-xs sm:text-sm font-medium">
                       Description <span className="text-red-500">*</span>
                     </label>
                     <Textarea
@@ -3512,11 +3529,11 @@ export default function ProjectDetailsPage({
                           }));
                         }
                       }}
-                      className={
+                      className={`mt-1.5 text-sm sm:text-base ${
                         milestoneErrors[i]?.description
                           ? "border-red-500 focus-visible:ring-red-500"
                           : ""
-                      }
+                      }`}
                     />
                     {milestoneErrors[i]?.description && (
                       <p className="text-xs text-red-600 mt-1">
@@ -3529,6 +3546,8 @@ export default function ProjectDetailsPage({
                     <Button
                       variant="outline"
                       onClick={() => removeProjectMilestone(i)}
+                      size="sm"
+                      className="text-xs sm:text-sm"
                     >
                       Remove
                     </Button>
@@ -3537,15 +3556,17 @@ export default function ProjectDetailsPage({
               </Card>
             ))}
 
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={addProjectMilestone}>
+            <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-2">
+              <Button variant="outline" onClick={addProjectMilestone} size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
                 + Add Milestone
               </Button>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   onClick={handleSaveProjectMilestones}
                   disabled={savingMilestones}
+                  size="sm"
+                  className="text-xs sm:text-sm w-full sm:w-auto"
                 >
                   {savingMilestones ? "Saving..." : "Save Changes"}
                 </Button>
@@ -3555,6 +3576,8 @@ export default function ProjectDetailsPage({
                     JSON.stringify(normalizeMilestoneSequences(projectMilestones)) !== 
                     JSON.stringify(normalizeMilestoneSequences(originalProjectMilestones))
                   }
+                  size="sm"
+                  className="text-xs sm:text-sm w-full sm:w-auto"
                 >
                   Approve
                 </Button>

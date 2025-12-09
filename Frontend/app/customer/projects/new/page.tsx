@@ -326,48 +326,43 @@ export default function NewProjectPage() {
   };
   return (
     <CustomerLayout>
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link href="/customer/dashboard">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Create New Project
             </h1>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600 mt-1">
               Tell us about your ICT project and we'll find the perfect match
             </p>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Project Details</CardTitle>
-                <CardDescription>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-lg sm:text-xl">Project Details</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Provide clear information about your project requirements
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Project Title</Label>
+                  <Label htmlFor="title" className="text-sm sm:text-base">Project Title</Label>
                   <Input
                     id="title"
                     placeholder="e.g., E-commerce Mobile App Development"
                     value={formData.title}
                     onChange={(e) => handleInputChange("title", e.target.value)}
-                    className={
+                    className={`text-sm sm:text-base ${
                       errors.title
                         ? "border-red-500 focus-visible:ring-red-500"
                         : ""
-                    }
+                    }`}
                   />
                   {errors.title && (
                     <p className="text-xs text-red-600">{errors.title}</p>
@@ -375,7 +370,7 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category" className="text-sm sm:text-base">Category</Label>
 
                   {/* 1) Pick an existing category */}
                   <Select
@@ -385,11 +380,11 @@ export default function NewProjectPage() {
                     }
                   >
                     <SelectTrigger
-                      className={
+                      className={`text-sm sm:text-base ${
                         errors.category
                           ? "border-red-500 focus:ring-red-500"
                           : ""
-                      }
+                      }`}
                     >
                       <SelectValue placeholder="Select project category" />
                     </SelectTrigger>
@@ -402,14 +397,14 @@ export default function NewProjectPage() {
                     </SelectContent>
                   </Select>
 
-                  <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                  <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-gray-500">
                     <div className="flex-1 h-px bg-gray-200" />
                     <span>or create your own</span>
                     <div className="flex-1 h-px bg-gray-200" />
                   </div>
 
                   {/* 2) Add a new custom category */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       placeholder="e.g. POS Integration for Retail"
                       value={newCategory}
@@ -420,12 +415,13 @@ export default function NewProjectPage() {
                           handleAddCustomCategory();
                         }
                       }}
-                      className="flex-1"
+                      className="flex-1 text-sm sm:text-base"
                     />
                     <Button
                       type="button"
                       variant="outline"
                       onClick={handleAddCustomCategory}
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
                       Add
                     </Button>
@@ -442,11 +438,11 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Project Description</Label>
+                  <Label htmlFor="description" className="text-sm sm:text-base">Project Description</Label>
                   <Textarea
                     id="description"
                     placeholder="Describe your project in detail..."
-                    className={`min-h-[120px] ${
+                    className={`min-h-[120px] text-sm sm:text-base ${
                       errors.description
                         ? "border-red-500 focus-visible:ring-red-500"
                         : ""
@@ -461,9 +457,9 @@ export default function NewProjectPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="budgetMin">Minimum Budget (RM)</Label>
+                    <Label htmlFor="budgetMin" className="text-sm sm:text-base">Minimum Budget (RM)</Label>
                     <Input
                       id="budgetMin"
                       type="number"
@@ -472,11 +468,11 @@ export default function NewProjectPage() {
                       onChange={(e) =>
                         handleInputChange("budgetMin", e.target.value)
                       }
-                      className={
+                      className={`text-sm sm:text-base ${
                         errors.budgetMin
                           ? "border-red-500 focus-visible:ring-red-500"
                           : ""
-                      }
+                      }`}
                     />
                     {errors.budgetMin && (
                       <p className="text-xs text-red-600">{errors.budgetMin}</p>
@@ -484,7 +480,7 @@ export default function NewProjectPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="budgetMax">Maximum Budget (RM)</Label>
+                    <Label htmlFor="budgetMax" className="text-sm sm:text-base">Maximum Budget (RM)</Label>
                     <Input
                       id="budgetMax"
                       type="number"
@@ -493,11 +489,11 @@ export default function NewProjectPage() {
                       onChange={(e) =>
                         handleInputChange("budgetMax", e.target.value)
                       }
-                      className={
+                      className={`text-sm sm:text-base ${
                         errors.budgetMax
                           ? "border-red-500 focus-visible:ring-red-500"
                           : ""
-                      }
+                      }`}
                     />
                     {errors.budgetMax && (
                       <p className="text-xs text-red-600">{errors.budgetMax}</p>
@@ -506,8 +502,8 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="timeline">Project Timeline *</Label>
-                  <div className="flex gap-2">
+                  <Label htmlFor="timeline" className="text-sm sm:text-base">Project Timeline *</Label>
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       id="timelineAmount"
                       type="number"
@@ -517,11 +513,11 @@ export default function NewProjectPage() {
                       onChange={(e) =>
                         handleInputChange("timelineAmount", e.target.value)
                       }
-                      className={
+                      className={`text-sm sm:text-base ${
                         errors.timelineAmount
                           ? "border-red-500 focus-visible:ring-red-500"
                           : ""
-                      }
+                      }`}
                     />
                     <Select
                       value={formData.timelineUnit}
@@ -530,11 +526,11 @@ export default function NewProjectPage() {
                       }
                     >
                       <SelectTrigger
-                        className={
+                        className={`text-sm sm:text-base w-full sm:w-auto ${
                           errors.timelineUnit
                             ? "border-red-500 focus:ring-red-500"
                             : ""
-                        }
+                        }`}
                       >
                         <SelectValue placeholder="Unit" />
                       </SelectTrigger>
@@ -558,16 +554,16 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <Label>Required Skills</Label>
+                  <Label className="text-sm sm:text-base">Required Skills</Label>
 
                   {/* Selected skills preview */}
                   {formData.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {formData.skills.map((skill) => (
                         <Badge
                           key={skill}
                           variant="default"
-                          className="cursor-pointer"
+                          className="cursor-pointer text-xs"
                           onClick={() => handleSkillToggle(skill)}
                           title="Click to remove"
                         >
@@ -578,7 +574,7 @@ export default function NewProjectPage() {
                   )}
 
                   {/* Preset skills to click/toggle */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {skillOptions.map((skill) => (
                       <Badge
                         key={skill}
@@ -587,7 +583,7 @@ export default function NewProjectPage() {
                             ? "default"
                             : "outline"
                         }
-                        className="cursor-pointer"
+                        className="cursor-pointer text-xs"
                         onClick={() => handleSkillToggle(skill)}
                       >
                         {skill}
@@ -596,7 +592,7 @@ export default function NewProjectPage() {
                   </div>
 
                   {/* Add custom skill */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <Input
                       value={newSkill}
                       placeholder="Add a required skill (e.g. Laravel, PenTesting, POS integration)"
@@ -607,11 +603,13 @@ export default function NewProjectPage() {
                           handleAddCustomSkill();
                         }
                       }}
+                      className="flex-1 text-sm sm:text-base"
                     />
                     <Button
                       type="button"
                       variant="outline"
                       onClick={handleAddCustomSkill}
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
                       Add
                     </Button>
@@ -625,17 +623,17 @@ export default function NewProjectPage() {
 
                 <Separator />
 
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Additional Options</h3>
+                <div className="space-y-3 sm:space-y-4">
+                  <h3 className="font-semibold text-sm sm:text-base">Additional Options</h3>
 
                   <div className="space-y-2">
-                    <Label htmlFor="priority">Project Priority</Label>
+                    <Label htmlFor="priority" className="text-sm sm:text-base">Project Priority</Label>
                     <Select
                       onValueChange={(value) =>
                         handleInputChange("priority", value)
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm sm:text-base">
                         <SelectValue placeholder="Select priority level" />
                       </SelectTrigger>
                       <SelectContent>
@@ -652,45 +650,50 @@ export default function NewProjectPage() {
                     </Select>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-start space-x-2">
                     <Checkbox
                       id="nda"
                       checked={formData.ndaSigned}
                       onCheckedChange={(checked) =>
                         handleInputChange("ndaSigned", checked)
                       }
+                      className="mt-1"
                     />
-                    <Label htmlFor="nda" className="text-sm">
+                    <Label htmlFor="nda" className="text-xs sm:text-sm leading-relaxed">
                       This project requires an NDA (Non-Disclosure Agreement)
                     </Label>
                   </div>
 
                   <div>
-                    <label>Requirements</label>
-                    <RichEditor
-                      content={formData.requirements}
-                      onChange={(html) => handleChange("requirements", html)}
-                      placeholder="Enter your requirements …"
-                      initialHeight={300}
-                      style={{
-                        border: "1px solid #ccc",
-                        padding: "8px",
-                      }}
-                    />
+                    <label className="text-sm sm:text-base block mb-2">Requirements</label>
+                    <div className="text-sm sm:text-base">
+                      <RichEditor
+                        content={formData.requirements}
+                        onChange={(html) => handleChange("requirements", html)}
+                        placeholder="Enter your requirements …"
+                        initialHeight={300}
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "8px",
+                        }}
+                      />
+                    </div>
                   </div>
 
                   <div>
-                    <label>Deliverables</label>
-                    <RichEditor
-                      content={formData.deliverables}
-                      initialHeight={300}
-                      onChange={(html) => handleChange("deliverables", html)}
-                      placeholder="Enter your deliverables …"
-                      style={{
-                        border: "1px solid #ccc",
-                        padding: "8px",
-                      }}
-                    />
+                    <label className="text-sm sm:text-base block mb-2">Deliverables</label>
+                    <div className="text-sm sm:text-base">
+                      <RichEditor
+                        content={formData.deliverables}
+                        initialHeight={300}
+                        onChange={(html) => handleChange("deliverables", html)}
+                        placeholder="Enter your deliverables …"
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "8px",
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -699,29 +702,29 @@ export default function NewProjectPage() {
             {/* AI Suggestions */}
             {showAiSuggestions && (
               <Card className="border-blue-200 bg-blue-50/50">
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-blue-600" />
-                    <CardTitle className="text-blue-900">
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                    <CardTitle className="text-base sm:text-lg text-blue-900">
                       AI Project Insights
                     </CardTitle>
                   </div>
-                  <CardDescription className="text-blue-700">
+                  <CardDescription className="text-xs sm:text-sm text-blue-700">
                     Based on your project description, here are our AI-powered
                     recommendations
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
+                <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <h4 className="font-semibold text-blue-900 mb-2">
+                      <h4 className="font-semibold text-sm sm:text-base text-blue-900 mb-2">
                         Recommended Tech Stack
                       </h4>
                       <div className="flex flex-wrap gap-1">
                         {aiSuggestions.techStack.map((tech) => (
                           <Badge
                             key={tech}
-                            className="bg-blue-100 text-blue-800"
+                            className="bg-blue-100 text-blue-800 text-xs"
                           >
                             {tech}
                           </Badge>
@@ -729,36 +732,36 @@ export default function NewProjectPage() {
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-blue-900 mb-2">
+                      <h4 className="font-semibold text-sm sm:text-base text-blue-900 mb-2">
                         Estimated Duration
                       </h4>
-                      <p className="text-blue-800">
+                      <p className="text-xs sm:text-sm text-blue-800">
                         {aiSuggestions.estimatedDuration}
                       </p>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-semibold text-blue-900 mb-2">
+                    <h4 className="font-semibold text-sm sm:text-base text-blue-900 mb-2">
                       Suggested Budget Range
                     </h4>
-                    <p className="text-blue-800">
+                    <p className="text-xs sm:text-sm text-blue-800">
                       {aiSuggestions.suggestedBudget}
                     </p>
                   </div>
 
                   <div>
-                    <h4 className="font-semibold text-blue-900 mb-2">
+                    <h4 className="font-semibold text-sm sm:text-base text-blue-900 mb-2">
                       Recommended Milestones
                     </h4>
                     <ul className="space-y-1">
                       {aiSuggestions.milestones.map((milestone, index) => (
                         <li
                           key={index}
-                          className="flex items-center gap-2 text-blue-800"
+                          className="flex items-center gap-2 text-xs sm:text-sm text-blue-800"
                         >
-                          <div className="w-2 h-2 bg-blue-600 rounded-full" />
-                          {milestone}
+                          <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0" />
+                          <span>{milestone}</span>
                         </li>
                       ))}
                     </ul>
@@ -767,24 +770,24 @@ export default function NewProjectPage() {
               </Card>
             )}
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Button
                 onClick={generateAiSuggestions}
                 variant="outline"
-                className="flex-1 bg-transparent"
+                className="flex-1 bg-transparent text-xs sm:text-sm"
               >
-                <Lightbulb className="w-4 h-4 mr-2" />
+                <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 Get AI Suggestions
               </Button>
               <Button
                 onClick={handleSubmit}
-                className="flex-1"
+                className="flex-1 text-xs sm:text-sm"
                 disabled={loading}
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" />
                 ) : (
-                  <Zap className="w-4 h-4 mr-2" />
+                  <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 )}
                 {loading ? "Creating..." : "Find ICT Professionals"}
               </Button>
@@ -792,29 +795,29 @@ export default function NewProjectPage() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-green-600" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
                   Project Protection
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
-                  <div>
-                    <h4 className="font-semibold text-sm">Escrow Payment</h4>
+              <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-xs sm:text-sm">Escrow Payment</h4>
                     <p className="text-xs text-gray-600">
                       Your payment is held securely until milestones are
                       completed
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
-                  <div>
-                    <h4 className="font-semibold text-sm">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-xs sm:text-sm">
                       Verified Professionals
                     </h4>
                     <p className="text-xs text-gray-600">
@@ -822,10 +825,10 @@ export default function NewProjectPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2" />
-                  <div>
-                    <h4 className="font-semibold text-sm">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-xs sm:text-sm">
                       Dispute Resolution
                     </h4>
                     <p className="text-xs text-gray-600">
@@ -837,41 +840,41 @@ export default function NewProjectPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-blue-600" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                   What Happens Next?
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600">
+              <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0">
                     1
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-sm">AI Matching</h4>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-xs sm:text-sm">AI Matching</h4>
                     <p className="text-xs text-gray-600">
                       Our AI finds the best professionals for your project
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0">
                     2
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-sm">Review Proposals</h4>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-xs sm:text-sm">Review Proposals</h4>
                     <p className="text-xs text-gray-600">
                       Compare profiles, portfolios, and proposals
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600 flex-shrink-0">
                     3
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-sm">Start Project</h4>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-xs sm:text-sm">Start Project</h4>
                     <p className="text-xs text-gray-600">
                       Choose your provider and begin collaboration
                     </p>
@@ -881,14 +884,14 @@ export default function NewProjectPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-purple-600" />
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
                   Tips for Success
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm space-y-2">
+              <CardContent className="space-y-3 p-4 sm:p-6 pt-0">
+                <div className="text-xs sm:text-sm space-y-1.5 sm:space-y-2">
                   <p className="font-medium">
                     Be specific about your requirements
                   </p>
@@ -896,13 +899,13 @@ export default function NewProjectPage() {
                     Clear project descriptions get better matches and proposals
                   </p>
                 </div>
-                <div className="text-sm space-y-2">
+                <div className="text-xs sm:text-sm space-y-1.5 sm:space-y-2">
                   <p className="font-medium">Set realistic budgets</p>
                   <p className="text-gray-600 text-xs">
                     Quality work requires fair compensation
                   </p>
                 </div>
-                <div className="text-sm space-y-2">
+                <div className="text-xs sm:text-sm space-y-1.5 sm:space-y-2">
                   <p className="font-medium">Include examples or references</p>
                   <p className="text-gray-600 text-xs">
                     Visual references help professionals understand your vision
