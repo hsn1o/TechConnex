@@ -5,14 +5,17 @@ const prisma = new PrismaClient();
 async function getTotalSpent(userId) {
   return prisma.payment.aggregate({
     _sum: { amount: true },
-    where: { project: { customerId: userId } },
+    where: {
+      status: { in: ["ESCROWED", "RELEASED", "TRANSFERRED"] },
+      project: { customerId: userId },
+    },
   });
 }
 
 async function getPendingPayments(userId) {
   return prisma.payment.aggregate({
     _sum: { amount: true },
-    where: { status: "ESCROWED", project: { customerId: userId } },
+    where: { status: "PENDING", project: { customerId: userId } },
   });
 }
 
@@ -20,6 +23,7 @@ async function getThisMonthSpent(userId, firstDay, lastDay) {
   return prisma.payment.aggregate({
     _sum: { amount: true },
     where: {
+      status: { in: ["ESCROWED", "RELEASED", "TRANSFERRED"] },
       project: { customerId: userId },
       createdAt: { gte: firstDay, lte: lastDay },
     },
@@ -29,7 +33,10 @@ async function getThisMonthSpent(userId, firstDay, lastDay) {
 async function getAverageTransaction(userId) {
   return prisma.payment.aggregate({
     _avg: { amount: true },
-    where: { project: { customerId: userId } },
+    where: {
+      status: { in: ["ESCROWED", "RELEASED", "TRANSFERRED"] },
+      project: { customerId: userId },
+    },
   });
 }
 
@@ -44,7 +51,10 @@ async function getRecentInvoices(userId, limit = 5) {
 
 async function getRecentTransactions(userId, limit = 5) {
   return prisma.payment.findMany({
-    where: { project: { customerId: userId } },
+    where: {
+      status: { in: ["ESCROWED", "RELEASED", "TRANSFERRED"] },
+      project: { customerId: userId },
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
     include: {
@@ -57,7 +67,10 @@ async function getRecentTransactions(userId, limit = 5) {
 
 async function getAllTransactions(userId) {
   return prisma.payment.findMany({
-    where: { project: { customerId: userId } },
+    where: {
+      status: { in: ["ESCROWED", "RELEASED", "TRANSFERRED"] },
+      project: { customerId: userId },
+    },
     orderBy: { createdAt: "desc" },
     include: {
       project: { select: { title: true, category: true } },
@@ -146,7 +159,6 @@ export const findPaymentWithFullDetails = async (paymentId) => {
                   industry: true,
                   location: true,
                   website: true,
-                  logoUrl: true,
                   profileImageUrl: true,
                   socialLinks: true,
                   languages: true,
@@ -195,12 +207,7 @@ export const findPaymentWithFullDetails = async (paymentId) => {
                   availability: true,
                   languages: true,
                   website: true,
-                  profileVideoUrl: true,
                   profileImageUrl: true,
-                  bankName: true,
-                  bankAccountNumber: true,
-                  bankAccountName: true,
-                  bankSwiftCode: true,
                   rating: true,
                   totalReviews: true,
                   totalProjects: true,
@@ -209,7 +216,6 @@ export const findPaymentWithFullDetails = async (paymentId) => {
                   successRate: true,
                   responseTime: true,
                   isFeatured: true,
-                  isVerified: true,
                   completion: true,
                   skills: true,
                   yearsExperience: true,

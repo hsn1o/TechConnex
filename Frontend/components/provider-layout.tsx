@@ -33,6 +33,15 @@ import {
   Plus,
   Building2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -50,6 +59,14 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
   const [profileLoading, setProfileLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
 
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<any | null>(
+    null
+  );
+
   // Logout function
   const handleLogout = () => {
     // Clear user data from localStorage
@@ -61,6 +78,32 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
 
     // Redirect to login page
     router.push("/auth/login");
+  };
+
+  // Handler to mark a notification as read
+  const handleNotificationClick = async (id: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    try {
+      await fetch(`${API_URL}/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to mark notification as read", error);
+    }
+    const notif = notifications.find((n) => n.id === id);
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
+    if (notif) {
+      setSelectedNotification(notif);
+      setModalOpen(true);
+    }
   };
 
   useEffect(() => {
@@ -134,6 +177,28 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
 
     checkAuth();
   }, []); // Remove router dependency to prevent infinite re-renders
+
+  // Fetch notifications for provider header
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const endpoint = `${API_URL}/notifications/`;
+
+    fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch notifications");
+        return res.json();
+      })
+      .then((data) => setNotifications(data.data || []))
+      .catch(() => setNotifications([]))
+      .finally(() => setNotificationsLoading(false));
+  }, []);
 
   // Show loading spinner while checking authentication
   if (!authChecked) {
@@ -279,12 +344,52 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-5 h-5" />
-                <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs bg-red-500">
-                  5
-                </Badge>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="relative">
+                    <Bell className="w-5 h-5" />
+                    <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs bg-red-500">
+                      {notifications.filter((n) => !n.isRead).length}
+                    </Badge>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-80 max-h-[800px] overflow-y-auto"
+                  align="end"
+                  forceMount
+                >
+                  <DropdownMenuLabel className="font-medium text-gray-900">
+                    Notifications
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {notificationsLoading ? (
+                    <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                  ) : notifications.length > 0 ? (
+                    notifications.map((n) => (
+                      <DropdownMenuItem
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n.id)}
+                        className={n.isRead ? "opacity-50" : ""}
+                      >
+                        <div className="flex flex-col space-y-1">
+                          <span className="font-medium">{n.title}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {n.content}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem disabled>
+                      No notifications
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -373,6 +478,45 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
           )}
         </main>
       </div>
+      {/* Notification modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-lg p-6 mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              Notification
+            </DialogTitle>
+            <DialogClose className="absolute right-4 top-4">
+              <X className="w-5 h-5" />
+            </DialogClose>
+          </DialogHeader>
+          <DialogDescription className="mt-4 text-sm text-gray-700">
+            {selectedNotification ? (
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-md font-medium">
+                    {selectedNotification.title}
+                  </h3>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(selectedNotification.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-sm">{selectedNotification.content}</p>
+              </div>
+            ) : (
+              "No notification details available."
+            )}
+          </DialogDescription>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="default"
+              onClick={() => setModalOpen(false)}
+              className="w-full"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

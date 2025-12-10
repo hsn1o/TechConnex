@@ -4,7 +4,7 @@ class CompanyProfileDto {
     this.industry = data.industry;
     this.location = data.location;
     this.website = data.website;
-    this.logoUrl = data.logoUrl;
+    this.profileImageUrl = data.profileImageUrl;
     this.socialLinks = data.socialLinks;
     this.languages = data.languages || [];
     this.companySize = data.companySize;
@@ -44,7 +44,7 @@ class CompanyProfileDto {
       errors.push("Website must be a valid URL");
     }
 
-    if (this.logoUrl && !this.isValidUrl(this.logoUrl)) {
+    if (this.profileImageUrl && !this.isValidUrl(this.profileImageUrl)) {
       errors.push("Logo URL must be a valid URL");
     }
 
@@ -82,7 +82,7 @@ class CompanyProfileDto {
       industry: this.industry,
       location: this.location,
       website: this.website,
-      logoUrl: this.logoUrl,
+      profileImageUrl: this.profileImageUrl,
       socialLinks: this.socialLinks,
       languages: this.languages,
       companySize: this.companySize,
@@ -125,7 +125,7 @@ class CompanyProfileUpdateDto {
       errors.push("Website must be a valid URL");
     }
 
-    if (this.logoUrl && !this.isValidUrl(this.logoUrl)) {
+    if (this.profileImageUrl && !this.isValidUrl(this.profileImageUrl)) {
       errors.push("Logo URL must be a valid URL");
     }
 
@@ -192,7 +192,7 @@ class CompanyProfileResponseDto {
         industry: this.profileData.industry,
         location: this.profileData.location,
         website: this.profileData.website,
-        logoUrl: this.profileData.logoUrl,
+        profileImageUrl: this.profileData.profileImageUrl,
         socialLinks: this.profileData.socialLinks || [],
         languages: this.profileData.languages || [],
         companySize: this.profileData.companySize,

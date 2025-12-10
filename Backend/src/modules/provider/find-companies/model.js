@@ -388,7 +388,6 @@ export async function getSavedCompanies(userId, page = 1, limit = 20) {
                 description: true,
                 website: true,
                 profileImageUrl: true, // 🆕 Profile image
-                logoUrl: true, // 🆕 Logo
                 employeeCount: true,
                 establishedYear: true,
                 annualRevenue: true,

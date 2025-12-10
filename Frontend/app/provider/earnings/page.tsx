@@ -31,10 +31,35 @@ import {
   BarChart3,
   Edit,
   Trash2,
+  Building2,
+  Plus,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+type PayoutMethodType = "BANK" | "PAYPAL" | "PAYONEER" | "WISE" | "EWALLET";
+interface PayoutMethod {
+  id: string;
+  type: PayoutMethodType;
+  label?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountHolder?: string;
+  accountEmail?: string;
+  walletId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function ProviderEarningsPage() {
   const router = useRouter();
@@ -54,6 +79,17 @@ export default function ProviderEarningsPage() {
   const [newAccountNumber, setNewAccountNumber] = useState("");
   const [newAccountName, setNewAccountName] = useState("");
   const [newSwiftCode, setNewSwiftCode] = useState("");
+  const [editingMethod, setEditingMethod] = useState<PayoutMethod | null>(null);
+  const [payoutMethods, setPayoutMethods] = useState<PayoutMethod[]>([]);
+  const [formData, setFormData] = useState({
+    type: "BANK" as PayoutMethodType,
+    label: "",
+    bankName: "",
+    accountNumber: "",
+    accountHolder: "",
+    accountEmail: "",
+    walletId: "",
+  });
   const handleWithdraw = async () => {
     if (!selectedBank) {
       alert("Please select a bank account");
@@ -137,12 +173,12 @@ export default function ProviderEarningsPage() {
         setMonthlyEarnings(data.monthlyEarnings);
         setQuickStats(data.quickStats);
         // Use bankDetails returned from API
-        const _bd = data.bankDetails;
-        if (_bd && Object.values(_bd).some((val) => val)) {
-          setBankAccount([_bd]);
-        } else {
-          setBankAccount([]);
-        }
+        // const _bd = data.bankDetails;
+        // if (_bd && Object.values(_bd).some((val) => val)) {
+        //   setBankAccount([_bd]);
+        // } else {
+        //   setBankAccount([]);
+        // }
       } catch (err) {
         console.error("❌ Failed to fetch earnings:", err);
       } finally {
@@ -153,61 +189,234 @@ export default function ProviderEarningsPage() {
     fetchEarnings();
   }, []);
 
-  // Handlers to add or delete bank details
-  const handleAddBankDetails = async () => {
-    if (!newBankName || !newAccountNumber || !newAccountName || !newSwiftCode) {
-      alert("Please fill in all bank details");
-      return;
-    }
-    const token = localStorage.getItem("token");
-    if (!token) return;
+  // Fetch payout methods from backend
+  const fetchPayoutMethods = async () => {
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            bankName: newBankName,
-            bankAccountNumber: newAccountNumber,
-            bankAccountName: newAccountName,
-            bankSwiftCode: newSwiftCode,
-          }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to add bank details");
-      const data = await res.json();
-      const _bd2 = data.bankDetails;
-      if (_bd2 && Object.values(_bd2).some((val) => val)) {
-        setBankAccount([_bd2]);
-      } else {
-        setBankAccount([]);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-  const handleDeleteBankDetails = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank`,
         {
-          method: "DELETE",
+          method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      if (!res.ok) throw new Error("Failed to delete bank details");
-      setBankAccount([]);
+
+      if (!res.ok) throw new Error("Failed to fetch payout methods");
+
+      const result = await res.json();
+      setPayoutMethods(result.payoutMethods || []);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Failed to fetch payout methods:", err);
     }
   };
+
+  // On component mount
+  useEffect(() => {
+    fetchPayoutMethods();
+  }, []);
+
+  // Save (create/update) payout method
+  const handleSavePayoutMethod = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Unauthorized");
+
+      // Validation
+      if (formData.type === "BANK") {
+        if (
+          !formData.bankName ||
+          !formData.accountNumber ||
+          !formData.accountHolder
+        )
+          throw new Error("Please fill in all bank details");
+      } else if (!formData.accountEmail) {
+        throw new Error("Please provide an email address");
+      }
+
+      const url = editingMethod
+        ? `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank/${editingMethod.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank`;
+      const method = editingMethod ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) throw new Error("Failed to save payout method");
+
+      toast({
+        title: "Success",
+        description: editingMethod
+          ? "Payout method updated successfully"
+          : "Payout method added successfully",
+      });
+
+      setShowAddForm(false);
+      setEditingMethod(null);
+      resetForm();
+      await fetchPayoutMethods();
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to save payout method",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Delete payout method
+  const handleDeletePayoutMethod = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Unauthorized");
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank/${id}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!res.ok) throw new Error("Failed to delete payout method");
+
+      toast({
+        title: "Deleted",
+        description: "Payout method removed successfully",
+      });
+      await fetchPayoutMethods();
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Edit payout method
+  const handleEditPayoutMethod = (method: PayoutMethod) => {
+    setEditingMethod(method);
+    setFormData({
+      type: method.type,
+      label: method.label || "",
+      bankName: method.bankName || "",
+      accountNumber: method.accountNumber || "",
+      accountHolder: method.accountHolder || "",
+      accountEmail: method.accountEmail || "",
+      walletId: method.walletId || "",
+    });
+    setShowAddForm(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      type: "BANK",
+      label: "",
+      bankName: "",
+      accountNumber: "",
+      accountHolder: "",
+      accountEmail: "",
+      walletId: "",
+    });
+  };
+
+  const getPayoutIcon = (type: PayoutMethodType) => {
+    switch (type) {
+      case "BANK":
+        return <Building2 className="w-6 h-6" />;
+      case "PAYPAL":
+        return <Wallet className="w-6 h-6" />;
+      case "PAYONEER":
+        return <CreditCard className="w-6 h-6" />;
+      case "WISE":
+        return <TrendingUp className="w-6 h-6" />;
+      case "EWALLET":
+        return <Wallet className="w-6 h-6" />;
+      default:
+        return <CreditCard className="w-6 h-6" />;
+    }
+  };
+
+  const getPayoutDisplayText = (method: PayoutMethod) => {
+    if (method.type === "BANK") {
+      return {
+        title: method.label || method.bankName || "Bank Account",
+        subtitle: method.accountNumber
+          ? `•••• ${method.accountNumber.slice(-4)}`
+          : "",
+        details: method.accountHolder || "",
+      };
+    } else {
+      return {
+        title: method.label || method.type,
+        subtitle: method.accountEmail || "",
+        details: method.walletId || "",
+      };
+    }
+  };
+
+  // Handlers to add or delete bank details
+  // const handleAddBankDetails = async () => {
+  //   if (!newBankName || !newAccountNumber || !newAccountName || !newSwiftCode) {
+  //     alert("Please fill in all bank details");
+  //     return;
+  //   }
+  //   const token = localStorage.getItem("token");
+  //   if (!token) return;
+  //   try {
+  //     const res = await fetch(
+  //       `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank`,
+  //       {
+  //         method: "PUT",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify({
+  //           bankName: newBankName,
+  //           bankAccountNumber: newAccountNumber,
+  //           bankAccountName: newAccountName,
+  //           bankSwiftCode: newSwiftCode,
+  //         }),
+  //       }
+  //     );
+  //     if (!res.ok) throw new Error("Failed to add bank details");
+  //     const data = await res.json();
+  //     const _bd2 = data.bankDetails;
+  //     if (_bd2 && Object.values(_bd2).some((val) => val)) {
+  //       setBankAccount([_bd2]);
+  //     } else {
+  //       setBankAccount([]);
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // };
+
+  // const handleDeleteBankDetails = async () => {
+  //   const token = localStorage.getItem("token");
+  //   if (!token) return;
+  //   try {
+  //     const res = await fetch(
+  //       `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/bank`,
+  //       {
+  //         method: "DELETE",
+  //         headers: { Authorization: `Bearer ${token}` },
+  //       }
+  //     );
+  //     if (!res.ok) throw new Error("Failed to delete bank details");
+  //     setBankAccount([]);
+  //   } catch (err) {
+  //     console.error(err);
+  //   }
+  // };
 
   if (loading) {
     return (
@@ -638,7 +847,9 @@ export default function ProviderEarningsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            router.push(`/provider/earnings/transactions/${payment.id}`)
+                            router.push(
+                              `/provider/earnings/transactions/${payment.id}`
+                            )
                           }
                         >
                           <Eye className="w-4 h-4 mr-2" />
@@ -823,167 +1034,251 @@ export default function ProviderEarningsPage() {
           </TabsContent>
 
           {/* Payment Methods Tab */}
+          {/* Payment Methods Tab */}
           <TabsContent value="methods" className="space-y-6">
-            {bankAccount.length === 0 && !showAddForm && (
-              <div className="text-center p-6">
-                <p className="text-gray-500">No bank details found.</p>
-                <Button onClick={() => setShowAddForm(true)}>
-                  Add Bank Details
-                </Button>
-              </div>
-            )}
-            {showAddForm && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Add Bank Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
                   <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Bank Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newBankName}
-                      onChange={(e) => setNewBankName(e.target.value)}
-                      className="w-full border p-2 rounded"
-                      placeholder="e.g. Maybank"
-                    />
+                    <CardTitle>Payout Methods</CardTitle>
+                    <CardDescription>
+                      Manage your payout methods for withdrawals
+                    </CardDescription>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Account Number
-                    </label>
-                    <input
-                      type="text"
-                      value={newAccountNumber}
-                      onChange={(e) => setNewAccountNumber(e.target.value)}
-                      className="w-full border p-2 rounded"
-                      placeholder="e.g. 1234567890"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Account Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newAccountName}
-                      onChange={(e) => setNewAccountName(e.target.value)}
-                      className="w-full border p-2 rounded"
-                      placeholder="e.g. John Doe"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      SWIFT Code
-                    </label>
-                    <input
-                      type="text"
-                      value={newSwiftCode}
-                      onChange={(e) => setNewSwiftCode(e.target.value)}
-                      className="w-full border p-2 rounded"
-                      placeholder="e.g. ABCDUS33"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleAddBankDetails}>Save</Button>
+                  <Button
+                    onClick={() => {
+                      setEditingMethod(null);
+                      resetForm();
+                      setShowAddForm(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Method
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {payoutMethods?.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Wallet className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-4">
+                      No payout methods added yet
+                    </p>
                     <Button
-                      variant="outline"
-                      onClick={() => setShowAddForm(false)}
+                      onClick={() => {
+                        setEditingMethod(null);
+                        resetForm();
+                        setShowAddForm(true);
+                      }}
                     >
-                      Cancel
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Your First Method
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-            <div
-              className={`grid md:grid-cols-2 gap-6 ${
-                bankAccount.length === 0 ? "hidden" : ""
-              }`}
-            >
-              {bankAccount.map((method) => (
-                <Card
-                  key={method.id}
-                  className={method.isDefault ? "ring-2 ring-blue-500" : ""}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="text-2xl">
-                          {method.type === "credit_card"
-                            ? getCardIcon(method.brand!)
-                            : "🏦"}
-                        </div>
-                        <div>
-                          {method.type === "credit_card" ? (
-                            <>
-                              <p className="font-semibold">
-                                {method.brand} •••• {method.last4}
-                              </p>
-                              <p className="text-sm text-gray-500">
-                                Expires{" "}
-                                {method
-                                  .expiryMonth!.toString()
-                                  .padStart(2, "0")}
-                                /{method.expiryYear}
-                              </p>
-                            </>
-                          ) : (
-                            <>
-                              <p className="font-semibold">{method.bankName}</p>
-                              <p className="text-sm text-gray-500">
-                                Account •••• {method.last4}
-                              </p>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {method.isDefault && (
-                        <Badge className="bg-blue-100 text-blue-800">
-                          Default
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4">
-                      {method.type === "credit_card"
-                        ? method.name
-                        : method.accountName}
-                    </p>
-                    <div className="flex gap-2">
-                      {!method.isDefault && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleSetDefaultPaymentMethod(method.id)
-                          }
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {payoutMethods?.map((method) => {
+                      const displayInfo = getPayoutDisplayText(method);
+                      return (
+                        <Card
+                          key={method.id}
+                          className="border-2 hover:border-primary/50 transition-colors"
                         >
-                          Set as Default
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm">
-                        <Edit className="w-4 h-4 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 bg-transparent"
-                        onClick={() => handleRemovePaymentMethod(method.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Remove
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                                  {getPayoutIcon(method.type)}
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-lg">
+                                    {displayInfo.title}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {displayInfo.subtitle}
+                                  </p>
+                                </div>
+                              </div>
+                              <Badge variant="secondary">{method.type}</Badge>
+                            </div>
+                            {displayInfo.details && (
+                              <p className="text-sm text-gray-600 mb-4">
+                                {displayInfo.details}
+                              </p>
+                            )}
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditPayoutMethod(method)}
+                              >
+                                <Edit className="w-4 h-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive hover:text-destructive bg-transparent"
+                                onClick={() =>
+                                  handleDeletePayoutMethod(method.id)
+                                }
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingMethod ? "Edit Payout Method" : "Add Payout Method"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingMethod
+                ? "Update your payout method details"
+                : "Add a new payout method for withdrawals"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="type">Method Type</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(value: PayoutMethodType) =>
+                  setFormData({ ...formData, type: value })
+                }
+              >
+                <SelectTrigger id="type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BANK">Bank Transfer</SelectItem>
+                  <SelectItem value="PAYPAL">PayPal</SelectItem>
+                  <SelectItem value="PAYONEER">Payoneer</SelectItem>
+                  <SelectItem value="WISE">Wise</SelectItem>
+                  <SelectItem value="EWALLET">E-Wallet</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="label">Label (Optional)</Label>
+              <Input
+                id="label"
+                placeholder="e.g. Main Bank, Business PayPal"
+                value={formData.label}
+                onChange={(e) =>
+                  setFormData({ ...formData, label: e.target.value })
+                }
+              />
+            </div>
+
+            {formData.type === "BANK" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="bankName">Bank Name *</Label>
+                  <Input
+                    id="bankName"
+                    placeholder="e.g. Maybank, CIMB Bank"
+                    value={formData.bankName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bankName: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accountNumber">Account Number *</Label>
+                  <Input
+                    id="accountNumber"
+                    placeholder="e.g. 1234567890"
+                    value={formData.accountNumber}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        accountNumber: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accountHolder">Account Holder Name *</Label>
+                  <Input
+                    id="accountHolder"
+                    placeholder="e.g. John Doe"
+                    value={formData.accountHolder}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        accountHolder: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="accountEmail">Email Address *</Label>
+                  <Input
+                    id="accountEmail"
+                    type="email"
+                    placeholder="e.g. your@email.com"
+                    value={formData.accountEmail}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        accountEmail: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                {formData.type === "EWALLET" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="walletId">
+                      Wallet ID / Phone Number (Optional)
+                    </Label>
+                    <Input
+                      id="walletId"
+                      placeholder="e.g. +60123456789"
+                      value={formData.walletId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, walletId: e.target.value })
+                      }
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAddForm(false);
+                setEditingMethod(null);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSavePayoutMethod}>
+              {editingMethod ? "Update Method" : "Add Method"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ProviderLayout>
   );
 }

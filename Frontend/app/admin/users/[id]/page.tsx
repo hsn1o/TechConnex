@@ -74,7 +74,6 @@ export default function AdminUserDetailPage() {
           hourlyRate: profile.hourlyRate || "",
           availability: profile.availability || "",
           website: profile.website || "",
-          profileVideoUrl: profile.profileVideoUrl || "",
           skills: profile.skills || [],
           languages: profile.languages || [],
           yearsExperience: profile.yearsExperience || "",
@@ -753,24 +752,7 @@ export default function AdminUserDetailPage() {
                             <p>{profile.preferredProjectDuration || "—"}</p>
                           )}
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="profileVideoUrl">Profile Video URL</Label>
-                          {isEditing ? (
-                            <Input
-                              id="profileVideoUrl"
-                              type="url"
-                              value={formData.providerProfile?.profileVideoUrl || ""}
-                              onChange={(e) => handleFieldChange("profileVideoUrl", e.target.value, true)}
-                              placeholder="https://..."
-                            />
-                          ) : (
-                            <p>{profile.profileVideoUrl ? (
-                              <a href={profile.profileVideoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                                {profile.profileVideoUrl}
-                              </a>
-                            ) : "—"}</p>
-                          )}
-                        </div>
+                        
                       </div>
                       <div className="space-y-2">
                         <Label>Skills</Label>

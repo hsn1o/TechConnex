@@ -25,7 +25,6 @@ class RegisterProviderDto {
       availability: profile.availability || null,
       languages: Array.isArray(profile.languages) ? profile.languages : [],
       website: profile.website || null,
-      profileVideoUrl: profile.profileVideoUrl || null,
       
       // Performance metrics (defaults from schema)
       rating: profile.rating || 0.00,
@@ -36,7 +35,6 @@ class RegisterProviderDto {
       successRate: profile.successRate || 0.00,
       responseTime: profile.responseTime || 0,
       isFeatured: profile.isFeatured || false,
-      isVerified: profile.isVerified || false,
       completion: profile.completion || null,
 
       // Skills & work preferences

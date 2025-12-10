@@ -926,11 +926,11 @@ export default function ProviderProjectDetailsPage() {
     projectMessages && projectMessages.length > 0 ? projectMessages : messages;
 
   const provider =
-    project?.provider ??
+    project?.customer ??
     ({
-      id: project?.providerId,
-      name: project?.providerName ?? project?.provider?.name,
-      avatar: project?.provider?.avatarUrl ?? project?.providerAvatar,
+      id: project?.customer?.id,
+      name: project?.customer?.name,
+      avatar: project?.customer?.customerProfile.profileImageUrl,
     } as any);
 
   const handleContact = () => {
@@ -946,7 +946,7 @@ export default function ProviderProjectDetailsPage() {
         : "";
 
     router.push(
-      `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
+      `/provider/messages?userId=${provider.id}&name=${encodeURIComponent(
         provider.name || ""
       )}&avatar=${encodeURIComponent(avatarUrl)}`
     );

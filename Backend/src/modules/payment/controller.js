@@ -17,14 +17,85 @@ const prisma = new PrismaClient();
  */
 export async function initiatePayment(req, res) {
   try {
-    const { projectId, milestoneId, amount } = req.body;
+    const { projectId, milestoneId: incomingMilestoneId, amount } = req.body;
     const customerId = req.user.id; // From auth middleware
 
-    if (!projectId || !milestoneId || !amount) {
+    if (!projectId || !amount) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
       });
+    }
+
+    // Ensure milestone exists and is up-to-date. If milestone exists, update it.
+    // If it doesn't, create a new milestone for the project and mark it LOCKED
+    let milestoneId = incomingMilestoneId;
+
+    // Find existing milestone if id provided
+    if (milestoneId) {
+      const existing = await prisma.milestone.findUnique({
+        where: { id: milestoneId },
+      });
+      if (existing) {
+        if (existing.projectId !== projectId) {
+          return res
+            .status(400)
+            .json({
+              success: false,
+              message: "Milestone does not belong to the provided project",
+            });
+        }
+
+        await prisma.milestone.update({
+          where: { id: milestoneId },
+          data: {
+            amount: parseFloat(amount),
+            status: "LOCKED",
+          },
+        });
+      } else {
+        // Create new milestone since provided id not found
+        const maxOrder = await prisma.milestone.findFirst({
+          where: { projectId },
+          orderBy: { order: "desc" },
+          select: { order: true },
+        });
+        const order = maxOrder ? (maxOrder.order || 0) + 1 : 1;
+        const created = await prisma.milestone.create({
+          data: {
+            projectId,
+            title: `Milestone ${order}`,
+            description: "",
+            amount: parseFloat(amount),
+            dueDate: new Date(),
+            order,
+            status: "LOCKED",
+            source: "AUTO",
+          },
+        });
+        milestoneId = created.id;
+      }
+    } else {
+      // No milestone id provided - create one
+      const maxOrder = await prisma.milestone.findFirst({
+        where: { projectId },
+        orderBy: { order: "desc" },
+        select: { order: true },
+      });
+      const order = maxOrder ? (maxOrder.order || 0) + 1 : 1;
+      const created = await prisma.milestone.create({
+        data: {
+          projectId,
+          title: `Milestone ${order}`,
+          description: "",
+          amount: parseFloat(amount),
+          dueDate: new Date(),
+          order,
+          status: "LOCKED",
+          source: "AUTO",
+        },
+      });
+      milestoneId = created.id;
     }
 
     const result = await initiateClientPayment({
@@ -94,7 +165,11 @@ export async function confirmTransfer(req, res) {
       });
     }
 
-    const result = await confirmBankTransfer(paymentId, adminId, transferReference);
+    const result = await confirmBankTransfer(
+      paymentId,
+      adminId,
+      transferReference
+    );
 
     res.status(200).json({
       success: true,
@@ -210,9 +285,10 @@ export async function getPaymentHistory(req, res) {
     const userId = req.user.id;
     const { role } = req.query; // 'customer' or 'provider'
 
-    const whereClause = role === "provider"
-      ? { project: { providerId: userId } }
-      : { project: { customerId: userId } };
+    const whereClause =
+      role === "provider"
+        ? { project: { providerId: userId } }
+        : { project: { customerId: userId } };
 
     const payments = await prisma.payment.findMany({
       where: whereClause,

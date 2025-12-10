@@ -57,9 +57,9 @@ model User {
 }
 
 model Notification {
-  id     String @id @default(uuid()) @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String @db.Uuid // ✅ fix
+  id        String   @id @default(uuid()) @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid // ✅ fix
   title     String // proposal, payment, message, system
   type      String // proposal, payment, message, system
   content   String
@@ -74,10 +74,7 @@ model ProviderProfile {
   userId String @unique @db.Uuid
 
   // Bank account details for manual payouts
-  bankName          String? @map("bank_name")
-  bankAccountNumber String? @map("bank_account_number")
-  bankAccountName   String? @map("bank_account_name")
-  bankSwiftCode     String? @map("bank_swift_code")
+  payoutMethods PayoutMethod[]
 
   // Profile
   bio             String?
@@ -118,6 +115,37 @@ model ProviderProfile {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("users")
+}
+
+enum PayoutMethodType {
+  BANK
+  PAYPAL
+  PAYONEER
+  WISE
+  EWALLET
+}
+
+model PayoutMethod {
+  id                String          @id @default(cuid())
+  providerProfileId String          @db.Uuid
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id])
+
+  type PayoutMethodType
+
+  // Common fields
+  label String? // e.g. "Main Bank", "PayPal Business"
+
+  // Bank Transfer Fields
+  bankName      String?
+  accountNumber String?
+  accountHolder String?
+
+  // PayPal / Payoneer / Wise / E-wallet
+  accountEmail String?
+  walletId     String? // for e-wallet numbers (Touch 'n Go, etc.)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Settings {
@@ -245,23 +273,23 @@ model ProjectPortfolio {
 }
 
 model Review {
-  id                  String   @id @default(uuid()) @db.Uuid
+  id                    String   @id @default(uuid()) @db.Uuid
   // Many reviews can belong to one project
-  project             Project  @relation(fields: [projectId], references: [id])
-  projectId           String   @db.Uuid
-  reviewer            User     @relation("Reviewer", fields: [reviewerId], references: [id])
-  reviewerId          String   @db.Uuid
-  recipient           User     @relation("Recipient", fields: [recipientId], references: [id])
-  recipientId         String   @db.Uuid
-  company             String? // Optional: shown as "TechStart Sdn Bhd"
-  role                String? // e.g. “Project Manager”
-  content             String // The review text
-  rating              Float // e.g. 4.9
-  communicationRating Int?     @map("communication_rating")
-  qualityRating       Int?     @map("quality_rating")
-  timelinessRating    Int?     @map("timeliness_rating")
-  professionalismRating Int?   @map("professionalism_rating")
-  createdAt           DateTime @default(now())
+  project               Project  @relation(fields: [projectId], references: [id])
+  projectId             String   @db.Uuid
+  reviewer              User     @relation("Reviewer", fields: [reviewerId], references: [id])
+  reviewerId            String   @db.Uuid
+  recipient             User     @relation("Recipient", fields: [recipientId], references: [id])
+  recipientId           String   @db.Uuid
+  company               String? // Optional: shown as "TechStart Sdn Bhd"
+  role                  String? // e.g. “Project Manager”
+  content               String // The review text
+  rating                Float // e.g. 4.9
+  communicationRating   Int?     @map("communication_rating")
+  qualityRating         Int?     @map("quality_rating")
+  timelinessRating      Int?     @map("timeliness_rating")
+  professionalismRating Int?     @map("professionalism_rating")
+  createdAt             DateTime @default(now())
 
   ReviewReply ReviewReply[]
 }
@@ -762,6 +790,7 @@ enum PaymentMethod {
   FPX
   STRIPE
   EWALLET
+  PENDING
 }
 
 enum PaymentStatus {

@@ -6,7 +6,6 @@ class ProviderProfileDto {
     this.availability = data.availability;
     this.languages = data.languages || [];
     this.website = data.website;
-    this.profileVideoUrl = data.profileVideoUrl;
     this.profileImageUrl = data.profileImageUrl; // 🆕 Profile image
     this.skills = data.skills || [];
     this.yearsExperience = data.yearsExperience;
@@ -44,17 +43,6 @@ class ProviderProfileDto {
       }
     } else {
       this.website = null; // Set to null if empty
-    }
-
-    if (this.profileVideoUrl && this.profileVideoUrl.trim()) {
-      const normalizedProfileVideoUrl = this.normalizeUrl(this.profileVideoUrl);
-      if (!this.isValidUrl(normalizedProfileVideoUrl)) {
-        errors.push("Profile video URL must be a valid URL");
-      } else {
-        this.profileVideoUrl = normalizedProfileVideoUrl;
-      }
-    } else {
-      this.profileVideoUrl = null; // Set to null if empty
     }
 
     if (this.hourlyRate && (this.hourlyRate < 0 || this.hourlyRate > 10000)) {
@@ -116,19 +104,6 @@ class ProviderProfileDto {
       }
     }
 
-    if (this.profileVideoUrl !== undefined) {
-      if (this.profileVideoUrl && this.profileVideoUrl.trim()) {
-        const normalizedProfileVideoUrl = this.normalizeUrl(this.profileVideoUrl);
-        if (!this.isValidUrl(normalizedProfileVideoUrl)) {
-          errors.push("Profile video URL must be a valid URL");
-        } else {
-          this.profileVideoUrl = normalizedProfileVideoUrl;
-        }
-      } else {
-        this.profileVideoUrl = null; // Set to null if empty
-      }
-    }
-
     if (this.hourlyRate !== undefined && (this.hourlyRate < 0 || this.hourlyRate > 10000)) {
       errors.push("Hourly rate must be between 0 and 10000");
     }
@@ -177,7 +152,6 @@ class ProviderProfileDto {
       availability: this.availability,
       languages: this.languages,
       website: this.website ? this.normalizeUrl(this.website) : this.website,
-      profileVideoUrl: this.profileVideoUrl ? this.normalizeUrl(this.profileVideoUrl) : this.profileVideoUrl,
       profileImageUrl: this.profileImageUrl, // 🆕 Profile image (don't normalize as it's a file path, not a URL)
       skills: this.skills,
       yearsExperience: this.yearsExperience,
@@ -248,7 +222,6 @@ class ProviderProfileResponseDto {
     this.availability = data.availability;
     this.languages = data.languages;
     this.website = data.website;
-    this.profileVideoUrl = data.profileVideoUrl;
     this.profileImageUrl = data.profileImageUrl; // 🆕 Profile image
     this.rating = data.rating;
     this.totalReviews = data.totalReviews;
@@ -285,7 +258,6 @@ class ProviderProfileResponseDto {
       availability: this.availability,
       languages: this.languages,
       website: this.website,
-      profileVideoUrl: this.profileVideoUrl,
       profileImageUrl: this.profileImageUrl, // 🆕 Profile image
       rating: this.rating,
       totalReviews: this.totalReviews,

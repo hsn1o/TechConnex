@@ -11,6 +11,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+export async function getProviderProfileIdByUserId(userId) {
+  const profile = await prisma.providerProfile.findUnique({
+    where: { userId },
+    select: { id: true }
+  });
+  return profile?.id || null;
+}
+
 export const getProviderBillingData = async (providerId) => {
   const [summary, recent, monthly, topClients] = await Promise.all([
     getProviderEarningsSummary(providerId),
@@ -70,11 +78,8 @@ const endOfDay = (d) => {
 export async function getEarningsOverview(userId, timeFilter = "this-month") {
   const provider = await prisma.providerProfile.findUnique({
     where: { userId },
-    select: {
-      bankName: true,
-      bankAccountNumber: true,
-      bankAccountName: true,
-      bankSwiftCode: true,
+    include: {
+      payoutMethods: true, // include all payout methods
     },
   });
 
@@ -315,12 +320,6 @@ export async function getEarningsOverview(userId, timeFilter = "this-month") {
 
   // 10. Prepare payload
   const payload = {
-    bankDetails: {
-      bankName: provider?.bankName || null,
-      bankAccountNumber: provider?.bankAccountNumber || null,
-      bankAccountName: provider?.bankAccountName || null,
-      bankSwiftCode: provider?.bankSwiftCode || null,
-    },
     earningsData: {
       totalEarnings: Number(totalEarnings.toFixed(2)),
       thisMonth: Number(thisMonth.toFixed(2)),
@@ -347,31 +346,19 @@ export async function getEarningsOverview(userId, timeFilter = "this-month") {
 }
 
 
-// Update bank details
-export const updateBankDetailsService = (userId, data) => {
-  return prisma.providerProfile.update({
-    where: { userId },
-    data,
-  });
-};
-
-// Clear/Delete bank details
-export const deleteBankDetailsService = (userId) => {
-  return prisma.providerProfile.update({
-    where: { userId },
-    data: {
-      bankName: null,
-      bankAccountNumber: null,
-      bankAccountName: null,
-      bankSwiftCode: null,
-    },
-  });
-};
 
 
 export const getPaymentDetailsService = async (paymentId) => {
   if (!paymentId) {
     const error = new Error("paymentId is required");
+    error.status = 400;
+    throw error;
+  }
+
+  // validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(paymentId)) {
+    const error = new Error("Invalid paymentId UUID");
     error.status = 400;
     throw error;
   }
@@ -422,3 +409,58 @@ export const getPaymentDetailsService = async (paymentId) => {
 
   return payment;
 };
+
+
+// Fetch all payout methods for a provider
+export async function getPayoutMethods(providerProfileId) {
+  return prisma.payoutMethod.findMany({
+    where: { providerProfileId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+// Create a new payout method
+export async function createPayoutMethod(providerProfileId, data) {
+  return prisma.payoutMethod.create({
+    data: {
+      providerProfileId,
+      type: data.type,
+      label: data.label,
+      bankName: data.bankName,
+      accountNumber: data.accountNumber,
+      accountHolder: data.accountHolder,
+      accountEmail: data.accountEmail,
+      walletId: data.walletId,
+    },
+  });
+}
+
+// Update an existing payout method
+export async function updatePayoutMethod(id, data) {
+  return prisma.payoutMethod.update({
+    where: { id },
+    data: {
+      type: data.type,
+      label: data.label,
+      bankName: data.bankName,
+      accountNumber: data.accountNumber,
+      accountHolder: data.accountHolder,
+      accountEmail: data.accountEmail,
+      walletId: data.walletId,
+    },
+  });
+}
+
+// Delete a payout method
+export async function deletePayoutMethod(id) {
+  return prisma.payoutMethod.delete({
+    where: { id },
+  });
+}
+
+// Fetch single payout method by ID
+export async function getPayoutMethodById(id) {
+  return prisma.payoutMethod.findUnique({
+    where: { id },
+  });
+}

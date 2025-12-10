@@ -967,26 +967,6 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="profileVideo">Profile Video URL</Label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="profileVideo"
-                  type="url"
-                  placeholder="https://youtube.com/watch?v=..."
-                  className="pl-10 bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  value={formData.profileVideoUrl}
-                  onChange={(e) =>
-                    handleInputChange("profileVideoUrl", e.target.value)
-                  }
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                Optional: Add a video introduction to stand out
-              </p>
-            </div>
           </div>
 
           {/* KYC Section */}

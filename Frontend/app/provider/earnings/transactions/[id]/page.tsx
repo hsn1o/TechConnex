@@ -118,7 +118,13 @@ export default function TransactionDetailPage() {
 
   const handleDownloadReceipt = async () => {
     try {
-      const res = await fetch(`${API_BASE}/provider/earnings/${id}/receipt`);
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const res = await fetch(`${API_BASE}/provider/earnings/${id}/receipt`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       if (!res.ok) throw new Error("Failed to download receipt");
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -270,9 +276,7 @@ export default function TransactionDetailPage() {
                     <span className="text-gray-600">Subtotal</span>
                     <span className="font-medium">
                       RM
-                      {(
-                        transaction.amount 
-                      ).toLocaleString()}
+                      {transaction.amount.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between py-2">

@@ -1,16 +1,23 @@
 // index.js
 import express from "express";
-import { deleteBankDetails, downloadReceipt, getEarningsOverviewController, getPaymentDetails, getProviderBillingController, updateBankDetails } from "./controller.js";
+import { createMethod, deleteMethod, downloadReceipt, getAllPayoutMethods, getEarningsOverviewController, getMethod, getPaymentDetails, getProviderBillingController, updateMethod } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 
 const router = express.Router();
 
 // ✅ Protected route
 router.get("/", authenticateToken, getProviderBillingController);
-router.get("/overview",authenticateToken, getEarningsOverviewController);
-router.put("/bank", authenticateToken, updateBankDetails);
-router.delete("/bank", authenticateToken, deleteBankDetails);
-router.get("/:paymentId", getPaymentDetails);
-router.get("/:paymentId/receipt", downloadReceipt);
+router.get("/overview", authenticateToken, getEarningsOverviewController);
+
+// ⚠️ IMPORTANT: Place specific routes BEFORE parameterized routes
+router.get("/bank", authenticateToken, getAllPayoutMethods);       // fetch all
+router.get("/bank/:id", authenticateToken, getMethod);             // fetch single
+router.post("/bank", authenticateToken, createMethod);             // create new
+router.put("/bank/:id", authenticateToken, updateMethod);          // update existing
+router.delete("/bank/:id", authenticateToken, deleteMethod);       // delete existing
+
+// Place parameterized routes LAST
+router.get("/:paymentId", authenticateToken, getPaymentDetails);
+router.get("/:paymentId/receipt", authenticateToken, downloadReceipt);
 
 export default router;

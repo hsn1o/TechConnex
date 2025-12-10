@@ -1,6 +1,16 @@
 // controller.js
 import { generateReceiptPDF } from "../../../utils/receiptPdf.js";
-import { deleteBankDetailsService, getEarningsOverview, getPaymentDetailsService, getProviderBillingData, updateBankDetailsService } from "./service.js";
+import {
+  createPayoutMethod,
+  deletePayoutMethod,
+  getEarningsOverview,
+  getPaymentDetailsService,
+  getPayoutMethodById,
+  getPayoutMethods,
+  getProviderBillingData,
+  getProviderProfileIdByUserId,
+  updatePayoutMethod,
+} from "./service.js";
 
 export const getProviderBillingController = async (req, res) => {
   try {
@@ -9,7 +19,10 @@ export const getProviderBillingController = async (req, res) => {
     if (!providerId) {
       return res
         .status(401)
-        .json({ success: false, message: "Unauthorized: No provider ID found" });
+        .json({
+          success: false,
+          message: "Unauthorized: No provider ID found",
+        });
     }
 
     const data = await getProviderBillingData(providerId);
@@ -31,55 +44,9 @@ export const getEarningsOverviewController = async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error("getEarningsOverviewController error:", err);
-    return res.status(500).json({ error: "Server error", details: err.message });
-  }
-};
-
-
-export const updateBankDetails = async (req, res) => {
-  try {
-    const userId = req.user.id; // from token middleware
-
-    const {
-      bankName,
-      bankAccountNumber,
-      bankAccountName,
-      bankSwiftCode,
-    } = req.body;
-
-    const updated = await updateBankDetailsService(userId, {
-      bankName,
-      bankAccountNumber,
-      bankAccountName,
-      bankSwiftCode,
-    });
-
-    res.json({
-      success: true,
-      message: "Bank details updated successfully",
-      data: updated,
-    });
-  } catch (error) {
-    console.error("Error updating bank details:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-
-export const deleteBankDetails = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const updated = await deleteBankDetailsService(userId);
-
-    res.json({
-      success: true,
-      message: "Bank details deleted successfully",
-      data: updated,
-    });
-  } catch (error) {
-    console.error("Error deleting bank details:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return res
+      .status(500)
+      .json({ error: "Server error", details: err.message });
   }
 };
 
@@ -117,3 +84,86 @@ export const downloadReceipt = async (req, res, next) => {
     next(err);
   }
 };
+
+// GET /payout-methods
+export const getAllPayoutMethods = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const providerProfileId = await getProviderProfileIdByUserId(userId);
+    if (!providerProfileId) {
+      return res.status(404).json({ error: "Provider profile not found" });
+    }
+
+    const payoutMethods = await getPayoutMethods(providerProfileId);
+    res.json({ payoutMethods });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch payout methods" });
+  }
+};
+
+// POST /payout-methods
+export async function createMethod(req, res) {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Fetch provider profile
+    const providerProfileId = await getProviderProfileIdByUserId(userId);
+    if (!providerProfileId) {
+      return res.status(404).json({ error: "Provider profile not found" });
+    }
+
+    const data = req.body;
+    const method = await createPayoutMethod(providerProfileId, data);
+    res.status(201).json(method);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to create payout method." });
+  }
+}
+
+// PUT /payout-methods/:id
+export async function updateMethod(req, res) {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    const updated = await updatePayoutMethod(id, data);
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update payout method." });
+  }
+}
+
+// DELETE /payout-methods/:id
+export async function deleteMethod(req, res) {
+  try {
+    const { id } = req.params;
+    const deleted = await deletePayoutMethod(id);
+    res.json({ message: "Deleted successfully", deleted });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete payout method." });
+  }
+}
+
+// GET /payout-methods/:id
+export async function getMethod(req, res) {
+  try {
+    const { id } = req.params;
+    const method = await getPayoutMethodById(id);
+    if (!method) return res.status(404).json({ error: "Not found" });
+    res.json(method);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch payout method." });
+  }
+}

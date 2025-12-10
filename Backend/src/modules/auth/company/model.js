@@ -24,7 +24,7 @@ async function createCompanyUser(dto) {
               industry: dto.customerProfile.industry || "",
               location: dto.customerProfile.location || "",
               website: dto.customerProfile.website || null,
-              logoUrl: dto.customerProfile.logoUrl || null,
+              profileImageUrl: dto.customerProfile.profileImageUrl || null,
               socialLinks: dto.customerProfile.socialLinks || null,
               languages: dto.customerProfile.languages || [],
               companySize: dto.customerProfile.companySize || null,

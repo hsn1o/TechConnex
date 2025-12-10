@@ -27,7 +27,7 @@ class RegisterCompanyDto {
       industry: profile.industry || "",
       location: profile.location || "",
       website: profile.website || null,
-      logoUrl: profile.logoUrl || null,
+      profileImageUrl: profile.profileImageUrl || null,
       socialLinks: Array.isArray(profile.socialLinks)
         ? profile.socialLinks
         : null,

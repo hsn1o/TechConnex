@@ -170,7 +170,7 @@ class ProviderProfileModel {
           availability: true,
           languages: true,
           website: true,
-          portfolioLinks: true,
+          // portfolioLinks: true,
           profileImageUrl: true,
           skills: true,
           yearsExperience: true,

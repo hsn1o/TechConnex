@@ -33,7 +33,6 @@ async function createProviderUser(dto) {
               availability: dto.providerProfile.availability || null,
               languages: dto.providerProfile.languages || [],
               website: dto.providerProfile.website || null,
-              profileVideoUrl: dto.providerProfile.profileVideoUrl || null,
 
               // Performance metrics
               rating: dto.providerProfile.rating
@@ -50,7 +49,6 @@ async function createProviderUser(dto) {
                 : new Prisma.Decimal(0.0),
               responseTime: dto.providerProfile.responseTime || 0,
               isFeatured: dto.providerProfile.isFeatured || false,
-              isVerified: dto.providerProfile.isVerified || false,
               completion: dto.providerProfile.completion || null,
 
               // Skills & work preferences

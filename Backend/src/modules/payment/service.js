@@ -57,8 +57,126 @@ export async function initiateClientPayment({
 
   // Calculate fees
   const fees = calculateFees(amount);
+  // Check for existing payment for this milestone that can be reused/updated
+  const existingPayment = await prisma.payment.findFirst({
+    where: {
+      milestoneId,
+      status: { in: ["PENDING", "IN_PROGRESS"] },
+    },
+  });
 
-  // Create payment record in DB
+  // If there's an existing payment in ESCROWED/RELEASED/TRANSFERRED/etc, block
+  const blocking = await prisma.payment.findFirst({
+    where: {
+      milestoneId,
+      status: {
+        in: ["ESCROWED", "RELEASED", "TRANSFERRED", "FAILED", "REFUNDED"],
+      },
+    },
+  });
+  if (blocking) {
+    throw new Error("A finalized payment already exists for this milestone");
+  }
+
+  // If an existing payment exists, update or convert it
+  if (existingPayment) {
+    // If existing payment uses STRIPE and is IN_PROGRESS, update the PaymentIntent amount
+    if (
+      existingPayment.method === "STRIPE" &&
+      existingPayment.status === "IN_PROGRESS" &&
+      existingPayment.stripePaymentIntentId
+    ) {
+      try {
+        await stripe.paymentIntents.update(
+          existingPayment.stripePaymentIntentId,
+          {
+            amount: Math.round(fees.totalAmount * 100),
+            currency: currency.toLowerCase(),
+          }
+        );
+      } catch (err) {
+        console.warn(
+          "Failed to update Stripe PaymentIntent amount — proceeding to update DB record",
+          err
+        );
+      }
+
+      const updated = await prisma.payment.update({
+        where: { id: existingPayment.id },
+        data: {
+          amount: fees.totalAmount,
+          platformFeeAmount: fees.platformFee,
+          providerAmount: fees.providerAmount,
+          currency,
+          metadata: {
+            ...existingPayment.metadata,
+            customerEmail: milestone.project.customer.email,
+            providerEmail: milestone.project.provider.email,
+            milestoneTitle: milestone.title,
+          },
+        },
+      });
+
+      // Retrieve the PaymentIntent to get client_secret (if available)
+      const pi = await stripe.paymentIntents.retrieve(
+        existingPayment.stripePaymentIntentId
+      );
+      return {
+        clientSecret: pi.client_secret,
+        paymentId: updated.id,
+        amount: fees.totalAmount,
+        platformFee: fees.platformFee,
+        providerAmount: fees.providerAmount,
+      };
+    }
+
+    // If existing payment is OFFLINE/PENDING, convert to STRIPE by creating a PaymentIntent
+    if (existingPayment.status === "PENDING") {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(fees.totalAmount * 100),
+        currency: currency.toLowerCase(),
+        metadata: {
+          paymentId: existingPayment.id,
+          projectId,
+          milestoneId,
+          customerId,
+          platformFee: fees.platformFee.toString(),
+        },
+        description: `Payment for ${milestone.title}`,
+        payment_method_types: ["card", "fpx", "grabpay"],
+        capture_method: "automatic",
+      });
+
+      const updated = await prisma.payment.update({
+        where: { id: existingPayment.id },
+        data: {
+          amount: fees.totalAmount,
+          platformFeeAmount: fees.platformFee,
+          providerAmount: fees.providerAmount,
+          currency,
+          method: "STRIPE",
+          stripePaymentIntentId: paymentIntent.id,
+          status: "IN_PROGRESS",
+          metadata: {
+            ...existingPayment.metadata,
+            customerEmail: milestone.project.customer.email,
+            providerEmail: milestone.project.provider.email,
+            milestoneTitle: milestone.title,
+          },
+        },
+      });
+
+      return {
+        clientSecret: paymentIntent.client_secret,
+        paymentId: updated.id,
+        amount: fees.totalAmount,
+        platformFee: fees.platformFee,
+        providerAmount: fees.providerAmount,
+      };
+    }
+  }
+
+  // No existing payment to reuse — create new payment record and PaymentIntent
   const payment = await prisma.payment.create({
     data: {
       projectId,

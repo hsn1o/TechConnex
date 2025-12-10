@@ -85,7 +85,6 @@ export type RegistrationFormData = {
   major: string;
   location: string;
   website: string;
-  profileVideoUrl: string;
   companyName: string;
   companyDescription: string;
   companySize: string;
@@ -168,7 +167,6 @@ export default function SignupPage() {
     major: "",
     location: "",
     website: "",
-    profileVideoUrl: "",
     companyName: "",
     companyDescription: "",
     companySize: "",
@@ -583,7 +581,6 @@ export default function SignupPage() {
           availability: formData.availability || null,
           languages: selectedLanguages,
           website: formData.website || null,
-          profileVideoUrl: formData.profileVideoUrl || null,
           skills: selectedSkills,
           yearsExperience: formData.yearsExperience
             ? parseInt(formData.yearsExperience)
