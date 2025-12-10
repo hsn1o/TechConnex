@@ -11,6 +11,7 @@ import {
   getProviderStatistics,
   getFilterOptions,
 } from "./service.js";
+import { getRecommendedProviders } from "./recommended-service.js";
 import { FindProvidersDto, SaveProviderDto, ProviderDetailDto } from "./dto.js";
 
 // GET /api/providers - Search and filter providers
@@ -292,6 +293,37 @@ export async function getProviderFullDetails(req, res) {
   } catch (error) {
     console.error("Error in getProviderFullDetails:", error);
     res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// GET /api/providers/recommended - Get recommended providers for company
+export async function getRecommendedProvidersController(req, res) {
+  try {
+    // Get user ID from JWT payload (could be userId or id)
+    const customerId = req.user?.userId || req.user?.id;
+    
+    if (!customerId) {
+      return res.status(401).json({
+        success: false,
+        message: "User ID not found in token",
+      });
+    }
+
+    const result = await getRecommendedProviders(customerId);
+
+    res.json({
+      success: true,
+      recommendations: result.recommendations,
+      cachedAt: result.cachedAt,
+      nextRefreshAt: result.nextRefreshAt,
+      isCached: result.isCached,
+    });
+  } catch (error) {
+    console.error("Error in getRecommendedProvidersController:", error);
+    res.status(400).json({
       success: false,
       message: error.message,
     });

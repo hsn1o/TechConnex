@@ -1023,6 +1023,23 @@ export async function approveProviderMilestones(projectId: string) {
 }
 
 // Provider search API functions
+export async function getRecommendedProviders() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/providers/recommended`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch recommended providers");
+  return data;
+}
+
 export async function searchProviders(params?: {
   search?: string;
   category?: string;

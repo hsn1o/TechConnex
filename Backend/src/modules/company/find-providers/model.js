@@ -3,6 +3,8 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+export { prisma };
+
 // Find providers with filtering and pagination
 export async function findProviders(filters) {
   const {

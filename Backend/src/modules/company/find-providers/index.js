@@ -13,6 +13,7 @@ import {
   getSavedProviders,
   getFilters,
   getProviderFullDetails,
+  getRecommendedProvidersController,
 } from "./controller.js";
 
 const router = express.Router();
@@ -21,6 +22,7 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Provider search and listing
+router.get("/recommended", getRecommendedProvidersController);
 router.get("/", findProviders);
 router.get("/filters", getFilters);
 
