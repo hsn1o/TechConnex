@@ -400,6 +400,23 @@ export async function getProviderOpportunities(params?: {
   return data;
 }
 
+export async function getProviderRecommendedOpportunities() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/provider/opportunities/recommended`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch recommended opportunities");
+  return data;
+}
+
 export async function getProviderOpportunityById(opportunityId: string) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");

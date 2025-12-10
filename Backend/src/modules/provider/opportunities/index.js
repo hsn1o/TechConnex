@@ -3,6 +3,7 @@ import express from "express";
 import {
   getOpportunitiesController,
   getOpportunityController,
+  getRecommendedOpportunitiesController,
 } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 
@@ -12,6 +13,7 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Routes
+router.get("/recommended", getRecommendedOpportunitiesController);
 router.get("/", getOpportunitiesController);
 router.get("/:id", getOpportunityController);
 
