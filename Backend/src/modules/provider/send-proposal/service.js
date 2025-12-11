@@ -1,6 +1,7 @@
 // src/modules/provider/send-proposal/service.js
 import { prisma } from "./model.js";
 import { SendProposalDto, GetProposalsDto } from "./dto.js";
+import { createNotification } from "../../notifications/service.js";
 
 export async function sendProposal(dto) {
   try {
@@ -132,6 +133,29 @@ export async function sendProposal(dto) {
         },
       },
     });
+
+    // Notify company about the new proposal
+    try {
+      const providerName = completeProposal.provider?.name || "a provider";
+      await createNotification({
+        userId: serviceRequest.customerId,
+        title: "New Proposal Received",
+        type: "proposal",
+        content: `You have received a new proposal from ${providerName} for "${serviceRequest.title}". Bid amount: RM ${dto.bidAmount.toFixed(2)}`,
+        metadata: {
+          proposalId: proposal.id,
+          serviceRequestId: dto.serviceRequestId,
+          serviceRequestTitle: serviceRequest.title,
+          providerId: dto.providerId,
+          providerName: completeProposal.provider?.name || null,
+          bidAmount: dto.bidAmount,
+          eventType: "new_proposal",
+        },
+      });
+    } catch (notificationError) {
+      // Log error but don't fail the proposal creation
+      console.error("Failed to notify company of new proposal:", notificationError);
+    }
 
     return completeProposal;
   } catch (error) {

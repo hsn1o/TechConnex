@@ -2,6 +2,7 @@
 import { prisma } from "./model.js";
 import { CreateProjectDto, GetProjectsDto } from "./dto.js";
 import { createServiceRequestAiDraft } from "./service-request-ai-draft.js";
+import { createNotification } from "../../notifications/service.js";
 
 export async function createProject(dto) {
   try {

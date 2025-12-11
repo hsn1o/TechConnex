@@ -271,24 +271,6 @@ export async function approveMilestones(projectId, customerId) {
       }
     }
 
-    return {
-      approved: true,
-      locked: false,
-      milestones: updatedProject.milestones.map(m => ({
-        id: m.id,
-        title: m.title,
-        description: m.description,
-        amount: m.amount,
-        dueDate: m.dueDate,
-        order: m.order,
-        status: m.status
-      })),
-      milestonesLocked: updatedProject.milestonesLocked,
-      companyApproved: updatedProject.companyApproved,
-      providerApproved: updatedProject.providerApproved,
-      milestonesApprovedAt: updatedProject.milestonesApprovedAt
-    }
-
     // Notify provider when company approves milestones (but not yet locked)
     try {
       const projectWithProvider = await prisma.project.findUnique({
