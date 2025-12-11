@@ -1,6 +1,7 @@
 // src/modules/provider/milestones/service.js
 import { prisma } from "./model.js";
 import { UpsertMilestonesDto } from "./dto.js";
+import { createNotification } from "../../notifications/service.js";
 
 /**
  * Assert that the project is owned by the provider
@@ -130,6 +131,33 @@ export async function updateProjectMilestones(
       return updatedProject;
     });
 
+    // Notify company when provider updates milestones
+    try {
+      const projectWithCustomer = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+          customerId: true,
+          title: true,
+        },
+      });
+
+      if (projectWithCustomer?.customerId) {
+        await createNotification({
+          userId: projectWithCustomer.customerId,
+          title: "Milestones Updated",
+          type: "milestone",
+          content: `The provider has updated the milestones for project "${projectWithCustomer.title}". Please review and approve.`,
+          metadata: {
+            projectId: projectId,
+            projectTitle: projectWithCustomer.title,
+            eventType: "milestones_updated",
+          },
+        });
+      }
+    } catch (notificationError) {
+      console.error("Failed to notify company of milestone update:", notificationError);
+    }
+
     return {
       milestones: result.milestones.map((m) => ({
         id: m.id,
@@ -236,6 +264,33 @@ export async function approveMilestones(projectId, providerId) {
         return lockedProject;
       });
 
+      // Notify company when milestones are locked (both parties approved)
+      try {
+        const projectWithCustomer = await prisma.project.findUnique({
+          where: { id: projectId },
+          select: {
+            customerId: true,
+            title: true,
+          },
+        });
+
+        if (projectWithCustomer?.customerId) {
+          await createNotification({
+            userId: projectWithCustomer.customerId,
+            title: "Milestones Approved & Locked",
+            type: "milestone",
+            content: `All milestones for project "${projectWithCustomer.title}" have been approved and locked. The provider can now start working.`,
+            metadata: {
+              projectId: projectId,
+              projectTitle: projectWithCustomer.title,
+              eventType: "milestones_locked",
+            },
+          });
+        }
+      } catch (notificationError) {
+        console.error("Failed to notify company of milestone lock:", notificationError);
+      }
+
       return {
         approved: true,
         locked: true,
@@ -253,6 +308,51 @@ export async function approveMilestones(projectId, providerId) {
         providerApproved: true,
         milestonesApprovedAt: finalProject.milestonesApprovedAt,
       };
+    }
+
+    return {
+      approved: true,
+      locked: false,
+      milestones: updatedProject.milestones.map((m) => ({
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        amount: m.amount,
+        dueDate: m.dueDate,
+        order: m.order,
+        status: m.status,
+      })),
+      milestonesLocked: updatedProject.milestonesLocked,
+      companyApproved: updatedProject.companyApproved,
+      providerApproved: updatedProject.providerApproved,
+      milestonesApprovedAt: updatedProject.milestonesApprovedAt,
+    };
+
+    // Notify company when provider approves milestones (but not yet locked)
+    try {
+      const projectWithCustomer = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+          customerId: true,
+          title: true,
+        },
+      });
+
+      if (projectWithCustomer?.customerId) {
+        await createNotification({
+          userId: projectWithCustomer.customerId,
+          title: "Milestones Approved by Provider",
+          type: "milestone",
+          content: `The provider has approved the milestones for project "${projectWithCustomer.title}". Please approve to lock them.`,
+          metadata: {
+            projectId: projectId,
+            projectTitle: projectWithCustomer.title,
+            eventType: "milestones_approved_by_provider",
+          },
+        });
+      }
+    } catch (notificationError) {
+      console.error("Failed to notify company of milestone approval:", notificationError);
     }
 
     return {

@@ -877,18 +877,24 @@ export async function requestMilestoneChanges(dto) {
     });
 
     // Create notification for provider
-    await prisma.notification.create({
-      data: {
+    try {
+      await createNotification({
         userId: milestone.project.providerId,
+        title: "Milestone Changes Requested",
         type: "milestone",
-        title: "Milestone Update",
-        content: `Changes requested for milestone "${
-          milestone.title
-        }". Please review and resubmit.${
-          dto.reason ? ` Reason: ${dto.reason}` : ""
-        }`,
-      },
-    });
+        content: `Changes requested for milestone "${milestone.title}". Please review and resubmit.${dto.reason ? ` Reason: ${dto.reason}` : ""}`,
+        metadata: {
+          milestoneId: dto.milestoneId,
+          milestoneTitle: milestone.title,
+          projectId: milestone.project.id,
+          projectTitle: milestone.project.title,
+          reason: dto.reason || null,
+          eventType: "milestone_changes_requested",
+        },
+      });
+    } catch (notificationError) {
+      console.error("Failed to notify provider of milestone changes request:", notificationError);
+    }
 
     return updatedMilestone;
   } catch (error) {
@@ -969,15 +975,23 @@ export async function approveIndividualMilestone(dto) {
       });
     }
     // Create notification for provider
-    await prisma.notification.create({
-      data: {
+    try {
+      await createNotification({
         userId: milestone.project.providerId,
+        title: "Milestone Approved",
         type: "milestone",
-        title: "Milestone Update",
-
         content: `Milestone "${milestone.title}" has been approved and is ready for payment`,
-      },
-    });
+        metadata: {
+          milestoneId: dto.milestoneId,
+          milestoneTitle: milestone.title,
+          projectId: milestone.project.id,
+          projectTitle: milestone.project.title,
+          eventType: "milestone_approved",
+        },
+      });
+    } catch (notificationError) {
+      console.error("Failed to notify provider of milestone approval:", notificationError);
+    }
 
     return updatedMilestone;
   } catch (error) {

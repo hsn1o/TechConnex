@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { userModel } from "./model.js";
+import { notifyAdminsOfNewUser } from "../../notifications/service.js";
 
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
@@ -17,6 +18,19 @@ export const authService = {
       password: hashedPassword,
       name,
     });
+
+    // Notify other admins about the new admin registration
+    try {
+      await notifyAdminsOfNewUser({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      });
+    } catch (notificationError) {
+      // Log error but don't fail registration
+      console.error("Failed to notify admins of new admin registration:", notificationError);
+    }
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },

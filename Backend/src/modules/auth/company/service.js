@@ -10,6 +10,7 @@ import {
   updateCompanyUser,
 } from "./model.js";
 import { findUserByEmail } from "../model.js";
+import { notifyAdminsOfNewUser } from "../../notifications/service.js";
 
 const prisma = new PrismaClient();
 
@@ -25,6 +26,19 @@ async function registerCompany(dto) {
     ...dto,
     password: hashedPassword,
   });
+
+  // Notify all admins about the new user registration
+  try {
+    await notifyAdminsOfNewUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (notificationError) {
+    // Log error but don't fail registration
+    console.error("Failed to notify admins of new user registration:", notificationError);
+  }
 
   // 🧠 Optionally, you could auto-generate a token upon registration
   const token = jwt.sign(
