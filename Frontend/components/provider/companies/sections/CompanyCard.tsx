@@ -6,7 +6,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Eye, MapPin, MessageSquare, Star, Heart, Building2 } from "lucide-react";
+import {
+  Eye,
+  MapPin,
+  MessageSquare,
+  Star,
+  Heart,
+  Building2,
+} from "lucide-react";
 import type { Company } from "../types";
 import { useRouter } from "next/navigation";
 
@@ -21,10 +28,13 @@ export default function CompanyCard({ company }: { company: Company }) {
 
   const handleContact = () => {
     // Navigate to chat with this company
-    const avatarUrl = company.avatar && 
+    const avatarUrl =
+      company.avatar &&
       company.avatar !== "/placeholder.svg" &&
       !company.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
+            company.avatar.startsWith("/") ? "" : "/"
+          }${company.avatar}`
         : "";
     router.push(
       `/provider/messages?userId=${company.id}&name=${encodeURIComponent(
@@ -84,17 +94,22 @@ export default function CompanyCard({ company }: { company: Company }) {
         <div className="flex items-start space-x-4">
           <div className="relative">
             <Avatar className="w-16 h-16">
-              <AvatarImage 
+              <AvatarImage
                 src={
-                  company.avatar && 
+                  company.avatar &&
                   company.avatar !== "/placeholder.svg" &&
                   company.avatar !== "/placeholder.svg?height=40&width=40" &&
                   !company.avatar.includes("/placeholder.svg")
-                    ? (company.avatar.startsWith("http") 
-                        ? company.avatar 
-                        : `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`)
+                    ? company.avatar.startsWith("http")
+                      ? company.avatar
+                      : `${
+                          process.env.NEXT_PUBLIC_API_BASE_URL ||
+                          "http://localhost:4000"
+                        }${company.avatar.startsWith("/") ? "" : "/"}${
+                          company.avatar
+                        }`
                     : "/placeholder.svg"
-                } 
+                }
               />
               <AvatarFallback>
                 <Building2 className="w-8 h-8" />
@@ -143,7 +158,9 @@ export default function CompanyCard({ company }: { company: Company }) {
           </div>
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-3">{company.description}</p>
+        <p className="text-sm text-gray-600 line-clamp-3">
+          {company.description}
+        </p>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
@@ -152,7 +169,9 @@ export default function CompanyCard({ company }: { company: Company }) {
           </div>
           <div>
             <p className="text-gray-500">Total Spent</p>
-            <p className="font-semibold">RM{company.totalSpend.toLocaleString()}</p>
+            <p className="font-semibold">
+              RM{company.totalSpend.toLocaleString()}
+            </p>
           </div>
           {company.establishedYear && (
             <div>
@@ -169,14 +188,18 @@ export default function CompanyCard({ company }: { company: Company }) {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">Member since {company.memberSince}</span>
+          <span className="text-gray-500">
+            Member since {company.memberSince}
+          </span>
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button size="sm" className="flex-1" onClick={handleContact}>
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Contact
-          </Button>
+          {company.allowMessages !== false && (
+            <Button size="sm" className="flex-1" onClick={handleContact}>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Contact
+            </Button>
+          )}
           <Button
             size="sm"
             variant={saved ? "default" : "outline"}
@@ -196,4 +219,3 @@ export default function CompanyCard({ company }: { company: Company }) {
     </Card>
   );
 }
-

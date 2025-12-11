@@ -21,10 +21,13 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
 
   const handleContact = () => {
     // Navigate to chat with this provider
-    const avatarUrl = provider.avatar && 
+    const avatarUrl =
+      provider.avatar &&
       provider.avatar !== "/placeholder.svg" &&
       !provider.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
+            provider.avatar.startsWith("/") ? "" : "/"
+          }${provider.avatar}`
         : "";
     router.push(
       `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
@@ -83,16 +86,23 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
         <div className="flex items-start space-x-3 sm:space-x-4">
           <div className="relative flex-shrink-0">
             <Avatar className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16">
-              <AvatarImage 
+              <AvatarImage
                 src={
-                  provider.avatar && 
+                  provider.avatar &&
                   provider.avatar !== "/placeholder.svg" &&
                   !provider.avatar.includes("/placeholder.svg")
-                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+                    ? `${
+                        process.env.NEXT_PUBLIC_API_BASE_URL ||
+                        "http://localhost:4000"
+                      }${provider.avatar.startsWith("/") ? "" : "/"}${
+                        provider.avatar
+                      }`
                     : "/placeholder.svg"
-                } 
+                }
               />
-              <AvatarFallback className="text-xs sm:text-sm lg:text-base">{provider.name.charAt(0)}</AvatarFallback>
+              <AvatarFallback className="text-xs sm:text-sm lg:text-base">
+                {provider.name.charAt(0)}
+              </AvatarFallback>
             </Avatar>
             {provider.verified && (
               <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-green-500 rounded-full flex items-center justify-center">
@@ -121,7 +131,9 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
                 </Badge>
               )}
             </div>
-            <p className="text-xs sm:text-sm text-gray-600 mb-0.5 sm:mb-1 truncate">{provider.major || "ICT Professional"}</p>
+            <p className="text-xs sm:text-sm text-gray-600 mb-0.5 sm:mb-1 truncate">
+              {provider.major || "ICT Professional"}
+            </p>
             <p className="text-xs text-gray-500 truncate">{provider.company}</p>
           </div>
         </div>
@@ -131,7 +143,9 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
           <div className="flex items-center gap-1">
             <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
-            <span className="font-medium text-xs sm:text-sm">{provider.rating}</span>
+            <span className="font-medium text-xs sm:text-sm">
+              {provider.rating}
+            </span>
             <span className="text-xs sm:text-sm text-gray-500">
               ({provider.reviewCount})
             </span>
@@ -142,11 +156,17 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
           </div>
         </div>
 
-        <p className="text-xs sm:text-sm text-gray-600 line-clamp-3">{provider.bio}</p>
+        <p className="text-xs sm:text-sm text-gray-600 line-clamp-3">
+          {provider.bio}
+        </p>
 
         <div className="flex flex-wrap gap-1">
           {provider.skills.slice(0, 4).map((skill) => (
-            <Badge key={skill} variant="secondary" className="text-[10px] sm:text-xs">
+            <Badge
+              key={skill}
+              variant="secondary"
+              className="text-[10px] sm:text-xs"
+            >
               {skill}
             </Badge>
           ))}
@@ -184,35 +204,56 @@ export default function ProviderCard({ provider }: { provider: Provider }) {
           <div className="flex items-center gap-2">
             <div
               className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                provider.availability === "Available" || provider.availability === "available"
+                provider.availability === "Available" ||
+                provider.availability === "available"
                   ? "bg-green-500"
                   : provider.availability === "busy"
                   ? "bg-yellow-500"
                   : "bg-gray-400"
               }`}
             />
-            <span className="text-gray-600 capitalize">{provider.availability}</span>
+            <span className="text-gray-600 capitalize">
+              {provider.availability}
+            </span>
           </div>
           {provider.workPreference && (
-            <span className="text-gray-500 capitalize truncate">{provider.workPreference}</span>
+            <span className="text-gray-500 capitalize truncate">
+              {provider.workPreference}
+            </span>
           )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
-          <Button size="sm" className="flex-1 text-xs sm:text-sm" onClick={handleContact}>
-            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-            Contact
-          </Button>
+          {provider.allowMessages !== false && (
+            <Button
+              size="sm"
+              className="flex-1 text-xs sm:text-sm"
+              onClick={handleContact}
+            >
+              <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+              Contact
+            </Button>
+          )}
           <Button
             size="sm"
             variant={saved ? "default" : "outline"}
             onClick={handleSaveToggle}
-            className={`text-xs sm:text-sm ${saved ? "bg-red-600 hover:bg-red-700 text-white" : ""}`}
+            className={`text-xs sm:text-sm ${
+              saved ? "bg-red-600 hover:bg-red-700 text-white" : ""
+            }`}
           >
-            <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${saved ? "fill-current" : ""}`} />
+            <Heart
+              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+                saved ? "fill-current" : ""
+              }`}
+            />
           </Button>
           <Link href={`/customer/providers/${provider.id}`} className="flex-1">
-            <Button size="sm" variant="outline" className="w-full text-xs sm:text-sm">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full text-xs sm:text-sm"
+            >
               <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               View Profile
             </Button>

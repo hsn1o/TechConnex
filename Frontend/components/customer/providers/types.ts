@@ -1,7 +1,9 @@
 export type Provider = {
   id: string;
   name: string;
-  email?: string;
+  email?: string | null;
+  phone?: string | null;
+  allowMessages?: boolean;
   avatar?: string;
   major?: string;
   company?: string;

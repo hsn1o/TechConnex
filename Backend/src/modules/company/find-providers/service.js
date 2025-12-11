@@ -18,45 +18,56 @@ export async function searchProviders(filters) {
     const result = await findProviders(filters);
     
     // Transform data for frontend
-    const transformedProviders = result.providers.map((user) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.providerProfile?.profileImageUrl || "/placeholder.svg",
-      major: user.providerProfile?.major || "ICT Professional",
-      company: user.providerProfile?.website || "Freelancer",
-      rating: parseFloat(user.providerProfile?.rating || 0),
-      reviewCount: user.providerProfile?.totalReviews || 0,
-      completedJobs: user.completedProjects || 0, // Use calculated completed projects
-      hourlyRate: user.providerProfile?.hourlyRate || 0,
-      location: user.providerProfile?.location || "Malaysia",
-      bio: user.providerProfile?.bio || "Experienced ICT professional",
-      availability: user.providerProfile?.availability || "Available",
-      responseTime: `${user.providerProfile?.responseTime || 24} hours`,
-      skills: user.providerProfile?.skills || [],
-      specialties: user.providerProfile?.skills?.slice(0, 3) || [],
-      languages: user.providerProfile?.languages || ["English"],
-      verified: user.isVerified || false,
-      topRated: user.providerProfile?.isFeatured || false,
-      saved: user.isSaved || false, // Use saved status from backend
-      // Additional public-safe fields
-      yearsExperience: user.providerProfile?.yearsExperience || 0,
-      minimumProjectBudget: user.providerProfile?.minimumProjectBudget || null,
-      maximumProjectBudget: user.providerProfile?.maximumProjectBudget || null,
-      preferredProjectDuration: user.providerProfile?.preferredProjectDuration || null,
-      workPreference: user.providerProfile?.workPreference || "remote",
-      teamSize: user.providerProfile?.teamSize || 1,
-      website: user.providerProfile?.website || null,
-      portfolioLinks: user.providerProfile?.portfolioLinks || [],
-      certificationsCount: user.providerProfile?.certifications?.length || 0,
-      certifications: (user.providerProfile?.certifications || []).map(cert => ({
-        id: cert.id,
-        name: cert.name,
-        issuer: cert.issuer,
-        issuedDate: cert.issuedDate,
-        verified: cert.verified,
-      })),
-    }));
+    const transformedProviders = result.providers.map((user) => {
+      // Get privacy settings
+      const settings = user.settings || {};
+      const showEmail = settings.showEmail || false;
+      const showPhone = settings.showPhone || false;
+      const allowMessages = settings.allowMessages !== false; // Default to true if not set
+      
+      return {
+        id: user.id,
+        name: user.name,
+        // Only include email/phone if privacy settings allow
+        email: showEmail ? user.email : null,
+        phone: showPhone ? user.phone : null,
+        allowMessages: allowMessages,
+        avatar: user.providerProfile?.profileImageUrl || "/placeholder.svg",
+        major: user.providerProfile?.major || "ICT Professional",
+        company: user.providerProfile?.website || "Freelancer",
+        rating: parseFloat(user.providerProfile?.rating || 0),
+        reviewCount: user.providerProfile?.totalReviews || 0,
+        completedJobs: user.completedProjects || 0, // Use calculated completed projects
+        hourlyRate: user.providerProfile?.hourlyRate || 0,
+        location: user.providerProfile?.location || "Malaysia",
+        bio: user.providerProfile?.bio || "Experienced ICT professional",
+        availability: user.providerProfile?.availability || "Available",
+        responseTime: `${user.providerProfile?.responseTime || 24} hours`,
+        skills: user.providerProfile?.skills || [],
+        specialties: user.providerProfile?.skills?.slice(0, 3) || [],
+        languages: user.providerProfile?.languages || ["English"],
+        verified: user.isVerified || false,
+        topRated: user.providerProfile?.isFeatured || false,
+        saved: user.isSaved || false, // Use saved status from backend
+        // Additional public-safe fields
+        yearsExperience: user.providerProfile?.yearsExperience || 0,
+        minimumProjectBudget: user.providerProfile?.minimumProjectBudget || null,
+        maximumProjectBudget: user.providerProfile?.maximumProjectBudget || null,
+        preferredProjectDuration: user.providerProfile?.preferredProjectDuration || null,
+        workPreference: user.providerProfile?.workPreference || "remote",
+        teamSize: user.providerProfile?.teamSize || 1,
+        website: user.providerProfile?.website || null,
+        portfolioLinks: user.providerProfile?.portfolioLinks || [],
+        certificationsCount: user.providerProfile?.certifications?.length || 0,
+        certifications: (user.providerProfile?.certifications || []).map(cert => ({
+          id: cert.id,
+          name: cert.name,
+          issuer: cert.issuer,
+          issuedDate: cert.issuedDate,
+          verified: cert.verified,
+        })),
+      };
+    });
 
     return {
       providers: transformedProviders,
@@ -78,11 +89,20 @@ export async function getProviderDetails(providerId, userId = null) {
   try {
     const provider = await getProviderById(providerId, userId);
     
+    // Get privacy settings
+    const settings = provider.settings || {};
+    const showEmail = settings.showEmail || false;
+    const showPhone = settings.showPhone || false;
+    const allowMessages = settings.allowMessages !== false; // Default to true if not set
+    
     // Transform for frontend
     const transformedProvider = {
       id: provider.id,
       name: provider.name,
-      email: provider.email,
+      // Only include email/phone if privacy settings allow
+      email: showEmail ? provider.email : null,
+      phone: showPhone ? provider.phone : null,
+      allowMessages: allowMessages, // Include this flag for frontend
       avatar: provider.providerProfile?.profileImageUrl || "/placeholder.svg",
       major: provider.providerProfile?.major || "ICT Professional",
       company: provider.providerProfile?.website || "Freelancer",
@@ -321,45 +341,57 @@ export async function getSavedProvidersService(userId, page = 1, limit = 20) {
     );
 
     // Transform for frontend
-    const transformedProviders = result.providers.map((user) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.providerProfile?.profileImageUrl || "/placeholder.svg",
-      major: user.providerProfile?.major || "ICT Professional",
-      company: user.providerProfile?.website || "Freelancer",
-      rating: parseFloat(user.providerProfile?.rating || 0),
-      reviewCount: user.providerProfile?.totalReviews || 0,
-      completedJobs: completedProjectsMap.get(user.id) || 0, // Use calculated completed projects
-      hourlyRate: user.providerProfile?.hourlyRate || 0,
-      location: user.providerProfile?.location || "Malaysia",
-      bio: user.providerProfile?.bio || "Experienced ICT professional",
-      availability: user.providerProfile?.availability || "Available",
-      responseTime: `${user.providerProfile?.responseTime || 24} hours`,
-      skills: user.providerProfile?.skills || [],
-      specialties: user.providerProfile?.skills?.slice(0, 3) || [],
-      languages: user.providerProfile?.languages || ["English"],
-      verified: user.isVerified || false,
-      topRated: user.providerProfile?.isFeatured || false,
-      savedAt: user.savedAt,
-      // Additional public-safe fields
-      yearsExperience: user.providerProfile?.yearsExperience || 0,
-      minimumProjectBudget: user.providerProfile?.minimumProjectBudget || null,
-      maximumProjectBudget: user.providerProfile?.maximumProjectBudget || null,
-      preferredProjectDuration: user.providerProfile?.preferredProjectDuration || null,
-      workPreference: user.providerProfile?.workPreference || "remote",
-      teamSize: user.providerProfile?.teamSize || 1,
-      website: user.providerProfile?.website || null,
-      portfolioLinks: user.providerProfile?.portfolioLinks || [],
-      certificationsCount: user.providerProfile?.certifications?.length || 0,
-      certifications: (user.providerProfile?.certifications || []).map(cert => ({
-        id: cert.id,
-        name: cert.name,
-        issuer: cert.issuer,
-        issuedDate: cert.issuedDate,
-        verified: cert.verified,
-      })),
-    }));
+    const transformedProviders = result.providers.map((user) => {
+      // Get privacy settings - note: saved providers have user.provider structure
+      const provider = user.provider || user;
+      const settings = provider.settings || {};
+      const showEmail = settings.showEmail || false;
+      const showPhone = settings.showPhone || false;
+      const allowMessages = settings.allowMessages !== false; // Default to true if not set
+      
+      return {
+        id: provider.id,
+        name: provider.name,
+        // Only include email/phone if privacy settings allow
+        email: showEmail ? provider.email : null,
+        phone: showPhone ? provider.phone : null,
+        allowMessages: allowMessages,
+        avatar: provider.providerProfile?.profileImageUrl || "/placeholder.svg",
+        major: provider.providerProfile?.major || "ICT Professional",
+        company: provider.providerProfile?.website || "Freelancer",
+        rating: parseFloat(provider.providerProfile?.rating || 0),
+        reviewCount: provider.providerProfile?.totalReviews || 0,
+        completedJobs: completedProjectsMap.get(provider.id) || 0, // Use calculated completed projects
+        hourlyRate: provider.providerProfile?.hourlyRate || 0,
+        location: provider.providerProfile?.location || "Malaysia",
+        bio: provider.providerProfile?.bio || "Experienced ICT professional",
+        availability: provider.providerProfile?.availability || "Available",
+        responseTime: `${provider.providerProfile?.responseTime || 24} hours`,
+        skills: provider.providerProfile?.skills || [],
+        specialties: provider.providerProfile?.skills?.slice(0, 3) || [],
+        languages: provider.providerProfile?.languages || ["English"],
+        verified: provider.isVerified || false,
+        topRated: provider.providerProfile?.isFeatured || false,
+        savedAt: user.createdAt || user.savedAt,
+        // Additional public-safe fields
+        yearsExperience: provider.providerProfile?.yearsExperience || 0,
+        minimumProjectBudget: provider.providerProfile?.minimumProjectBudget || null,
+        maximumProjectBudget: provider.providerProfile?.maximumProjectBudget || null,
+        preferredProjectDuration: provider.providerProfile?.preferredProjectDuration || null,
+        workPreference: provider.providerProfile?.workPreference || "remote",
+        teamSize: provider.providerProfile?.teamSize || 1,
+        website: provider.providerProfile?.website || null,
+        portfolioLinks: provider.providerProfile?.portfolioLinks || [],
+        certificationsCount: provider.providerProfile?.certifications?.length || 0,
+        certifications: (provider.providerProfile?.certifications || []).map(cert => ({
+          id: cert.id,
+          name: cert.name,
+          issuer: cert.issuer,
+          issuedDate: cert.issuedDate,
+          verified: cert.verified,
+        })),
+      };
+    });
 
     return {
       providers: transformedProviders,

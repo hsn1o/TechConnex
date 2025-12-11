@@ -197,17 +197,20 @@ export default function CustomerSettingsPage() {
       setLoadingPassword(true);
       setPasswordMessage("");
 
-      const response = await fetch(`${API_URL}/auth/provider/profile/password`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          oldPassword,
-          newPassword,
-        }),
-      });
+      const response = await fetch(
+        `${API_URL}/auth/provider/profile/password`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            oldPassword,
+            newPassword,
+          }),
+        }
+      );
 
       const data = await response.json();
 

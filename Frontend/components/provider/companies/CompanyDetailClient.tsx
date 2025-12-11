@@ -56,7 +56,11 @@ import {
 import type { Company, Review } from "./types";
 import { useRouter } from "next/navigation";
 import { getCompanyOpportunities, sendProposal } from "@/lib/api";
-import { formatTimeline, buildTimelineData, timelineToDays } from "@/lib/timeline-utils";
+import {
+  formatTimeline,
+  buildTimelineData,
+  timelineToDays,
+} from "@/lib/timeline-utils";
 import { toast } from "sonner";
 
 type Milestone = {
@@ -85,11 +89,11 @@ export default function CompanyDetailClient({
 }) {
   const [saved, setSaved] = useState<boolean>(!!company.saved);
   const router = useRouter();
-  
+
   // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
+
   // Opportunities state
   const [opportunities, setOpportunities] = useState<any[]>([]);
   const [loadingOpportunities, setLoadingOpportunities] = useState(true);
@@ -111,66 +115,78 @@ export default function CompanyDetailClient({
     coverLetter?: string;
     milestones?: string;
   }>({});
-  
+
   // Helper functions for media gallery
   const getMediaUrl = (url: string) => {
     if (!url) return "";
-    
+
     // Check if it's a local file path or external URL
-    const isLocalPath = url.startsWith("/uploads/") || url.startsWith("uploads/");
+    const isLocalPath =
+      url.startsWith("/uploads/") || url.startsWith("uploads/");
     if (isLocalPath) {
       // Normalize the path
       const normalizedPath = url.replace(/\\/g, "/");
-      const cleanPath = normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`;
+      const cleanPath = normalizedPath.startsWith("/")
+        ? normalizedPath
+        : `/${normalizedPath}`;
       // Construct full URL
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
       return `${apiBase}${cleanPath}`;
     }
     // For external URLs, return as-is
     return url;
   };
-  
+
   const isImageUrl = (url: string) => {
     if (!url) return false;
     // Check if it's an image file extension or data URL
-    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes("image") || url.startsWith("data:image");
+    return (
+      /\.(jpg|jpeg|png|gif|webp)$/i.test(url) ||
+      url.includes("image") ||
+      url.startsWith("data:image")
+    );
   };
-  
+
   const openLightbox = (index: number) => {
     setCurrentImageIndex(index);
     setLightboxOpen(true);
   };
-  
+
   const closeLightbox = () => {
     setLightboxOpen(false);
   };
-  
+
   const goToPrevious = () => {
     const images = company.mediaGallery || [];
     setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
   };
-  
+
   const goToNext = () => {
     const images = company.mediaGallery || [];
     setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
   };
-  
+
   // Keyboard navigation for lightbox
   useEffect(() => {
     if (!lightboxOpen) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
         const images = company.mediaGallery || [];
-        setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+        setCurrentImageIndex((prev) =>
+          prev > 0 ? prev - 1 : images.length - 1
+        );
       } else if (e.key === "ArrowRight") {
         const images = company.mediaGallery || [];
-        setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+        setCurrentImageIndex((prev) =>
+          prev < images.length - 1 ? prev + 1 : 0
+        );
       } else if (e.key === "Escape") {
         setLightboxOpen(false);
       }
     };
-    
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [lightboxOpen, company.mediaGallery]);
@@ -201,7 +217,9 @@ export default function CompanyDetailClient({
             originalTimelineInDays: (() => {
               if (!opp.timeline) return 0;
               const timelineStr = opp.timeline.toLowerCase().trim();
-              const match = timelineStr.match(/^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/);
+              const match = timelineStr.match(
+                /^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/
+              );
               if (match) {
                 const amount = Number(match[1]);
                 const unit = match[2].replace(/s$/, "");
@@ -212,8 +230,12 @@ export default function CompanyDetailClient({
             skills: opp.skills || [],
             category: opp.category,
             priority: opp.priority,
-            requirements: Array.isArray(opp.requirements) ? opp.requirements : [],
-            deliverables: Array.isArray(opp.deliverables) ? opp.deliverables : [],
+            requirements: Array.isArray(opp.requirements)
+              ? opp.requirements
+              : [],
+            deliverables: Array.isArray(opp.deliverables)
+              ? opp.deliverables
+              : [],
             proposals: opp.proposalCount || 0,
             hasSubmitted: opp.hasProposed || false,
             postedTime: new Date(opp.createdAt).toLocaleDateString(),
@@ -233,10 +255,13 @@ export default function CompanyDetailClient({
   }, [company.id]);
 
   const handleContact = () => {
-    const avatarUrl = company.avatar && 
+    const avatarUrl =
+      company.avatar &&
       company.avatar !== "/placeholder.svg" &&
       !company.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
+            company.avatar.startsWith("/") ? "" : "/"
+          }${company.avatar}`
         : "";
     router.push(
       `/provider/messages?userId=${company.id}&name=${encodeURIComponent(
@@ -300,13 +325,16 @@ export default function CompanyDetailClient({
             onClick={handleSaveToggle}
             className={saved ? "bg-red-600 hover:bg-red-700 text-white" : ""}
           >
-            <Heart className={`w-4 h-4 mr-2 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}
+            <Heart className={`w-4 h-4 mr-2 ${saved ? "fill-current" : ""}`} />{" "}
+            {saved ? "Saved" : "Save"}
           </Button>
 
-          <Button onClick={handleContact}>
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Contact
-          </Button>
+          {company.allowMessages !== false && (
+            <Button onClick={handleContact}>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Contact
+            </Button>
+          )}
         </div>
       </div>
 
@@ -315,17 +343,22 @@ export default function CompanyDetailClient({
         <CardContent className="p-6">
           <div className="flex items-start gap-5">
             <Avatar className="w-20 h-20">
-              <AvatarImage 
+              <AvatarImage
                 src={
-                  company.avatar && 
+                  company.avatar &&
                   company.avatar !== "/placeholder.svg" &&
                   company.avatar !== "/placeholder.svg?height=40&width=40" &&
                   !company.avatar.includes("/placeholder.svg")
-                    ? (company.avatar.startsWith("http") 
-                        ? company.avatar 
-                        : `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`)
+                    ? company.avatar.startsWith("http")
+                      ? company.avatar
+                      : `${
+                          process.env.NEXT_PUBLIC_API_BASE_URL ||
+                          "http://localhost:4000"
+                        }${company.avatar.startsWith("/") ? "" : "/"}${
+                          company.avatar
+                        }`
                     : "/placeholder.svg"
-                } 
+                }
               />
               <AvatarFallback>
                 <Building2 className="w-10 h-10" />
@@ -382,7 +415,11 @@ export default function CompanyDetailClient({
           {company.website && (
             <div className="mt-4">
               <a
-                href={company.website.startsWith("http") ? company.website : `https://${company.website}`}
+                href={
+                  company.website.startsWith("http")
+                    ? company.website
+                    : `https://${company.website}`
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
@@ -422,22 +459,27 @@ export default function CompanyDetailClient({
                   </div>
                 </div>
               )}
-              {company.categoriesHiringFor && company.categoriesHiringFor.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Categories Hiring For</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {company.categoriesHiringFor.map((category) => (
-                      <Badge key={category} variant="secondary">
-                        {category}
-                      </Badge>
-                    ))}
+              {company.categoriesHiringFor &&
+                company.categoriesHiringFor.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2">
+                      Categories Hiring For
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {company.categoriesHiringFor.map((category) => (
+                        <Badge key={category} variant="secondary">
+                          {category}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               {company.employeeCount && (
                 <div>
                   <h4 className="font-semibold mb-2">Employee Count</h4>
-                  <p className="text-gray-700">{company.employeeCount.toLocaleString()} employees</p>
+                  <p className="text-gray-700">
+                    {company.employeeCount.toLocaleString()} employees
+                  </p>
                 </div>
               )}
               {company.establishedYear && (
@@ -449,7 +491,9 @@ export default function CompanyDetailClient({
               {company.annualRevenue && (
                 <div>
                   <h4 className="font-semibold mb-2">Annual Revenue</h4>
-                  <p className="text-gray-700">RM {Number(company.annualRevenue).toLocaleString()}</p>
+                  <p className="text-gray-700">
+                    RM {Number(company.annualRevenue).toLocaleString()}
+                  </p>
                 </div>
               )}
               {company.fundingStage && (
@@ -466,7 +510,9 @@ export default function CompanyDetailClient({
             <Card>
               <CardHeader>
                 <CardTitle>Media Gallery</CardTitle>
-                <CardDescription>Company images and visual content</CardDescription>
+                <CardDescription>
+                  Company images and visual content
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -487,10 +533,16 @@ export default function CompanyDetailClient({
                               const target = e.target as HTMLImageElement;
                               target.style.display = "none";
                               const parent = target.parentElement;
-                              if (parent && !parent.querySelector('.image-placeholder')) {
-                                const placeholder = document.createElement("div");
-                                placeholder.className = "image-placeholder w-full h-full flex items-center justify-center bg-gray-200";
-                                placeholder.innerHTML = '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                              if (
+                                parent &&
+                                !parent.querySelector(".image-placeholder")
+                              ) {
+                                const placeholder =
+                                  document.createElement("div");
+                                placeholder.className =
+                                  "image-placeholder w-full h-full flex items-center justify-center bg-gray-200";
+                                placeholder.innerHTML =
+                                  '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
                                 parent.appendChild(placeholder);
                               }
                             }}
@@ -503,7 +555,10 @@ export default function CompanyDetailClient({
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity" />
                       </div>
                       <div className="p-2 bg-white border-t">
-                        <p className="text-xs text-gray-600 truncate" title={url}>
+                        <p
+                          className="text-xs text-gray-600 truncate"
+                          title={url}
+                        >
                           {url.split("/").pop() || `Media ${index + 1}`}
                         </p>
                       </div>
@@ -524,13 +579,17 @@ export default function CompanyDetailClient({
               {reviews && reviews.length > 0 ? (
                 <div className="space-y-4">
                   {reviews.map((review) => (
-                    <div key={review.id} className="border-b pb-4 last:border-0">
+                    <div
+                      key={review.id}
+                      className="border-b pb-4 last:border-0"
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <p className="font-medium">{review.author}</p>
                           {review.provider && (
                             <p className="text-sm text-gray-500">
-                              {review.provider.location} • Rating: {review.provider.rating}
+                              {review.provider.location} • Rating:{" "}
+                              {review.provider.rating}
                             </p>
                           )}
                         </div>
@@ -540,7 +599,9 @@ export default function CompanyDetailClient({
                         </div>
                       </div>
                       <p className="text-gray-700">{review.text}</p>
-                      <p className="text-xs text-gray-500 mt-2">{review.date}</p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {review.date}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -577,20 +638,21 @@ export default function CompanyDetailClient({
             </CardContent>
           </Card>
 
-          {company.preferredContractTypes && company.preferredContractTypes.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferred Contract Types</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {company.preferredContractTypes.map((type) => (
-                  <Badge key={type} variant="secondary" className="text-xs">
-                    {type}
-                  </Badge>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+          {company.preferredContractTypes &&
+            company.preferredContractTypes.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Preferred Contract Types</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-wrap gap-2">
+                  {company.preferredContractTypes.map((type) => (
+                    <Badge key={type} variant="secondary" className="text-xs">
+                      {type}
+                    </Badge>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
           {company.languages && company.languages.length > 0 && (
             <Card>
@@ -603,6 +665,40 @@ export default function CompanyDetailClient({
                     {lang}
                   </Badge>
                 ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Contact Information Card - Only show if privacy settings allow */}
+          {(company.email || company.phone) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Information</CardTitle>
+                <CardDescription>Direct contact details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm">
+                {company.email && (
+                  <div>
+                    <p className="text-gray-500">Email</p>
+                    <a
+                      href={`mailto:${company.email}`}
+                      className="font-medium text-blue-600 hover:underline break-all"
+                    >
+                      {company.email}
+                    </a>
+                  </div>
+                )}
+                {company.phone && (
+                  <div>
+                    <p className="text-gray-500">Phone</p>
+                    <a
+                      href={`tel:${company.phone}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      {company.phone}
+                    </a>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -623,7 +719,9 @@ export default function CompanyDetailClient({
               {company.hiringFrequency && (
                 <div>
                   <p className="text-gray-500">Hiring Frequency</p>
-                  <p className="font-medium capitalize">{company.hiringFrequency}</p>
+                  <p className="font-medium capitalize">
+                    {company.hiringFrequency}
+                  </p>
                 </div>
               )}
               {company.averageBudgetRange && (
@@ -641,27 +739,35 @@ export default function CompanyDetailClient({
               {company.annualRevenue && (
                 <div>
                   <p className="text-gray-500">Annual Revenue</p>
-                  <p className="font-medium">RM {Number(company.annualRevenue).toLocaleString()}</p>
+                  <p className="font-medium">
+                    RM {Number(company.annualRevenue).toLocaleString()}
+                  </p>
                 </div>
               )}
-              {company.socialLinks && Array.isArray(company.socialLinks) && company.socialLinks.length > 0 && (
-                <div>
-                  <p className="text-gray-500">Social Links</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {company.socialLinks.map((link: string, index: number) => (
-                      <a
-                        key={index}
-                        href={link.startsWith("http") ? link : `https://${link}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline text-xs"
-                      >
-                        {link}
-                      </a>
-                    ))}
+              {company.socialLinks &&
+                Array.isArray(company.socialLinks) &&
+                company.socialLinks.length > 0 && (
+                  <div>
+                    <p className="text-gray-500">Social Links</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {company.socialLinks.map(
+                        (link: string, index: number) => (
+                          <a
+                            key={index}
+                            href={
+                              link.startsWith("http") ? link : `https://${link}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-xs"
+                          >
+                            {link}
+                          </a>
+                        )
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </CardContent>
           </Card>
         </div>
@@ -672,19 +778,24 @@ export default function CompanyDetailClient({
         <CardHeader>
           <CardTitle>Open Opportunities</CardTitle>
           <CardDescription>
-            Available projects from this company that you can submit proposals for
+            Available projects from this company that you can submit proposals
+            for
           </CardDescription>
         </CardHeader>
         <CardContent>
           {loadingOpportunities ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-              <span className="ml-2 text-gray-600">Loading opportunities...</span>
+              <span className="ml-2 text-gray-600">
+                Loading opportunities...
+              </span>
             </div>
           ) : opportunities.length === 0 ? (
             <div className="text-center py-12">
               <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No open opportunities</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No open opportunities
+              </h3>
               <p className="text-gray-600">
                 This company doesn't have any open projects at the moment.
               </p>
@@ -692,7 +803,10 @@ export default function CompanyDetailClient({
           ) : (
             <div className="space-y-4">
               {opportunities.map((opp) => (
-                <Card key={opp.id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={opp.id}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -725,7 +839,9 @@ export default function CompanyDetailClient({
                             <DollarSign className="w-4 h-4 mr-1" />
                             {opp.budget}
                           </div>
-                          <p className="text-sm text-gray-500">{opp.timeline}</p>
+                          <p className="text-sm text-gray-500">
+                            {opp.timeline}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -733,13 +849,19 @@ export default function CompanyDetailClient({
                           <Users className="w-4 h-4 mr-1" />
                           {opp.proposals} proposals
                         </div>
-                        <p className="text-xs text-gray-400">{opp.postedTime}</p>
+                        <p className="text-xs text-gray-400">
+                          {opp.postedTime}
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
                       {opp.skills.slice(0, 6).map((skill: string) => (
-                        <Badge key={skill} variant="secondary" className="text-xs">
+                        <Badge
+                          key={skill}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {skill}
                         </Badge>
                       ))}
@@ -823,10 +945,14 @@ export default function CompanyDetailClient({
                   }
                 />
                 {proposalErrors.bidAmount && (
-                  <p className="text-xs text-red-600">{proposalErrors.bidAmount}</p>
+                  <p className="text-xs text-red-600">
+                    {proposalErrors.bidAmount}
+                  </p>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
-                  Client budget range: RM {selectedOpportunity?.budgetMin?.toLocaleString() || "0"} - RM {selectedOpportunity?.budgetMax?.toLocaleString() || "0"}
+                  Client budget range: RM{" "}
+                  {selectedOpportunity?.budgetMin?.toLocaleString() || "0"} - RM{" "}
+                  {selectedOpportunity?.budgetMax?.toLocaleString() || "0"}
                 </p>
               </div>
               <div>
@@ -876,13 +1002,20 @@ export default function CompanyDetailClient({
                   </Select>
                 </div>
                 {proposalErrors.timelineAmount && (
-                  <p className="text-xs text-red-600 mt-1">{proposalErrors.timelineAmount}</p>
+                  <p className="text-xs text-red-600 mt-1">
+                    {proposalErrors.timelineAmount}
+                  </p>
                 )}
                 {proposalErrors.timelineUnit && (
-                  <p className="text-xs text-red-600 mt-1">{proposalErrors.timelineUnit}</p>
+                  <p className="text-xs text-red-600 mt-1">
+                    {proposalErrors.timelineUnit}
+                  </p>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
-                  Company timeline: {selectedOpportunity?.originalTimeline ? formatTimeline(selectedOpportunity.originalTimeline) : "Not specified"}
+                  Company timeline:{" "}
+                  {selectedOpportunity?.originalTimeline
+                    ? formatTimeline(selectedOpportunity.originalTimeline)
+                    : "Not specified"}
                 </p>
               </div>
             </div>
@@ -907,7 +1040,9 @@ export default function CompanyDetailClient({
                 }
               />
               {proposalErrors.coverLetter && (
-                <p className="text-xs text-red-600">{proposalErrors.coverLetter}</p>
+                <p className="text-xs text-red-600">
+                  {proposalErrors.coverLetter}
+                </p>
               )}
             </div>
 
@@ -941,10 +1076,15 @@ export default function CompanyDetailClient({
                 </Button>
               </div>
               {proposalData.milestones.length === 0 && (
-                <p className={`text-sm ${
-                  proposalErrors.milestones ? "text-red-600 font-medium" : "text-gray-500"
-                }`}>
-                  {proposalErrors.milestones || "At least one milestone is required."}
+                <p
+                  className={`text-sm ${
+                    proposalErrors.milestones
+                      ? "text-red-600 font-medium"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {proposalErrors.milestones ||
+                    "At least one milestone is required."}
                 </p>
               )}
               <div className="space-y-3">
@@ -962,45 +1102,75 @@ export default function CompanyDetailClient({
                             value={m.title}
                             onChange={(e) => {
                               const updated = [...proposalData.milestones];
-                              updated[i] = { ...updated[i], title: e.target.value };
-                              setProposalData((prev) => ({ ...prev, milestones: updated }));
+                              updated[i] = {
+                                ...updated[i],
+                                title: e.target.value,
+                              };
+                              setProposalData((prev) => ({
+                                ...prev,
+                                milestones: updated,
+                              }));
                             }}
                           />
                         </div>
                         <div className="md:col-span-3">
-                          <label className="text-sm font-medium">Amount (RM)</label>
+                          <label className="text-sm font-medium">
+                            Amount (RM)
+                          </label>
                           <Input
                             type="number"
                             value={String(m.amount ?? 0)}
                             onChange={(e) => {
                               const updated = [...proposalData.milestones];
-                              updated[i] = { ...updated[i], amount: Number(e.target.value) };
-                              setProposalData((prev) => ({ ...prev, milestones: updated }));
+                              updated[i] = {
+                                ...updated[i],
+                                amount: Number(e.target.value),
+                              };
+                              setProposalData((prev) => ({
+                                ...prev,
+                                milestones: updated,
+                              }));
                             }}
                           />
                         </div>
                         <div className="md:col-span-4">
-                          <label className="text-sm font-medium">Due Date</label>
+                          <label className="text-sm font-medium">
+                            Due Date
+                          </label>
                           <Input
                             type="date"
                             value={(m.dueDate || "").slice(0, 10)}
                             onChange={(e) => {
                               const updated = [...proposalData.milestones];
-                              updated[i] = { ...updated[i], dueDate: e.target.value };
-                              setProposalData((prev) => ({ ...prev, milestones: updated }));
+                              updated[i] = {
+                                ...updated[i],
+                                dueDate: e.target.value,
+                              };
+                              setProposalData((prev) => ({
+                                ...prev,
+                                milestones: updated,
+                              }));
                             }}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="text-sm font-medium">Description</label>
+                        <label className="text-sm font-medium">
+                          Description
+                        </label>
                         <Textarea
                           rows={2}
                           value={m.description || ""}
                           onChange={(e) => {
                             const updated = [...proposalData.milestones];
-                            updated[i] = { ...updated[i], description: e.target.value };
-                            setProposalData((prev) => ({ ...prev, milestones: updated }));
+                            updated[i] = {
+                              ...updated[i],
+                              description: e.target.value,
+                            };
+                            setProposalData((prev) => ({
+                              ...prev,
+                              milestones: updated,
+                            }));
                           }}
                         />
                       </div>
@@ -1012,7 +1182,9 @@ export default function CompanyDetailClient({
                           onClick={() => {
                             setProposalData((prev) => ({
                               ...prev,
-                              milestones: prev.milestones.filter((_, idx) => idx !== i),
+                              milestones: prev.milestones.filter(
+                                (_, idx) => idx !== i
+                              ),
                             }));
                           }}
                         >
@@ -1024,7 +1196,9 @@ export default function CompanyDetailClient({
                 ))}
               </div>
               {proposalErrors.milestones && (
-                <p className="text-xs text-red-600 mt-1">{proposalErrors.milestones}</p>
+                <p className="text-xs text-red-600 mt-1">
+                  {proposalErrors.milestones}
+                </p>
               )}
             </div>
 
@@ -1082,7 +1256,9 @@ export default function CompanyDetailClient({
                         onClick={() => {
                           setProposalData((prev) => ({
                             ...prev,
-                            attachments: prev.attachments.filter((_, i) => i !== index),
+                            attachments: prev.attachments.filter(
+                              (_, i) => i !== index
+                            ),
                           }));
                         }}
                       >
@@ -1107,35 +1283,65 @@ export default function CompanyDetailClient({
                 // Validation
                 const errors: any = {};
                 const bidAmountNum = Number(proposalData.bidAmount);
-                if (!proposalData.bidAmount || isNaN(bidAmountNum) || bidAmountNum <= 0) {
-                  errors.bidAmount = "Bid amount is required and must be positive";
+                if (
+                  !proposalData.bidAmount ||
+                  isNaN(bidAmountNum) ||
+                  bidAmountNum <= 0
+                ) {
+                  errors.bidAmount =
+                    "Bid amount is required and must be positive";
                 } else if (selectedOpportunity) {
-                  if (bidAmountNum < selectedOpportunity.budgetMin || bidAmountNum > selectedOpportunity.budgetMax) {
+                  if (
+                    bidAmountNum < selectedOpportunity.budgetMin ||
+                    bidAmountNum > selectedOpportunity.budgetMax
+                  ) {
                     errors.bidAmount = `Bid amount must be between RM ${selectedOpportunity.budgetMin.toLocaleString()} and RM ${selectedOpportunity.budgetMax.toLocaleString()}`;
                   }
                 }
 
                 const timelineAmountNum = Number(proposalData.timelineAmount);
-                if (!proposalData.timelineAmount || isNaN(timelineAmountNum) || timelineAmountNum <= 0) {
+                if (
+                  !proposalData.timelineAmount ||
+                  isNaN(timelineAmountNum) ||
+                  timelineAmountNum <= 0
+                ) {
                   errors.timelineAmount = "Timeline amount is required";
                 }
                 if (!proposalData.timelineUnit) {
                   errors.timelineUnit = "Timeline unit is required";
-                } else if (selectedOpportunity && selectedOpportunity.originalTimelineInDays > 0) {
-                  const providerTimelineInDays = timelineToDays(timelineAmountNum, proposalData.timelineUnit);
-                  if (providerTimelineInDays > selectedOpportunity.originalTimelineInDays) {
-                    errors.timelineAmount = `Your timeline must be equal to or less than the company's timeline (${formatTimeline(selectedOpportunity.originalTimeline)})`;
+                } else if (
+                  selectedOpportunity &&
+                  selectedOpportunity.originalTimelineInDays > 0
+                ) {
+                  const providerTimelineInDays = timelineToDays(
+                    timelineAmountNum,
+                    proposalData.timelineUnit
+                  );
+                  if (
+                    providerTimelineInDays >
+                    selectedOpportunity.originalTimelineInDays
+                  ) {
+                    errors.timelineAmount = `Your timeline must be equal to or less than the company's timeline (${formatTimeline(
+                      selectedOpportunity.originalTimeline
+                    )})`;
                   }
                 }
 
-                if (!proposalData.coverLetter || proposalData.coverLetter.trim().length < 20) {
-                  errors.coverLetter = "Cover letter must be at least 20 characters";
+                if (
+                  !proposalData.coverLetter ||
+                  proposalData.coverLetter.trim().length < 20
+                ) {
+                  errors.coverLetter =
+                    "Cover letter must be at least 20 characters";
                 }
 
                 if (proposalData.milestones.length === 0) {
                   errors.milestones = "At least one milestone is required";
                 } else {
-                  const sumMilestones = proposalData.milestones.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+                  const sumMilestones = proposalData.milestones.reduce(
+                    (sum, m) => sum + (Number(m.amount) || 0),
+                    0
+                  );
                   if (bidAmountNum > 0 && sumMilestones !== bidAmountNum) {
                     errors.milestones = `Total of milestones (RM ${sumMilestones}) must equal your bid amount (RM ${bidAmountNum})`;
                   }
@@ -1155,7 +1361,10 @@ export default function CompanyDetailClient({
                   );
 
                   const formData = new FormData();
-                  formData.append("serviceRequestId", selectedOpportunity.originalData.id);
+                  formData.append(
+                    "serviceRequestId",
+                    selectedOpportunity.originalData.id
+                  );
                   formData.append("bidAmount", bidAmountNum.toString());
                   formData.append("deliveryTime", timelineInDays.toString());
                   formData.append("timeline", timeline);
@@ -1163,11 +1372,23 @@ export default function CompanyDetailClient({
                   formData.append("coverLetter", proposalData.coverLetter);
 
                   proposalData.milestones.forEach((m, idx) => {
-                    formData.append(`milestones[${idx}][sequence]`, String(idx + 1));
+                    formData.append(
+                      `milestones[${idx}][sequence]`,
+                      String(idx + 1)
+                    );
                     formData.append(`milestones[${idx}][title]`, m.title);
-                    formData.append(`milestones[${idx}][description]`, m.description || "");
-                    formData.append(`milestones[${idx}][amount]`, String(m.amount));
-                    formData.append(`milestones[${idx}][dueDate]`, new Date(m.dueDate).toISOString());
+                    formData.append(
+                      `milestones[${idx}][description]`,
+                      m.description || ""
+                    );
+                    formData.append(
+                      `milestones[${idx}][amount]`,
+                      String(m.amount)
+                    );
+                    formData.append(
+                      `milestones[${idx}][dueDate]`,
+                      new Date(m.dueDate).toISOString()
+                    );
                   });
 
                   proposalData.attachments.forEach((file) => {
@@ -1181,7 +1402,11 @@ export default function CompanyDetailClient({
                     setOpportunities((prev) =>
                       prev.map((opp) =>
                         opp.id === selectedOpportunity.id
-                          ? { ...opp, hasSubmitted: true, proposals: opp.proposals + 1 }
+                          ? {
+                              ...opp,
+                              hasSubmitted: true,
+                              proposals: opp.proposals + 1,
+                            }
                           : opp
                       )
                     );
@@ -1195,7 +1420,9 @@ export default function CompanyDetailClient({
                     });
                     setProposalErrors({});
                   } else {
-                    toast.error(response.message || "Failed to submit proposal");
+                    toast.error(
+                      response.message || "Failed to submit proposal"
+                    );
                   }
                 } catch (error: any) {
                   console.error("Error submitting proposal:", error);
@@ -1236,7 +1463,7 @@ export default function CompanyDetailClient({
               >
                 <X className="w-5 h-5" />
               </Button>
-              
+
               {/* Previous Button */}
               {company.mediaGallery.length > 1 && (
                 <Button
@@ -1248,7 +1475,7 @@ export default function CompanyDetailClient({
                   <ChevronLeft className="w-6 h-6" />
                 </Button>
               )}
-              
+
               {/* Next Button */}
               {company.mediaGallery.length > 1 && (
                 <Button
@@ -1260,7 +1487,7 @@ export default function CompanyDetailClient({
                   <ChevronRight className="w-6 h-6" />
                 </Button>
               )}
-              
+
               {/* Image Display */}
               <div className="w-full h-full flex items-center justify-center p-4 md:p-8">
                 {isImageUrl(company.mediaGallery[currentImageIndex]) ? (
@@ -1272,10 +1499,15 @@ export default function CompanyDetailClient({
                       const target = e.target as HTMLImageElement;
                       target.style.display = "none";
                       const parent = target.parentElement;
-                      if (parent && !parent.querySelector('.image-placeholder')) {
+                      if (
+                        parent &&
+                        !parent.querySelector(".image-placeholder")
+                      ) {
                         const placeholder = document.createElement("div");
-                        placeholder.className = "image-placeholder w-full h-full flex items-center justify-center text-white";
-                        placeholder.innerHTML = '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                        placeholder.className =
+                          "image-placeholder w-full h-full flex items-center justify-center text-white";
+                        placeholder.innerHTML =
+                          '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
                         parent.appendChild(placeholder);
                       }
                     }}
@@ -1286,7 +1518,7 @@ export default function CompanyDetailClient({
                   </div>
                 )}
               </div>
-              
+
               {/* Image Counter */}
               {company.mediaGallery.length > 1 && (
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
@@ -1300,4 +1532,3 @@ export default function CompanyDetailClient({
     </div>
   );
 }
-

@@ -329,6 +329,7 @@ export async function getRecommendedProviders(customerId) {
             },
           },
         },
+        settings: true,
       },
     });
 
@@ -404,6 +405,9 @@ export async function getRecommendedProviders(customerId) {
           isVerified
         );
 
+        // Apply privacy settings
+        const allowMessages = provider.settings?.allowMessages !== false;
+
         return {
           id: provider.id,
           name: provider.name,
@@ -427,6 +431,7 @@ export async function getRecommendedProviders(customerId) {
           successRate: parseFloat(providerProfile.successRate || 0),
           isVerified: isVerified,
           matchScore: matchScore,
+          allowMessages: allowMessages,
           recommendedForServiceRequest: {
             id: serviceRequest.id,
             title: serviceRequest.title,

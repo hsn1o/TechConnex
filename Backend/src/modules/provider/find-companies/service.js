@@ -18,12 +18,22 @@ export async function searchCompanies(filters) {
     const result = await findCompanies(filters);
     
     // Transform data for frontend
-    const transformedCompanies = result.companies.map((user) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.customerProfile?.profileImageUrl || "/placeholder.svg",
-      industry: user.customerProfile?.industry || "Not specified",
+    const transformedCompanies = result.companies.map((user) => {
+      // Get privacy settings
+      const settings = user.settings || {};
+      const showEmail = settings.showEmail || false;
+      const showPhone = settings.showPhone || false;
+      const allowMessages = settings.allowMessages !== false; // Default to true if not set
+      
+      return {
+        id: user.id,
+        name: user.name,
+        // Only include email/phone if privacy settings allow
+        email: showEmail ? user.email : null,
+        phone: showPhone ? user.phone : null,
+        allowMessages: allowMessages,
+        avatar: user.customerProfile?.profileImageUrl || "/placeholder.svg",
+        industry: user.customerProfile?.industry || "Not specified",
       location: user.customerProfile?.location || "Not specified",
       companySize: user.customerProfile?.companySize || "Not specified",
       rating: parseFloat(user.customerProfile?.rating || 0),
@@ -50,7 +60,8 @@ export async function searchCompanies(filters) {
       averageBudgetRange: user.customerProfile?.averageBudgetRange || null,
       socialLinks: user.customerProfile?.socialLinks || null,
       mediaGallery: user.customerProfile?.mediaGallery || [],
-    }));
+      };
+    });
 
     return {
       companies: transformedCompanies,
@@ -72,11 +83,20 @@ export async function getCompanyDetails(companyId, userId = null) {
   try {
     const company = await getCompanyById(companyId, userId);
     
+    // Get privacy settings
+    const settings = company.settings || {};
+    const showEmail = settings.showEmail || false;
+    const showPhone = settings.showPhone || false;
+    const allowMessages = settings.allowMessages !== false; // Default to true if not set
+    
     // Transform for frontend
     const transformedCompany = {
       id: company.id,
       name: company.name,
-      email: company.email,
+      // Only include email/phone if privacy settings allow
+      email: showEmail ? company.email : null,
+      phone: showPhone ? company.phone : null,
+      allowMessages: allowMessages, // Include this flag for frontend
       avatar: company.customerProfile?.profileImageUrl || "/placeholder.svg",
       industry: company.customerProfile?.industry || "Not specified",
       location: company.customerProfile?.location || "Not specified",
@@ -179,39 +199,51 @@ export async function getSavedCompaniesService(userId, page = 1, limit = 20) {
     const result = await getSavedCompanies(userId, page, limit);
     
     // Transform for frontend
-    const transformedCompanies = result.companies.map((user) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.customerProfile?.profileImageUrl || "/placeholder.svg",
-      industry: user.customerProfile?.industry || "Not specified",
-      location: user.customerProfile?.location || "Not specified",
-      companySize: user.customerProfile?.companySize || "Not specified",
-      rating: parseFloat(user.customerProfile?.rating || 0),
-      reviewCount: user.customerProfile?.reviewCount || 0,
-      totalSpend: parseFloat(user.customerProfile?.totalSpend || 0),
-      projectsPosted: user.customerProfile?.projectsPosted || 0,
-      description: user.customerProfile?.description || "No description available",
-      website: user.customerProfile?.website || null,
-      memberSince: new Date(user.createdAt).getFullYear().toString(),
-      verified: user.isVerified || false,
-      savedAt: user.savedAt,
-      // Additional public-safe fields
-      employeeCount: user.customerProfile?.employeeCount || null,
-      establishedYear: user.customerProfile?.establishedYear || null,
-      annualRevenue: user.customerProfile?.annualRevenue || null,
-      fundingStage: user.customerProfile?.fundingStage || null,
-      mission: user.customerProfile?.mission || null,
-      values: user.customerProfile?.values || [],
-      languages: user.customerProfile?.languages || [],
-      categoriesHiringFor: user.customerProfile?.categoriesHiringFor || [],
-      preferredContractTypes: user.customerProfile?.preferredContractTypes || [],
-      remotePolicy: user.customerProfile?.remotePolicy || null,
-      hiringFrequency: user.customerProfile?.hiringFrequency || null,
-      averageBudgetRange: user.customerProfile?.averageBudgetRange || null,
-      socialLinks: user.customerProfile?.socialLinks || null,
-      mediaGallery: user.customerProfile?.mediaGallery || [],
-    }));
+    const transformedCompanies = result.companies.map((user) => {
+      // Get privacy settings - note: saved companies have user.company structure
+      const company = user.company || user;
+      const settings = company.settings || {};
+      const showEmail = settings.showEmail || false;
+      const showPhone = settings.showPhone || false;
+      const allowMessages = settings.allowMessages !== false; // Default to true if not set
+      
+      return {
+        id: company.id,
+        name: company.name,
+        // Only include email/phone if privacy settings allow
+        email: showEmail ? company.email : null,
+        phone: showPhone ? company.phone : null,
+        allowMessages: allowMessages,
+        avatar: company.customerProfile?.profileImageUrl || "/placeholder.svg",
+        industry: company.customerProfile?.industry || "Not specified",
+        location: company.customerProfile?.location || "Not specified",
+        companySize: company.customerProfile?.companySize || "Not specified",
+        rating: parseFloat(company.customerProfile?.rating || 0),
+        reviewCount: company.customerProfile?.reviewCount || 0,
+        totalSpend: parseFloat(company.customerProfile?.totalSpend || 0),
+        projectsPosted: company.customerProfile?.projectsPosted || 0,
+        description: company.customerProfile?.description || "No description available",
+        website: company.customerProfile?.website || null,
+        memberSince: new Date(company.createdAt).getFullYear().toString(),
+        verified: company.isVerified || false,
+        savedAt: user.createdAt || user.savedAt,
+        // Additional public-safe fields
+        employeeCount: company.customerProfile?.employeeCount || null,
+        establishedYear: company.customerProfile?.establishedYear || null,
+        annualRevenue: company.customerProfile?.annualRevenue || null,
+        fundingStage: company.customerProfile?.fundingStage || null,
+        mission: company.customerProfile?.mission || null,
+        values: company.customerProfile?.values || [],
+        languages: company.customerProfile?.languages || [],
+        categoriesHiringFor: company.customerProfile?.categoriesHiringFor || [],
+        preferredContractTypes: company.customerProfile?.preferredContractTypes || [],
+        remotePolicy: company.customerProfile?.remotePolicy || null,
+        hiringFrequency: company.customerProfile?.hiringFrequency || null,
+        averageBudgetRange: company.customerProfile?.averageBudgetRange || null,
+        socialLinks: company.customerProfile?.socialLinks || null,
+        mediaGallery: company.customerProfile?.mediaGallery || [],
+      };
+    });
 
     return {
       companies: transformedCompanies,

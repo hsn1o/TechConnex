@@ -171,6 +171,7 @@ export async function findProviders(filters) {
             performance: true,
           },
         },
+        settings: true, // Include privacy settings
       },
       orderBy,
       skip,
@@ -262,6 +263,7 @@ export async function getProviderById(providerId, userId = null) {
           performance: true,
         },
       },
+      settings: true, // Include privacy settings
     },
   });
 
@@ -393,6 +395,7 @@ export async function getSavedProviders(userId, page = 1, limit = 20) {
       include: {
         provider: {
           include: {
+            settings: true, // Include privacy settings
             providerProfile: {
               include: {
                 certifications: true,

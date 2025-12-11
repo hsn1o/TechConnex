@@ -162,6 +162,7 @@ export async function findCompanies(filters) {
             mediaGallery: true,
           },
         },
+        settings: true, // Include privacy settings
       },
       orderBy,
       skip,
@@ -252,6 +253,7 @@ export async function getCompanyById(companyId, userId = null) {
           mediaGallery: true,
         },
       },
+      settings: true, // Include privacy settings
     },
   });
 
@@ -375,6 +377,7 @@ export async function getSavedCompanies(userId, page = 1, limit = 20) {
       include: {
         company: {
           include: {
+            settings: true, // Include privacy settings
             customerProfile: {
               select: {
                 id: true,

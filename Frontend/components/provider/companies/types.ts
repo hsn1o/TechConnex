@@ -1,7 +1,9 @@
 export type Company = {
   id: string;
   name: string;
-  email?: string;
+  email?: string | null;
+  phone?: string | null;
+  allowMessages?: boolean;
   avatar?: string;
   industry: string;
   location: string;
