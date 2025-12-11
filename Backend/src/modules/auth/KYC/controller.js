@@ -11,6 +11,7 @@ import {
   listKycDocuments,
   getKycDocument,
 } from "./service.js";
+import { createNotification } from "../../notifications/service.js";
 
 export const createKyc = async (req, res) => {
   try {
@@ -118,17 +119,55 @@ export const reviewKycDocument = async (req, res) => {
 
     const status = approve ? "verified" : "rejected";
 
+    // Get admin user ID from JWT payload (could be userId or id)
+    const adminUserId = req.user?.userId || req.user?.id;
+
     // Update KYC document status
     await updateKycDocumentStatus(document.id, {
       status,
       reviewNotes: notes,
       reviewedAt: new Date(),
-      reviewedBy: req.user.id,
+      reviewedBy: adminUserId,
     });
 
     // If document is verified, update user's isVerified status to true
     if (approve && status === "verified") {
       await updateUserVerificationStatus(userId, true);
+    }
+
+    // Create notification for the user
+    try {
+      if (approve && status === "verified") {
+        await createNotification({
+          userId: userId,
+          title: "KYC Verification Approved",
+          type: "system",
+          content: `Your KYC verification has been approved. Your account is now verified.${notes ? ` Notes: ${notes}` : ""}`,
+          metadata: {
+            kycDocumentId: document.id,
+            kycType: document.type,
+            reviewedBy: adminUserId,
+            action: "approved",
+          },
+        });
+      } else {
+        await createNotification({
+          userId: userId,
+          title: "KYC Verification Rejected",
+          type: "system",
+          content: `Your KYC verification has been rejected.${notes ? ` Reason: ${notes}` : " Please review your documents and resubmit."}`,
+          metadata: {
+            kycDocumentId: document.id,
+            kycType: document.type,
+            reviewedBy: adminUserId,
+            action: "rejected",
+            reviewNotes: notes,
+          },
+        });
+      }
+    } catch (notificationError) {
+      // Log error but don't fail the KYC review
+      console.error("Failed to create notification:", notificationError);
     }
 
     // Fetch updated user with all KYC documents formatted for response

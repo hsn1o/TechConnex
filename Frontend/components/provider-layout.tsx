@@ -85,23 +85,54 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
     const token = localStorage.getItem("token");
     if (!token) return;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const notif = notifications.find((n) => n.id === id);
+    
+    // Optimistically update UI
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
+    
+    // Mark as read in database
     try {
-      await fetch(`${API_URL}/notifications/${id}/read`, {
+      const response = await fetch(`${API_URL}/notifications/${id}/read`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
+      
+      if (!response.ok) {
+        // Revert optimistic update on error
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, isRead: notif?.isRead || false } : n))
+        );
+        console.error("Failed to mark notification as read");
+        return;
+      }
+      
+      // Refresh notifications to ensure sync with database
+      const refreshResponse = await fetch(`${API_URL}/notifications/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        if (refreshData.success) {
+          setNotifications(refreshData.data || []);
+        }
+      }
     } catch (error) {
       console.error("Failed to mark notification as read", error);
+      // Revert optimistic update on error
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: notif?.isRead || false } : n))
+      );
     }
-    const notif = notifications.find((n) => n.id === id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+    
     if (notif) {
-      setSelectedNotification(notif);
+      setSelectedNotification({ ...notif, isRead: true });
       setModalOpen(true);
     }
   };
