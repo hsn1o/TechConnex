@@ -9,6 +9,7 @@ import {
   updateUserRole,
 } from "./model.js";
 import { createProviderAiDraft } from "./provider-ai-draft.js";
+import { notifyAdminsOfNewUser } from "../../notifications/service.js";
 
 const prisma = new PrismaClient();
 
@@ -20,6 +21,20 @@ async function registerProvider(dto) {
 
   // Pass entire DTO, but overwrite the password
   const user = await createProviderUser({ ...dto, password: hashedPassword });
+
+  // Notify all admins about the new user registration
+  try {
+    await notifyAdminsOfNewUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (notificationError) {
+    // Log error but don't fail registration
+    console.error("Failed to notify admins of new user registration:", notificationError);
+  }
+
 
   // Try to generate AI draft for provider profile if profile exists
   try {

@@ -12,6 +12,7 @@ import {
 } from "./model.js";
 import { findUserByEmail } from "../model.js";
 import { createCompanyAiDraft } from "./company-ai-draft.js";
+import { notifyAdminsOfNewUser } from "../../notifications/service.js";
 
 const prisma = new PrismaClient();
 
@@ -38,6 +39,18 @@ async function registerCompany(dto) {
   } catch (err) {
     // Log and continue — registration should not fail because of AI draft
     console.error("Failed to create company AI draft:", err);
+  // Notify all admins about the new user registration
+  }
+  try {
+    await notifyAdminsOfNewUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (notificationError) {
+    // Log error but don't fail registration
+    console.error("Failed to notify admins of new user registration:", notificationError);
   }
 
   // 🧠 Optionally, you could auto-generate a token upon registration

@@ -5,6 +5,7 @@ import {
   UpdateProjectStatusDto,
   UpdateMilestoneStatusDto,
 } from "./dto.js";
+import { createNotification } from "../../notifications/service.js";
 
 /**
  * Get all projects for a provider
@@ -321,15 +322,22 @@ export async function updateProjectStatus(dto) {
     }
 
     // Create notification for customer
-    await prisma.notification.create({
-      data: {
+    try {
+      await createNotification({
         userId: project.customerId,
-        title: "Project Update",
-
+        title: "Project Status Updated",
         type: "project",
-        content: `Project "${project.title}" status updated to ${dto.status}`,
-      },
-    });
+        content: `Project "${project.title}" status has been updated to ${dto.status}`,
+        metadata: {
+          projectId: dto.projectId,
+          projectTitle: project.title,
+          newStatus: dto.status,
+          eventType: "project_status_updated",
+        },
+      });
+    } catch (notificationError) {
+      console.error("Failed to notify customer of project status update:", notificationError);
+    }
 
     return updatedProject;
   } catch (error) {
@@ -427,19 +435,43 @@ export async function updateMilestoneStatus(dto) {
 
     // Create notification for customer
     if (dto.status === "SUBMITTED") {
-      await prisma.notification.create({
-        data: {
+      try {
+        await createNotification({
           userId: milestone.project.customerId,
+          title: "Milestone Submitted",
           type: "milestone",
-          title: "Milestone Update",
-
-          content: `Milestone "${
-            milestone.title
-          }" has been submitted for review${
-            dto.submissionAttachmentUrl ? " with attachment" : ""
-          }`,
-        },
-      });
+          content: `Milestone "${milestone.title}" has been submitted for review${dto.submissionAttachmentUrl ? " with attachment" : ""}`,
+          metadata: {
+            milestoneId: dto.milestoneId,
+            milestoneTitle: milestone.title,
+            projectId: milestone.project.id,
+            projectTitle: milestone.project.title,
+            hasAttachment: !!dto.submissionAttachmentUrl,
+            eventType: "milestone_submitted",
+          },
+        });
+      } catch (notificationError) {
+        console.error("Failed to notify customer of milestone submission:", notificationError);
+      }
+    } else if (dto.status === "IN_PROGRESS" && milestone.status === "LOCKED") {
+      // Notify customer when provider starts working on a milestone
+      try {
+        await createNotification({
+          userId: milestone.project.customerId,
+          title: "Milestone Work Started",
+          type: "milestone",
+          content: `Provider has started working on milestone "${milestone.title}"`,
+          metadata: {
+            milestoneId: dto.milestoneId,
+            milestoneTitle: milestone.title,
+            projectId: milestone.project.id,
+            projectTitle: milestone.project.title,
+            eventType: "milestone_work_started",
+          },
+        });
+      } catch (notificationError) {
+        console.error("Failed to notify customer of milestone work start:", notificationError);
+      }
     }
 
     // Return milestone with all relevant fields including attachment info

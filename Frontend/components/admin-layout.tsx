@@ -16,7 +16,6 @@ import {
   Menu,
   X,
   Bell,
-  Badge,
   User,
   CreditCard,
   LogOut,
@@ -34,6 +33,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Badge as BadgeComponent } from "@/components/ui/badge";
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
@@ -57,6 +66,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   // Profile state
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<any | null>(
+    null
+  );
+
   const handleLogout = () => {
     // Clear user data from localStorage
     localStorage.removeItem("user");
@@ -109,6 +127,88 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
     verifyAdmin();
   }, [router]);
+
+  // Fetch notifications for admin header
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const endpoint = `${API_URL}/notifications/`;
+
+    fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch notifications");
+        return res.json();
+      })
+      .then((data) => setNotifications(data.data || []))
+      .catch(() => setNotifications([]))
+      .finally(() => setNotificationsLoading(false));
+  }, []);
+
+  // Calculate unread notifications
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // Handler to mark a notification as read
+  const handleNotificationClick = async (id: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const notif = notifications.find((n) => n.id === id);
+    
+    // Optimistically update UI
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
+    
+    // Mark as read in database
+    try {
+      const response = await fetch(`${API_URL}/notifications/${id}/read`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        // Revert optimistic update on error
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, isRead: notif?.isRead || false } : n))
+        );
+        console.error("Failed to mark notification as read");
+        return;
+      }
+      
+      // Refresh notifications to ensure sync with database
+      const refreshResponse = await fetch(`${API_URL}/notifications/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        if (refreshData.success) {
+          setNotifications(refreshData.data || []);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to mark notification as read", error);
+      // Revert optimistic update on error
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: notif?.isRead || false } : n))
+      );
+    }
+    
+    if (notif) {
+      setSelectedNotification({ ...notif, isRead: true });
+      setModalOpen(true);
+    }
+  };
 
   const SidebarNav = (
     <nav className="flex-1 space-y-1 px-3 py-4">
@@ -262,12 +362,54 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-5 h-5" />
-                <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs bg-red-500">
-                  3
-                </Badge>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="relative">
+                    <Bell className="w-5 h-5" />
+                    {unreadCount > 0 && (
+                      <BadgeComponent className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs bg-red-500">
+                        {unreadCount}
+                      </BadgeComponent>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="w-80 max-h-[800px] overflow-y-auto"
+                  align="end"
+                  forceMount
+                >
+                  <DropdownMenuLabel className="font-medium text-gray-900">
+                    Notifications
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {notificationsLoading ? (
+                    <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                  ) : notifications.length > 0 ? (
+                    notifications.map((n) => (
+                      <DropdownMenuItem
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n.id)}
+                        className={n.isRead ? "opacity-50" : ""}
+                      >
+                        <div className="flex flex-col space-y-1">
+                          <span className="font-medium">{n.title}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {n.content}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem disabled>
+                      No notifications
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -351,6 +493,46 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           )}
         </main>
       </div>
+
+      {/* Notification modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-lg p-6 mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              Notification
+            </DialogTitle>
+            <DialogClose className="absolute right-4 top-4">
+              <X className="w-5 h-5" />
+            </DialogClose>
+          </DialogHeader>
+          <DialogDescription className="mt-4 text-sm text-gray-700">
+            {selectedNotification ? (
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-md font-medium">
+                    {selectedNotification.title}
+                  </h3>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(selectedNotification.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-sm">{selectedNotification.content}</p>
+              </div>
+            ) : (
+              "No notification details available."
+            )}
+          </DialogDescription>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="default"
+              onClick={() => setModalOpen(false)}
+              className="w-full"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 // src/modules/provider/reviews/service.js
 import { prisma } from "./model.js";
 import { CreateReviewDto, GetReviewsDto, UpdateReviewDto, CreateReviewReplyDto } from "./dto.js";
+import { createNotification } from "../../notifications/service.js";
 
 // Create a new review (provider reviewing customer)
 export async function createReview(dto) {
@@ -91,6 +92,28 @@ export async function createReview(dto) {
 
     // Update customer's rating and review count
     await updateCustomerRating(dto.recipientId);
+
+    // Notify the customer (recipient) about the new review
+    try {
+      await createNotification({
+        userId: dto.recipientId,
+        title: "New Review Received",
+        type: "system",
+        content: `${review.reviewer.name} left you a ${dto.rating}-star review for the project "${review.project.title}". ${dto.content ? `Review: ${dto.content.substring(0, 100)}${dto.content.length > 100 ? '...' : ''}` : ''}`,
+        metadata: {
+          reviewId: review.id,
+          projectId: dto.projectId,
+          reviewerId: dto.reviewerId,
+          reviewerName: review.reviewer.name,
+          rating: dto.rating,
+          projectTitle: review.project.title,
+          eventType: "review_received",
+        },
+      });
+    } catch (notificationError) {
+      // Log error but don't fail review creation
+      console.error("Failed to notify customer of new review:", notificationError);
+    }
 
     return review;
   } catch (error) {
