@@ -2563,3 +2563,69 @@ export async function createReviewReply(reviewId: string, content: string, isPro
   return data;
 }
 
+export async function getProviderAiDrafts(referenceIds?: string[]) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (referenceIds && referenceIds.length > 0) {
+    params.append("referenceIds", referenceIds.join(","));
+  }
+
+  const res = await fetch(`${API_BASE}/providers/ai-drafts${params.toString() ? `?${params.toString()}` : ""}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch AI drafts");
+  return data;
+}
+
+export async function getCompanyAiDrafts(referenceIds?: string[]) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (referenceIds && referenceIds.length > 0) {
+    params.append("referenceIds", referenceIds.join(","));
+  }
+
+  const res = await fetch(`${API_BASE}/companies/ai-drafts${params.toString() ? `?${params.toString()}` : ""}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch AI drafts");
+  return data;
+}
+
+export async function getServiceRequestAiDrafts(referenceIds?: string[]) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (referenceIds && referenceIds.length > 0) {
+    params.append("referenceIds", referenceIds.join(","));
+  }
+
+  const res = await fetch(`${API_BASE}/provider/opportunities/ai-drafts${params.toString() ? `?${params.toString()}` : ""}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch AI drafts");
+  return data;
+}
+

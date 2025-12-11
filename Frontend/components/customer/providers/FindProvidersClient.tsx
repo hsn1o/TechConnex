@@ -35,7 +35,11 @@ import {
 } from "lucide-react";
 import ProviderCard from "./sections/ProviderCard";
 import type { Provider, Option } from "./types";
-import { getRecommendedProviders, searchProviders } from "@/lib/api";
+import {
+  getRecommendedProviders,
+  searchProviders,
+  getProviderAiDrafts,
+} from "@/lib/api";
 
 /** Props come from the server page */
 export default function FindProvidersClient({
@@ -83,6 +87,30 @@ export default function FindProvidersClient({
             filtered = filtered.filter((p: any) => p.isVerified !== true);
           }
 
+          // If any profileIds exist, fetch AiDraft summaries and merge into providers
+          const profileIds = filtered
+            .map((p: any) => p.profileId)
+            .filter(Boolean);
+          if (profileIds.length > 0) {
+            try {
+              const draftRes = await getProviderAiDrafts(profileIds);
+              if (draftRes?.success && Array.isArray(draftRes.drafts)) {
+                const draftMap = new Map(
+                  draftRes.drafts.map((d: any) => [d.referenceId, d.summary])
+                );
+                filtered = filtered.map((p: any) => ({
+                  ...p,
+                  aiExplanation:
+                    p.profileId && draftMap.has(p.profileId)
+                      ? draftMap.get(p.profileId)
+                      : p.aiExplanation,
+                }));
+              }
+            } catch (err) {
+              console.warn("Failed to fetch AI drafts for providers", err);
+            }
+          }
+
           setProviders(filtered);
         } else {
           setProviders([]);
@@ -107,35 +135,61 @@ export default function FindProvidersClient({
 
         const response = await getRecommendedProviders();
         if (response.success) {
-          const mappedProviders = (response.recommendations || []).map(
-            (provider: any) => ({
-              id: provider.id,
-              name: provider.name,
-              specialty: provider.major || "ICT Professional",
-              rating: provider.rating || 0,
-              completedJobs: provider.completedJobs || 0,
-              hourlyRate: provider.hourlyRate || 0,
-              location: provider.location || "Malaysia",
-              avatar:
-                provider.avatar && provider.avatar !== "/placeholder.svg"
-                  ? `${
-                      process.env.NEXT_PUBLIC_API_BASE_URL ||
-                      "http://localhost:4000"
-                    }${provider.avatar.startsWith("/") ? "" : "/"}${
-                      provider.avatar
-                    }`
-                  : "/placeholder.svg?height=60&width=60",
-              skills: provider.skills || [],
-              verified: provider.isVerified || false,
-              matchScore: provider.matchScore,
-              recommendedFor: provider.recommendedForServiceRequest,
-              aiExplanation: provider.aiExplanation,
-              yearsExperience: provider.yearsExperience,
-              successRate: provider.successRate,
-              responseTime: provider.responseTime,
-              allowMessages: provider.allowMessages !== false, // Include privacy setting
-            })
-          );
+          // Map recommended providers and include profileId if present
+          const raw = response.recommendations || [];
+          const mappedProviders = raw.map((provider: any) => ({
+            id: provider.id,
+            profileId: provider.profileId || null,
+            name: provider.name,
+            specialty: provider.major || "ICT Professional",
+            rating: provider.rating || 0,
+            completedJobs: provider.completedJobs || 0,
+            hourlyRate: provider.hourlyRate || 0,
+            location: provider.location || "Malaysia",
+            avatar:
+              provider.avatar && provider.avatar !== "/placeholder.svg"
+                ? `${
+                    process.env.NEXT_PUBLIC_API_BASE_URL ||
+                    "http://localhost:4000"
+                  }${provider.avatar.startsWith("/") ? "" : "/"}${
+                    provider.avatar
+                  }`
+                : "/placeholder.svg?height=60&width=60",
+            skills: provider.skills || [],
+            verified: provider.isVerified || false,
+            matchScore: provider.matchScore,
+            recommendedFor: provider.recommendedForServiceRequest,
+            aiExplanation: provider.aiExplanation,
+            yearsExperience: provider.yearsExperience,
+            successRate: provider.successRate,
+            responseTime: provider.responseTime,
+          }));
+
+          // If any profileIds present, fetch AiDraft summaries and merge
+          const profileIds = mappedProviders
+            .map((p) => p.profileId)
+            .filter(Boolean);
+          if (profileIds.length > 0) {
+            try {
+              const draftRes = await getProviderAiDrafts(profileIds);
+              if (draftRes?.success && Array.isArray(draftRes.drafts)) {
+                const draftMap = new Map(
+                  draftRes.drafts.map((d: any) => [d.referenceId, d.summary])
+                );
+                mappedProviders.forEach((p) => {
+                  if (p.profileId && draftMap.has(p.profileId)) {
+                    p.aiExplanation = draftMap.get(p.profileId);
+                  }
+                });
+              }
+            } catch (err) {
+              console.warn(
+                "Failed to fetch AI drafts for recommended providers",
+                err
+              );
+            }
+          }
+
           setRecommendedProviders(mappedProviders);
           setRecommendationsCacheInfo({
             cachedAt: response.cachedAt,
@@ -577,26 +631,24 @@ export default function FindProvidersClient({
                             <ChevronRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
                           </Button>
                         </Link>
-                        {provider.allowMessages !== false && (
-                          <Link
-                            href={`/customer/messages?userId=${
-                              provider.id
-                            }&name=${encodeURIComponent(
-                              provider.name
-                            )}&avatar=${encodeURIComponent(
-                              provider.avatar || ""
-                            )}`}
-                            className="flex-1"
+                        <Link
+                          href={`/customer/messages?userId=${
+                            provider.id
+                          }&name=${encodeURIComponent(
+                            provider.name
+                          )}&avatar=${encodeURIComponent(
+                            provider.avatar || ""
+                          )}`}
+                          className="flex-1"
+                        >
+                          <Button
+                            size="sm"
+                            className="w-full text-xs sm:text-sm group-hover:bg-blue-600 group-hover:text-white transition-all duration-300"
                           >
-                            <Button
-                              size="sm"
-                              className="w-full text-xs sm:text-sm group-hover:bg-blue-600 group-hover:text-white transition-all duration-300"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                              Contact
-                            </Button>
-                          </Link>
-                        )}
+                            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                            Contact
+                          </Button>
+                        </Link>
                       </div>
                     </CardContent>
                   </Card>

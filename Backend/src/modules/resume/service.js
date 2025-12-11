@@ -1,8 +1,6 @@
 import { parseResumeText } from "./model.js";
 import {
   saveResumeRecord,
-  getResumeByUserId,
-  updateResumeDescription,
 } from "./model.js";
 import { ChatOpenAI } from "@langchain/openai";
 import { RunnableSequence } from "@langchain/core/runnables";

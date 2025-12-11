@@ -14,6 +14,7 @@ import {
   getFilters,
   getProviderFullDetails,
   getRecommendedProvidersController,
+  getAiDraftsController,
 } from "./controller.js";
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.use(authenticateToken);
 router.get("/recommended", getRecommendedProvidersController);
 router.get("/", findProviders);
 router.get("/filters", getFilters);
+router.get("/ai-drafts", getAiDraftsController);
 
 // Saved providers for user (must come before /:id routes)
 router.get("/users/:userId/saved-providers", getSavedProviders);

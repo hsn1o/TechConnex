@@ -12,6 +12,7 @@ import {
   getFilters,
   getCompanyFullDetails,
   getCompanyOpportunitiesController,
+  getAiDraftsController,
 } from "./controller.js";
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.use(authenticateToken);
 // Company search and listing
 router.get("/", findCompanies);
 router.get("/filters", getFilters);
+router.get("/ai-drafts", getAiDraftsController);
 
 // Individual company endpoints
 router.get("/:id", getCompany);

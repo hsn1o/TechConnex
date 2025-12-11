@@ -1,6 +1,7 @@
 // src/modules/company/projects/service.js
 import { prisma } from "./model.js";
 import { CreateProjectDto, GetProjectsDto } from "./dto.js";
+import { createServiceRequestAiDraft } from "./service-request-ai-draft.js";
 
 export async function createProject(dto) {
   try {
@@ -90,6 +91,16 @@ export async function createProject(dto) {
         },
       });
     });
+
+    // Try to generate AI draft for service request
+    try {
+      if (result && result.id) {
+        await createServiceRequestAiDraft(result.id);
+      }
+    } catch (err) {
+      // Log and continue — project creation should not fail because of AI draft
+      console.error("Failed to create service request AI draft:", err);
+    }
 
     return result;
   } catch (error) {

@@ -9,6 +9,7 @@ import {
   getCompanyStatistics,
   getFilterOptions,
   getCompanyOpportunities,
+  getAiDraftsService,
 } from "./service.js";
 import { FindCompaniesDto, SaveCompanyDto, CompanyDetailDto } from "./dto.js";
 
@@ -261,6 +262,27 @@ export async function getCompanyFullDetails(req, res) {
       success: false,
       message: error.message,
     });
+  }
+}
+
+// GET /api/companies/ai-drafts - get ai draft summaries for companies
+export async function getAiDraftsController(req, res) {
+  try {
+    const referenceIdsParam = req.query.referenceIds;
+    let referenceIds = null;
+    if (referenceIdsParam) {
+      referenceIds = referenceIdsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+
+    const drafts = await getAiDraftsService(referenceIds);
+
+    res.json({ success: true, drafts });
+  } catch (error) {
+    console.error("Error in getAiDraftsController:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 }
 

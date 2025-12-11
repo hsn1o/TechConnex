@@ -17,6 +17,8 @@ export type Company = {
   memberSince: string;
   verified?: boolean;
   saved?: boolean;
+  aiExplanation?: string; // AI-generated summary
+  customerProfileId?: string; // ID for fetching AI drafts
   // Additional fields for detail view
   employeeCount?: number | null;
   establishedYear?: number | null;

@@ -2,6 +2,27 @@
 import { prisma } from "./model.js";
 import { GetOpportunitiesDto } from "./dto.js";
 
+// Get AiDrafts for service requests (optionally filtered by referenceIds array)
+async function getAiDraftsForServiceRequests(referenceIds = null) {
+  const where = { type: "SERVICE_REQUEST" };
+  if (Array.isArray(referenceIds) && referenceIds.length > 0) {
+    where.referenceId = { in: referenceIds };
+  }
+
+  const drafts = await prisma.aiDraft.findMany({
+    where,
+    select: {
+      id: true,
+      referenceId: true,
+      summary: true,
+      version: true,
+      createdAt: true,
+    },
+  });
+
+  return drafts;
+}
+
 export async function getOpportunities(dto) {
   try {
     const skip = (dto.page - 1) * dto.limit;
@@ -116,6 +137,17 @@ export async function getOpportunities(dto) {
   } catch (error) {
     console.error("Error fetching opportunities:", error);
     throw new Error("Failed to fetch opportunities");
+  }
+}
+
+// Fetch AiDrafts for service requests
+export async function getAiDraftsService(referenceIds = null) {
+  try {
+    const drafts = await getAiDraftsForServiceRequests(referenceIds);
+    return drafts;
+  } catch (error) {
+    console.error("Error fetching AiDrafts:", error);
+    throw new Error("Failed to fetch AI drafts");
   }
 }
 

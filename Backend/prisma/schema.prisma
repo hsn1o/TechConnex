@@ -96,8 +96,8 @@ model ProviderProfile {
   successRate   Decimal @default(0.00) @map("success_rate") @db.Decimal(5, 2)
   responseTime  Int     @default(0) @map("response_time")
   isFeatured    Boolean @default(false) @map("is_featured")
- 
-  completion    Int? // 🆕 Completion %
+
+  completion Int? // 🆕 Completion %
 
   //Skills & Work pref
   skills                   String[]
@@ -720,6 +720,27 @@ model Dispute {
   resolutionNotes     Json? // Array of resolution notes with timestamps: [{note: string, createdAt: DateTime, adminId: string, adminName: string}]
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
+}
+
+model AiDraft {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        DraftType // PROVIDER | CUSTOMER | SERVICE_REQUEST
+  referenceId String    @db.Uuid // ID of ProviderProfile, CustomerProfile, or ServiceRequest
+  summary     String    @db.Text // Short AI-generated brief
+  version     Int       @default(1) // Versioning if regenerated
+  sourceData  Json? // Optional: snapshot of the data used to generate this draft
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([type, referenceId])
+  @@map("ai_drafts")
+}
+
+enum DraftType {
+  PROVIDER
+  CUSTOMER
+  SERVICE_REQUEST
 }
 
 enum DisputeStatus {

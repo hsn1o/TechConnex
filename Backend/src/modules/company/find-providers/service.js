@@ -16,58 +16,51 @@ const prisma = new PrismaClient();
 export async function searchProviders(filters) {
   try {
     const result = await findProviders(filters);
-    
+
     // Transform data for frontend
-    const transformedProviders = result.providers.map((user) => {
-      // Get privacy settings
-      const settings = user.settings || {};
-      const showEmail = settings.showEmail || false;
-      const showPhone = settings.showPhone || false;
-      const allowMessages = settings.allowMessages !== false; // Default to true if not set
-      
-      return {
-        id: user.id,
-        name: user.name,
-        // Only include email/phone if privacy settings allow
-        email: showEmail ? user.email : null,
-        phone: showPhone ? user.phone : null,
-        allowMessages: allowMessages,
-        avatar: user.providerProfile?.profileImageUrl || "/placeholder.svg",
-        major: user.providerProfile?.major || "ICT Professional",
-        company: user.providerProfile?.website || "Freelancer",
-        rating: parseFloat(user.providerProfile?.rating || 0),
-        reviewCount: user.providerProfile?.totalReviews || 0,
-        completedJobs: user.completedProjects || 0, // Use calculated completed projects
-        hourlyRate: user.providerProfile?.hourlyRate || 0,
-        location: user.providerProfile?.location || "Malaysia",
-        bio: user.providerProfile?.bio || "Experienced ICT professional",
-        availability: user.providerProfile?.availability || "Available",
-        responseTime: `${user.providerProfile?.responseTime || 24} hours`,
-        skills: user.providerProfile?.skills || [],
-        specialties: user.providerProfile?.skills?.slice(0, 3) || [],
-        languages: user.providerProfile?.languages || ["English"],
-        verified: user.isVerified || false,
-        topRated: user.providerProfile?.isFeatured || false,
-        saved: user.isSaved || false, // Use saved status from backend
-        // Additional public-safe fields
-        yearsExperience: user.providerProfile?.yearsExperience || 0,
-        minimumProjectBudget: user.providerProfile?.minimumProjectBudget || null,
-        maximumProjectBudget: user.providerProfile?.maximumProjectBudget || null,
-        preferredProjectDuration: user.providerProfile?.preferredProjectDuration || null,
-        workPreference: user.providerProfile?.workPreference || "remote",
-        teamSize: user.providerProfile?.teamSize || 1,
-        website: user.providerProfile?.website || null,
-        portfolioLinks: user.providerProfile?.portfolioLinks || [],
-        certificationsCount: user.providerProfile?.certifications?.length || 0,
-        certifications: (user.providerProfile?.certifications || []).map(cert => ({
+    const transformedProviders = result.providers.map((user) => ({
+      profileId: user.providerProfile?.id || null,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.providerProfile?.profileImageUrl || "/placeholder.svg",
+      major: user.providerProfile?.major || "ICT Professional",
+      company: user.providerProfile?.website || "Freelancer",
+      rating: parseFloat(user.providerProfile?.rating || 0),
+      reviewCount: user.providerProfile?.totalReviews || 0,
+      completedJobs: user.completedProjects || 0, // Use calculated completed projects
+      hourlyRate: user.providerProfile?.hourlyRate || 0,
+      location: user.providerProfile?.location || "Malaysia",
+      bio: user.providerProfile?.bio || "Experienced ICT professional",
+      availability: user.providerProfile?.availability || "Available",
+      responseTime: `${user.providerProfile?.responseTime || 24} hours`,
+      skills: user.providerProfile?.skills || [],
+      specialties: user.providerProfile?.skills?.slice(0, 3) || [],
+      languages: user.providerProfile?.languages || ["English"],
+      verified: user.isVerified || false,
+      topRated: user.providerProfile?.isFeatured || false,
+      saved: user.isSaved || false, // Use saved status from backend
+      // Additional public-safe fields
+      yearsExperience: user.providerProfile?.yearsExperience || 0,
+      minimumProjectBudget: user.providerProfile?.minimumProjectBudget || null,
+      maximumProjectBudget: user.providerProfile?.maximumProjectBudget || null,
+      preferredProjectDuration:
+        user.providerProfile?.preferredProjectDuration || null,
+      workPreference: user.providerProfile?.workPreference || "remote",
+      teamSize: user.providerProfile?.teamSize || 1,
+      website: user.providerProfile?.website || null,
+      portfolioLinks: user.providerProfile?.portfolioLinks || [],
+      certificationsCount: user.providerProfile?.certifications?.length || 0,
+      certifications: (user.providerProfile?.certifications || []).map(
+        (cert) => ({
           id: cert.id,
           name: cert.name,
           issuer: cert.issuer,
           issuedDate: cert.issuedDate,
           verified: cert.verified,
-        })),
-      };
-    });
+        })
+      ),
+    }));
 
     return {
       providers: transformedProviders,
@@ -84,17 +77,29 @@ export async function searchProviders(filters) {
   }
 }
 
+// Fetch AiDrafts for providers
+export async function getAiDraftsService(referenceIds = null) {
+  try {
+    const { getAiDraftsForProviders } = await import("./model.js");
+    const drafts = await getAiDraftsForProviders(referenceIds);
+    return drafts;
+  } catch (error) {
+    console.error("Error fetching AiDrafts:", error);
+    throw new Error("Failed to fetch AI drafts");
+  }
+}
+
 // Get provider details
 export async function getProviderDetails(providerId, userId = null) {
   try {
     const provider = await getProviderById(providerId, userId);
-    
+
     // Get privacy settings
     const settings = provider.settings || {};
     const showEmail = settings.showEmail || false;
     const showPhone = settings.showPhone || false;
     const allowMessages = settings.allowMessages !== false; // Default to true if not set
-    
+
     // Transform for frontend
     const transformedProvider = {
       id: provider.id,
@@ -122,21 +127,27 @@ export async function getProviderDetails(providerId, userId = null) {
       saved: provider.isSaved || false,
       // Additional public-safe fields
       yearsExperience: provider.providerProfile?.yearsExperience || 0,
-      minimumProjectBudget: provider.providerProfile?.minimumProjectBudget || null,
-      maximumProjectBudget: provider.providerProfile?.maximumProjectBudget || null,
-      preferredProjectDuration: provider.providerProfile?.preferredProjectDuration || null,
+      minimumProjectBudget:
+        provider.providerProfile?.minimumProjectBudget || null,
+      maximumProjectBudget:
+        provider.providerProfile?.maximumProjectBudget || null,
+      preferredProjectDuration:
+        provider.providerProfile?.preferredProjectDuration || null,
       workPreference: provider.providerProfile?.workPreference || "remote",
       teamSize: provider.providerProfile?.teamSize || 1,
       website: provider.providerProfile?.website || null,
       portfolioLinks: provider.providerProfile?.portfolioLinks || [],
-      certificationsCount: provider.providerProfile?.certifications?.length || 0,
-      certifications: (provider.providerProfile?.certifications || []).map(cert => ({
-        id: cert.id,
-        name: cert.name,
-        issuer: cert.issuer,
-        issuedDate: cert.issuedDate,
-        verified: cert.verified,
-      })),
+      certificationsCount:
+        provider.providerProfile?.certifications?.length || 0,
+      certifications: (provider.providerProfile?.certifications || []).map(
+        (cert) => ({
+          id: cert.id,
+          name: cert.name,
+          issuer: cert.issuer,
+          issuedDate: cert.issuedDate,
+          verified: cert.verified,
+        })
+      ),
     };
 
     return transformedProvider;
@@ -150,31 +161,35 @@ export async function getProviderDetails(providerId, userId = null) {
 export async function getProviderPortfolio(providerId) {
   try {
     const provider = await getProviderById(providerId);
-    
+
     // Transform portfolio items (external work from ProjectPortfolio)
-    const portfolio = (provider.providerProfile?.portfolios || []).map((item) => {
-      // Normalize image URL - handle both relative paths and full URLs
-      let coverUrl = "/placeholder.svg";
-      if (item.imageUrl) {
-        const normalizedUrl = item.imageUrl.replace(/\\/g, "/");
-        coverUrl = normalizedUrl.startsWith("http") 
-          ? normalizedUrl 
-          : normalizedUrl.startsWith("/")
-          ? normalizedUrl
-          : `/${normalizedUrl}`;
+    const portfolio = (provider.providerProfile?.portfolios || []).map(
+      (item) => {
+        // Normalize image URL - handle both relative paths and full URLs
+        let coverUrl = "/placeholder.svg";
+        if (item.imageUrl) {
+          const normalizedUrl = item.imageUrl.replace(/\\/g, "/");
+          coverUrl = normalizedUrl.startsWith("http")
+            ? normalizedUrl
+            : normalizedUrl.startsWith("/")
+            ? normalizedUrl
+            : `/${normalizedUrl}`;
+        }
+
+        return {
+          id: item.id,
+          title: item.title,
+          description: item.description || "",
+          cover: coverUrl,
+          url: item.externalUrl || "#",
+          tags: item.techStack || [],
+          client: item.client || null,
+          date: item.date
+            ? new Date(item.date).toISOString().split("T")[0]
+            : null,
+        };
       }
-      
-      return {
-        id: item.id,
-        title: item.title,
-        description: item.description || "",
-        cover: coverUrl,
-        url: item.externalUrl || "#",
-        tags: item.techStack || [],
-        client: item.client || null,
-        date: item.date ? new Date(item.date).toISOString().split('T')[0] : null,
-      };
-    });
+    );
 
     return portfolio;
   } catch (error) {
@@ -188,7 +203,7 @@ export async function getProviderCompletedProjects(providerId) {
   try {
     const { PrismaClient } = await import("@prisma/client");
     const prisma = new PrismaClient();
-    
+
     const projects = await prisma.project.findMany({
       where: {
         providerId: providerId,
@@ -229,11 +244,14 @@ export async function getProviderCompletedProjects(providerId) {
     // Transform projects for portfolio display (public-safe data)
     const portfolioProjects = projects.map((project) => {
       // Calculate approved price (sum of milestone amounts)
-      const approvedPrice = project.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
-      
+      const approvedPrice = project.milestones.reduce(
+        (sum, m) => sum + (m.amount || 0),
+        0
+      );
+
       // Get skills from project (public data)
       const technologies = Array.isArray(project.skills) ? project.skills : [];
-      
+
       return {
         id: project.id,
         title: project.title,
@@ -242,7 +260,9 @@ export async function getProviderCompletedProjects(providerId) {
         technologies: technologies.slice(0, 8), // Limit to 8 technologies for display
         client: project.customer?.name || "Client",
         clientId: project.customer?.id || null,
-        completedDate: project.updatedAt ? new Date(project.updatedAt).toISOString().split('T')[0] : null,
+        completedDate: project.updatedAt
+          ? new Date(project.updatedAt).toISOString().split("T")[0]
+          : null,
         approvedPrice,
         image: null, // Projects don't have images, but we can use placeholder or category icon
       };
@@ -260,7 +280,7 @@ export async function getProviderCompletedProjects(providerId) {
 export async function getProviderReviewsList(providerId, page = 1, limit = 10) {
   try {
     const result = await getProviderReviews(providerId, page, limit);
-    
+
     // Transform reviews for frontend
     const transformedReviews = result.reviews.map((review) => ({
       id: review.id,
@@ -319,16 +339,16 @@ export async function unsaveProviderService(userId, providerId) {
 export async function getSavedProvidersService(userId, page = 1, limit = 20) {
   try {
     const result = await getSavedProviders(userId, page, limit);
-    
+
     // Calculate completed projects for saved providers
-    const savedProviderIds = result.providers.map(p => p.id);
+    const savedProviderIds = result.providers.map((p) => p.id);
     const completedProjectsCounts = await prisma.project.groupBy({
-      by: ['providerId'],
+      by: ["providerId"],
       where: {
         providerId: {
           in: savedProviderIds,
         },
-        status: 'COMPLETED',
+        status: "COMPLETED",
       },
       _count: {
         id: true,
@@ -337,61 +357,52 @@ export async function getSavedProvidersService(userId, page = 1, limit = 20) {
 
     // Create a map of providerId -> completedProjects count
     const completedProjectsMap = new Map(
-      completedProjectsCounts.map(item => [item.providerId, item._count.id])
+      completedProjectsCounts.map((item) => [item.providerId, item._count.id])
     );
 
     // Transform for frontend
-    const transformedProviders = result.providers.map((user) => {
-      // Get privacy settings - note: saved providers have user.provider structure
-      const provider = user.provider || user;
-      const settings = provider.settings || {};
-      const showEmail = settings.showEmail || false;
-      const showPhone = settings.showPhone || false;
-      const allowMessages = settings.allowMessages !== false; // Default to true if not set
-      
-      return {
-        id: provider.id,
-        name: provider.name,
-        // Only include email/phone if privacy settings allow
-        email: showEmail ? provider.email : null,
-        phone: showPhone ? provider.phone : null,
-        allowMessages: allowMessages,
-        avatar: provider.providerProfile?.profileImageUrl || "/placeholder.svg",
-        major: provider.providerProfile?.major || "ICT Professional",
-        company: provider.providerProfile?.website || "Freelancer",
-        rating: parseFloat(provider.providerProfile?.rating || 0),
-        reviewCount: provider.providerProfile?.totalReviews || 0,
-        completedJobs: completedProjectsMap.get(provider.id) || 0, // Use calculated completed projects
-        hourlyRate: provider.providerProfile?.hourlyRate || 0,
-        location: provider.providerProfile?.location || "Malaysia",
-        bio: provider.providerProfile?.bio || "Experienced ICT professional",
-        availability: provider.providerProfile?.availability || "Available",
-        responseTime: `${provider.providerProfile?.responseTime || 24} hours`,
-        skills: provider.providerProfile?.skills || [],
-        specialties: provider.providerProfile?.skills?.slice(0, 3) || [],
-        languages: provider.providerProfile?.languages || ["English"],
-        verified: provider.isVerified || false,
-        topRated: provider.providerProfile?.isFeatured || false,
-        savedAt: user.createdAt || user.savedAt,
-        // Additional public-safe fields
-        yearsExperience: provider.providerProfile?.yearsExperience || 0,
-        minimumProjectBudget: provider.providerProfile?.minimumProjectBudget || null,
-        maximumProjectBudget: provider.providerProfile?.maximumProjectBudget || null,
-        preferredProjectDuration: provider.providerProfile?.preferredProjectDuration || null,
-        workPreference: provider.providerProfile?.workPreference || "remote",
-        teamSize: provider.providerProfile?.teamSize || 1,
-        website: provider.providerProfile?.website || null,
-        portfolioLinks: provider.providerProfile?.portfolioLinks || [],
-        certificationsCount: provider.providerProfile?.certifications?.length || 0,
-        certifications: (provider.providerProfile?.certifications || []).map(cert => ({
+    const transformedProviders = result.providers.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.providerProfile?.profileImageUrl || "/placeholder.svg",
+      major: user.providerProfile?.major || "ICT Professional",
+      company: user.providerProfile?.website || "Freelancer",
+      rating: parseFloat(user.providerProfile?.rating || 0),
+      reviewCount: user.providerProfile?.totalReviews || 0,
+      completedJobs: completedProjectsMap.get(user.id) || 0, // Use calculated completed projects
+      hourlyRate: user.providerProfile?.hourlyRate || 0,
+      location: user.providerProfile?.location || "Malaysia",
+      bio: user.providerProfile?.bio || "Experienced ICT professional",
+      availability: user.providerProfile?.availability || "Available",
+      responseTime: `${user.providerProfile?.responseTime || 24} hours`,
+      skills: user.providerProfile?.skills || [],
+      specialties: user.providerProfile?.skills?.slice(0, 3) || [],
+      languages: user.providerProfile?.languages || ["English"],
+      verified: user.isVerified || false,
+      topRated: user.providerProfile?.isFeatured || false,
+      savedAt: user.savedAt,
+      // Additional public-safe fields
+      yearsExperience: user.providerProfile?.yearsExperience || 0,
+      minimumProjectBudget: user.providerProfile?.minimumProjectBudget || null,
+      maximumProjectBudget: user.providerProfile?.maximumProjectBudget || null,
+      preferredProjectDuration:
+        user.providerProfile?.preferredProjectDuration || null,
+      workPreference: user.providerProfile?.workPreference || "remote",
+      teamSize: user.providerProfile?.teamSize || 1,
+      website: user.providerProfile?.website || null,
+      portfolioLinks: user.providerProfile?.portfolioLinks || [],
+      certificationsCount: user.providerProfile?.certifications?.length || 0,
+      certifications: (user.providerProfile?.certifications || []).map(
+        (cert) => ({
           id: cert.id,
           name: cert.name,
           issuer: cert.issuer,
           issuedDate: cert.issuedDate,
           verified: cert.verified,
-        })),
-      };
-    });
+        })
+      ),
+    }));
 
     return {
       providers: transformedProviders,
@@ -424,17 +435,17 @@ export async function getFilterOptions() {
   try {
     const { PrismaClient } = await import("@prisma/client");
     const prisma = new PrismaClient();
-    
+
     // Get unique skills for categories
     const skillsResult = await prisma.providerProfile.findMany({
       select: {
         skills: true,
       },
     });
-    
-    const allSkills = skillsResult.flatMap(profile => profile.skills || []);
+
+    const allSkills = skillsResult.flatMap((profile) => profile.skills || []);
     const uniqueSkills = [...new Set(allSkills)];
-    
+
     // Get unique locations
     const locationsResult = await prisma.providerProfile.findMany({
       select: {
@@ -446,20 +457,22 @@ export async function getFilterOptions() {
         },
       },
     });
-    
-    const uniqueLocations = [...new Set(locationsResult.map(p => p.location).filter(Boolean))];
-    
+
+    const uniqueLocations = [
+      ...new Set(locationsResult.map((p) => p.location).filter(Boolean)),
+    ];
+
     return {
       categories: [
         { value: "all", label: "All Categories" },
-        ...uniqueSkills.slice(0, 10).map(skill => ({
+        ...uniqueSkills.slice(0, 10).map((skill) => ({
           value: skill.toLowerCase(),
           label: skill,
         })),
       ],
       locations: [
         { value: "all", label: "All Locations" },
-        ...uniqueLocations.slice(0, 10).map(location => ({
+        ...uniqueLocations.slice(0, 10).map((location) => ({
           value: location.toLowerCase(),
           label: location,
         })),

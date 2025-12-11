@@ -188,7 +188,7 @@ export async function findProviders(filters) {
       where: {
         userId: userId,
         providerId: {
-          in: providers.map(p => p.id),
+          in: providers.map((p) => p.id),
         },
       },
       select: {
@@ -196,30 +196,30 @@ export async function findProviders(filters) {
       },
     });
 
-    const savedIdsSet = new Set(savedProviderIds.map(sp => sp.providerId));
+    const savedIdsSet = new Set(savedProviderIds.map((sp) => sp.providerId));
 
     // Add isSaved property to each provider
-    providersWithSavedStatus = providers.map(provider => ({
+    providersWithSavedStatus = providers.map((provider) => ({
       ...provider,
       isSaved: savedIdsSet.has(provider.id),
     }));
   } else {
     // If no userId, set isSaved to false for all
-    providersWithSavedStatus = providers.map(provider => ({
+    providersWithSavedStatus = providers.map((provider) => ({
       ...provider,
       isSaved: false,
     }));
   }
 
   // Calculate completed projects for each provider
-  const providerIds = providersWithSavedStatus.map(p => p.id);
+  const providerIds = providersWithSavedStatus.map((p) => p.id);
   const completedProjectsCounts = await prisma.project.groupBy({
-    by: ['providerId'],
+    by: ["providerId"],
     where: {
       providerId: {
         in: providerIds,
       },
-      status: 'COMPLETED',
+      status: "COMPLETED",
     },
     _count: {
       id: true,
@@ -228,14 +228,16 @@ export async function findProviders(filters) {
 
   // Create a map of providerId -> completedProjects count
   const completedProjectsMap = new Map(
-    completedProjectsCounts.map(item => [item.providerId, item._count.id])
+    completedProjectsCounts.map((item) => [item.providerId, item._count.id])
   );
 
   // Add completedProjects to each provider
-  const providersWithCompletedProjects = providersWithSavedStatus.map(provider => ({
-    ...provider,
-    completedProjects: completedProjectsMap.get(provider.id) || 0,
-  }));
+  const providersWithCompletedProjects = providersWithSavedStatus.map(
+    (provider) => ({
+      ...provider,
+      completedProjects: completedProjectsMap.get(provider.id) || 0,
+    })
+  );
 
   return {
     providers: providersWithCompletedProjects,
@@ -289,7 +291,7 @@ export async function getProviderById(providerId, userId = null) {
   const completedProjects = await prisma.project.count({
     where: {
       providerId: providerId,
-      status: 'COMPLETED',
+      status: "COMPLETED",
     },
   });
 
@@ -442,43 +444,39 @@ export async function getProviderStats(providerId) {
   // Use totalProjects from database (automatically updated when proposals are accepted)
   const totalProjects = providerProfile?.totalProjects ?? 0;
 
-  const [
-    completedProjects,
-    totalReviews,
-    averageRating,
-    totalEarnings,
-  ] = await Promise.all([
-    prisma.project.count({
-      where: {
-        providerId,
-        status: "COMPLETED",
-      },
-    }),
-    prisma.review.count({
-      where: {
-        recipientId: providerId,
-      },
-    }),
-    prisma.review.aggregate({
-      where: {
-        recipientId: providerId,
-      },
-      _avg: {
-        rating: true,
-      },
-    }),
-    prisma.payment.aggregate({
-      where: {
-        project: {
+  const [completedProjects, totalReviews, averageRating, totalEarnings] =
+    await Promise.all([
+      prisma.project.count({
+        where: {
           providerId,
+          status: "COMPLETED",
         },
-        status: "RELEASED",
-      },
-      _sum: {
-        amount: true,
-      },
-    }),
-  ]);
+      }),
+      prisma.review.count({
+        where: {
+          recipientId: providerId,
+        },
+      }),
+      prisma.review.aggregate({
+        where: {
+          recipientId: providerId,
+        },
+        _avg: {
+          rating: true,
+        },
+      }),
+      prisma.payment.aggregate({
+        where: {
+          project: {
+            providerId,
+          },
+          status: "RELEASED",
+        },
+        _sum: {
+          amount: true,
+        },
+      }),
+    ]);
 
   return {
     totalProjects,
@@ -486,6 +484,28 @@ export async function getProviderStats(providerId) {
     totalReviews,
     averageRating: averageRating._avg.rating || 0,
     totalEarnings: totalEarnings._sum.amount || 0,
-    completionRate: totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0,
+    completionRate:
+      totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0,
   };
+}
+
+// Get AiDrafts for providers (optionally filtered by referenceIds array)
+export async function getAiDraftsForProviders(referenceIds = null) {
+  const where = { type: "PROVIDER" };
+  if (Array.isArray(referenceIds) && referenceIds.length > 0) {
+    where.referenceId = { in: referenceIds };
+  }
+
+  const drafts = await prisma.aiDraft.findMany({
+    where,
+    select: {
+      id: true,
+      referenceId: true,
+      summary: true,
+      version: true,
+      createdAt: true,
+    },
+  });
+
+  return drafts;
 }

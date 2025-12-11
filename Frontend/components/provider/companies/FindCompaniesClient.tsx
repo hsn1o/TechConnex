@@ -4,11 +4,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Heart, Building2, Search } from "lucide-react";
 import CompanyCard from "./sections/CompanyCard";
 import type { Company, Option } from "./types";
+import { getCompanyAiDrafts } from "@/lib/api";
 
 /** Props come from the server page */
 export default function FindCompaniesClient({
@@ -23,7 +30,9 @@ export default function FindCompaniesClient({
   ratings: Option[];
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [locationFilter, setLocationFilter] = useState(locations[0]?.value ?? "all");
+  const [locationFilter, setLocationFilter] = useState(
+    locations[0]?.value ?? "all"
+  );
   const [ratingFilter, setRatingFilter] = useState(ratings[0]?.value ?? "all");
   const [verifiedFilter, setVerifiedFilter] = useState("all"); // all | verified | unverified
   const [sortBy, setSortBy] = useState("rating");
@@ -31,7 +40,8 @@ export default function FindCompaniesClient({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userJson = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    const userJson =
+      typeof window !== "undefined" ? localStorage.getItem("user") : null;
     const userId = (() => {
       try {
         return userJson ? JSON.parse(userJson)?.id || "" : "";
@@ -48,29 +58,78 @@ export default function FindCompaniesClient({
     if (verifiedFilter === "verified") params.append("verified", "true");
     if (verifiedFilter === "unverified") params.append("verified", "false");
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/companies?${params.toString()}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+          }/companies?${params.toString()}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
+        const data = await res.json();
+
         if (data.success) {
           // Transform avatar URLs
-          const transformedCompanies = (data.companies || []).map((company: Company) => ({
-            ...company,
-            avatar: company.avatar && company.avatar !== "/placeholder.svg"
-              ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`
-              : "/placeholder.svg?height=40&width=40",
-          }));
+          let transformedCompanies = (data.companies || []).map(
+            (company: Company) => ({
+              ...company,
+              avatar:
+                company.avatar && company.avatar !== "/placeholder.svg"
+                  ? `${
+                      process.env.NEXT_PUBLIC_API_BASE_URL ||
+                      "http://localhost:4000"
+                    }${company.avatar.startsWith("/") ? "" : "/"}${
+                      company.avatar
+                    }`
+                  : "/placeholder.svg?height=40&width=40",
+            })
+          );
+
+          // If any customerProfileIds exist, fetch AiDraft summaries and merge into companies
+          const profileIds = transformedCompanies
+            .map((c: Company) => c.customerProfileId)
+            .filter(Boolean);
+          if (profileIds.length > 0 && token) {
+            try {
+              const draftRes = await getCompanyAiDrafts(profileIds);
+              if (draftRes?.success && Array.isArray(draftRes.drafts)) {
+                const draftMap = new Map(
+                  draftRes.drafts.map((d: any) => [d.referenceId, d.summary])
+                );
+                transformedCompanies = transformedCompanies.map(
+                  (c: Company) => ({
+                    ...c,
+                    aiExplanation:
+                      c.customerProfileId && draftMap.has(c.customerProfileId)
+                        ? draftMap.get(c.customerProfileId)
+                        : c.aiExplanation,
+                  })
+                );
+              }
+            } catch (err) {
+              console.warn("Failed to fetch AI drafts for companies", err);
+            }
+          }
+
           setCompanies(transformedCompanies);
         } else {
           console.error("API error:", data.message);
           setCompanies([]);
         }
-      })
-      .catch((err) => console.error("Failed to fetch companies:", err))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.error("Failed to fetch companies:", err);
+        setCompanies([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [searchQuery, locationFilter, ratingFilter, verifiedFilter]);
 
   // Sort companies based on selected option
@@ -83,7 +142,8 @@ export default function FindCompaniesClient({
       case "spend":
         return (b.totalSpend || 0) - (a.totalSpend || 0);
       case "newest":
-        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        // Backend already handles newest sorting, so just maintain order
+        return 0;
       case "verified":
         // Sort verified companies first
         if (a.verified && !b.verified) return -1;
@@ -102,7 +162,9 @@ export default function FindCompaniesClient({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Find Companies</h1>
-          <p className="text-gray-600">Discover companies looking for ICT professionals</p>
+          <p className="text-gray-600">
+            Discover companies looking for ICT professionals
+          </p>
         </div>
         <div className="flex gap-3">
           <Link href="/provider/companies/saved">
@@ -129,7 +191,9 @@ export default function FindCompaniesClient({
             </div>
 
             <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger><SelectValue placeholder="All Locations" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
               <SelectContent>
                 {locations.map((l) => (
                   <SelectItem key={l.value} value={l.value}>
@@ -140,7 +204,9 @@ export default function FindCompaniesClient({
             </Select>
 
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
-              <SelectTrigger><SelectValue placeholder="All Ratings" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="All Ratings" />
+              </SelectTrigger>
               <SelectContent>
                 {ratings.map((r) => (
                   <SelectItem key={r.value} value={r.value}>
@@ -151,7 +217,9 @@ export default function FindCompaniesClient({
             </Select>
 
             <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
-              <SelectTrigger><SelectValue placeholder="Verification Status" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Verification Status" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Companies</SelectItem>
                 <SelectItem value="verified">Verified Only</SelectItem>
@@ -164,9 +232,13 @@ export default function FindCompaniesClient({
 
       {/* Results header */}
       <div className="flex items-center justify-between">
-        <p className="text-gray-600">{filteredCompanies.length} companies found</p>
+        <p className="text-gray-600">
+          {filteredCompanies.length} companies found
+        </p>
         <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Sort by" /></SelectTrigger>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="rating">Highest Rated</SelectItem>
             <SelectItem value="verified">Verified First</SelectItem>
@@ -190,4 +262,3 @@ export default function FindCompaniesClient({
     </div>
   );
 }
-

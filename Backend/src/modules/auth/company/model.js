@@ -95,6 +95,11 @@ async function createProviderProfile(userId, profileData) {
   });
 }
 
+// Customer profile queries
+async function findCustomerProfile(userId) {
+  return prisma.customerProfile.findUnique({ where: { userId } });
+}
+
 async function updateUserRole(userId, roles) {
   return prisma.user.update({
     where: { id: userId },
@@ -126,6 +131,7 @@ export {
   createCompanyUser,
   findProviderProfile,
   createProviderProfile,
+  findCustomerProfile,
   updateUserRole,
   updateCompanyUser,
 };

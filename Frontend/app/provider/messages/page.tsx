@@ -895,7 +895,7 @@ export default function CustomerMessagesPage() {
                                   </h4>
                                 </div>
                                 <a
-                                  href={`/customer/project-requests/${message.attachments[0]}`}
+                                  href={`/provider/opportunities/${message.attachments[0]}`}
                                   className="mt-2 inline-block text-xs font-medium text-blue-600 hover:underline"
                                 >
                                   View Project

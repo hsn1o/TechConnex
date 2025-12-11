@@ -7,6 +7,7 @@ import {
   unsaveCompany,
   getSavedCompanies,
   getCompanyStats,
+  getAiDraftsForCompanies,
 } from "./model.js";
 import { PrismaClient } from "@prisma/client";
 
@@ -45,6 +46,7 @@ export async function searchCompanies(filters) {
       memberSince: new Date(user.createdAt).getFullYear().toString(),
       verified: user.isVerified || false,
       saved: user.isSaved || false, // Use saved status from backend
+      customerProfileId: user.customerProfile?.id || null, // For fetching AI drafts
       // Additional public-safe fields
       employeeCount: user.customerProfile?.employeeCount || null,
       establishedYear: user.customerProfile?.establishedYear || null,
@@ -110,6 +112,7 @@ export async function getCompanyDetails(companyId, userId = null) {
       memberSince: new Date(company.createdAt).getFullYear().toString(),
       verified: company.isVerified || false,
       saved: company.isSaved || false,
+      customerProfileId: company.customerProfile?.id || null, // For fetching AI drafts
       // Additional fields
       employeeCount: company.customerProfile?.employeeCount || null,
       establishedYear: company.customerProfile?.establishedYear || null,
@@ -365,6 +368,17 @@ export async function getCompanyOpportunities(companyId, providerId) {
   } catch (error) {
     console.error("Error getting company opportunities:", error);
     throw new Error("Failed to get company opportunities");
+  }
+}
+
+// Fetch AiDrafts for companies
+export async function getAiDraftsService(referenceIds = null) {
+  try {
+    const drafts = await getAiDraftsForCompanies(referenceIds);
+    return drafts;
+  } catch (error) {
+    console.error("Error fetching AiDrafts:", error);
+    throw new Error("Failed to fetch AI drafts");
   }
 }
 

@@ -6,10 +6,12 @@ import {
   createCompanyUser,
   findProviderProfile,
   createProviderProfile,
+  findCustomerProfile,
   updateUserRole,
   updateCompanyUser,
 } from "./model.js";
 import { findUserByEmail } from "../model.js";
+import { createCompanyAiDraft } from "./company-ai-draft.js";
 
 const prisma = new PrismaClient();
 
@@ -25,6 +27,18 @@ async function registerCompany(dto) {
     ...dto,
     password: hashedPassword,
   });
+
+  // Try to generate AI draft for company profile if profile exists
+  try {
+    const profile = await findCustomerProfile(user.id);
+    if (profile && profile.id) {
+      // fire-and-forget, but await to ensure saved before returning
+      await createCompanyAiDraft(profile.id);
+    }
+  } catch (err) {
+    // Log and continue — registration should not fail because of AI draft
+    console.error("Failed to create company AI draft:", err);
+  }
 
   // 🧠 Optionally, you could auto-generate a token upon registration
   const token = jwt.sign(
@@ -58,7 +72,6 @@ async function becomeProvider(userId, { bio = "", skills = [] }) {
   return { alreadyProvider: false, profile };
 }
 
-
 async function updateCompanyProfile(userId, updateData) {
   const user = await findUserById(userId);
   if (!user) throw new Error("User not found");
@@ -80,9 +93,15 @@ async function updatePassword(userId, oldPassword, newPassword) {
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
   // Update password
-  const updatedUser = await updateCompanyUser(userId, { password: hashedPassword });
+  const updatedUser = await updateCompanyUser(userId, {
+    password: hashedPassword,
+  });
   return updatedUser;
 }
 
-
-export { registerCompany, becomeProvider, updateCompanyProfile, updatePassword };
+export {
+  registerCompany,
+  becomeProvider,
+  updateCompanyProfile,
+  updatePassword,
+};

@@ -2,6 +2,7 @@
 import {
   getOpportunities,
   getOpportunityById,
+  getAiDraftsService,
 } from "./service.js";
 import { getRecommendedOpportunities } from "./recommended-service.js";
 import { GetOpportunitiesDto } from "./dto.js";
@@ -105,5 +106,26 @@ export async function getRecommendedOpportunitiesController(req, res) {
       success: false,
       message: error.message,
     });
+  }
+}
+
+// GET /api/provider/opportunities/ai-drafts - get ai draft summaries for service requests
+export async function getAiDraftsController(req, res) {
+  try {
+    const referenceIdsParam = req.query.referenceIds;
+    let referenceIds = null;
+    if (referenceIdsParam) {
+      referenceIds = referenceIdsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+
+    const drafts = await getAiDraftsService(referenceIds);
+
+    res.json({ success: true, drafts });
+  } catch (error) {
+    console.error("Error in getAiDraftsController:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 }

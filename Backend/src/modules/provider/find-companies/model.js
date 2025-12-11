@@ -493,3 +493,24 @@ export async function getCompanyStats(companyId) {
   };
 }
 
+// Get AiDrafts for companies (optionally filtered by referenceIds array)
+export async function getAiDraftsForCompanies(referenceIds = null) {
+  const where = { type: "CUSTOMER" };
+  if (Array.isArray(referenceIds) && referenceIds.length > 0) {
+    where.referenceId = { in: referenceIds };
+  }
+
+  const drafts = await prisma.aiDraft.findMany({
+    where,
+    select: {
+      id: true,
+      referenceId: true,
+      summary: true,
+      version: true,
+      createdAt: true,
+    },
+  });
+
+  return drafts;
+}
+

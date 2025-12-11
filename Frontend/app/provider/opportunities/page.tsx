@@ -54,8 +54,17 @@ import {
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
 import { toast } from "sonner";
-import { getProviderOpportunities, getProviderRecommendedOpportunities, sendProposal } from "@/lib/api";
-import { formatTimeline, buildTimelineData, timelineToDays } from "@/lib/timeline-utils";
+import {
+  getProviderOpportunities,
+  getProviderRecommendedOpportunities,
+  sendProposal,
+  getServiceRequestAiDrafts,
+} from "@/lib/api";
+import {
+  formatTimeline,
+  buildTimelineData,
+  timelineToDays,
+} from "@/lib/timeline-utils";
 import Link from "next/link";
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
 
@@ -96,16 +105,20 @@ export default function ProviderOpportunitiesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submittingProposal, setSubmittingProposal] = useState(false);
-  
+
   // Recommended opportunities state
-  const [recommendedOpportunities, setRecommendedOpportunities] = useState<any[]>([]);
+  const [recommendedOpportunities, setRecommendedOpportunities] = useState<
+    any[]
+  >([]);
   const [loadingRecommended, setLoadingRecommended] = useState(true);
   const [errorRecommended, setErrorRecommended] = useState<string | null>(null);
   const [recommendationsCacheInfo, setRecommendationsCacheInfo] = useState<{
     cachedAt: number | null;
     nextRefreshAt: number | null;
   }>({ cachedAt: null, nextRefreshAt: null });
-  const [expandedOpportunityId, setExpandedOpportunityId] = useState<string | null>(null);
+  const [expandedOpportunityId, setExpandedOpportunityId] = useState<
+    string | null
+  >(null);
   const [proposalErrors, setProposalErrors] = useState<{
     bidAmount?: string;
     timelineAmount?: string;
@@ -113,12 +126,15 @@ export default function ProviderOpportunitiesPage() {
     coverLetter?: string;
     milestones?: string;
     attachments?: string;
-    milestoneFields?: Record<number, {
-      title?: string;
-      description?: string;
-      amount?: string;
-      dueDate?: string;
-    }>;
+    milestoneFields?: Record<
+      number,
+      {
+        title?: string;
+        description?: string;
+        amount?: string;
+        dueDate?: string;
+      }
+    >;
   }>({});
 
   // Helper function to map opportunity data
@@ -138,7 +154,9 @@ export default function ProviderOpportunitiesPage() {
     originalTimelineInDays: (() => {
       if (!opportunity.timeline) return 0;
       const timelineStr = opportunity.timeline.toLowerCase().trim();
-      const match = timelineStr.match(/^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/);
+      const match = timelineStr.match(
+        /^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/
+      );
       if (match) {
         const amount = Number(match[1]);
         const unit = match[2].replace(/s$/, "");
@@ -152,49 +170,56 @@ export default function ProviderOpportunitiesPage() {
     proposals: opportunity._count?.proposals || opportunity.proposalCount || 0,
     category: opportunity.category,
     location:
-      opportunity.customer?.customerProfile?.location ||
-      "Not specified",
+      opportunity.customer?.customerProfile?.location || "Not specified",
     clientRating: 4.5,
     projectsPosted: opportunity.customer?.customerProfile?.projectsPosted || 0,
     avatar: (() => {
       const profile = opportunity.customer?.customerProfile;
-      if (profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg") {
-        return `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`;
+      if (
+        profile?.profileImageUrl &&
+        profile.profileImageUrl !== "/placeholder.svg"
+      ) {
+        return `${
+          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
+        }${profile.profileImageUrl.startsWith("/") ? "" : "/"}${
+          profile.profileImageUrl
+        }`;
       }
       return "/placeholder.svg?height=40&width=40";
     })(),
     urgent: opportunity.priority === "High",
     verified: opportunity.customer?.isVerified || false,
     hasSubmitted: opportunity.hasProposed || false,
-    requirements: typeof opportunity.requirements === "string" 
-      ? opportunity.requirements
-      : (Array.isArray(opportunity.requirements) 
-        ? opportunity.requirements.map((r: any) => `- ${r}`).join('\n') 
-        : ""),
-    deliverables: typeof opportunity.deliverables === "string" 
-      ? opportunity.deliverables
-      : (Array.isArray(opportunity.deliverables) 
-        ? opportunity.deliverables.map((d: any) => `- ${d}`).join('\n') 
-        : ""),
+    requirements:
+      typeof opportunity.requirements === "string"
+        ? opportunity.requirements
+        : Array.isArray(opportunity.requirements)
+        ? opportunity.requirements.map((r: any) => `- ${r}`).join("\n")
+        : "",
+    deliverables:
+      typeof opportunity.deliverables === "string"
+        ? opportunity.deliverables
+        : Array.isArray(opportunity.deliverables)
+        ? opportunity.deliverables.map((d: any) => `- ${d}`).join("\n")
+        : "",
     clientInfo: {
       companySize:
-        opportunity.customer?.customerProfile?.companySize ||
-        "Not specified",
+        opportunity.customer?.customerProfile?.companySize || "Not specified",
       industry:
-        opportunity.customer?.customerProfile?.industry ||
-        "Not specified",
-      memberSince: new Date(
-        opportunity.customer?.createdAt || Date.now()
-      )
+        opportunity.customer?.customerProfile?.industry || "Not specified",
+      memberSince: new Date(opportunity.customer?.createdAt || Date.now())
         .getFullYear()
         .toString(),
       totalSpent: opportunity.customer?.customerProfile?.totalSpend
-        ? `RM ${Number(opportunity.customer.customerProfile.totalSpend).toLocaleString()}`
+        ? `RM ${Number(
+            opportunity.customer.customerProfile.totalSpend
+          ).toLocaleString()}`
         : "RM 0",
       avgRating: 4.5,
     },
     originalData: opportunity,
     aiExplanation: opportunity.aiExplanation || null, // Add AI explanation for recommended opportunities
+    serviceRequestId: opportunity.id, // ID for fetching AI drafts
   });
 
   // Fetch all opportunities from API
@@ -212,7 +237,36 @@ export default function ProviderOpportunitiesPage() {
         });
 
         if (response.success) {
-          const mappedOpportunities = (response.opportunities || []).map(mapOpportunityData);
+          let mappedOpportunities = (response.opportunities || []).map(
+            mapOpportunityData
+          );
+
+          // If any serviceRequestIds exist, fetch AiDraft summaries and merge into opportunities
+          const serviceRequestIds = mappedOpportunities
+            .map((opp: any) => opp.serviceRequestId)
+            .filter(Boolean);
+          if (serviceRequestIds.length > 0) {
+            try {
+              const draftRes = await getServiceRequestAiDrafts(
+                serviceRequestIds
+              );
+              if (draftRes?.success && Array.isArray(draftRes.drafts)) {
+                const draftMap = new Map(
+                  draftRes.drafts.map((d: any) => [d.referenceId, d.summary])
+                );
+                mappedOpportunities = mappedOpportunities.map((opp: any) => ({
+                  ...opp,
+                  aiExplanation:
+                    opp.serviceRequestId && draftMap.has(opp.serviceRequestId)
+                      ? draftMap.get(opp.serviceRequestId)
+                      : opp.aiExplanation,
+                }));
+              }
+            } catch (err) {
+              console.warn("Failed to fetch AI drafts for opportunities", err);
+            }
+          }
+
           setOpportunities(mappedOpportunities);
         } else {
           setError("Failed to fetch opportunities");
@@ -240,7 +294,9 @@ export default function ProviderOpportunitiesPage() {
 
         const response = await getProviderRecommendedOpportunities();
         if (response.success) {
-          const mappedRecommended = (response.recommendations || []).map(mapOpportunityData);
+          const mappedRecommended = (response.recommendations || []).map(
+            mapOpportunityData
+          );
           setRecommendedOpportunities(mappedRecommended);
           setRecommendationsCacheInfo({
             cachedAt: response.cachedAt,
@@ -250,7 +306,9 @@ export default function ProviderOpportunitiesPage() {
       } catch (err) {
         console.error("Error fetching recommended opportunities:", err);
         setErrorRecommended(
-          err instanceof Error ? err.message : "Failed to fetch recommended opportunities"
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch recommended opportunities"
         );
       } finally {
         setLoadingRecommended(false);
@@ -354,12 +412,15 @@ export default function ProviderOpportunitiesPage() {
       timelineUnit?: string;
       coverLetter?: string;
       milestones?: string;
-      milestoneFields?: Record<number, {
-        title?: string;
-        description?: string;
-        amount?: string;
-        dueDate?: string;
-      }>;
+      milestoneFields?: Record<
+        number,
+        {
+          title?: string;
+          description?: string;
+          amount?: string;
+          dueDate?: string;
+        }
+      >;
     } = {};
 
     const messages: string[] = [];
@@ -377,7 +438,9 @@ export default function ProviderOpportunitiesPage() {
       const budgetMax = selectedProject.budgetMax || 0;
       if (bidAmountNum < budgetMin || bidAmountNum > budgetMax) {
         newErrors.bidAmount = `Bid amount must be between RM ${budgetMin.toLocaleString()} and RM ${budgetMax.toLocaleString()}.`;
-        messages.push(`Bid amount must be within the budget range (RM ${budgetMin.toLocaleString()} - RM ${budgetMax.toLocaleString()}).`);
+        messages.push(
+          `Bid amount must be within the budget range (RM ${budgetMin.toLocaleString()} - RM ${budgetMax.toLocaleString()}).`
+        );
       }
     }
 
@@ -390,17 +453,24 @@ export default function ProviderOpportunitiesPage() {
       newErrors.timelineAmount = "Timeline amount must be greater than 0.";
       messages.push("Timeline amount must be greater than 0.");
     }
-    
+
     if (!form.timelineUnit) {
       newErrors.timelineUnit = "Timeline unit is required.";
       messages.push("Timeline unit is required.");
     } else if (selectedProject && selectedProject.originalTimelineInDays > 0) {
       // Check if provider timeline is <= original timeline
-      const providerTimelineInDays = timelineToDays(timelineAmountNum, form.timelineUnit);
+      const providerTimelineInDays = timelineToDays(
+        timelineAmountNum,
+        form.timelineUnit
+      );
       if (providerTimelineInDays > selectedProject.originalTimelineInDays) {
-        const originalTimelineDisplay = formatTimeline(selectedProject.originalTimeline) || `${selectedProject.originalTimelineInDays} days`;
+        const originalTimelineDisplay =
+          formatTimeline(selectedProject.originalTimeline) ||
+          `${selectedProject.originalTimelineInDays} days`;
         newErrors.timelineAmount = `Your timeline must be equal to or less than the company's timeline (${originalTimelineDisplay}).`;
-        messages.push(`Your timeline must be equal to or less than the company's timeline (${originalTimelineDisplay}).`);
+        messages.push(
+          `Your timeline must be equal to or less than the company's timeline (${originalTimelineDisplay}).`
+        );
       }
     }
 
@@ -411,12 +481,15 @@ export default function ProviderOpportunitiesPage() {
     }
 
     // Milestones validation (REQUIRED)
-    const milestoneFieldErrors: Record<number, {
-      title?: string;
-      description?: string;
-      amount?: string;
-      dueDate?: string;
-    }> = {};
+    const milestoneFieldErrors: Record<
+      number,
+      {
+        title?: string;
+        description?: string;
+        amount?: string;
+        dueDate?: string;
+      }
+    > = {};
 
     if (form.milestones.length === 0) {
       newErrors.milestones = "At least one milestone is required.";
@@ -425,7 +498,7 @@ export default function ProviderOpportunitiesPage() {
       // each milestone needs title, description, amount>0, dueDate
       form.milestones.forEach((m: Milestone, idx: number) => {
         milestoneFieldErrors[idx] = {};
-        
+
         if (!m.title || !m.title.trim()) {
           const errorMsg = "Title is required.";
           milestoneFieldErrors[idx].title = errorMsg;
@@ -455,15 +528,20 @@ export default function ProviderOpportunitiesPage() {
           today.setHours(0, 0, 0, 0);
           const dueDate = new Date(m.dueDate);
           dueDate.setHours(0, 0, 0, 0);
-          
+
           if (dueDate < today) {
-            const errorMsg = "Due date cannot be in the past. Please select today or a future date.";
+            const errorMsg =
+              "Due date cannot be in the past. Please select today or a future date.";
             milestoneFieldErrors[idx].dueDate = errorMsg;
-            messages.push(`Milestone #${idx + 1}: due date cannot be in the past. Please select today or a future date.`);
+            messages.push(
+              `Milestone #${
+                idx + 1
+              }: due date cannot be in the past. Please select today or a future date.`
+            );
           }
         }
       });
-      
+
       // Only add milestoneFieldErrors if there are any errors
       if (Object.keys(milestoneFieldErrors).length > 0) {
         newErrors.milestoneFields = milestoneFieldErrors;
@@ -556,7 +634,7 @@ export default function ProviderOpportunitiesPage() {
         Number(proposalData.timelineAmount),
         proposalData.timelineUnit
       );
-      
+
       formDataToSend.append("deliveryTime", timelineInDays.toString());
       formDataToSend.append("timeline", timeline);
       formDataToSend.append("timelineInDays", timelineInDays.toString());
@@ -688,12 +766,12 @@ export default function ProviderOpportunitiesPage() {
               Discover projects that match your skills and expertise
             </p>
           </div>
-          <div className="flex gap-3">
+          {/* <div className="flex gap-3">
             <Button>
               <Zap className="w-4 h-4 mr-2" />
               AI Recommendations
             </Button>
-          </div>
+          </div> */}
         </div>
 
         {/* Filters */}
@@ -786,148 +864,274 @@ export default function ProviderOpportunitiesPage() {
                   </CardContent>
                 </Card>
               ) : (
-                filteredOpportunities.map((opportunity) => (
-                  <Card
-                    key={opportunity.id}
-                    className="hover:shadow-lg transition-shadow"
-                  >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <CardTitle className="text-xl">
-                              {opportunity.title}
-                            </CardTitle>
-                            {opportunity.urgent && (
-                              <Badge className="bg-red-100 text-red-800">
-                                <Clock className="w-3 h-3 mr-1" />
-                                Urgent
-                              </Badge>
-                            )}
-                            {opportunity.verified && (
-                              <Badge className="bg-green-100 text-green-800">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Verified Client
-                              </Badge>
-                            )}
-                            {opportunity.hasSubmitted && (
-                              <Badge className="bg-green-100 text-green-800">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Submitted
-                              </Badge>
-                            )}
+                filteredOpportunities.map((opportunity) => {
+                  const isExpanded = expandedOpportunityId === opportunity.id;
+                  return (
+                    <Card
+                      key={opportunity.id}
+                      className="group relative hover:shadow-lg transition-shadow"
+                    >
+                      {/* AI Badge Indicator */}
+                      {opportunity.aiExplanation && (
+                        <div className="absolute top-3 right-3 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                          <div className="flex items-center gap-1.5 px-2 py-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full text-xs font-medium shadow-md">
+                            <Sparkles className="w-3 h-3" />
+                            <span className="hidden sm:inline">
+                              AI Insights
+                            </span>
                           </div>
-                          <CardDescription className="text-base line-clamp-3">
-                            {opportunity.description}
-                          </CardDescription>
                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <Avatar>
-                            <AvatarImage
-                              src={
-                                opportunity.avatar && 
-                                opportunity.avatar !== "/placeholder.svg?height=40&width=40" &&
-                                !opportunity.avatar.includes("/placeholder.svg")
-                                  ? opportunity.avatar
-                                  : "/placeholder.svg"
-                              }
-                            />
-                            <AvatarFallback>
-                              {opportunity.client.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            {opportunity.clientId ? (
-                              <Link 
-                                href={`/provider/companies/${opportunity.clientId}`}
-                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                              >
-                                {opportunity.client}
-                              </Link>
-                            ) : (
-                            <p className="font-medium">{opportunity.client}</p>
-                            )}
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <div className="flex items-center">
-                                <span className="text-yellow-400">★</span>
-                                <span className="ml-1">
-                                  {opportunity.clientRating}
+                      )}
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 pr-0 sm:pr-20">
+                            <div className="flex items-center gap-3 mb-2">
+                              <CardTitle className="text-xl">
+                                {opportunity.title}
+                              </CardTitle>
+                              {opportunity.urgent && (
+                                <Badge className="bg-red-100 text-red-800">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  Urgent
+                                </Badge>
+                              )}
+                              {opportunity.verified && (
+                                <Badge className="bg-green-100 text-green-800">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Verified Client
+                                </Badge>
+                              )}
+                              {opportunity.hasSubmitted && (
+                                <Badge className="bg-green-100 text-green-800">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Submitted
+                                </Badge>
+                              )}
+                            </div>
+                            <CardDescription className="text-base line-clamp-3">
+                              {opportunity.description}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <Avatar>
+                              <AvatarImage
+                                src={
+                                  opportunity.avatar &&
+                                  opportunity.avatar !==
+                                    "/placeholder.svg?height=40&width=40" &&
+                                  !opportunity.avatar.includes(
+                                    "/placeholder.svg"
+                                  )
+                                    ? opportunity.avatar
+                                    : "/placeholder.svg"
+                                }
+                              />
+                              <AvatarFallback>
+                                {opportunity.client.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              {opportunity.clientId ? (
+                                <Link
+                                  href={`/provider/companies/${opportunity.clientId}`}
+                                  className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                                >
+                                  {opportunity.client}
+                                </Link>
+                              ) : (
+                                <p className="font-medium">
+                                  {opportunity.client}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <div className="flex items-center">
+                                  <span className="text-yellow-400">★</span>
+                                  <span className="ml-1">
+                                    {opportunity.clientRating}
+                                  </span>
+                                </div>
+                                <span>•</span>
+                                <span>
+                                  {opportunity.projectsPosted} projects posted
                                 </span>
-                              </div>
-                              <span>•</span>
-                              <span>{opportunity.projectsPosted} projects posted</span>
-                              <span>•</span>
-                              <div className="flex items-center">
-                                <MapPin className="w-3 h-3 mr-1" />
-                                {opportunity.location}
+                                <span>•</span>
+                                <div className="flex items-center">
+                                  <MapPin className="w-3 h-3 mr-1" />
+                                  {opportunity.location}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center text-green-600 font-semibold">
-                            <DollarSign className="w-4 h-4 mr-1" />
-                            {opportunity.budget}
-                          </div>
-                          <p className="text-sm text-gray-500">
-                            {formatTimeline(opportunity.timeline)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {opportunity.skills.map((skill: string) => (
-                          <Badge
-                            key={skill}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-4 border-t">
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span>{opportunity.postedTime}</span>
-                          <div className="flex items-center">
-                            <Users className="w-4 h-4 mr-1" />
-                            {opportunity.proposals} proposals
+                          <div className="text-right">
+                            <div className="flex items-center text-green-600 font-semibold">
+                              <DollarSign className="w-4 h-4 mr-1" />
+                              {opportunity.budget}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {formatTimeline(opportunity.timeline)}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Link href={`/provider/opportunities/${opportunity.id}`}>
-                            <Button variant="outline" size="sm">
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Details
-                            </Button>
-                          </Link>
-                          {opportunity.hasSubmitted ? (
-                            <Button
-                              size="sm"
-                              disabled
+
+                        <div className="flex flex-wrap gap-2">
+                          {opportunity.skills.map((skill: string) => (
+                            <Badge
+                              key={skill}
+                              variant="secondary"
+                              className="text-xs"
                             >
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Submitted
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => handleSubmitProposal(opportunity)}
-                            >
-                              <ThumbsUp className="w-4 h-4 mr-2" />
-                              Submit Proposal
-                            </Button>
-                          )}
+                              {skill}
+                            </Badge>
+                          ))}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+
+                        {/* AI Explanation - Responsive: Hover on desktop, Click on mobile */}
+                        {opportunity.aiExplanation && (
+                          <div className="overflow-hidden">
+                            {/* Collapsed State - Desktop hover, Mobile click */}
+                            <div
+                              className={`lg:group-hover:hidden ${
+                                isExpanded ? "hidden" : "block"
+                              } transition-all duration-300`}
+                            >
+                              <button
+                                onClick={() =>
+                                  setExpandedOpportunityId(
+                                    isExpanded ? null : opportunity.id
+                                  )
+                                }
+                                className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700 active:text-blue-800 font-medium touch-manipulation"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                                <span className="hidden sm:inline">
+                                  Hover to see AI insights
+                                </span>
+                                <span className="sm:hidden">
+                                  Tap to see AI insights
+                                </span>
+                                <ChevronRight
+                                  className={`w-3 h-3 shrink-0 transition-transform ${
+                                    isExpanded ? "rotate-90" : ""
+                                  }`}
+                                />
+                              </button>
+                            </div>
+
+                            {/* Expanded State - Shows on hover (desktop) or click (mobile) */}
+                            <div
+                              className={`lg:group-hover:block ${
+                                isExpanded ? "block" : "hidden"
+                              } animate-in fade-in slide-in-from-top-2 duration-300`}
+                            >
+                              <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-lg border-2 border-blue-200 shadow-md">
+                                <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                                  <div className="p-1.5 bg-blue-100 rounded-lg shrink-0">
+                                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+                                  </div>
+                                  <p className="text-xs sm:text-sm font-semibold text-blue-900">
+                                    About this opportunity:
+                                  </p>
+                                  {/* Close button for mobile */}
+                                  <button
+                                    onClick={() =>
+                                      setExpandedOpportunityId(null)
+                                    }
+                                    className="ml-auto lg:hidden text-blue-600 hover:text-blue-800 p-1"
+                                    aria-label="Close insights"
+                                  >
+                                    <span className="text-lg">×</span>
+                                  </button>
+                                </div>
+                                <div className="text-xs sm:text-sm text-blue-800 space-y-1.5 sm:space-y-2">
+                                  {opportunity.aiExplanation
+                                    .split("\n")
+                                    .filter((line: string) => line.trim())
+                                    .map((line: string, index: number) => {
+                                      const cleanLine = line
+                                        .replace(/^[•\-\*]\s*/, "")
+                                        .trim();
+                                      const isWarning =
+                                        cleanLine.includes("⚠️") ||
+                                        cleanLine.includes("Warning");
+                                      return cleanLine ? (
+                                        <div
+                                          key={index}
+                                          className={`flex items-start gap-2 sm:gap-3 ${
+                                            isWarning
+                                              ? "bg-red-50 p-2 rounded border border-red-200"
+                                              : ""
+                                          }`}
+                                        >
+                                          <span
+                                            className={`mt-0.5 font-bold flex-shrink-0 ${
+                                              isWarning
+                                                ? "text-red-600"
+                                                : "text-blue-600"
+                                            }`}
+                                          >
+                                            •
+                                          </span>
+                                          <span
+                                            className={`leading-relaxed break-words ${
+                                              isWarning
+                                                ? "text-red-800 font-medium"
+                                                : ""
+                                            }`}
+                                          >
+                                            {cleanLine}
+                                          </span>
+                                        </div>
+                                      ) : null;
+                                    })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-4 border-t">
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span>{opportunity.postedTime}</span>
+                            <div className="flex items-center">
+                              <Users className="w-4 h-4 mr-1" />
+                              {opportunity.proposals} proposals
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/provider/opportunities/${opportunity.id}`}
+                            >
+                              <Button variant="outline" size="sm">
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </Button>
+                            </Link>
+                            {opportunity.hasSubmitted ? (
+                              <Button size="sm" disabled>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Submitted
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleSubmitProposal(opportunity)
+                                }
+                              >
+                                <ThumbsUp className="w-4 h-4 mr-2" />
+                                Submit Proposal
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
             </TabsContent>
 
@@ -972,43 +1176,63 @@ export default function ProviderOpportunitiesPage() {
                       No recommended opportunities found
                     </h3>
                     <p className="text-gray-600">
-                      Check back later for AI-matched opportunities based on your skills and preferences.
+                      Check back later for AI-matched opportunities based on
+                      your skills and preferences.
                     </p>
                   </CardContent>
                 </Card>
               ) : (
                 <>
-                  {recommendationsCacheInfo.cachedAt && recommendationsCacheInfo.nextRefreshAt && (
-                    <div className="text-xs text-gray-500 mb-4">
-                      {(() => {
-                        const now = Date.now();
-                        const cachedAt = recommendationsCacheInfo.cachedAt;
-                        const nextRefreshAt = recommendationsCacheInfo.nextRefreshAt;
-                        const ageMs = now - cachedAt;
-                        const remainingMs = nextRefreshAt - now;
-                        
-                        const ageMinutes = Math.floor(ageMs / 60000);
-                        const remainingMinutes = Math.floor(remainingMs / 60000);
-                        const remainingHours = Math.floor(remainingMinutes / 60);
-                        const remainingMins = remainingMinutes % 60;
-                        
-                        return (
-                          <>
-                            <span>Updated: {ageMinutes} minute{ageMinutes !== 1 ? 's' : ''} ago</span>
-                            {remainingMs > 0 && (
-                              <>
-                                {" • "}
-                                <span>Next refresh: in {remainingHours > 0 ? `${remainingHours} hour${remainingHours !== 1 ? 's' : ''} ` : ''}{remainingMins} minute{remainingMins !== 1 ? 's' : ''}</span>
-                              </>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
+                  {recommendationsCacheInfo.cachedAt &&
+                    recommendationsCacheInfo.nextRefreshAt && (
+                      <div className="text-xs text-gray-500 mb-4">
+                        {(() => {
+                          const now = Date.now();
+                          const cachedAt = recommendationsCacheInfo.cachedAt;
+                          const nextRefreshAt =
+                            recommendationsCacheInfo.nextRefreshAt;
+                          const ageMs = now - cachedAt;
+                          const remainingMs = nextRefreshAt - now;
+
+                          const ageMinutes = Math.floor(ageMs / 60000);
+                          const remainingMinutes = Math.floor(
+                            remainingMs / 60000
+                          );
+                          const remainingHours = Math.floor(
+                            remainingMinutes / 60
+                          );
+                          const remainingMins = remainingMinutes % 60;
+
+                          return (
+                            <>
+                              <span>
+                                Updated: {ageMinutes} minute
+                                {ageMinutes !== 1 ? "s" : ""} ago
+                              </span>
+                              {remainingMs > 0 && (
+                                <>
+                                  {" • "}
+                                  <span>
+                                    Next refresh: in{" "}
+                                    {remainingHours > 0
+                                      ? `${remainingHours} hour${
+                                          remainingHours !== 1 ? "s" : ""
+                                        } `
+                                      : ""}
+                                    {remainingMins} minute
+                                    {remainingMins !== 1 ? "s" : ""}
+                                  </span>
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   <div className="space-y-3 sm:space-y-4">
                     {recommendedOpportunities.map((opportunity: any) => {
-                      const isExpanded = expandedOpportunityId === opportunity.id;
+                      const isExpanded =
+                        expandedOpportunityId === opportunity.id;
                       return (
                         <Card
                           key={opportunity.id}
@@ -1019,7 +1243,9 @@ export default function ProviderOpportunitiesPage() {
                             <div className="absolute top-2 right-2 sm:top-3 sm:right-3 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                               <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full text-xs font-medium shadow-md">
                                 <Sparkles className="w-3 h-3" />
-                                <span className="hidden sm:inline">AI Insights</span>
+                                <span className="hidden sm:inline">
+                                  AI Insights
+                                </span>
                               </div>
                             </div>
                           )}
@@ -1067,20 +1293,40 @@ export default function ProviderOpportunitiesPage() {
                             {opportunity.aiExplanation && (
                               <div className="mb-3 sm:mb-4 overflow-hidden">
                                 {/* Collapsed State - Desktop hover, Mobile click */}
-                                <div className={`lg:group-hover:hidden ${isExpanded ? 'hidden' : 'block'} transition-all duration-300`}>
-                                  <button 
-                                    onClick={() => setExpandedOpportunityId(isExpanded ? null : opportunity.id)}
+                                <div
+                                  className={`lg:group-hover:hidden ${
+                                    isExpanded ? "hidden" : "block"
+                                  } transition-all duration-300`}
+                                >
+                                  <button
+                                    onClick={() =>
+                                      setExpandedOpportunityId(
+                                        isExpanded ? null : opportunity.id
+                                      )
+                                    }
                                     className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700 active:text-blue-800 font-medium touch-manipulation"
                                   >
                                     <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="hidden sm:inline">Hover to see AI insights</span>
-                                    <span className="sm:hidden">Tap to see AI insights</span>
-                                    <ChevronRight className={`w-3 h-3 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                    <span className="hidden sm:inline">
+                                      Hover to see AI insights
+                                    </span>
+                                    <span className="sm:hidden">
+                                      Tap to see AI insights
+                                    </span>
+                                    <ChevronRight
+                                      className={`w-3 h-3 shrink-0 transition-transform ${
+                                        isExpanded ? "rotate-90" : ""
+                                      }`}
+                                    />
                                   </button>
                                 </div>
 
                                 {/* Expanded State - Shows on hover (desktop) or click (mobile) */}
-                                <div className={`lg:group-hover:block ${isExpanded ? 'block' : 'hidden'} animate-in fade-in slide-in-from-top-2 duration-300`}>
+                                <div
+                                  className={`lg:group-hover:block ${
+                                    isExpanded ? "block" : "hidden"
+                                  } animate-in fade-in slide-in-from-top-2 duration-300`}
+                                >
                                   <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-lg border-2 border-blue-200 shadow-md">
                                     <div className="flex items-center gap-2 mb-2 sm:mb-3">
                                       <div className="p-1.5 bg-blue-100 rounded-lg shrink-0">
@@ -1091,7 +1337,9 @@ export default function ProviderOpportunitiesPage() {
                                       </p>
                                       {/* Close button for mobile */}
                                       <button
-                                        onClick={() => setExpandedOpportunityId(null)}
+                                        onClick={() =>
+                                          setExpandedOpportunityId(null)
+                                        }
                                         className="ml-auto lg:hidden text-blue-600 hover:text-blue-800 p-1"
                                         aria-label="Close insights"
                                       >
@@ -1099,15 +1347,27 @@ export default function ProviderOpportunitiesPage() {
                                       </button>
                                     </div>
                                     <div className="text-xs sm:text-sm text-blue-800 space-y-1.5 sm:space-y-2">
-                                      {opportunity.aiExplanation.split('\n').filter((line: string) => line.trim()).map((line: string, index: number) => {
-                                        const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
-                                        return cleanLine ? (
-                                          <div key={index} className="flex items-start gap-2 sm:gap-3">
-                                            <span className="text-blue-600 mt-0.5 font-bold flex-shrink-0">•</span>
-                                            <span className="leading-relaxed break-words">{cleanLine}</span>
-                                          </div>
-                                        ) : null;
-                                      })}
+                                      {opportunity.aiExplanation
+                                        .split("\n")
+                                        .filter((line: string) => line.trim())
+                                        .map((line: string, index: number) => {
+                                          const cleanLine = line
+                                            .replace(/^[•\-\*]\s*/, "")
+                                            .trim();
+                                          return cleanLine ? (
+                                            <div
+                                              key={index}
+                                              className="flex items-start gap-2 sm:gap-3"
+                                            >
+                                              <span className="text-blue-600 mt-0.5 font-bold flex-shrink-0">
+                                                •
+                                              </span>
+                                              <span className="leading-relaxed break-words">
+                                                {cleanLine}
+                                              </span>
+                                            </div>
+                                          ) : null;
+                                        })}
                                     </div>
                                   </div>
                                 </div>
@@ -1117,15 +1377,17 @@ export default function ProviderOpportunitiesPage() {
 
                           <CardContent className="p-0 space-y-3 sm:space-y-4">
                             <div className="flex flex-wrap gap-1.5">
-                              {(opportunity.skills || []).slice(0, 6).map((skill: string) => (
-                                <Badge
-                                  key={skill}
-                                  variant="secondary"
-                                  className="text-xs group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors border"
-                                >
-                                  {skill}
-                                </Badge>
-                              ))}
+                              {(opportunity.skills || [])
+                                .slice(0, 6)
+                                .map((skill: string) => (
+                                  <Badge
+                                    key={skill}
+                                    variant="secondary"
+                                    className="text-xs group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors border"
+                                  >
+                                    {skill}
+                                  </Badge>
+                                ))}
                               {(opportunity.skills || []).length > 6 && (
                                 <Badge
                                   variant="secondary"
@@ -1138,33 +1400,53 @@ export default function ProviderOpportunitiesPage() {
 
                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pt-3 border-t border-gray-200 group-hover:border-blue-200 transition-colors">
                               <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-600 w-full sm:w-auto">
-                                <span className="capitalize font-medium">{opportunity.category}</span>
+                                <span className="capitalize font-medium">
+                                  {opportunity.category}
+                                </span>
                                 {opportunity.timeline && (
                                   <span className="flex items-center gap-1">
                                     <Calendar className="w-3 h-3 shrink-0" />
-                                    <span className="break-words">{opportunity.timeline}</span>
+                                    <span className="break-words">
+                                      {opportunity.timeline}
+                                    </span>
                                   </span>
                                 )}
                                 {opportunity.proposals !== undefined && (
-                                  <span className="whitespace-nowrap">{opportunity.proposals} proposal{opportunity.proposals !== 1 ? 's' : ''}</span>
+                                  <span className="whitespace-nowrap">
+                                    {opportunity.proposals} proposal
+                                    {opportunity.proposals !== 1 ? "s" : ""}
+                                  </span>
                                 )}
                               </div>
                               <div className="flex gap-2 w-full sm:w-auto">
-                                <Link href={`/provider/opportunities/${opportunity.id}`} className="flex-1 sm:flex-none">
-                                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                                <Link
+                                  href={`/provider/opportunities/${opportunity.id}`}
+                                  className="flex-1 sm:flex-none"
+                                >
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full sm:w-auto"
+                                  >
                                     <Eye className="w-4 h-4 mr-2" />
                                     View Details
                                   </Button>
                                 </Link>
                                 {opportunity.hasSubmitted ? (
-                                  <Button size="sm" disabled className="flex-1 sm:flex-none">
+                                  <Button
+                                    size="sm"
+                                    disabled
+                                    className="flex-1 sm:flex-none"
+                                  >
                                     <CheckCircle className="w-4 h-4 mr-2" />
                                     Submitted
                                   </Button>
                                 ) : (
                                   <Button
                                     size="sm"
-                                    onClick={() => handleSubmitProposal(opportunity)}
+                                    onClick={() =>
+                                      handleSubmitProposal(opportunity)
+                                    }
                                     className="flex-1 sm:flex-none group-hover:bg-blue-600 group-hover:text-white transition-all duration-300"
                                   >
                                     <ThumbsUp className="w-4 h-4 mr-2" />
@@ -1290,9 +1572,12 @@ export default function ProviderOpportunitiesPage() {
                           <Avatar>
                             <AvatarImage
                               src={
-                                selectedProject.avatar && 
-                                selectedProject.avatar !== "/placeholder.svg?height=40&width=40" &&
-                                !selectedProject.avatar.includes("/placeholder.svg")
+                                selectedProject.avatar &&
+                                selectedProject.avatar !==
+                                  "/placeholder.svg?height=40&width=40" &&
+                                !selectedProject.avatar.includes(
+                                  "/placeholder.svg"
+                                )
                                   ? selectedProject.avatar
                                   : "/placeholder.svg"
                               }
@@ -1339,7 +1624,9 @@ export default function ProviderOpportunitiesPage() {
                         </div>
                         {selectedProject.clientId && (
                           <div className="pt-2">
-                            <Link href={`/provider/companies/${selectedProject.clientId}`}>
+                            <Link
+                              href={`/provider/companies/${selectedProject.clientId}`}
+                            >
                               <Button variant="outline" className="w-full">
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Company
@@ -1435,30 +1722,32 @@ export default function ProviderOpportunitiesPage() {
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Client budget range: RM {selectedProject?.budgetMin?.toLocaleString() || "0"} - RM {selectedProject?.budgetMax?.toLocaleString() || "0"}
+                    Client budget range: RM{" "}
+                    {selectedProject?.budgetMin?.toLocaleString() || "0"} - RM{" "}
+                    {selectedProject?.budgetMax?.toLocaleString() || "0"}
                   </p>
                 </div>
                 <div>
                   <Label htmlFor="timeline">Delivery Timeline *</Label>
                   <div className="flex gap-2">
-                  <Input
+                    <Input
                       id="timelineAmount"
                       type="number"
                       placeholder="e.g. 2"
                       min="1"
                       value={proposalData.timelineAmount}
-                    onChange={(e) =>
-                      setProposalData((prev) => ({
-                        ...prev,
+                      onChange={(e) =>
+                        setProposalData((prev) => ({
+                          ...prev,
                           timelineAmount: e.target.value,
-                      }))
-                    }
-                    className={
+                        }))
+                      }
+                      className={
                         proposalErrors.timelineAmount
-                        ? "border-red-500 focus-visible:ring-red-500"
-                        : ""
-                    }
-                  />
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : ""
+                      }
+                    />
                     <Select
                       value={proposalData.timelineUnit}
                       onValueChange={(value: "day" | "week" | "month") =>
@@ -1495,11 +1784,18 @@ export default function ProviderOpportunitiesPage() {
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Company timeline: {selectedProject?.originalTimeline ? formatTimeline(selectedProject.originalTimeline) : "Not specified"}
+                    Company timeline:{" "}
+                    {selectedProject?.originalTimeline
+                      ? formatTimeline(selectedProject.originalTimeline)
+                      : "Not specified"}
                   </p>
                   {proposalData.timelineAmount && proposalData.timelineUnit && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Your timeline: {formatTimeline(proposalData.timelineAmount, proposalData.timelineUnit)}
+                      Your timeline:{" "}
+                      {formatTimeline(
+                        proposalData.timelineAmount,
+                        proposalData.timelineUnit
+                      )}
                     </p>
                   )}
                 </div>
@@ -1550,10 +1846,15 @@ export default function ProviderOpportunitiesPage() {
                 </div>
 
                 {proposalData.milestones.length === 0 && (
-                  <p className={`text-sm ${
-                    proposalErrors.milestones ? "text-red-600 font-medium" : "text-gray-500"
-                  }`}>
-                    {proposalErrors.milestones || "At least one milestone is required. Click 'Add Milestone' to get started."}
+                  <p
+                    className={`text-sm ${
+                      proposalErrors.milestones
+                        ? "text-red-600 font-medium"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {proposalErrors.milestones ||
+                      "At least one milestone is required. Click 'Add Milestone' to get started."}
                   </p>
                 )}
 
@@ -1577,8 +1878,10 @@ export default function ProviderOpportunitiesPage() {
                                   title: e.target.value,
                                 });
                                 // Clear error when user starts typing
-                                if (proposalErrors.milestoneFields?.[i]?.title) {
-                                  setProposalErrors(prev => ({
+                                if (
+                                  proposalErrors.milestoneFields?.[i]?.title
+                                ) {
+                                  setProposalErrors((prev) => ({
                                     ...prev,
                                     milestoneFields: {
                                       ...prev.milestoneFields,
@@ -1615,8 +1918,10 @@ export default function ProviderOpportunitiesPage() {
                                   amount: Number(e.target.value),
                                 });
                                 // Clear error when user starts typing
-                                if (proposalErrors.milestoneFields?.[i]?.amount) {
-                                  setProposalErrors(prev => ({
+                                if (
+                                  proposalErrors.milestoneFields?.[i]?.amount
+                                ) {
+                                  setProposalErrors((prev) => ({
                                     ...prev,
                                     milestoneFields: {
                                       ...prev.milestoneFields,
@@ -1646,21 +1951,27 @@ export default function ProviderOpportunitiesPage() {
                             </label>
                             <Input
                               type="date"
-                              min={new Date().toISOString().split('T')[0]}
+                              min={new Date().toISOString().split("T")[0]}
                               value={(m.dueDate || "").slice(0, 10)}
                               onChange={(e) => {
                                 const selectedDate = e.target.value;
-                                const today = new Date().toISOString().split('T')[0];
+                                const today = new Date()
+                                  .toISOString()
+                                  .split("T")[0];
                                 if (selectedDate < today) {
-                                  toast.error("Due date cannot be in the past. Please select today or a future date.");
+                                  toast.error(
+                                    "Due date cannot be in the past. Please select today or a future date."
+                                  );
                                   return;
                                 }
                                 updateProposalMilestone(i, {
                                   dueDate: selectedDate,
                                 });
                                 // Clear error when user selects a date
-                                if (proposalErrors.milestoneFields?.[i]?.dueDate) {
-                                  setProposalErrors(prev => ({
+                                if (
+                                  proposalErrors.milestoneFields?.[i]?.dueDate
+                                ) {
+                                  setProposalErrors((prev) => ({
                                     ...prev,
                                     milestoneFields: {
                                       ...prev.milestoneFields,
@@ -1698,8 +2009,10 @@ export default function ProviderOpportunitiesPage() {
                                 description: e.target.value,
                               });
                               // Clear error when user starts typing
-                              if (proposalErrors.milestoneFields?.[i]?.description) {
-                                setProposalErrors(prev => ({
+                              if (
+                                proposalErrors.milestoneFields?.[i]?.description
+                              ) {
+                                setProposalErrors((prev) => ({
                                   ...prev,
                                   milestoneFields: {
                                     ...prev.milestoneFields,
@@ -1857,7 +2170,12 @@ export default function ProviderOpportunitiesPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>Timeline:</span>
-                      <span>{formatTimeline(proposalData.timelineAmount, proposalData.timelineUnit) || "Not specified"}</span>
+                      <span>
+                        {formatTimeline(
+                          proposalData.timelineAmount,
+                          proposalData.timelineUnit
+                        ) || "Not specified"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>Attachments:</span>

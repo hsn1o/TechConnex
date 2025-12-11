@@ -18,12 +18,16 @@ function calculateMatchScore(providerProfile, serviceRequest) {
   const maxScore = 100;
 
   // Skills overlap (40% weight)
-  const providerSkills = (providerProfile.skills || []).map(s => s.toLowerCase());
-  const requestSkills = (serviceRequest.skills || []).map(s => s.toLowerCase());
-  
+  const providerSkills = (providerProfile.skills || []).map((s) =>
+    s.toLowerCase()
+  );
+  const requestSkills = (serviceRequest.skills || []).map((s) =>
+    s.toLowerCase()
+  );
+
   if (requestSkills.length > 0) {
-    const matchingSkills = requestSkills.filter(skill => 
-      providerSkills.some(ps => ps.includes(skill) || skill.includes(ps))
+    const matchingSkills = requestSkills.filter((skill) =>
+      providerSkills.some((ps) => ps.includes(skill) || skill.includes(ps))
     );
     const skillsScore = (matchingSkills.length / requestSkills.length) * 40;
     score += skillsScore;
@@ -35,28 +39,36 @@ function calculateMatchScore(providerProfile, serviceRequest) {
   if (providerProfile.major && serviceRequest.category) {
     const providerMajor = providerProfile.major.toLowerCase();
     const requestCategory = serviceRequest.category.toLowerCase();
-    
-    if (providerMajor === requestCategory || providerMajor.includes(requestCategory) || requestCategory.includes(providerMajor)) {
+
+    if (
+      providerMajor === requestCategory ||
+      providerMajor.includes(requestCategory) ||
+      requestCategory.includes(providerMajor)
+    ) {
       score += 20;
     } else {
       const categoryKeywords = {
-        'web': ['web', 'frontend', 'backend', 'fullstack'],
-        'mobile': ['mobile', 'app', 'ios', 'android'],
-        'cloud': ['cloud', 'aws', 'azure', 'devops'],
-        'ai': ['ai', 'ml', 'machine learning', 'artificial intelligence'],
-        'data': ['data', 'analytics', 'database'],
-        'design': ['design', 'ui', 'ux'],
+        web: ["web", "frontend", "backend", "fullstack"],
+        mobile: ["mobile", "app", "ios", "android"],
+        cloud: ["cloud", "aws", "azure", "devops"],
+        ai: ["ai", "ml", "machine learning", "artificial intelligence"],
+        data: ["data", "analytics", "database"],
+        design: ["design", "ui", "ux"],
       };
-      
+
       let foundMatch = false;
       for (const [key, keywords] of Object.entries(categoryKeywords)) {
-        if (keywords.some(k => providerMajor.includes(k) || requestCategory.includes(k))) {
+        if (
+          keywords.some(
+            (k) => providerMajor.includes(k) || requestCategory.includes(k)
+          )
+        ) {
           score += 10; // Partial match
           foundMatch = true;
           break;
         }
       }
-      
+
       if (!foundMatch) {
         score += 3; // Minimal match
       }
@@ -73,7 +85,10 @@ function calculateMatchScore(providerProfile, serviceRequest) {
   const providerHourlyRate = providerProfile.hourlyRate || 0;
 
   // Check if budgets overlap
-  if (providerMinBudget <= requestBudgetMax && providerMaxBudget >= requestBudgetMin) {
+  if (
+    providerMinBudget <= requestBudgetMax &&
+    providerMaxBudget >= requestBudgetMin
+  ) {
     score += 20; // Budgets are compatible
   } else if (providerHourlyRate > 0) {
     // Estimate based on hourly rate (rough estimate: 40 hours for small, 200 for large)
@@ -92,14 +107,19 @@ function calculateMatchScore(providerProfile, serviceRequest) {
   if (serviceRequest.timeline && providerProfile.availability) {
     const timeline = serviceRequest.timeline.toLowerCase();
     const availability = providerProfile.availability.toLowerCase();
-    
+
     // Check for urgency indicators
-    const urgentKeywords = ['urgent', 'asap', 'immediate', 'quick', 'fast'];
-    const isUrgent = urgentKeywords.some(keyword => timeline.includes(keyword));
-    
-    if (isUrgent && (availability.includes('available') || availability.includes('immediate'))) {
+    const urgentKeywords = ["urgent", "asap", "immediate", "quick", "fast"];
+    const isUrgent = urgentKeywords.some((keyword) =>
+      timeline.includes(keyword)
+    );
+
+    if (
+      isUrgent &&
+      (availability.includes("available") || availability.includes("immediate"))
+    ) {
       score += 20; // Perfect match for urgent projects
-    } else if (!isUrgent && availability.includes('available')) {
+    } else if (!isUrgent && availability.includes("available")) {
       score += 15; // Good match
     } else {
       score += 8; // Partial match
@@ -147,7 +167,12 @@ function setCachedRecommendations(customerId, recommendations) {
 /**
  * Generate AI explanation for why a provider is recommended
  */
-async function generateAIExplanation(providerProfile, serviceRequest, matchScore, isVerified) {
+async function generateAIExplanation(
+  providerProfile,
+  serviceRequest,
+  matchScore,
+  isVerified
+) {
   try {
     const model = new ChatOpenAI({
       modelName: "gpt-4o",
@@ -208,20 +233,25 @@ Format: Use bullet points (•) separated by newlines. Return ONLY the bullet po
 `);
 
     const chain = RunnableSequence.from([prompt, model]);
-    
+
     const result = await chain.invoke({
       providerName: providerProfile.user?.name || "Provider",
-      providerSkills: (providerProfile.skills || []).join(", ") || "Not specified",
+      providerSkills:
+        (providerProfile.skills || []).join(", ") || "Not specified",
       providerMajor: providerProfile.major || "Not specified",
       rating: providerProfile.rating?.toString() || "0",
-      yearsExperience: providerProfile.yearsExperience?.toString() || "Not specified",
+      yearsExperience:
+        providerProfile.yearsExperience?.toString() || "Not specified",
       hourlyRate: providerProfile.hourlyRate?.toString() || "Not specified",
       availability: providerProfile.availability || "Not specified",
       location: providerProfile.location || "Not specified",
-      preferredDuration: providerProfile.preferredProjectDuration || "Not specified",
+      preferredDuration:
+        providerProfile.preferredProjectDuration || "Not specified",
       workPreference: providerProfile.workPreference || "Not specified",
-      minBudget: providerProfile.minimumProjectBudget?.toString() || "Not specified",
-      maxBudget: providerProfile.maximumProjectBudget?.toString() || "Not specified",
+      minBudget:
+        providerProfile.minimumProjectBudget?.toString() || "Not specified",
+      maxBudget:
+        providerProfile.maximumProjectBudget?.toString() || "Not specified",
       totalProjects: providerProfile.totalProjects?.toString() || "0",
       successRate: providerProfile.successRate?.toString() || "0",
       responseTime: providerProfile.responseTime?.toString() || "24",
@@ -229,7 +259,8 @@ Format: Use bullet points (•) separated by newlines. Return ONLY the bullet po
       requestTitle: serviceRequest.title,
       requestDescription: serviceRequest.description || "No description",
       requestCategory: serviceRequest.category || "Not specified",
-      requestSkills: (serviceRequest.skills || []).join(", ") || "Not specified",
+      requestSkills:
+        (serviceRequest.skills || []).join(", ") || "Not specified",
       budgetMin: serviceRequest.budgetMin?.toString() || "0",
       budgetMax: serviceRequest.budgetMax?.toString() || "0",
       timeline: serviceRequest.timeline || "Not specified",
@@ -238,7 +269,7 @@ Format: Use bullet points (•) separated by newlines. Return ONLY the bullet po
     });
 
     let content = result.content?.trim() || "";
-    
+
     // Clean up any markdown or code fences
     if (content.startsWith("```")) {
       content = content.replace(/```[\w]*/g, "").trim();
@@ -246,7 +277,7 @@ Format: Use bullet points (•) separated by newlines. Return ONLY the bullet po
     if (content.startsWith('"') && content.endsWith('"')) {
       content = content.slice(1, -1);
     }
-    
+
     // Ensure bullet points are properly formatted
     content = content
       .replace(/^[-*]\s+/gm, "• ") // Replace - or * with •
@@ -259,8 +290,14 @@ Format: Use bullet points (•) separated by newlines. Return ONLY the bullet po
     console.error("Error generating AI explanation:", error);
     // Return a fallback explanation in bullet point format
     const topSkills = (serviceRequest.skills || []).slice(0, 2).join(", ");
-    const verificationWarning = !isVerified ? "\n• ⚠️ Warning: This provider has not uploaded official identity documents for verification" : "";
-    return `• This provider matches your skills requirements: ${topSkills || "your project needs"}\n• Recommended for: "${serviceRequest.title}"\n• The provider's experience and rating align with your project requirements${verificationWarning}`;
+    const verificationWarning = !isVerified
+      ? "\n• ⚠️ Warning: This provider has not uploaded official identity documents for verification"
+      : "";
+    return `• This provider matches your skills requirements: ${
+      topSkills || "your project needs"
+    }\n• Recommended for: "${
+      serviceRequest.title
+    }"\n• The provider's experience and rating align with your project requirements${verificationWarning}`;
   }
 }
 
@@ -334,7 +371,7 @@ export async function getRecommendedProviders(customerId) {
     });
 
     // Check which providers have already submitted proposals for these ServiceRequests
-    const serviceRequestIds = openServiceRequests.map(sr => sr.id);
+    const serviceRequestIds = openServiceRequests.map((sr) => sr.id);
     const existingProposals = await prisma.proposal.findMany({
       where: {
         serviceRequestId: {
@@ -349,30 +386,36 @@ export async function getRecommendedProviders(customerId) {
 
     // Create a map of providerId -> Set of ServiceRequestIds they've already proposed to
     const providerProposedMap = new Map();
-    existingProposals.forEach(proposal => {
+    existingProposals.forEach((proposal) => {
       if (!providerProposedMap.has(proposal.providerId)) {
         providerProposedMap.set(proposal.providerId, new Set());
       }
-      providerProposedMap.get(proposal.providerId).add(proposal.serviceRequestId);
+      providerProposedMap
+        .get(proposal.providerId)
+        .add(proposal.serviceRequestId);
     });
 
     // Calculate match scores for each provider against each ServiceRequest
     const providerScores = [];
-    
+
     for (const provider of allProviders) {
       if (!provider.providerProfile) continue;
 
-      const proposedServiceRequestIds = providerProposedMap.get(provider.id) || new Set();
-      
+      const proposedServiceRequestIds =
+        providerProposedMap.get(provider.id) || new Set();
+
       // Find the best matching ServiceRequest for this provider
       let bestMatch = null;
       let bestScore = 0;
-      
+
       for (const serviceRequest of openServiceRequests) {
         // Skip if provider already proposed
         if (proposedServiceRequestIds.has(serviceRequest.id)) continue;
-        
-        const score = calculateMatchScore(provider.providerProfile, serviceRequest);
+
+        const score = calculateMatchScore(
+          provider.providerProfile,
+          serviceRequest
+        );
         if (score > bestScore) {
           bestScore = score;
           bestMatch = serviceRequest;
@@ -396,55 +439,55 @@ export async function getRecommendedProviders(customerId) {
 
     // Generate AI explanations for each recommendation
     const recommendations = await Promise.all(
-      topMatches.map(async ({ provider, providerProfile, serviceRequest, matchScore }) => {
-        const isVerified = provider.isVerified || false;
-        const explanation = await generateAIExplanation(
-          providerProfile,
-          serviceRequest,
-          matchScore,
-          isVerified
-        );
+      topMatches.map(
+        async ({ provider, providerProfile, serviceRequest, matchScore }) => {
+          const isVerified = provider.isVerified || false;
+          const explanation = await generateAIExplanation(
+            providerProfile,
+            serviceRequest,
+            matchScore,
+            isVerified
+          );
 
-        // Apply privacy settings
-        const allowMessages = provider.settings?.allowMessages !== false;
-
-        return {
-          id: provider.id,
-          name: provider.name,
-          email: provider.email,
-          avatar: providerProfile.profileImageUrl || null,
-          major: providerProfile.major || "ICT Professional",
-          rating: parseFloat(providerProfile.rating || 0),
-          reviewCount: providerProfile.totalReviews || 0,
-          completedJobs: providerProfile.totalProjects || 0,
-          hourlyRate: providerProfile.hourlyRate || 0,
-          location: providerProfile.location || "Malaysia",
-          bio: providerProfile.bio || "Experienced ICT professional",
-          availability: providerProfile.availability || "Available",
-          responseTime: providerProfile.responseTime || 24,
-          skills: providerProfile.skills || [],
-          yearsExperience: providerProfile.yearsExperience || 0,
-          minimumProjectBudget: providerProfile.minimumProjectBudget || null,
-          maximumProjectBudget: providerProfile.maximumProjectBudget || null,
-          preferredProjectDuration: providerProfile.preferredProjectDuration || null,
-          workPreference: providerProfile.workPreference || "remote",
-          successRate: parseFloat(providerProfile.successRate || 0),
-          isVerified: isVerified,
-          matchScore: matchScore,
-          allowMessages: allowMessages,
-          recommendedForServiceRequest: {
-            id: serviceRequest.id,
-            title: serviceRequest.title,
-            description: serviceRequest.description,
-            category: serviceRequest.category,
-            budgetMin: serviceRequest.budgetMin,
-            budgetMax: serviceRequest.budgetMax,
-            timeline: serviceRequest.timeline,
-            proposalCount: serviceRequest._count.proposals,
-          },
-          aiExplanation: explanation,
-        };
-      })
+          return {
+            profileId: providerProfile.id || null,
+            id: provider.id,
+            name: provider.name,
+            email: provider.email,
+            avatar: providerProfile.profileImageUrl || null,
+            major: providerProfile.major || "ICT Professional",
+            rating: parseFloat(providerProfile.rating || 0),
+            reviewCount: providerProfile.totalReviews || 0,
+            completedJobs: providerProfile.totalProjects || 0,
+            hourlyRate: providerProfile.hourlyRate || 0,
+            location: providerProfile.location || "Malaysia",
+            bio: providerProfile.bio || "Experienced ICT professional",
+            availability: providerProfile.availability || "Available",
+            responseTime: providerProfile.responseTime || 24,
+            skills: providerProfile.skills || [],
+            yearsExperience: providerProfile.yearsExperience || 0,
+            minimumProjectBudget: providerProfile.minimumProjectBudget || null,
+            maximumProjectBudget: providerProfile.maximumProjectBudget || null,
+            preferredProjectDuration:
+              providerProfile.preferredProjectDuration || null,
+            workPreference: providerProfile.workPreference || "remote",
+            successRate: parseFloat(providerProfile.successRate || 0),
+            isVerified: isVerified,
+            matchScore: matchScore,
+            recommendedForServiceRequest: {
+              id: serviceRequest.id,
+              title: serviceRequest.title,
+              description: serviceRequest.description,
+              category: serviceRequest.category,
+              budgetMin: serviceRequest.budgetMin,
+              budgetMax: serviceRequest.budgetMax,
+              timeline: serviceRequest.timeline,
+              proposalCount: serviceRequest._count.proposals,
+            },
+            aiExplanation: explanation,
+          };
+        }
+      )
     );
 
     // Cache the recommendations
@@ -463,4 +506,3 @@ export async function getRecommendedProviders(customerId) {
     throw new Error("Failed to fetch recommended providers");
   }
 }
-

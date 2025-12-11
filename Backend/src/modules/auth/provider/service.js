@@ -8,6 +8,7 @@ import {
   findProviderProfile,
   updateUserRole,
 } from "./model.js";
+import { createProviderAiDraft } from "./provider-ai-draft.js";
 
 const prisma = new PrismaClient();
 
@@ -18,17 +19,31 @@ async function registerProvider(dto) {
   const hashedPassword = await bcrypt.hash(dto.password, 10);
 
   // Pass entire DTO, but overwrite the password
-  return createProviderUser({ ...dto, password: hashedPassword });
-  
-}
+  const user = await createProviderUser({ ...dto, password: hashedPassword });
 
+  // Try to generate AI draft for provider profile if profile exists
+  try {
+    const profile = await findProviderProfile(user.id);
+    if (profile && profile.id) {
+      // fire-and-forget, but await to ensure saved before returning
+      await createProviderAiDraft(profile.id);
+    }
+  } catch (err) {
+    // Log and continue — registration should not fail because of AI draft
+    console.error("Failed to create provider AI draft:", err);
+  }
+
+  return user;
+}
 
 async function becomeCustomer(userId, { description = "", industry = "" }) {
   const user = await findUserById(userId);
   if (!user) throw new Error("User not found");
 
   // Check if customer profile exists
-  const existing = await prisma.customerProfile.findUnique({ where: { userId } });
+  const existing = await prisma.customerProfile.findUnique({
+    where: { userId },
+  });
   if (existing) return { alreadyCustomer: true, profile: existing };
 
   // Create customer profile
@@ -62,13 +77,10 @@ async function updatePassword(userId, oldPassword, newPassword) {
   const hashedPassword = await bcrypt.hash(newPassword, 10);
 
   // Update password
-  const updatedUser = await updateCompanyUser(userId, { password: hashedPassword });
+  const updatedUser = await updateCompanyUser(userId, {
+    password: hashedPassword,
+  });
   return updatedUser;
 }
 
-
-export {
-  registerProvider,
-  becomeCustomer,
-  updatePassword
-};
+export { registerProvider, becomeCustomer, updatePassword };

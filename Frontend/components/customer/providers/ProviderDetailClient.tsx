@@ -29,6 +29,7 @@ import PortfolioGrid from "./sections/PortfolioGrid";
 import ReviewsList from "./sections/ReviewsList";
 import { useRouter } from "next/navigation";
 import { getProviderCompletedProjects } from "@/lib/api";
+import ProposalPopup from "./ProposalPopup";
 
 export default function ProviderDetailClient({
   provider,
@@ -42,6 +43,7 @@ export default function ProviderDetailClient({
   const [saved, setSaved] = useState<boolean>(!!provider.saved);
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
+  const [isProposalPopupOpen, setIsProposalPopupOpen] = useState(false);
   const router = useRouter();
 
   // Update saved state when provider prop changes (e.g., after refresh)
@@ -396,30 +398,23 @@ export default function ProviderDetailClient({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 sm:space-y-3 p-4 sm:p-6 pt-0">
-              <Link
-                href={`/customer/requests/new?providerId=${encodeURIComponent(
-                  provider.id
-                )}`}
-                className="block"
+              <Button
+                onClick={() => setIsProposalPopupOpen(true)}
+                className="w-full text-xs sm:text-sm"
               >
-                <Button className="w-full text-xs sm:text-sm">
-                  Request a Proposal
-                </Button>
-              </Link>
+                Request a Proposal
+              </Button>
               {provider.allowMessages !== false && (
-                <Link
-                  href={`/customer/messages/new?to=${encodeURIComponent(
-                    provider.id
-                  )}`}
-                  className="block"
+                <Button
+                  variant="outline"
+                  className="w-full text-xs sm:text-sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleContact(provider);
+                  }}
                 >
-                  <Button
-                    variant="outline"
-                    className="w-full text-xs sm:text-sm"
-                  >
-                    Send Message
-                  </Button>
-                </Link>
+                  Send Message
+                </Button>
               )}
             </CardContent>
           </Card>
@@ -606,6 +601,18 @@ export default function ProviderDetailClient({
           )}
         </div>
       </div>
+
+      {/* Proposal Popup */}
+      <ProposalPopup
+        providerId={provider.id}
+        providerName={provider.name}
+        isOpen={isProposalPopupOpen}
+        onClose={() => setIsProposalPopupOpen(false)}
+        onSuccess={() => {
+          // Refresh or show success message
+          console.log("Proposal request sent successfully");
+        }}
+      />
     </div>
   );
 }
