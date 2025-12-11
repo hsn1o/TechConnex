@@ -35,7 +35,6 @@ router.post(
 // Separate routes
 router.post(
   "/upload",
-
   upload.single("resume"),
   uploadResumeController
 );

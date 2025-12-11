@@ -213,7 +213,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
   editCertification,
   setEditCertification,
 }) => {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const isStrongPassword = (pwd: string) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|;:'",.<>/?`~]).{8,}$/.test(
@@ -239,15 +239,25 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
         body: formData,
       });
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error);
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage = "Resume analysis failed.";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorMessage;
+        } catch {
+          errorMessage = `Server error: ${res.status} ${res.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
 
+      const result = await res.json();
       setCvExtractedData(result.data);
       setShowAIResults(true);
       setAiProcessingComplete(true);
     } catch (err) {
       console.error("Resume upload failed:", err);
-      alert("Resume analysis failed.");
+      alert(err instanceof Error ? err.message : "Resume analysis failed.");
     } finally {
       setIsProcessingCV(false);
     }

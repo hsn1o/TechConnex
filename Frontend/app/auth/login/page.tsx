@@ -32,7 +32,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const API_URL = process.env.NEXT_PUBLIC_API_URL; // e.g., http://localhost:4000
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,8 +51,19 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage = "Login failed";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error || errorMessage;
+        } catch {
+          errorMessage = `Server error: ${res.status} ${res.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
 
       // ✅ Save token to both localStorage and cookies
       localStorage.setItem("token", data.token);
