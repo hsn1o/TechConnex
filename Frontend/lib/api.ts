@@ -208,6 +208,28 @@ export async function getCompanyProjects(params?: {
   return data;
 }
 
+export async function analyzeProjectDocument(file: File) {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+
+  if (!token) throw new Error("Not authenticated");
+
+  const formData = new FormData();
+  formData.append("document", file);
+
+  const res = await fetch(`${API_BASE}/company/projects/analyze-document`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || data?.message || "Failed to analyze document");
+  return data;
+}
+
 export async function createProject(projectData: {
   title: string;
   description: string;

@@ -48,10 +48,13 @@ import {
   Paperclip,
   CheckCircle,
   Loader2,
+  Sparkles,
+  ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
 import { toast } from "sonner";
-import { getProviderOpportunities, sendProposal } from "@/lib/api";
+import { getProviderOpportunities, getProviderRecommendedOpportunities, sendProposal } from "@/lib/api";
 import { formatTimeline, buildTimelineData, timelineToDays } from "@/lib/timeline-utils";
 import Link from "next/link";
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
@@ -93,6 +96,16 @@ export default function ProviderOpportunitiesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submittingProposal, setSubmittingProposal] = useState(false);
+  
+  // Recommended opportunities state
+  const [recommendedOpportunities, setRecommendedOpportunities] = useState<any[]>([]);
+  const [loadingRecommended, setLoadingRecommended] = useState(true);
+  const [errorRecommended, setErrorRecommended] = useState<string | null>(null);
+  const [recommendationsCacheInfo, setRecommendationsCacheInfo] = useState<{
+    cachedAt: number | null;
+    nextRefreshAt: number | null;
+  }>({ cachedAt: null, nextRefreshAt: null });
+  const [expandedOpportunityId, setExpandedOpportunityId] = useState<string | null>(null);
   const [proposalErrors, setProposalErrors] = useState<{
     bidAmount?: string;
     timelineAmount?: string;
@@ -108,7 +121,83 @@ export default function ProviderOpportunitiesPage() {
     }>;
   }>({});
 
-  // Fetch opportunities from API
+  // Helper function to map opportunity data
+  const mapOpportunityData = (opportunity: any) => ({
+    id: opportunity.id,
+    title: opportunity.title,
+    description: opportunity.description,
+    fullDescription: opportunity.description,
+    client: opportunity.customer?.name || "Unknown Client",
+    clientId: opportunity.customer?.id || null,
+    budget: `RM ${opportunity.budgetMin?.toLocaleString()} - RM ${opportunity.budgetMax?.toLocaleString()}`,
+    budgetMin: opportunity.budgetMin || 0,
+    budgetMax: opportunity.budgetMax || 0,
+    budgetType: "fixed",
+    timeline: formatTimeline(opportunity.timeline) || "Not specified",
+    originalTimeline: opportunity.timeline || null,
+    originalTimelineInDays: (() => {
+      if (!opportunity.timeline) return 0;
+      const timelineStr = opportunity.timeline.toLowerCase().trim();
+      const match = timelineStr.match(/^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/);
+      if (match) {
+        const amount = Number(match[1]);
+        const unit = match[2].replace(/s$/, "");
+        return timelineToDays(amount, unit);
+      }
+      return 0;
+    })(),
+    skills: opportunity.skills || [],
+    postedTime: new Date(opportunity.createdAt).toLocaleDateString(),
+    matchScore: opportunity.matchScore || undefined,
+    proposals: opportunity._count?.proposals || opportunity.proposalCount || 0,
+    category: opportunity.category,
+    location:
+      opportunity.customer?.customerProfile?.location ||
+      "Not specified",
+    clientRating: 4.5,
+    projectsPosted: opportunity.customer?.customerProfile?.projectsPosted || 0,
+    avatar: (() => {
+      const profile = opportunity.customer?.customerProfile;
+      if (profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg") {
+        return `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`;
+      }
+      return "/placeholder.svg?height=40&width=40";
+    })(),
+    urgent: opportunity.priority === "High",
+    verified: opportunity.customer?.isVerified || false,
+    hasSubmitted: opportunity.hasProposed || false,
+    requirements: typeof opportunity.requirements === "string" 
+      ? opportunity.requirements
+      : (Array.isArray(opportunity.requirements) 
+        ? opportunity.requirements.map((r: any) => `- ${r}`).join('\n') 
+        : ""),
+    deliverables: typeof opportunity.deliverables === "string" 
+      ? opportunity.deliverables
+      : (Array.isArray(opportunity.deliverables) 
+        ? opportunity.deliverables.map((d: any) => `- ${d}`).join('\n') 
+        : ""),
+    clientInfo: {
+      companySize:
+        opportunity.customer?.customerProfile?.companySize ||
+        "Not specified",
+      industry:
+        opportunity.customer?.customerProfile?.industry ||
+        "Not specified",
+      memberSince: new Date(
+        opportunity.customer?.createdAt || Date.now()
+      )
+        .getFullYear()
+        .toString(),
+      totalSpent: opportunity.customer?.customerProfile?.totalSpend
+        ? `RM ${Number(opportunity.customer.customerProfile.totalSpend).toLocaleString()}`
+        : "RM 0",
+      avgRating: 4.5,
+    },
+    originalData: opportunity,
+    aiExplanation: opportunity.aiExplanation || null, // Add AI explanation for recommended opportunities
+  });
+
+  // Fetch all opportunities from API
   useEffect(() => {
     const fetchOpportunities = async () => {
       try {
@@ -123,85 +212,7 @@ export default function ProviderOpportunitiesPage() {
         });
 
         if (response.success) {
-          // Map API response to UI format
-          const mappedOpportunities = (response.opportunities || []).map(
-            (opportunity: any) => ({
-              id: opportunity.id,
-              title: opportunity.title,
-              description: opportunity.description,
-              fullDescription: opportunity.description, // Use description as full description for now
-              client: opportunity.customer?.name || "Unknown Client",
-              clientId: opportunity.customer?.id || null,
-              budget: `RM ${opportunity.budgetMin?.toLocaleString()} - RM ${opportunity.budgetMax?.toLocaleString()}`,
-              budgetMin: opportunity.budgetMin || 0,
-              budgetMax: opportunity.budgetMax || 0,
-              budgetType: "fixed",
-              timeline: formatTimeline(opportunity.timeline) || "Not specified",
-              originalTimeline: opportunity.timeline || null,
-              originalTimelineInDays: (() => {
-                if (!opportunity.timeline) return 0;
-                // Parse timeline string (e.g., "32 days", "2 weeks", "1 month")
-                const timelineStr = opportunity.timeline.toLowerCase().trim();
-                const match = timelineStr.match(/^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/);
-                if (match) {
-                  const amount = Number(match[1]);
-                  const unit = match[2].replace(/s$/, ""); // Remove plural 's'
-                  return timelineToDays(amount, unit);
-                }
-                return 0;
-              })(),
-              skills: opportunity.skills || [],
-              postedTime: new Date(opportunity.createdAt).toLocaleDateString(),
-              matchScore: 85, // Default match score
-              proposals: opportunity._count?.proposals || 0,
-              category: opportunity.category,
-              location:
-                opportunity.customer?.customerProfile?.location ||
-                "Not specified",
-              clientRating: 4.5, // Default rating
-              projectsPosted: opportunity.customer?.customerProfile?.projectsPosted || 0,
-              avatar: (() => {
-                const profile = opportunity.customer?.customerProfile;
-                if (profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg") {
-                  return `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`;
-                }
-                return "/placeholder.svg?height=40&width=40";
-              })(),
-              urgent: opportunity.priority === "High",
-              verified: opportunity.customer?.isVerified || false,
-              hasSubmitted: opportunity.hasProposed || false,
-              // Convert requirements/deliverables: if array, convert to markdown; if string, use as-is
-              requirements: typeof opportunity.requirements === "string" 
-                ? opportunity.requirements
-                : (Array.isArray(opportunity.requirements) 
-                  ? opportunity.requirements.map((r: any) => `- ${r}`).join('\n') 
-                  : ""),
-              deliverables: typeof opportunity.deliverables === "string" 
-                ? opportunity.deliverables
-                : (Array.isArray(opportunity.deliverables) 
-                  ? opportunity.deliverables.map((d: any) => `- ${d}`).join('\n') 
-                  : ""),
-              clientInfo: {
-                companySize:
-                  opportunity.customer?.customerProfile?.companySize ||
-                  "Not specified",
-                industry:
-                  opportunity.customer?.customerProfile?.industry ||
-                  "Not specified",
-                memberSince: new Date(
-                  opportunity.customer?.createdAt || Date.now()
-                )
-                  .getFullYear()
-                  .toString(),
-                totalSpent: opportunity.customer?.customerProfile?.totalSpend
-                  ? `RM ${Number(opportunity.customer.customerProfile.totalSpend).toLocaleString()}`
-                  : "RM 0",
-                avgRating: 4.5, // Default rating
-              },
-              originalData: opportunity, // Store original API data for proposal submission
-            })
-          );
-
+          const mappedOpportunities = (response.opportunities || []).map(mapOpportunityData);
           setOpportunities(mappedOpportunities);
         } else {
           setError("Failed to fetch opportunities");
@@ -219,6 +230,35 @@ export default function ProviderOpportunitiesPage() {
 
     fetchOpportunities();
   }, [searchQuery, categoryFilter, toast]);
+
+  // Fetch recommended opportunities
+  useEffect(() => {
+    const fetchRecommendedOpportunities = async () => {
+      try {
+        setLoadingRecommended(true);
+        setErrorRecommended(null);
+
+        const response = await getProviderRecommendedOpportunities();
+        if (response.success) {
+          const mappedRecommended = (response.recommendations || []).map(mapOpportunityData);
+          setRecommendedOpportunities(mappedRecommended);
+          setRecommendationsCacheInfo({
+            cachedAt: response.cachedAt,
+            nextRefreshAt: response.nextRefreshAt,
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching recommended opportunities:", err);
+        setErrorRecommended(
+          err instanceof Error ? err.message : "Failed to fetch recommended opportunities"
+        );
+      } finally {
+        setLoadingRecommended(false);
+      }
+    };
+
+    fetchRecommendedOpportunities();
+  }, []);
 
   const getMatchScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600 bg-green-100";
@@ -722,14 +762,13 @@ export default function ProviderOpportunitiesPage() {
             </CardContent>
           </Card>
         ) : (
-          <Tabs defaultValue="recommended" className="space-y-6">
+          <Tabs defaultValue="all" className="space-y-6">
             <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="recommended">AI Recommended</TabsTrigger>
-              <TabsTrigger value="recent">Most Recent</TabsTrigger>
-              <TabsTrigger value="budget">Highest Budget</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="recommended" className="space-y-6">
+            <TabsContent value="all" className="space-y-6">
               {filteredOpportunities.length === 0 ? (
                 <Card>
                   <CardContent className="p-12 text-center">
@@ -782,13 +821,6 @@ export default function ProviderOpportunitiesPage() {
                             {opportunity.description}
                           </CardDescription>
                         </div>
-                        <Badge
-                          className={`${getMatchScoreColor(
-                            opportunity.matchScore
-                          )} font-semibold text-sm px-3 py-1`}
-                        >
-                          {opportunity.matchScore}% match
-                        </Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -899,20 +931,255 @@ export default function ProviderOpportunitiesPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="recent">
-              <div className="text-center py-12">
-                <p className="text-gray-500">
-                  Recent opportunities will be displayed here
-                </p>
-              </div>
-            </TabsContent>
+            <TabsContent value="recommended" className="space-y-6">
+              {loadingRecommended ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Loader2 className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-spin" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Loading recommended opportunities...
+                    </h3>
+                    <p className="text-gray-600">
+                      Please wait while we fetch AI-matched opportunities.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : errorRecommended ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <div className="w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                      <span className="text-red-600 text-xl">⚠️</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Error loading recommendations
+                    </h3>
+                    <p className="text-gray-600 mb-4">{errorRecommended}</p>
+                    <Button
+                      onClick={() => window.location.reload()}
+                      variant="outline"
+                    >
+                      Try Again
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : recommendedOpportunities.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Sparkles className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      No recommended opportunities found
+                    </h3>
+                    <p className="text-gray-600">
+                      Check back later for AI-matched opportunities based on your skills and preferences.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {recommendationsCacheInfo.cachedAt && recommendationsCacheInfo.nextRefreshAt && (
+                    <div className="text-xs text-gray-500 mb-4">
+                      {(() => {
+                        const now = Date.now();
+                        const cachedAt = recommendationsCacheInfo.cachedAt;
+                        const nextRefreshAt = recommendationsCacheInfo.nextRefreshAt;
+                        const ageMs = now - cachedAt;
+                        const remainingMs = nextRefreshAt - now;
+                        
+                        const ageMinutes = Math.floor(ageMs / 60000);
+                        const remainingMinutes = Math.floor(remainingMs / 60000);
+                        const remainingHours = Math.floor(remainingMinutes / 60);
+                        const remainingMins = remainingMinutes % 60;
+                        
+                        return (
+                          <>
+                            <span>Updated: {ageMinutes} minute{ageMinutes !== 1 ? 's' : ''} ago</span>
+                            {remainingMs > 0 && (
+                              <>
+                                {" • "}
+                                <span>Next refresh: in {remainingHours > 0 ? `${remainingHours} hour${remainingHours !== 1 ? 's' : ''} ` : ''}{remainingMins} minute{remainingMins !== 1 ? 's' : ''}</span>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  <div className="space-y-3 sm:space-y-4">
+                    {recommendedOpportunities.map((opportunity: any) => {
+                      const isExpanded = expandedOpportunityId === opportunity.id;
+                      return (
+                        <Card
+                          key={opportunity.id}
+                          className="group relative p-3 sm:p-4 md:p-5 border-2 border-gray-200 rounded-lg sm:rounded-xl hover:border-blue-400 hover:shadow-lg transition-all duration-300 bg-white"
+                        >
+                          {/* AI Badge Indicator - Desktop hover only */}
+                          {opportunity.aiExplanation && (
+                            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                              <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full text-xs font-medium shadow-md">
+                                <Sparkles className="w-3 h-3" />
+                                <span className="hidden sm:inline">AI Insights</span>
+                              </div>
+                            </div>
+                          )}
 
-            <TabsContent value="budget">
-              <div className="text-center py-12">
-                <p className="text-gray-500">
-                  Highest budget opportunities will be displayed here
-                </p>
-              </div>
+                          <CardHeader className="p-0 pb-3 sm:pb-4">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3 pr-0 sm:pr-20">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2 flex-wrap">
+                                  <CardTitle className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors text-base sm:text-lg break-words">
+                                    {opportunity.title}
+                                  </CardTitle>
+                                  {opportunity.matchScore !== undefined && (
+                                    <Badge
+                                      className={`text-xs font-semibold shrink-0 ${
+                                        opportunity.matchScore >= 80
+                                          ? "bg-green-100 text-green-700 border-green-300"
+                                          : opportunity.matchScore >= 60
+                                          ? "bg-blue-100 text-blue-700 border-blue-300"
+                                          : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                                      }`}
+                                    >
+                                      {opportunity.matchScore}% match
+                                    </Badge>
+                                  )}
+                                </div>
+                                <CardDescription className="text-xs sm:text-sm font-medium text-gray-700 mt-1">
+                                  {opportunity.budget}
+                                </CardDescription>
+                                {opportunity.client && (
+                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                    <p className="text-xs text-gray-600">
+                                      {opportunity.client}
+                                    </p>
+                                    {opportunity.verified && (
+                                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium shrink-0">
+                                        ✓ Verified
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* AI Explanation - Responsive: Hover on desktop, Click on mobile */}
+                            {opportunity.aiExplanation && (
+                              <div className="mb-3 sm:mb-4 overflow-hidden">
+                                {/* Collapsed State - Desktop hover, Mobile click */}
+                                <div className={`lg:group-hover:hidden ${isExpanded ? 'hidden' : 'block'} transition-all duration-300`}>
+                                  <button 
+                                    onClick={() => setExpandedOpportunityId(isExpanded ? null : opportunity.id)}
+                                    className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700 active:text-blue-800 font-medium touch-manipulation"
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="hidden sm:inline">Hover to see AI insights</span>
+                                    <span className="sm:hidden">Tap to see AI insights</span>
+                                    <ChevronRight className={`w-3 h-3 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  </button>
+                                </div>
+
+                                {/* Expanded State - Shows on hover (desktop) or click (mobile) */}
+                                <div className={`lg:group-hover:block ${isExpanded ? 'block' : 'hidden'} animate-in fade-in slide-in-from-top-2 duration-300`}>
+                                  <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-lg border-2 border-blue-200 shadow-md">
+                                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                                      <div className="p-1.5 bg-blue-100 rounded-lg shrink-0">
+                                        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+                                      </div>
+                                      <p className="text-xs sm:text-sm font-semibold text-blue-900">
+                                        Why this is recommended for you:
+                                      </p>
+                                      {/* Close button for mobile */}
+                                      <button
+                                        onClick={() => setExpandedOpportunityId(null)}
+                                        className="ml-auto lg:hidden text-blue-600 hover:text-blue-800 p-1"
+                                        aria-label="Close insights"
+                                      >
+                                        <span className="text-lg">×</span>
+                                      </button>
+                                    </div>
+                                    <div className="text-xs sm:text-sm text-blue-800 space-y-1.5 sm:space-y-2">
+                                      {opportunity.aiExplanation.split('\n').filter((line: string) => line.trim()).map((line: string, index: number) => {
+                                        const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
+                                        return cleanLine ? (
+                                          <div key={index} className="flex items-start gap-2 sm:gap-3">
+                                            <span className="text-blue-600 mt-0.5 font-bold flex-shrink-0">•</span>
+                                            <span className="leading-relaxed break-words">{cleanLine}</span>
+                                          </div>
+                                        ) : null;
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </CardHeader>
+
+                          <CardContent className="p-0 space-y-3 sm:space-y-4">
+                            <div className="flex flex-wrap gap-1.5">
+                              {(opportunity.skills || []).slice(0, 6).map((skill: string) => (
+                                <Badge
+                                  key={skill}
+                                  variant="secondary"
+                                  className="text-xs group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors border"
+                                >
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {(opportunity.skills || []).length > 6 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs border"
+                                >
+                                  +{(opportunity.skills || []).length - 6} more
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pt-3 border-t border-gray-200 group-hover:border-blue-200 transition-colors">
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-600 w-full sm:w-auto">
+                                <span className="capitalize font-medium">{opportunity.category}</span>
+                                {opportunity.timeline && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 shrink-0" />
+                                    <span className="break-words">{opportunity.timeline}</span>
+                                  </span>
+                                )}
+                                {opportunity.proposals !== undefined && (
+                                  <span className="whitespace-nowrap">{opportunity.proposals} proposal{opportunity.proposals !== 1 ? 's' : ''}</span>
+                                )}
+                              </div>
+                              <div className="flex gap-2 w-full sm:w-auto">
+                                <Link href={`/provider/opportunities/${opportunity.id}`} className="flex-1 sm:flex-none">
+                                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                                    <Eye className="w-4 h-4 mr-2" />
+                                    View Details
+                                  </Button>
+                                </Link>
+                                {opportunity.hasSubmitted ? (
+                                  <Button size="sm" disabled className="flex-1 sm:flex-none">
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    Submitted
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSubmitProposal(opportunity)}
+                                    className="flex-1 sm:flex-none group-hover:bg-blue-600 group-hover:text-white transition-all duration-300"
+                                  >
+                                    <ThumbsUp className="w-4 h-4 mr-2" />
+                                    Submit Proposal
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </TabsContent>
           </Tabs>
         )}

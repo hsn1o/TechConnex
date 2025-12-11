@@ -12,6 +12,7 @@ import {
   payMilestone,
   getCompanyProjectStats
 } from "./service.js";
+import { analyzeProjectDocument } from "./document-analyzer.js";
 import { CreateProjectDto, GetProjectsDto, UpdateProjectDto  } from "./dto.js";
 import { generateCustomerProjectsPDF } from "../../../utils/projectsPdfGenerator.js";
 
@@ -423,6 +424,38 @@ export async function exportProjectsController(req, res) {
     res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+}
+
+// POST /api/company/projects/analyze-document - Analyze project document
+export async function analyzeProjectDocumentController(req, res) {
+  try {
+    const filePath = req.file?.path;
+    const mimeType = req.file?.mimetype;
+
+    if (!filePath) {
+      return res.status(400).json({
+        success: false,
+        error: "No document uploaded.",
+      });
+    }
+
+    console.log("Analyzing project document:", filePath);
+
+    const extracted = await analyzeProjectDocument(filePath, mimeType);
+    
+    return res.json({
+      success: true,
+      data: extracted,
+    });
+  } catch (err) {
+    console.error("Project document analysis failed:", err.message);
+    console.error(err.stack);
+    return res.status(500).json({
+      success: false,
+      error: "AI document analysis failed.",
+      message: err.message,
     });
   }
 }

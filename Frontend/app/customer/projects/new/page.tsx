@@ -24,17 +24,20 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
-  Lightbulb,
   Zap,
   Clock,
   Shield,
   FileText,
   Sparkles,
   Loader2,
+  Upload,
+  File,
+  X,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
-import { createProject } from "@/lib/api";
+import { createProject, analyzeProjectDocument } from "@/lib/api";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { buildTimelineData } from "@/lib/timeline-utils";
@@ -60,14 +63,11 @@ export default function NewProjectPage() {
 
   const [newSkill, setNewSkill] = useState("");
 
-  const [aiSuggestions, setAiSuggestions] = useState({
-    techStack: [] as string[],
-    estimatedDuration: "",
-    suggestedBudget: "",
-    milestones: [] as string[],
-  });
-
-  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  // Track which fields are AI suggestions vs from document
+  const [fieldSources, setFieldSources] = useState<Record<string, "document" | "ai_suggestion" | "missing" | "manual">>({});
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const [errors, setErrors] = useState<{
     title?: string;
@@ -124,6 +124,10 @@ export default function NewProjectPage() {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Mark as manually edited if user changes a field
+    if (fieldSources[field] !== "manual") {
+      setFieldSources((prev) => ({ ...prev, [field]: "manual" }));
+    }
   };
 
   const handleSkillToggle = (skill: string) => {
@@ -185,20 +189,137 @@ export default function NewProjectPage() {
     setNewCategory("");
   };
 
-  const generateAiSuggestions = () => {
-    // Simulate AI suggestions based on form data
-    setAiSuggestions({
-      techStack: ["React", "Node.js", "MongoDB", "AWS"],
-      estimatedDuration: "8-12 weeks",
-      suggestedBudget: "RM 12,000 - RM 18,000",
-      milestones: [
-        "Project Planning & Design",
-        "Frontend Development",
-        "Backend Development",
-        "Testing & Deployment",
-      ],
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "text/plain",
+    ];
+    
+    const allowedExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt"];
+    const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf("."));
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload PDF, Word, Excel, or TXT files only.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "File size must be less than 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadedFile(file);
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+
+    try {
+      const response = await analyzeProjectDocument(file);
+      
+      if (response.success && response.data) {
+        const extracted = response.data;
+        const newSources: Record<string, "document" | "ai_suggestion" | "missing"> = {};
+
+        // Auto-fill form with extracted data
+        if (extracted.title?.value) {
+          setFormData((prev) => ({ ...prev, title: extracted.title.value }));
+          newSources.title = extracted.title.source;
+        }
+
+        if (extracted.description?.value) {
+          setFormData((prev) => ({ ...prev, description: extracted.description.value }));
+          newSources.description = extracted.description.source;
+        }
+
+        if (extracted.category?.value) {
+          setFormData((prev) => ({ ...prev, category: extracted.category.value }));
+          newSources.category = extracted.category.source;
+        }
+
+        if (extracted.budgetMin?.value !== null && extracted.budgetMin?.value !== undefined) {
+          setFormData((prev) => ({ ...prev, budgetMin: extracted.budgetMin.value.toString() }));
+          newSources.budgetMin = extracted.budgetMin.source;
+        }
+
+        if (extracted.budgetMax?.value !== null && extracted.budgetMax?.value !== undefined) {
+          setFormData((prev) => ({ ...prev, budgetMax: extracted.budgetMax.value.toString() }));
+          newSources.budgetMax = extracted.budgetMax.source;
+        }
+
+        if (extracted.timelineAmount?.value !== null && extracted.timelineAmount?.value !== undefined) {
+          setFormData((prev) => ({ ...prev, timelineAmount: extracted.timelineAmount.value.toString() }));
+          newSources.timelineAmount = extracted.timelineAmount.source;
+        }
+
+        if (extracted.timelineUnit?.value) {
+          setFormData((prev) => ({ ...prev, timelineUnit: extracted.timelineUnit.value }));
+          newSources.timelineUnit = extracted.timelineUnit.source;
+        }
+
+        if (extracted.skills?.value && Array.isArray(extracted.skills.value)) {
+          setFormData((prev) => ({ ...prev, skills: extracted.skills.value }));
+          newSources.skills = extracted.skills.source;
+        }
+
+        if (extracted.priority?.value) {
+          setFormData((prev) => ({ ...prev, priority: extracted.priority.value }));
+          newSources.priority = extracted.priority.source;
+        }
+
+        if (extracted.requirements?.value) {
+          setFormData((prev) => ({ ...prev, requirements: extracted.requirements.value }));
+          newSources.requirements = extracted.requirements.source;
+        }
+
+        if (extracted.deliverables?.value) {
+          setFormData((prev) => ({ ...prev, deliverables: extracted.deliverables.value }));
+          newSources.deliverables = extracted.deliverables.source;
+        }
+
+        if (extracted.ndaSigned?.value !== null && extracted.ndaSigned?.value !== undefined) {
+          setFormData((prev) => ({ ...prev, ndaSigned: extracted.ndaSigned.value }));
+          newSources.ndaSigned = extracted.ndaSigned.source;
+        }
+
+        setFieldSources(newSources);
+
+        toast({
+          title: "Document analyzed successfully",
+          description: "Form has been auto-filled. Review and adjust as needed.",
+        });
+      }
+    } catch (error) {
+      console.error("Document analysis error:", error);
+      setAnalysisError(error instanceof Error ? error.message : "Failed to analyze document");
+      toast({
+        title: "Analysis failed",
+        description: error instanceof Error ? error.message : "Failed to analyze document",
+        variant: "destructive",
     });
-    setShowAiSuggestions(true);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    setFieldSources({});
   };
 
   const validateForm = () => {
@@ -323,6 +444,10 @@ export default function NewProjectPage() {
       ...prev,
       [field]: html,
     }));
+    // Mark as manually edited if user changes a field
+    if (fieldSources[field] !== "manual") {
+      setFieldSources((prev) => ({ ...prev, [field]: "manual" }));
+    }
   };
   return (
     <CustomerLayout>
@@ -343,16 +468,110 @@ export default function NewProjectPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+            {/* Document Upload Section */}
+            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <CardTitle className="text-lg sm:text-xl text-blue-900">
+                    AI-Powered Document Analysis
+                  </CardTitle>
+                </div>
+                <CardDescription className="text-xs sm:text-sm text-blue-700">
+                  Upload your project proposal, requirements document, or project brief (PDF, Word, Excel, TXT) and we'll auto-fill the form for you
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6 pt-0">
+                {!uploadedFile ? (
+                  <div className="space-y-4">
+                    <label
+                      htmlFor="document-upload"
+                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-blue-300 border-dashed rounded-lg cursor-pointer bg-white hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 mb-2 text-blue-600" />
+                        <p className="mb-2 text-sm text-gray-700">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          PDF, Word, Excel, or TXT (MAX. 10MB)
+                        </p>
+                      </div>
+                      <input
+                        id="document-upload"
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+                        onChange={handleDocumentUpload}
+                        disabled={isAnalyzing}
+                      />
+                    </label>
+                    {isAnalyzing && (
+                      <div className="flex items-center justify-center gap-2 text-blue-600">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm">Analyzing document with AI...</span>
+                      </div>
+                    )}
+                    {analysisError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-600">{analysisError}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-white border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <File className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveFile}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="p-4 sm:p-6">
                 <CardTitle className="text-lg sm:text-xl">Project Details</CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   Provide clear information about your project requirements
+                  {Object.keys(fieldSources).length > 0 && (
+                    <span className="ml-2 text-blue-600">
+                      • Fields highlighted in blue are AI suggestions
+                    </span>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 pt-0">
                 <div className="space-y-2">
+                  <div className="flex items-center gap-2">
                   <Label htmlFor="title" className="text-sm sm:text-base">Project Title</Label>
+                    {fieldSources.title === "ai_suggestion" && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        AI Suggestion
+                      </Badge>
+                    )}
+                    {fieldSources.title === "document" && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        From Document
+                      </Badge>
+                    )}
+                  </div>
                   <Input
                     id="title"
                     placeholder="e.g., E-commerce Mobile App Development"
@@ -361,6 +580,10 @@ export default function NewProjectPage() {
                     className={`text-sm sm:text-base ${
                       errors.title
                         ? "border-red-500 focus-visible:ring-red-500"
+                        : fieldSources.title === "ai_suggestion"
+                        ? "border-blue-300 bg-blue-50/50 focus:border-blue-500 focus:ring-blue-500"
+                        : fieldSources.title === "document"
+                        ? "border-green-300 bg-green-50/50"
                         : ""
                     }`}
                   />
@@ -370,7 +593,21 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2">
                   <Label htmlFor="category" className="text-sm sm:text-base">Category</Label>
+                    {fieldSources.category === "ai_suggestion" && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        AI Suggestion
+                      </Badge>
+                    )}
+                    {fieldSources.category === "document" && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        From Document
+                      </Badge>
+                    )}
+                  </div>
 
                   {/* 1) Pick an existing category */}
                   <Select
@@ -383,6 +620,10 @@ export default function NewProjectPage() {
                       className={`text-sm sm:text-base ${
                         errors.category
                           ? "border-red-500 focus:ring-red-500"
+                          : fieldSources.category === "ai_suggestion"
+                          ? "border-blue-300 bg-blue-50/50"
+                          : fieldSources.category === "document"
+                          ? "border-green-300 bg-green-50/50"
                           : ""
                       }`}
                     >
@@ -438,13 +679,31 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <div className="flex items-center gap-2">
                   <Label htmlFor="description" className="text-sm sm:text-base">Project Description</Label>
+                    {fieldSources.description === "ai_suggestion" && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        AI Suggestion
+                      </Badge>
+                    )}
+                    {fieldSources.description === "document" && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        From Document
+                      </Badge>
+                    )}
+                  </div>
                   <Textarea
                     id="description"
                     placeholder="Describe your project in detail..."
                     className={`min-h-[120px] text-sm sm:text-base ${
                       errors.description
                         ? "border-red-500 focus-visible:ring-red-500"
+                        : fieldSources.description === "ai_suggestion"
+                        ? "border-blue-300 bg-blue-50/50 focus:border-blue-500 focus:ring-blue-500"
+                        : fieldSources.description === "document"
+                        ? "border-green-300 bg-green-50/50"
                         : ""
                     }`}
                     value={formData.description}
@@ -459,7 +718,21 @@ export default function NewProjectPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
+                    <div className="flex items-center gap-2">
                     <Label htmlFor="budgetMin" className="text-sm sm:text-base">Minimum Budget (RM)</Label>
+                      {fieldSources.budgetMin === "ai_suggestion" && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          AI
+                        </Badge>
+                      )}
+                      {fieldSources.budgetMin === "document" && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Doc
+                        </Badge>
+                      )}
+                    </div>
                     <Input
                       id="budgetMin"
                       type="number"
@@ -471,6 +744,10 @@ export default function NewProjectPage() {
                       className={`text-sm sm:text-base ${
                         errors.budgetMin
                           ? "border-red-500 focus-visible:ring-red-500"
+                          : fieldSources.budgetMin === "ai_suggestion"
+                          ? "border-blue-300 bg-blue-50/50 focus:border-blue-500 focus:ring-blue-500"
+                          : fieldSources.budgetMin === "document"
+                          ? "border-green-300 bg-green-50/50"
                           : ""
                       }`}
                     />
@@ -480,7 +757,21 @@ export default function NewProjectPage() {
                   </div>
 
                   <div className="space-y-2">
+                    <div className="flex items-center gap-2">
                     <Label htmlFor="budgetMax" className="text-sm sm:text-base">Maximum Budget (RM)</Label>
+                      {fieldSources.budgetMax === "ai_suggestion" && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          AI
+                        </Badge>
+                      )}
+                      {fieldSources.budgetMax === "document" && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Doc
+                        </Badge>
+                      )}
+                    </div>
                     <Input
                       id="budgetMax"
                       type="number"
@@ -492,6 +783,10 @@ export default function NewProjectPage() {
                       className={`text-sm sm:text-base ${
                         errors.budgetMax
                           ? "border-red-500 focus-visible:ring-red-500"
+                          : fieldSources.budgetMax === "ai_suggestion"
+                          ? "border-blue-300 bg-blue-50/50 focus:border-blue-500 focus:ring-blue-500"
+                          : fieldSources.budgetMax === "document"
+                          ? "border-green-300 bg-green-50/50"
                           : ""
                       }`}
                     />
@@ -502,7 +797,21 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <div className="flex items-center gap-2">
                   <Label htmlFor="timeline" className="text-sm sm:text-base">Project Timeline *</Label>
+                    {(fieldSources.timelineAmount === "ai_suggestion" || fieldSources.timelineUnit === "ai_suggestion") && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        AI Suggestion
+                      </Badge>
+                    )}
+                    {(fieldSources.timelineAmount === "document" || fieldSources.timelineUnit === "document") && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        From Document
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       id="timelineAmount"
@@ -516,6 +825,10 @@ export default function NewProjectPage() {
                       className={`text-sm sm:text-base ${
                         errors.timelineAmount
                           ? "border-red-500 focus-visible:ring-red-500"
+                          : fieldSources.timelineAmount === "ai_suggestion"
+                          ? "border-blue-300 bg-blue-50/50 focus:border-blue-500 focus:ring-blue-500"
+                          : fieldSources.timelineAmount === "document"
+                          ? "border-green-300 bg-green-50/50"
                           : ""
                       }`}
                     />
@@ -529,6 +842,10 @@ export default function NewProjectPage() {
                         className={`text-sm sm:text-base w-full sm:w-auto ${
                           errors.timelineUnit
                             ? "border-red-500 focus:ring-red-500"
+                            : fieldSources.timelineUnit === "ai_suggestion"
+                            ? "border-blue-300 bg-blue-50/50"
+                            : fieldSources.timelineUnit === "document"
+                            ? "border-green-300 bg-green-50/50"
                             : ""
                         }`}
                       >
@@ -554,7 +871,21 @@ export default function NewProjectPage() {
                 </div>
 
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2">
                   <Label className="text-sm sm:text-base">Required Skills</Label>
+                    {fieldSources.skills === "ai_suggestion" && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        AI Suggestion
+                      </Badge>
+                    )}
+                    {fieldSources.skills === "document" && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        From Document
+                      </Badge>
+                    )}
+                  </div>
 
                   {/* Selected skills preview */}
                   {formData.skills.length > 0 && (
@@ -665,32 +996,62 @@ export default function NewProjectPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm sm:text-base block mb-2">Requirements</label>
-                    <div className="text-sm sm:text-base">
+                    <div className="flex items-center gap-2 mb-2">
+                      <label className="text-sm sm:text-base">Requirements</label>
+                      {fieldSources.requirements === "ai_suggestion" && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          AI Suggestion
+                        </Badge>
+                      )}
+                      {fieldSources.requirements === "document" && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          From Document
+                        </Badge>
+                      )}
+                    </div>
+                    <div className={`text-sm sm:text-base ${fieldSources.requirements === "ai_suggestion" ? "border-2 border-blue-300 rounded" : fieldSources.requirements === "document" ? "border-2 border-green-300 rounded" : ""}`}>
                       <RichEditor
                         content={formData.requirements}
                         onChange={(html) => handleChange("requirements", html)}
                         placeholder="Enter your requirements …"
                         initialHeight={300}
                         style={{
-                          border: "1px solid #ccc",
+                          border: fieldSources.requirements === "ai_suggestion" ? "1px solid #93c5fd" : fieldSources.requirements === "document" ? "1px solid #86efac" : "1px solid #ccc",
                           padding: "8px",
+                          backgroundColor: fieldSources.requirements === "ai_suggestion" ? "#eff6ff" : fieldSources.requirements === "document" ? "#f0fdf4" : "white",
                         }}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-sm sm:text-base block mb-2">Deliverables</label>
-                    <div className="text-sm sm:text-base">
+                    <div className="flex items-center gap-2 mb-2">
+                      <label className="text-sm sm:text-base">Deliverables</label>
+                      {fieldSources.deliverables === "ai_suggestion" && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          AI Suggestion
+                        </Badge>
+                      )}
+                      {fieldSources.deliverables === "document" && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          From Document
+                        </Badge>
+                      )}
+                    </div>
+                    <div className={`text-sm sm:text-base ${fieldSources.deliverables === "ai_suggestion" ? "border-2 border-blue-300 rounded" : fieldSources.deliverables === "document" ? "border-2 border-green-300 rounded" : ""}`}>
                       <RichEditor
                         content={formData.deliverables}
                         initialHeight={300}
                         onChange={(html) => handleChange("deliverables", html)}
                         placeholder="Enter your deliverables …"
                         style={{
-                          border: "1px solid #ccc",
+                          border: fieldSources.deliverables === "ai_suggestion" ? "1px solid #93c5fd" : fieldSources.deliverables === "document" ? "1px solid #86efac" : "1px solid #ccc",
                           padding: "8px",
+                          backgroundColor: fieldSources.deliverables === "ai_suggestion" ? "#eff6ff" : fieldSources.deliverables === "document" ? "#f0fdf4" : "white",
                         }}
                       />
                     </div>
@@ -699,86 +1060,7 @@ export default function NewProjectPage() {
               </CardContent>
             </Card>
 
-            {/* AI Suggestions */}
-            {showAiSuggestions && (
-              <Card className="border-blue-200 bg-blue-50/50">
-                <CardHeader className="p-4 sm:p-6">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-                    <CardTitle className="text-base sm:text-lg text-blue-900">
-                      AI Project Insights
-                    </CardTitle>
-                  </div>
-                  <CardDescription className="text-xs sm:text-sm text-blue-700">
-                    Based on your project description, here are our AI-powered
-                    recommendations
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <h4 className="font-semibold text-sm sm:text-base text-blue-900 mb-2">
-                        Recommended Tech Stack
-                      </h4>
-                      <div className="flex flex-wrap gap-1">
-                        {aiSuggestions.techStack.map((tech) => (
-                          <Badge
-                            key={tech}
-                            className="bg-blue-100 text-blue-800 text-xs"
-                          >
-                            {tech}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-sm sm:text-base text-blue-900 mb-2">
-                        Estimated Duration
-                      </h4>
-                      <p className="text-xs sm:text-sm text-blue-800">
-                        {aiSuggestions.estimatedDuration}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base text-blue-900 mb-2">
-                      Suggested Budget Range
-                    </h4>
-                    <p className="text-xs sm:text-sm text-blue-800">
-                      {aiSuggestions.suggestedBudget}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base text-blue-900 mb-2">
-                      Recommended Milestones
-                    </h4>
-                    <ul className="space-y-1">
-                      {aiSuggestions.milestones.map((milestone, index) => (
-                        <li
-                          key={index}
-                          className="flex items-center gap-2 text-xs sm:text-sm text-blue-800"
-                        >
-                          <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0" />
-                          <span>{milestone}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <Button
-                onClick={generateAiSuggestions}
-                variant="outline"
-                className="flex-1 bg-transparent text-xs sm:text-sm"
-              >
-                <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                Get AI Suggestions
-              </Button>
               <Button
                 onClick={handleSubmit}
                 className="flex-1 text-xs sm:text-sm"

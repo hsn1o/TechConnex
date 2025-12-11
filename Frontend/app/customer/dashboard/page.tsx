@@ -516,15 +516,15 @@ export default function CustomerDashboard() {
                         )}
 
                         <div className="flex items-start space-x-2 sm:space-x-3 pr-20">
-                          <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
-                            <AvatarImage
-                              src={provider.avatar || "/placeholder.svg"}
-                            />
-                            <AvatarFallback>
-                              {provider.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
+                            <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
+                              <AvatarImage
+                                src={provider.avatar || "/placeholder.svg"}
+                              />
+                              <AvatarFallback>
+                                {provider.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h4 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors text-sm sm:text-base">
                                 {provider.name}
@@ -549,8 +549,8 @@ export default function CustomerDashboard() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-xs sm:text-sm text-gray-600 truncate">
-                              {provider.specialty}
+                              <p className="text-xs sm:text-sm text-gray-600 truncate">
+                                {provider.specialty}
                             </p>
                             {provider.recommendedFor && (
                               <p className="text-xs text-blue-600 mt-1 font-medium">
@@ -558,51 +558,51 @@ export default function CustomerDashboard() {
                               </p>
                             )}
                             <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                              <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
-                              <span className="text-xs sm:text-sm font-medium">
+                                <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
+                                <span className="text-xs sm:text-sm font-medium">
                                 {provider.rating.toFixed(1)}
-                              </span>
-                              <span className="text-xs sm:text-sm text-gray-500">
-                                ({provider.completedJobs} jobs)
+                                </span>
+                                <span className="text-xs sm:text-sm text-gray-500">
+                                  ({provider.completedJobs} jobs)
                               </span>
                               {provider.yearsExperience > 0 && (
                                 <span className="text-xs text-gray-500">
                                   • {provider.yearsExperience} years exp.
                                 </span>
                               )}
-                            </div>
-                            <div className="flex items-center gap-1 mt-1">
-                              <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                              <span className="text-xs text-gray-500 truncate">
-                                {provider.location}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
-                              {provider.skills
-                                .slice(0, 2)
-                                .map((skill: string) => (
-                                  <Badge
-                                    key={skill}
-                                    variant="secondary"
+                              </div>
+                              <div className="flex items-center gap-1 mt-1">
+                                <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                <span className="text-xs text-gray-500 truncate">
+                                  {provider.location}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
+                                {provider.skills
+                                  .slice(0, 2)
+                                  .map((skill: string) => (
+                                    <Badge
+                                      key={skill}
+                                      variant="secondary"
                                     className="text-xs group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors border"
+                                    >
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                {provider.skills.length > 2 && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
                                   >
-                                    {skill}
+                                    +{provider.skills.length - 2}
                                   </Badge>
-                                ))}
-                              {provider.skills.length > 2 && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs"
-                                >
-                                  +{provider.skills.length - 2}
-                                </Badge>
-                              )}
+                                )}
+                              </div>
+                              <p className="text-xs sm:text-sm font-medium text-blue-600 mt-1.5 sm:mt-2">
+                                RM{provider.hourlyRate}/hour
+                              </p>
                             </div>
-                            <p className="text-xs sm:text-sm font-medium text-blue-600 mt-1.5 sm:mt-2">
-                              RM{provider.hourlyRate}/hour
-                            </p>
                           </div>
-                        </div>
 
                         {/* AI Explanation - Expandable on Hover */}
                         {provider.aiExplanation && (
