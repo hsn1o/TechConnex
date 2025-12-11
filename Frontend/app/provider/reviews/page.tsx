@@ -754,7 +754,7 @@ function ReviewCard({
           <div className="flex flex-wrap gap-2 relative z-10">
             {type === "given" && (
               <>
-                <Button
+                {/* <Button
                   variant="outline"
                   size="sm"
                   onClick={() => onEdit?.(review)}
@@ -771,7 +771,7 @@ function ReviewCard({
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
-                </Button>
+                </Button> */}
               </>
             )}
             {type === "received" && (
