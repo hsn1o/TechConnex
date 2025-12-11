@@ -535,6 +535,7 @@ export async function getCompanyProjectStats(customerId) {
       completedProjects,
       disputedProjects,
       totalSpentResult,
+      reviewStats,
     ] = await Promise.all([
       prisma.project.count({
         where: {
@@ -561,13 +562,30 @@ export async function getCompanyProjectStats(customerId) {
         },
         _sum: { amount: true },
       }),
+      Promise.all([
+        prisma.review.count({
+          where: {
+            recipientId: customerId,
+          },
+        }),
+        prisma.review.aggregate({
+          where: {
+            recipientId: customerId,
+          },
+          _avg: { rating: true },
+        }),
+      ]),
     ]);
+
+    const [reviewCount, averageRatingResult] = reviewStats;
 
     return {
       activeProjects,
       completedProjects,
       disputedProjects,
       totalSpent: totalSpentResult._sum.amount || 0,
+      averageRating: averageRatingResult._avg.rating || null,
+      reviewCount: reviewCount || 0,
     };
   } catch (error) {
     console.error("Error fetching company project stats:", error);
