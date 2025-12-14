@@ -138,7 +138,11 @@ export default function ProviderOpportunitiesPage() {
   }>({});
 
   // Helper function to map opportunity data
-  const mapOpportunityData = (opportunity: any) => ({
+  // useRecommendationInsights: if true, use aiExplanation from opportunity (for recommended tab), if false, ignore it (for all tab - will use drafts)
+  const mapOpportunityData = (
+    opportunity: any,
+    useRecommendationInsights: boolean = false
+  ) => ({
     id: opportunity.id,
     title: opportunity.title,
     description: opportunity.description,
@@ -218,7 +222,11 @@ export default function ProviderOpportunitiesPage() {
       avgRating: 4.5,
     },
     originalData: opportunity,
-    aiExplanation: opportunity.aiExplanation || null, // Add AI explanation for recommended opportunities
+    // Only use aiExplanation from opportunity if useRecommendationInsights is true (for recommended tab)
+    // For "All" tab, this will be null and we'll use drafts instead
+    aiExplanation: useRecommendationInsights
+      ? opportunity.aiExplanation || null
+      : null,
     serviceRequestId: opportunity.id, // ID for fetching AI drafts
   });
 
@@ -237,11 +245,12 @@ export default function ProviderOpportunitiesPage() {
         });
 
         if (response.success) {
+          // For "All" tab: Don't use recommendation insights, only use drafts
           let mappedOpportunities = (response.opportunities || []).map(
-            mapOpportunityData
+            (opp: any) => mapOpportunityData(opp, false) // false = don't use recommendation insights
           );
 
-          // If any serviceRequestIds exist, fetch AiDraft summaries and merge into opportunities
+          // Fetch AiDraft summaries and merge into opportunities (this is the only source of AI insights for "All" tab)
           const serviceRequestIds = mappedOpportunities
             .map((opp: any) => opp.serviceRequestId)
             .filter(Boolean);
@@ -256,10 +265,11 @@ export default function ProviderOpportunitiesPage() {
                 );
                 mappedOpportunities = mappedOpportunities.map((opp: any) => ({
                   ...opp,
+                  // Only use draft summary for "All" tab
                   aiExplanation:
                     opp.serviceRequestId && draftMap.has(opp.serviceRequestId)
                       ? draftMap.get(opp.serviceRequestId)
-                      : opp.aiExplanation,
+                      : null,
                 }));
               }
             } catch (err) {
@@ -294,9 +304,19 @@ export default function ProviderOpportunitiesPage() {
 
         const response = await getProviderRecommendedOpportunities();
         if (response.success) {
+          // For "AI Recommended" tab: Use recommendation insights (aiExplanation from API), don't fetch drafts
+          // Map the data but ensure aiExplanation from recommendation API is preserved
           const mappedRecommended = (response.recommendations || []).map(
-            mapOpportunityData
+            (opp: any) => {
+              const mapped = mapOpportunityData(opp, true); // true = use recommendation insights
+              // Explicitly preserve the aiExplanation from the recommendation API response
+              return {
+                ...mapped,
+                aiExplanation: opp.aiExplanation || null, // Use aiExplanation directly from API response
+              };
+            }
           );
+          // Don't fetch drafts for recommended opportunities - use the aiExplanation from the recommendation API
           setRecommendedOpportunities(mappedRecommended);
           setRecommendationsCacheInfo({
             cachedAt: response.cachedAt,

@@ -21,6 +21,7 @@ import {
   LogOut,
   Zap,
   Star,
+  MessageSquare,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,7 @@ const NAV_ITEMS = [
   { name: "Verifications", href: "/admin/verifications", icon: Shield },
   { name: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
   { name: "Payments", href: "/admin/payments", icon: DollarSign },
+  { name: "Messages", href: "/admin/messages", icon: MessageSquare },
   { name: "Reports", href: "/admin/reports", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];

@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AdminLayout } from "@/components/admin-layout"
 import { getAdminUserById, suspendUser, activateUser, updateAdminUser } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, Ban, CheckCircle, Building, Users, Calendar, Mail, Phone, MapPin, Globe, Award, Star, DollarSign, FileText, Loader2, Edit, Save, X } from "lucide-react"
+import { ArrowLeft, Ban, CheckCircle, Building, Users, Calendar, Mail, Phone, MapPin, Globe, Award, Star, DollarSign, FileText, Loader2, Edit, Save, X, MessageSquare } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminUserDetailPage() {
@@ -331,6 +331,20 @@ export default function AdminUserDetailPage() {
               </>
             ) : (
               <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const avatar = isProvider 
+                      ? user.providerProfile?.profileImageUrl 
+                      : user.customerProfile?.profileImageUrl;
+                    router.push(
+                      `/admin/messages?userId=${user.id}&name=${encodeURIComponent(user.name || "")}&avatar=${encodeURIComponent(avatar || "")}`
+                    );
+                  }}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Contact
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => setIsEditing(true)}

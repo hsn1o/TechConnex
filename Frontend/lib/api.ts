@@ -2629,3 +2629,117 @@ export async function getServiceRequestAiDrafts(referenceIds?: string[]) {
   return data;
 }
 
+// Admin Payment Functions
+export async function getAdminPayments(filters?: {
+  search?: string;
+  status?: string;
+  method?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: string;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams();
+  if (filters?.search) params.append("search", filters.search);
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.method) params.append("method", filters.method);
+  if (filters?.page) params.append("page", filters.page.toString());
+  if (filters?.limit) params.append("limit", filters.limit.toString());
+  if (filters?.sortBy) params.append("sortBy", filters.sortBy);
+  if (filters?.sortOrder) params.append("sortOrder", filters.sortOrder);
+
+  const res = await fetch(`${API_BASE}/admin/payments?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch payments");
+  return data;
+}
+
+export async function getAdminPaymentStats() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/payments/stats`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch payment stats");
+  return data;
+}
+
+export async function getAdminPaymentById(paymentId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/payments/${paymentId}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch payment");
+  return data;
+}
+
+export async function getAdminReadyToTransferPayments() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/payments/ready-to-transfer`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to fetch ready to transfer payments");
+  return data;
+}
+
+export async function confirmAdminBankTransfer(
+  paymentId: string,
+  transferRef: string,
+  file?: File | null
+) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const formData = new FormData();
+  formData.append("transferRef", transferRef);
+  if (file) {
+    formData.append("transferProof", file);
+  }
+
+  const res = await fetch(`${API_BASE}/admin/payments/${paymentId}/confirm-transfer`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      // Don't set Content-Type header when using FormData - browser will set it with boundary
+    },
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to confirm bank transfer");
+  return data;
+}
+

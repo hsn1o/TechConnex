@@ -103,7 +103,7 @@ export const disputeController = {
       
       res.json({
         success: true,
-        message: "Payout simulated successfully",
+        message: "Dispute payout processed successfully",
         ...result,
       });
     } catch (error) {

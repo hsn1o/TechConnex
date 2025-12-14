@@ -151,6 +151,7 @@ export default function CustomerDashboard() {
         }
 
         // Fetch recommended providers based on ServiceRequests
+        // Note: Dashboard uses AI-generated recommendation insights (not AI drafts)
         try {
           const recommendationsResponse = await getRecommendedProviders();
           if (recommendationsResponse.success) {
@@ -178,7 +179,8 @@ export default function CustomerDashboard() {
               verified: provider.isVerified || false,
               matchScore: provider.matchScore,
               recommendedFor: provider.recommendedForServiceRequest,
-              aiExplanation: provider.aiExplanation,
+              // Use AI-generated recommendation insights from the API (not AI drafts)
+              aiExplanation: provider.aiExplanation || null,
               yearsExperience: provider.yearsExperience,
               successRate: provider.successRate,
               responseTime: provider.responseTime,

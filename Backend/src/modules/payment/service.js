@@ -450,8 +450,26 @@ export async function confirmBankTransfer(
     throw new Error("Payment not found");
   }
 
-  if (payment.status !== "RELEASED") {
-    throw new Error("Payment must be in RELEASED status");
+  // Check if payment is ESCROWED and milestone is APPROVED
+  if (payment.status !== "ESCROWED") {
+    throw new Error("Payment must be in ESCROWED status");
+  }
+
+  // Check milestone status if milestoneId exists
+  if (payment.milestoneId) {
+    const milestone = await prisma.milestone.findUnique({
+      where: { id: payment.milestoneId },
+    });
+    
+    if (!milestone) {
+      throw new Error("Milestone not found");
+    }
+    
+    if (milestone.status !== "APPROVED") {
+      throw new Error("Milestone must be APPROVED before transfer");
+    }
+  } else {
+    throw new Error("Payment must be associated with a milestone");
   }
 
   // Update payment
@@ -499,7 +517,7 @@ export async function confirmBankTransfer(
 /**
  * Refund Payment (For disputes or cancellations)
  */
-export async function refundPayment(paymentId, reason, refundedBy) {
+export async function refundPayment(paymentId, reason, refundedBy, refundAmount = null) {
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: {
@@ -516,61 +534,89 @@ export async function refundPayment(paymentId, reason, refundedBy) {
     throw new Error("Payment not found");
   }
 
-  if (payment.status !== "ESCROWED") {
-    throw new Error("Can only refund escrowed payments");
+  if (payment.status !== "ESCROWED" && payment.status !== "DISPUTED") {
+    throw new Error("Can only refund escrowed or disputed payments");
   }
 
   if (!payment.stripeChargeId) {
     throw new Error("No Stripe charge found for this payment");
   }
 
+  // Determine refund amount (full or partial)
+  const refundAmountInSen = refundAmount 
+    ? Math.round(refundAmount * 100) 
+    : Math.round(payment.amount * 100);
+  
+  if (refundAmountInSen > Math.round(payment.amount * 100)) {
+    throw new Error("Refund amount cannot exceed payment amount");
+  }
+
   // Create refund in Stripe
   const refund = await stripe.refunds.create({
     charge: payment.stripeChargeId,
-    amount: Math.round(payment.amount * 100), // Full refund in sen
+    amount: refundAmountInSen,
     reason: "requested_by_customer",
     metadata: {
       paymentId: payment.id,
       refundReason: reason,
       refundedBy,
+      isPartial: refundAmount !== null && refundAmount < payment.amount,
     },
   });
+
+  // Determine new payment status
+  // If partial refund, payment remains in escrow but with reduced amount
+  // If full refund, mark as REFUNDED
+  const isFullRefund = refundAmount === null || refundAmount >= payment.amount;
+  const newStatus = isFullRefund ? "REFUNDED" : "ESCROWED";
+
+  // Calculate remaining amount if partial refund
+  const remainingAmount = isFullRefund ? 0 : payment.amount - refundAmount;
 
   // Update payment
   const updatedPayment = await prisma.payment.update({
     where: { id: paymentId },
     data: {
-      status: "REFUNDED",
+      status: newStatus,
       stripeRefundId: refund.id,
+      amount: isFullRefund ? payment.amount : remainingAmount, // Update amount if partial
       metadata: {
         ...payment.metadata,
         refundReason: reason,
         refundedBy,
         refundedAt: new Date().toISOString(),
+        refundAmount: refundAmount || payment.amount,
+        isPartialRefund: !isFullRefund,
+        originalAmount: payment.amount,
       },
     },
   });
 
-  // Update milestone
-  await prisma.milestone.update({
-    where: { id: payment.milestoneId },
-    data: {
-      status: "CANCELLED",
-      isPaid: false,
-    },
-  });
+  // Update milestone only if full refund
+  if (isFullRefund) {
+    await prisma.milestone.update({
+      where: { id: payment.milestoneId },
+      data: {
+        status: "CANCELLED",
+        isPaid: false,
+      },
+    });
+  }
 
   // Notify customer
   await prisma.notification.create({
     data: {
       userId: payment.project.customerId,
       type: "PAYMENT_REFUNDED",
-      title: "Payment Refunded",
-      content: `Your payment of MYR ${payment.amount} has been refunded. Reason: ${reason}`,
+      title: isFullRefund ? "Payment Refunded" : "Partial Refund Processed",
+      content: isFullRefund
+        ? `Your payment of MYR ${payment.amount} has been refunded. Reason: ${reason}`
+        : `A partial refund of MYR ${refundAmount} has been processed. Remaining amount: MYR ${remainingAmount}. Reason: ${reason}`,
       metadata: {
         paymentId: payment.id,
-        amount: payment.amount,
+        amount: refundAmount || payment.amount,
         refundId: refund.id,
+        isPartial: !isFullRefund,
       },
     },
   });
@@ -578,6 +624,8 @@ export async function refundPayment(paymentId, reason, refundedBy) {
   return {
     payment: updatedPayment,
     refund,
+    isPartial: !isFullRefund,
+    remainingAmount: isFullRefund ? 0 : remainingAmount,
   };
 }
 
@@ -636,12 +684,105 @@ export async function getProviderEarnings(providerId) {
   };
 }
 
+/**
+ * Release payment to provider (for dispute resolution)
+ * This is similar to releasePaymentToProvider but works with paymentId directly
+ */
+export async function releasePaymentForDispute(paymentId, adminId) {
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      project: {
+        include: {
+          provider: {
+            include: {
+              providerProfile: true,
+            },
+          },
+        },
+      },
+      milestone: true,
+    },
+  });
+
+  if (!payment) {
+    throw new Error("Payment not found");
+  }
+
+  if (payment.status !== "ESCROWED" && payment.status !== "DISPUTED") {
+    throw new Error("Can only release escrowed or disputed payments");
+  }
+
+  // Verify provider has bank details
+  const providerProfile = payment.project.provider.providerProfile;
+  if (!providerProfile?.bankAccountNumber || !providerProfile?.bankName) {
+    throw new Error("Provider must add bank details before receiving payment");
+  }
+
+  // Update payment status to RELEASED
+  const updatedPayment = await prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      status: "RELEASED",
+      releasedAt: new Date(),
+      bankTransferStatus: "PENDING",
+      metadata: {
+        ...payment.metadata,
+        releasedBy: adminId,
+        releasedAt: new Date().toISOString(),
+        releasedForDispute: true,
+        bankDetails: {
+          bankName: providerProfile.bankName,
+          accountNumber: providerProfile.bankAccountNumber,
+          accountName: providerProfile.bankAccountName,
+        },
+      },
+    },
+  });
+
+  // Create notification for admin to process bank transfer
+  await prisma.notification.create({
+    data: {
+      userId: adminId,
+      type: "PAYMENT_RELEASE_PENDING",
+      title: "Manual Payout Required",
+      content: `Payment of MYR ${payment.providerAmount} needs to be transferred to ${providerProfile.bankAccountName}`,
+      metadata: {
+        paymentId: payment.id,
+        providerAmount: payment.providerAmount,
+        bankDetails: {
+          bankName: providerProfile.bankName,
+          accountNumber: providerProfile.bankAccountNumber,
+          accountName: providerProfile.bankAccountName,
+        },
+      },
+    },
+  });
+
+  // Notify provider
+  await prisma.notification.create({
+    data: {
+      userId: payment.project.providerId,
+      type: "PAYMENT_RELEASED",
+      title: "Payment Released!",
+      content: `Your payment of MYR ${payment.providerAmount} is being processed. You'll receive it within 1-3 business days.`,
+      metadata: {
+        paymentId: payment.id,
+        amount: payment.providerAmount,
+      },
+    },
+  });
+
+  return updatedPayment;
+}
+
 export default {
   initiateClientPayment,
   confirmPaymentSuccess,
   releasePaymentToProvider,
   confirmBankTransfer,
   refundPayment,
+  releasePaymentForDispute,
   getPendingPayouts,
   getProviderEarnings,
 };

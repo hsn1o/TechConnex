@@ -26,6 +26,7 @@ import {
   MapPin,
   Phone,
   Mail,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch, API_BASE } from "@/lib/api";
@@ -250,12 +251,42 @@ export default function TransactionDetailPage() {
                     <p className="font-medium">{transaction.milestone.title}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Payment Method</p>
+                    <p className="text-sm text-gray-500">Payment Status</p>
                     <div className="flex items-center gap-2">
                       <CreditCard className="w-4 h-4 text-gray-400" />
-                      <p className="font-medium">{transaction.method}</p>
+                      <p className="font-medium">{transaction.status}</p>
                     </div>
                   </div>
+                  {transaction.status === "TRANSFERRED" &&
+                    transaction.bankTransferRef && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-500 mb-1">
+                          Transfer Reference / Proof
+                        </p>
+                        {transaction.bankTransferRef.startsWith("http://") ||
+                        transaction.bankTransferRef.startsWith("https://") ? (
+                          <a
+                            href={transaction.bankTransferRef}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex items-center gap-2"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              View File
+                            </Button>
+                          </a>
+                        ) : (
+                          <p className="text-sm font-mono bg-gray-50 px-3 py-2 rounded border">
+                            {transaction.bankTransferRef}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    
                   {/* <div>
                     <p className="text-sm text-gray-500">Invoice Number</p>
                     <p className="font-medium">{transaction.id}</p>

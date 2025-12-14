@@ -608,7 +608,7 @@ export default function ProviderEarningsPage() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="payments">Payment History</TabsTrigger>
             {/* <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
-            <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
+            {/* <TabsTrigger value="withdraw">Withdraw</TabsTrigger> */}
             <TabsTrigger value="methods">Payment Methods</TabsTrigger>
           </TabsList>
 
@@ -745,7 +745,7 @@ export default function ProviderEarningsPage() {
                 </Card>
 
                 {/* Top Clients */}
-                <Card>
+                {/* <Card>
                   <CardHeader>
                     <CardTitle>Top Clients</CardTitle>
                     <CardDescription>
@@ -754,7 +754,7 @@ export default function ProviderEarningsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {/* {topClients.map((client, index) => (
+                      {topClients.map((client, index) => (
                         <div key={index} className="flex items-center space-x-3">
                           <Avatar className="w-10 h-10">
                             <AvatarImage src={client.avatar || "/placeholder.svg"} />
@@ -768,13 +768,13 @@ export default function ProviderEarningsPage() {
                             <p className="font-semibold">RM{client.totalPaid.toLocaleString()}</p>
                           </div>
                         </div>
-                      ))} */}
+                      ))}
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
 
                 {/* Withdraw Balance */}
-                <Card>
+                {/* <Card>
                   <CardHeader>
                     <CardTitle>Available Balance</CardTitle>
                   </CardHeader>
@@ -794,7 +794,7 @@ export default function ProviderEarningsPage() {
                       </Button>
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
               </div>
             </div>
           </TabsContent>
@@ -937,7 +937,7 @@ export default function ProviderEarningsPage() {
           </TabsContent> */}
 
           {/* Withdraw */}
-          <TabsContent value="withdraw">
+          {/* <TabsContent value="withdraw">
             <div className="max-w-2xl mx-auto">
               <Card>
                 <CardHeader>
@@ -1031,7 +1031,7 @@ export default function ProviderEarningsPage() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+          </TabsContent> */}
 
           {/* Payment Methods Tab */}
           {/* Payment Methods Tab */}

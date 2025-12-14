@@ -87,7 +87,7 @@ export default function FindProvidersClient({
             filtered = filtered.filter((p: any) => p.isVerified !== true);
           }
 
-          // If any profileIds exist, fetch AiDraft summaries and merge into providers
+          // For "All" tab: Only use AI drafts, ignore any aiExplanation from search results
           const profileIds = filtered
             .map((p: any) => p.profileId)
             .filter(Boolean);
@@ -100,10 +100,11 @@ export default function FindProvidersClient({
                 );
                 filtered = filtered.map((p: any) => ({
                   ...p,
+                  // Only use draft summary for "All" tab, ignore any aiExplanation from search API
                   aiExplanation:
                     p.profileId && draftMap.has(p.profileId)
                       ? draftMap.get(p.profileId)
-                      : p.aiExplanation,
+                      : null,
                 }));
               }
             } catch (err) {
@@ -159,36 +160,14 @@ export default function FindProvidersClient({
             verified: provider.isVerified || false,
             matchScore: provider.matchScore,
             recommendedFor: provider.recommendedForServiceRequest,
-            aiExplanation: provider.aiExplanation,
+            // For "AI Recommended" tab: Use the aiExplanation from recommendation API, don't fetch drafts
+            aiExplanation: provider.aiExplanation || null,
             yearsExperience: provider.yearsExperience,
             successRate: provider.successRate,
             responseTime: provider.responseTime,
           }));
 
-          // If any profileIds present, fetch AiDraft summaries and merge
-          const profileIds = mappedProviders
-            .map((p) => p.profileId)
-            .filter(Boolean);
-          if (profileIds.length > 0) {
-            try {
-              const draftRes = await getProviderAiDrafts(profileIds);
-              if (draftRes?.success && Array.isArray(draftRes.drafts)) {
-                const draftMap = new Map(
-                  draftRes.drafts.map((d: any) => [d.referenceId, d.summary])
-                );
-                mappedProviders.forEach((p) => {
-                  if (p.profileId && draftMap.has(p.profileId)) {
-                    p.aiExplanation = draftMap.get(p.profileId);
-                  }
-                });
-              }
-            } catch (err) {
-              console.warn(
-                "Failed to fetch AI drafts for recommended providers",
-                err
-              );
-            }
-          }
+          // Don't fetch drafts for recommended providers - use the aiExplanation from the recommendation API
 
           setRecommendedProviders(mappedProviders);
           setRecommendationsCacheInfo({
