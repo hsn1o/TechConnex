@@ -28,7 +28,7 @@ import type { Provider, PortfolioItem, Review } from "./types";
 import PortfolioGrid from "./sections/PortfolioGrid";
 import ReviewsList from "./sections/ReviewsList";
 import { useRouter } from "next/navigation";
-import { getProviderCompletedProjects } from "@/lib/api";
+import { getProviderCompletedProjects, getProfileImageUrl } from "@/lib/api";
 import ProposalPopup from "./ProposalPopup";
 
 export default function ProviderDetailClient({
@@ -71,14 +71,7 @@ export default function ProviderDetailClient({
   }, [provider.id]);
 
   const handleContact = (provider: any) => {
-    const avatarUrl =
-      provider.avatar &&
-      provider.avatar !== "/placeholder.svg" &&
-      !provider.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
-            provider.avatar.startsWith("/") ? "" : "/"
-          }${provider.avatar}`
-        : "";
+    const avatarUrl = getProfileImageUrl(provider.avatar);
     router.push(
       `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
         provider.name
@@ -171,18 +164,7 @@ export default function ProviderDetailClient({
           <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-5">
             <Avatar className="w-16 h-16 sm:w-18 sm:h-18 lg:w-20 lg:h-20 flex-shrink-0 mx-auto sm:mx-0">
               <AvatarImage
-                src={
-                  provider.avatar &&
-                  provider.avatar !== "/placeholder.svg" &&
-                  !provider.avatar.includes("/placeholder.svg")
-                    ? `${
-                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                        "http://localhost:4000"
-                      }${provider.avatar.startsWith("/") ? "" : "/"}${
-                        provider.avatar
-                      }`
-                    : "/placeholder.svg"
-                }
+                src={getProfileImageUrl(provider.avatar)}
               />
               <AvatarFallback>{provider.name?.[0]}</AvatarFallback>
             </Avatar>

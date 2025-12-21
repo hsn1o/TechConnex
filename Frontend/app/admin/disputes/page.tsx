@@ -61,6 +61,8 @@ import {
   simulateDisputePayout,
   redoMilestone,
   resolveDispute,
+  getAttachmentUrl,
+  getR2DownloadUrl,
 } from "@/lib/api";
 import Link from "next/link";
 
@@ -992,23 +994,41 @@ export default function AdminDisputesPage() {
                                       </div>
                                     </div>
                                   </div>
-                                  <a
-                                    href={`${
-                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                      "http://localhost:4000"
-                                    }${url.startsWith("/") ? url : `/${url}`}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full bg-transparent"
-                                    >
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      View
-                                    </Button>
-                                  </a>
+                                  {(() => {
+                                    const attachmentUrl = getAttachmentUrl(url);
+                                    const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+
+                                    return (
+                                      <a
+                                        href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={isR2Key ? async (e) => {
+                                          e.preventDefault();
+                                          try {
+                                            const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
+                                            window.open(downloadUrl.downloadUrl, "_blank");
+                                          } catch (error) {
+                                            console.error("Failed to get download URL:", error);
+                                            toast({
+                                              title: "Error",
+                                              description: "Failed to download attachment",
+                                              variant: "destructive",
+                                            });
+                                          }
+                                        } : undefined}
+                                      >
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="w-full bg-transparent"
+                                        >
+                                          <Eye className="w-4 h-4 mr-2" />
+                                          View
+                                        </Button>
+                                      </a>
+                                    );
+                                  })()}
                                 </div>
                               );
                             }

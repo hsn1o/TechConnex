@@ -33,7 +33,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
-import { getProviderProjects, getProviderProjectStats, exportProviderProjects } from "@/lib/api";
+import { getProviderProjects, getProviderProjectStats, exportProviderProjects, getProfileImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -402,26 +402,7 @@ export default function ProviderProjectsPage() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={
-                                  project.customer?.customerProfile
-                                    ?.profileImageUrl &&
-                                  project.customer.customerProfile
-                                    .profileImageUrl !== "/placeholder.svg"
-                                    ? `${
-                                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                        "http://localhost:4000"
-                                      }${
-                                        project.customer.customerProfile.profileImageUrl.startsWith(
-                                          "/"
-                                        )
-                                          ? ""
-                                          : "/"
-                                      }${
-                                        project.customer.customerProfile
-                                          .profileImageUrl
-                                      }`
-                                    : "/placeholder.svg"
-                                }
+                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}
@@ -548,26 +529,7 @@ export default function ProviderProjectsPage() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={
-                                  project.customer?.customerProfile
-                                    ?.profileImageUrl &&
-                                  project.customer.customerProfile
-                                    .profileImageUrl !== "/placeholder.svg"
-                                    ? `${
-                                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                        "http://localhost:4000"
-                                      }${
-                                        project.customer.customerProfile.profileImageUrl.startsWith(
-                                          "/"
-                                        )
-                                          ? ""
-                                          : "/"
-                                      }${
-                                        project.customer.customerProfile
-                                          .profileImageUrl
-                                      }`
-                                    : "/placeholder.svg"
-                                }
+                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}
@@ -693,26 +655,7 @@ export default function ProviderProjectsPage() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={
-                                  project.customer?.customerProfile
-                                    ?.profileImageUrl &&
-                                  project.customer.customerProfile
-                                    .profileImageUrl !== "/placeholder.svg"
-                                    ? `${
-                                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                        "http://localhost:4000"
-                                      }${
-                                        project.customer.customerProfile.profileImageUrl.startsWith(
-                                          "/"
-                                        )
-                                          ? ""
-                                          : "/"
-                                      }${
-                                        project.customer.customerProfile
-                                          .profileImageUrl
-                                      }`
-                                    : "/placeholder.svg"
-                                }
+                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}
@@ -800,26 +743,7 @@ export default function ProviderProjectsPage() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={
-                                  project.customer?.customerProfile
-                                    ?.profileImageUrl &&
-                                  project.customer.customerProfile
-                                    .profileImageUrl !== "/placeholder.svg"
-                                    ? `${
-                                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                        "http://localhost:4000"
-                                      }${
-                                        project.customer.customerProfile.profileImageUrl.startsWith(
-                                          "/"
-                                        )
-                                          ? ""
-                                          : "/"
-                                      }${
-                                        project.customer.customerProfile
-                                          .profileImageUrl
-                                      }`
-                                    : "/placeholder.svg"
-                                }
+                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}

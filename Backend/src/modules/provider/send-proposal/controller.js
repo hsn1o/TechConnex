@@ -10,18 +10,23 @@ import {
 } from "./service.js";
 import { SendProposalDto, GetProposalsDto } from "./dto.js";
 
-// POST /api/provider/proposals - Send a proposal
+// POST /api/provider/proposals - Send a proposal (now accepts R2 keys/URLs)
 export async function sendProposalController(req, res) {
   try {
-
-    const uploadedFiles = Array.isArray(req.files)
-      ? req.files.map((f) => f.path) // e.g. "uploads/proposals/1730349382712_CV_Hasan.pdf"
-      : [];
+    // Extract attachment URLs from request body (sent from frontend after R2 upload)
+    // Frontend sends: { attachments: [{ key, url }, ...] }
+    let attachmentUrls = [];
+    if (req.body.attachments && Array.isArray(req.body.attachments)) {
+      attachmentUrls = req.body.attachments.map((att) => att.url || att.key);
+    } else if (req.body.attachmentUrls && Array.isArray(req.body.attachmentUrls)) {
+      // Backward compatibility: if frontend sends attachmentUrls directly
+      attachmentUrls = req.body.attachmentUrls;
+    }
 
     const dto = new SendProposalDto({
       ...req.body,
       providerId: req.user.userId, // User ID from JWT payload
-      attachmentUrls: uploadedFiles,
+      attachmentUrls: attachmentUrls,
     });
     dto.validate();
 

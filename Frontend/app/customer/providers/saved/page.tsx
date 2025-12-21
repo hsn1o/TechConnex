@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Eye, MapPin, Star, Trash2 } from "lucide-react";
+import { getProfileImageUrl } from "@/lib/api";
 
 type SavedProvider = {
   id: string;
@@ -126,13 +127,7 @@ export default function SavedProvidersPage() {
                   <div className="flex items-start space-x-3 sm:space-x-4">
                     <Avatar className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0">
                       <AvatarImage
-                        src={
-                          provider.avatar && 
-                          provider.avatar !== "/placeholder.svg" &&
-                          !provider.avatar.includes("/placeholder.svg")
-                            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
-                            : "/placeholder.svg"
-                        }
+                        src={getProfileImageUrl(provider.avatar)}
                       />
                       <AvatarFallback className="text-xs sm:text-sm lg:text-base">{provider.name.charAt(0)}</AvatarFallback>
                     </Avatar>

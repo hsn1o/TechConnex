@@ -46,14 +46,8 @@ export default function SavedCompaniesPage() {
       );
       const data = await res.json();
       if (data.success) {
-        // Transform avatar URLs
-        const transformedCompanies = (data.companies || []).map((company: Company) => ({
-          ...company,
-          avatar: company.avatar && company.avatar !== "/placeholder.svg"
-            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`
-            : "/placeholder.svg?height=40&width=40",
-        }));
-        setCompanies(transformedCompanies);
+        // Avatar URLs are handled by getProfileImageUrl in the component
+        setCompanies(data.companies || []);
       }
     } catch (e) {
       console.error("Failed to fetch saved companies", e);
@@ -117,16 +111,7 @@ export default function SavedCompaniesPage() {
                   <div className="flex items-start space-x-4">
                     <Avatar className="w-16 h-16">
                       <AvatarImage
-                        src={
-                          company.avatar && 
-                          company.avatar !== "/placeholder.svg" &&
-                          company.avatar !== "/placeholder.svg?height=40&width=40" &&
-                          !company.avatar.includes("/placeholder.svg")
-                            ? (company.avatar.startsWith("http") 
-                                ? company.avatar 
-                                : `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`)
-                            : "/placeholder.svg"
-                        }
+                        src={getProfileImageUrl(company.avatar)}
                       />
                       <AvatarFallback>
                         <Building2 className="w-8 h-8" />

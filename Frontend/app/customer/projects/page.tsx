@@ -48,7 +48,7 @@ import {
 import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
 import { useRouter } from "next/navigation";
-import { getCompanyProjects, updateCompanyProject, exportCompanyProjects } from "@/lib/api";
+import { getCompanyProjects, updateCompanyProject, exportCompanyProjects, getProfileImageUrl } from "@/lib/api";
 import { Download } from "lucide-react";
 
 export default function CustomerProjectsPage() {
@@ -599,23 +599,7 @@ export default function CustomerProjectsPage() {
                     <div className="flex items-center space-x-2 sm:space-x-3">
                       <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
                         <AvatarImage
-                          src={
-                            project.provider?.providerProfile?.profileImageUrl
-                              ? `${
-                                  process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                  "http://localhost:4000"
-                                }${
-                                  project.provider.providerProfile.profileImageUrl.startsWith(
-                                    "/"
-                                  )
-                                    ? ""
-                                    : "/"
-                                }${
-                                  project.provider.providerProfile
-                                    .profileImageUrl
-                                }`
-                              : "/placeholder.svg"
-                          }
+                          src={getProfileImageUrl(project.provider?.providerProfile?.profileImageUrl)}
                         />
                         <AvatarFallback>
                           {project.provider?.name
@@ -753,24 +737,7 @@ export default function CustomerProjectsPage() {
                         <div className="flex items-start sm:items-center space-x-3 sm:space-x-4 flex-1 min-w-0 w-full sm:w-auto">
                           <Avatar className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12">
                             <AvatarImage
-                              src={
-                                project.provider?.providerProfile
-                                  ?.profileImageUrl
-                                  ? `${
-                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                      "http://localhost:4000"
-                                    }${
-                                      project.provider.providerProfile.profileImageUrl.startsWith(
-                                        "/"
-                                      )
-                                        ? ""
-                                        : "/"
-                                    }${
-                                      project.provider.providerProfile
-                                        .profileImageUrl
-                                    }`
-                                  : "/placeholder.svg"
-                              }
+                              src={getProfileImageUrl(project.provider?.providerProfile?.profileImageUrl)}
                             />
                             <AvatarFallback>
                               {project.provider?.name

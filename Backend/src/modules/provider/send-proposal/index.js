@@ -11,8 +11,6 @@ import {
 } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 
-import { uploadProposalAttachment } from "../../../middlewares/uploadProposalAttachment.js";
-
 
 const router = express.Router();
 
@@ -22,7 +20,6 @@ router.use(authenticateToken);
 // Routes
 router.post(
   "/",
-  uploadProposalAttachment,
   sendProposalController
 );
 router.get("/", getProposalsController);

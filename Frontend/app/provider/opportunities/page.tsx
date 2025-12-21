@@ -59,6 +59,7 @@ import {
   getProviderRecommendedOpportunities,
   sendProposal,
   getServiceRequestAiDrafts,
+  getProfileImageUrl,
 } from "@/lib/api";
 import {
   formatTimeline,
@@ -177,20 +178,7 @@ export default function ProviderOpportunitiesPage() {
       opportunity.customer?.customerProfile?.location || "Not specified",
     clientRating: 4.5,
     projectsPosted: opportunity.customer?.customerProfile?.projectsPosted || 0,
-    avatar: (() => {
-      const profile = opportunity.customer?.customerProfile;
-      if (
-        profile?.profileImageUrl &&
-        profile.profileImageUrl !== "/placeholder.svg"
-      ) {
-        return `${
-          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
-        }${profile.profileImageUrl.startsWith("/") ? "" : "/"}${
-          profile.profileImageUrl
-        }`;
-      }
-      return "/placeholder.svg?height=40&width=40";
-    })(),
+    avatar: getProfileImageUrl(opportunity.customer?.customerProfile?.profileImageUrl),
     urgent: opportunity.priority === "High",
     verified: opportunity.customer?.isVerified || false,
     hasSubmitted: opportunity.hasProposed || false,

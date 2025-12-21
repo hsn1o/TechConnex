@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Heart, Building2, Search } from "lucide-react";
 import CompanyCard from "./sections/CompanyCard";
 import type { Company, Option } from "./types";
-import { getCompanyAiDrafts } from "@/lib/api";
+import { getCompanyAiDrafts, getProfileImageUrl } from "@/lib/api";
 
 /** Props come from the server page */
 export default function FindCompaniesClient({
@@ -78,15 +78,7 @@ export default function FindCompaniesClient({
           let transformedCompanies = (data.companies || []).map(
             (company: Company) => ({
               ...company,
-              avatar:
-                company.avatar && company.avatar !== "/placeholder.svg"
-                  ? `${
-                      process.env.NEXT_PUBLIC_API_BASE_URL ||
-                      "http://localhost:4000"
-                    }${company.avatar.startsWith("/") ? "" : "/"}${
-                      company.avatar
-                    }`
-                  : "/placeholder.svg?height=40&width=40",
+              avatar: getProfileImageUrl(company.avatar),
             })
           );
 

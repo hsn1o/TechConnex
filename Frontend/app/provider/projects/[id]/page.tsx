@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/components/ui/use-toast";
+import { toast, useToast } from "@/components/ui/use-toast";
 import { 
   ArrowLeft, 
   MessageSquare, 
@@ -66,6 +66,9 @@ import {
   createDispute,
   getDisputeByProject,
   updateDispute,
+  getProfileImageUrl,
+  getAttachmentUrl,
+  getR2DownloadUrl,
   type Milestone,
 } from "@/lib/api";
 import { formatTimeline } from "@/lib/timeline-utils";
@@ -75,6 +78,7 @@ import { Separator } from "@/components/separator";
 export default function ProviderProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast: toastHook } = useToast();
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1459,70 +1463,51 @@ export default function ProviderProjectDetailsPage() {
                                       📎 Submission Attachment
                                     </span>
                                   </div>
-                                  <a
-                                    href={`${
-                                      process.env.NEXT_PUBLIC_API_URL ||
-                                      "http://localhost:4000"
-                                    }/${milestone.submissionAttachmentUrl
-                                      .replace(/\\/g, "/")
-                                      .replace(/^\//, "")}`}
-                                    download={(() => {
-                                      const normalized =
-                                        milestone.submissionAttachmentUrl.replace(
-                                          /\\/g,
-                                          "/"
-                                        );
-                                      return (
-                                        normalized.split("/").pop() ||
-                                        "attachment"
-                                      );
-                                    })()}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
-                                  >
-                                    {/* Icon circle */}
-                                    <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
-                                      PDF
-                                    </div>
-
-                                    {/* File info */}
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-sm font-medium text-gray-900 break-all leading-snug">
-                                        {(() => {
-                                          const normalized =
-                                            milestone.submissionAttachmentUrl.replace(
-                                              /\\/g,
-                                              "/"
-                                            );
-                                          return (
-                                            normalized.split("/").pop() ||
-                                            "attachment"
-                                          );
-                                        })()}
-                                      </span>
-                                      <span className="text-xs text-gray-500 leading-snug">
-                                        Click to preview / download
-                                      </span>
-                                    </div>
-
-                                    {/* Download icon */}
-                                    <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
-                                      <svg
-                                        className="w-4 h-4"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth={2}
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        viewBox="0 0 24 24"
+                                  {(() => {
+                                    const normalized = milestone.submissionAttachmentUrl.replace(/\\/g, "/");
+                                    const fileName = normalized.split("/").pop() || "attachment";
+                                    const attachmentUrl = getAttachmentUrl(milestone.submissionAttachmentUrl);
+                                    const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                                    
+                                    return (
+                                      <a
+                                        href={attachmentUrl}
+                                        download={fileName}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={isR2Key ? async (e) => {
+                                          e.preventDefault();
+                                          try {
+                                            const downloadUrl = await getR2DownloadUrl(milestone.submissionAttachmentUrl); // Use original URL/key
+                                            window.open(downloadUrl.downloadUrl, "_blank");
+                                          } catch (error) {
+                                            console.error("Failed to get download URL:", error);
+                                            toastHook({
+                                              title: "Error",
+                                              description: "Failed to download attachment",
+                                              variant: "destructive",
+                                            });
+                                          }
+                                        } : undefined}
+                                        className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                                       >
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                        <path d="M7 10l5 5 5-5" />
-                                        <path d="M12 15V3" />
-                                      </svg>
-                                    </div>
-                                  </a>
+                                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                                          PDF
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                            {fileName}
+                                          </span>
+                                          <span className="text-xs text-gray-500 leading-snug">
+                                            Click to preview / download
+                                          </span>
+                                        </div>
+                                        <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                                          <Download className="w-4 h-4" />
+                                        </div>
+                                      </a>
+                                    );
+                                  })()}
                                 </div>
                               )}
 
@@ -1614,32 +1599,37 @@ export default function ProviderProjectDetailsPage() {
                                                   <p className="text-xs font-medium text-gray-700 mb-1">
                                                     Attachment:
                                                   </p>
-                                                  <a
-                                                    href={`${
-                                                      process.env
-                                                        .NEXT_PUBLIC_API_URL ||
-                                                      "http://localhost:4000"
-                                                    }/${history.submissionAttachmentUrl
-                                                      .replace(/\\/g, "/")
-                                                      .replace(/^\//, "")}`}
-                                                    download
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                                  >
-                                                    {(() => {
-                                                      const normalized =
-                                                        history.submissionAttachmentUrl.replace(
-                                                          /\\/g,
-                                                          "/"
-                                                        );
-                                                      return (
-                                                        normalized
-                                                          .split("/")
-                                                          .pop() || "attachment"
-                                                      );
-                                                    })()}
-                                                  </a>
+                                                  {(() => {
+                                                    const attachmentUrl = getAttachmentUrl(history.submissionAttachmentUrl);
+                                                    const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                                                    const fileName = history.submissionAttachmentUrl.replace(/\\/g, "/").split("/").pop() || "attachment";
+                                                    
+                                                    return (
+                                                      <a
+                                                        href={attachmentUrl}
+                                                        download={fileName}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={isR2Key ? async (e) => {
+                                                          e.preventDefault();
+                                                          try {
+                                                            const downloadUrl = await getR2DownloadUrl(history.submissionAttachmentUrl); // Use original URL/key
+                                                            window.open(downloadUrl.downloadUrl, "_blank");
+                                                          } catch (error) {
+                                                            console.error("Failed to get download URL:", error);
+                                                            toastHook({
+                                                              title: "Error",
+                                                              description: "Failed to download attachment",
+                                                              variant: "destructive",
+                                                            });
+                                                          }
+                                                        } : undefined}
+                                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                      >
+                                                        {fileName}
+                                                      </a>
+                                                    );
+                                                  })()}
                                                 </div>
                                               )}
 
@@ -1716,18 +1706,30 @@ export default function ProviderProjectDetailsPage() {
                             const normalized = url.replace(/\\/g, "/");
                             const fileName =
                               normalized.split("/").pop() || `file-${idx + 1}`;
-                            const fullUrl = `${
-                              process.env.NEXT_PUBLIC_API_URL ||
-                              "http://localhost:4000"
-                            }/${normalized.replace(/^\//, "")}`;
+                            const attachmentUrl = getAttachmentUrl(url);
+                            const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
 
                             return (
                               <a
                                 key={idx}
-                                href={fullUrl}
+                                href={attachmentUrl === "#" ? undefined : attachmentUrl}
                                 download={fileName}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                onClick={isR2Key ? async (e) => {
+                                  e.preventDefault();
+                                  try {
+                                    const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
+                                    window.open(downloadUrl.downloadUrl, "_blank");
+                                  } catch (error) {
+                                    console.error("Failed to get download URL:", error);
+                                    toastHook({
+                                      title: "Error",
+                                      description: "Failed to download attachment",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                } : undefined}
                                 className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                               >
                                 <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -1836,18 +1838,30 @@ export default function ProviderProjectDetailsPage() {
                             );
                             const fileName =
                               normalized.split("/").pop() || `file-${idx + 1}`;
-                            const fullUrl = `${
-                              process.env.NEXT_PUBLIC_API_URL ||
-                              "http://localhost:4000"
-                            }/${normalized.replace(/^\//, "")}`;
+                            const attachmentUrl = getAttachmentUrl(attachment.url);
+                            const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
 
                             return (
                               <a
                                 key={idx}
-                                href={fullUrl}
+                                href={attachmentUrl === "#" ? undefined : attachmentUrl}
                                 download={fileName}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                onClick={isR2Key ? async (e) => {
+                                  e.preventDefault();
+                                  try {
+                                    const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
+                                    window.open(downloadUrl.downloadUrl, "_blank");
+                                  } catch (error) {
+                                    console.error("Failed to get download URL:", error);
+                                    toastHook({
+                                      title: "Error",
+                                      description: "Failed to download attachment",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                } : undefined}
                                 className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                               >
                                 <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -1987,24 +2001,7 @@ export default function ProviderProjectDetailsPage() {
                 <div className="flex items-center gap-3">
                   <Avatar>
                     <AvatarImage
-                      src={
-                        project.customer?.customerProfile?.profileImageUrl &&
-                        project.customer.customerProfile.profileImageUrl !==
-                          "/placeholder.svg"
-                          ? `${
-                              process.env.NEXT_PUBLIC_API_BASE_URL ||
-                              "http://localhost:4000"
-                            }${
-                              project.customer.customerProfile.profileImageUrl.startsWith(
-                                "/"
-                              )
-                                ? ""
-                                : "/"
-                            }${
-                              project.customer.customerProfile.profileImageUrl
-                            }`
-                          : "/placeholder.svg"
-                      }
+                      src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
                     />
                     <AvatarFallback>
                       {project.customer?.name?.charAt(0) || "C"}
@@ -3107,19 +3104,37 @@ export default function ProviderProjectDetailsPage() {
                                       </p>
                                     </div>
                                   </div>
-                                  <a
-                                    href={`${
-                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                      "http://localhost:4000"
-                                    }${url.startsWith("/") ? url : `/${url}`}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    <Button variant="outline" size="sm">
-                                      <Download className="w-4 h-4 mr-2" />
-                                      Download
-                                    </Button>
-                                  </a>
+                                  {(() => {
+                                    const attachmentUrl = getAttachmentUrl(url);
+                                    const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+
+                                    return (
+                                      <a
+                                        href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={isR2Key ? async (e) => {
+                                          e.preventDefault();
+                                          try {
+                                            const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
+                                            window.open(downloadUrl.downloadUrl, "_blank");
+                                          } catch (error) {
+                                            console.error("Failed to get download URL:", error);
+                                            toast({
+                                              title: "Error",
+                                              description: "Failed to download attachment",
+                                              variant: "destructive",
+                                            });
+                                          }
+                                        } : undefined}
+                                      >
+                                        <Button variant="outline" size="sm">
+                                          <Download className="w-4 h-4 mr-2" />
+                                          Download
+                                        </Button>
+                                      </a>
+                                    );
+                                  })()}
                                 </div>
                               );
                             }

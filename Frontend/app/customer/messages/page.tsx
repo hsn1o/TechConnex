@@ -22,6 +22,7 @@ import io, { Socket } from "socket.io-client";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getProfileImageUrl } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -701,18 +702,7 @@ export default function CustomerMessagesPage() {
                         <div className="relative">
                           <Avatar>
                             <AvatarImage
-                              src={
-                                conversation.avatar
-                                  ? `${
-                                      process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                      "http://localhost:4000"
-                                    }${
-                                      conversation.avatar.startsWith("/")
-                                        ? ""
-                                        : "/"
-                                    }${conversation.avatar}`
-                                  : undefined
-                              }
+                              src={getProfileImageUrl(conversation.avatar)}
                             />
                             <AvatarFallback>
                               {conversation.name.charAt(0)}
@@ -773,18 +763,7 @@ export default function CustomerMessagesPage() {
                       <div className="relative">
                         <Avatar>
                           <AvatarImage
-                            src={
-                              selectedConversation.avatar
-                                ? `${
-                                    process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                    "http://localhost:4000"
-                                  }${
-                                    selectedConversation.avatar.startsWith("/")
-                                      ? ""
-                                      : "/"
-                                  }${selectedConversation.avatar}`
-                                : undefined
-                            }
+                            src={getProfileImageUrl(selectedConversation.avatar)}
                           />
                           <AvatarFallback>
                             {selectedConversation.name.charAt(0)}

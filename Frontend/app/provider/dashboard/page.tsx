@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ProviderLayout } from "@/components/provider-layout";
-import { getProviderProjectStats, getProviderProjects, getProviderRecommendedOpportunities, getProviderPerformanceMetrics } from "@/lib/api";
+import { getProviderProjectStats, getProviderProjects, getProviderRecommendedOpportunities, getProviderPerformanceMetrics, getProfileImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 // Types for fetched opportunities
@@ -370,12 +370,7 @@ export default function ProviderDashboard() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={
-                                  (project.customer?.customerProfile?.profileImageUrl && 
-                                   project.customer.customerProfile.profileImageUrl !== "/placeholder.svg")
-                                    ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
-                                    : "/placeholder.svg"
-                                }
+                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}

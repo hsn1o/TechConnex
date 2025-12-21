@@ -48,6 +48,9 @@ import {
   createDispute,
   getDisputeByProject,
   updateDispute,
+  getProfileImageUrl,
+  getAttachmentUrl,
+  getR2DownloadUrl,
 } from "@/lib/api";
 import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
@@ -91,7 +94,7 @@ export default function ProjectDetailsPage({
 }: {
   params: { id: string };
 }) {
-  const { toast } = useToast();
+  const { toast: toastHook } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -445,15 +448,7 @@ export default function ProjectDetailsPage({
         id: p.id,
         providerId: provider.id,
         providerName: provider.name,
-        providerAvatar:
-          profile.profileImageUrl &&
-          profile.profileImageUrl !== "/placeholder.svg"
-            ? `${
-                process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
-              }${profile.profileImageUrl.startsWith("/") ? "" : "/"}${
-                profile.profileImageUrl
-              }`
-            : "/placeholder.svg?height=40&width=40",
+        providerAvatar: getProfileImageUrl(profile.profileImageUrl),
         providerRating: profile.rating ?? provider.rating ?? 0,
         providerLocation: profile.location ?? provider.location ?? "",
         providerResponseTime:
@@ -1861,25 +1856,10 @@ export default function ProjectDetailsPage({
                 <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
                   <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                     <AvatarImage
-                      src={
-                        project.assignedProvider?.providerProfile
-                          ?.profileImageUrl
-                          ? `${
-                              process.env.NEXT_PUBLIC_API_BASE_URL ||
-                              "http://localhost:4000"
-                            }${
-                              project.assignedProvider.providerProfile.profileImageUrl.startsWith(
-                                "/"
-                              )
-                                ? ""
-                                : "/"
-                            }${
-                              project.assignedProvider.providerProfile
-                                .profileImageUrl
-                            }`
-                          : project.assignedProvider?.avatar ||
-                            "/placeholder.svg"
-                      }
+                      src={getProfileImageUrl(
+                        project.assignedProvider?.providerProfile?.profileImageUrl || 
+                        project.assignedProvider?.avatar
+                      )}
                     />
                     <AvatarFallback>
                       {project.assignedProvider.name.charAt(0)}
@@ -2919,18 +2899,30 @@ export default function ProjectDetailsPage({
                         const normalized = attachment.url.replace(/\\/g, "/");
                         const fileName =
                           normalized.split("/").pop() || `file-${idx + 1}`;
-                        const fullUrl = `${
-                          process.env.NEXT_PUBLIC_API_URL ||
-                          "http://localhost:4000"
-                        }/${normalized.replace(/^\//, "")}`;
+                        const attachmentUrl = getAttachmentUrl(attachment.url);
+                        const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
 
                         return (
                           <a
                             key={idx}
-                            href={fullUrl}
+                            href={attachmentUrl === "#" ? undefined : attachmentUrl}
                             download={fileName}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={isR2Key ? async (e) => {
+                              e.preventDefault();
+                              try {
+                                const downloadUrl = await getR2DownloadUrl(attachment.url); // Use original URL/key
+                                window.open(downloadUrl.downloadUrl, "_blank");
+                              } catch (error) {
+                                console.error("Failed to get download URL:", error);
+                                toastHook({
+                                  title: "Error",
+                                  description: "Failed to download attachment",
+                                  variant: "destructive",
+                                });
+                              }
+                            } : undefined}
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -3020,18 +3012,30 @@ export default function ProjectDetailsPage({
                         const normalized = attachment.url.replace(/\\/g, "/");
                         const fileName =
                           normalized.split("/").pop() || `file-${idx + 1}`;
-                        const fullUrl = `${
-                          process.env.NEXT_PUBLIC_API_URL ||
-                          "http://localhost:4000"
-                        }/${normalized.replace(/^\//, "")}`;
+                        const attachmentUrl = getAttachmentUrl(attachment.url);
+                        const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
 
                         return (
                           <a
                             key={idx}
-                            href={fullUrl}
+                            href={attachmentUrl === "#" ? undefined : attachmentUrl}
                             download={fileName}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={isR2Key ? async (e) => {
+                              e.preventDefault();
+                              try {
+                                const downloadUrl = await getR2DownloadUrl(attachment.url); // Use original URL/key
+                                window.open(downloadUrl.downloadUrl, "_blank");
+                              } catch (error) {
+                                console.error("Failed to get download URL:", error);
+                                toastHook({
+                                  title: "Error",
+                                  description: "Failed to download attachment",
+                                  variant: "destructive",
+                                });
+                              }
+                            } : undefined}
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -3105,23 +3109,31 @@ export default function ProjectDetailsPage({
                         const fileName =
                           normalized.split("/").pop() || `file-${idx + 1}`;
 
-                        // If attachment.url is already a full URL → use it
-                        const fullUrl =
-                          normalized.startsWith("http://") ||
-                          normalized.startsWith("https://")
-                            ? normalized
-                            : `${
-                                process.env.NEXT_PUBLIC_API_URL ||
-                                "http://localhost:4000"
-                              }/${normalized.replace(/^\//, "")}`;
+                        // Use getAttachmentUrl helper for consistent URL handling
+                        const attachmentUrl = getAttachmentUrl(attachment.url);
+                        const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
 
                         return (
                           <a
                             key={idx}
-                            href={fullUrl}
+                            href={attachmentUrl === "#" ? undefined : attachmentUrl}
                             download={fileName}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={isR2Key ? async (e) => {
+                              e.preventDefault();
+                              try {
+                                const downloadUrl = await getR2DownloadUrl(attachment.url); // Use original URL/key
+                                window.open(downloadUrl.downloadUrl, "_blank");
+                              } catch (error) {
+                                console.error("Failed to get download URL:", error);
+                                toastHook({
+                                  title: "Error",
+                                  description: "Failed to download attachment",
+                                  variant: "destructive",
+                                });
+                              }
+                            } : undefined}
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -3822,28 +3834,10 @@ export default function ProjectDetailsPage({
               <div className="flex items-start space-x-4">
                 <Avatar className="w-16 h-16">
                   <AvatarImage
-                    src={
-                      selectedProposalDetails.providerAvatar &&
-                      selectedProposalDetails.providerAvatar !==
-                        "/placeholder.svg?height=40&width=40"
-                        ? selectedProposalDetails.providerAvatar
-                        : selectedProposalDetails.provider?.providerProfile
-                            ?.profileImageUrl
-                        ? `${
-                            process.env.NEXT_PUBLIC_API_BASE_URL ||
-                            "http://localhost:4000"
-                          }${
-                            selectedProposalDetails.provider.providerProfile.profileImageUrl.startsWith(
-                              "/"
-                            )
-                              ? ""
-                              : "/"
-                          }${
-                            selectedProposalDetails.provider.providerProfile
-                              .profileImageUrl
-                          }`
-                        : "/placeholder.svg"
-                    }
+                    src={getProfileImageUrl(
+                      selectedProposalDetails.providerAvatar ||
+                      selectedProposalDetails.provider?.providerProfile?.profileImageUrl
+                    )}
                   />
                   <AvatarFallback>
                     {String(
@@ -4112,22 +4106,37 @@ export default function ProjectDetailsPage({
                     <div className="space-y-2">
                       {selectedProposalDetails.attachments.map(
                         (rawUrl: string, idx: number) => {
-                          // rawUrl can look like: "uploads\proposals\1761857633365_Screenshots.pdf"
+                          // rawUrl can look like: "uploads\proposals\1761857633365_Screenshots.pdf" or R2 key
                           // We normalize slashes and extract filename.
-                          const normalized = rawUrl.replace(/\\/g, "/"); // -> "uploads/proposals/..."
+                          const normalized = rawUrl.replace(/\\/g, "/"); // -> "uploads/proposals/..." or R2 key
                           const fileName =
                             normalized.split("/").pop() || `file-${idx + 1}`;
 
-                          // Build absolute URL to download
-                          const fullUrl = `${
-                            process.env.NEXT_PUBLIC_API_URL ||
-                            "http://localhost:4000"
-                          }/${normalized.replace(/^\//, "")}`;
+                          // Use getAttachmentUrl helper for consistent URL handling
+                          const attachmentUrl = getAttachmentUrl(rawUrl);
+                          const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
 
                           return (
                             <a
                               key={idx}
-                              href={fullUrl}
+                              href={attachmentUrl}
+                              download={fileName}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={isR2Key ? async (e) => {
+                                e.preventDefault();
+                                try {
+                                  const downloadUrl = await getR2DownloadUrl(rawUrl); // Use original URL/key
+                                  window.open(downloadUrl.downloadUrl, "_blank");
+                                } catch (error) {
+                                  console.error("Failed to get download URL:", error);
+                                  toastHook({
+                                    title: "Error",
+                                    description: "Failed to download attachment",
+                                    variant: "destructive",
+                                  });
+                                }
+                              } : undefined}
                               download={fileName}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -5097,19 +5106,37 @@ export default function ProjectDetailsPage({
                                     </p>
                                   </div>
                                 </div>
-                                <a
-                                  href={`${
-                                    process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                    "http://localhost:4000"
-                                  }${url.startsWith("/") ? url : `/${url}`}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <Button variant="outline" size="sm">
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Download
-                                  </Button>
-                                </a>
+                                {(() => {
+                                  const attachmentUrl = getAttachmentUrl(url);
+                                  const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+
+                                  return (
+                                    <a
+                                      href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={isR2Key ? async (e) => {
+                                        e.preventDefault();
+                                        try {
+                                          const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
+                                          window.open(downloadUrl.downloadUrl, "_blank");
+                                        } catch (error) {
+                                          console.error("Failed to get download URL:", error);
+                                          toastHook({
+                                            title: "Error",
+                                            description: "Failed to download attachment",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      } : undefined}
+                                    >
+                                      <Button variant="outline" size="sm">
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Download
+                                      </Button>
+                                    </a>
+                                  );
+                                })()}
                               </div>
                             );
                           }

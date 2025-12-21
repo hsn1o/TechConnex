@@ -66,12 +66,7 @@ export default async function CompanyDetailPage({
         company = data.company;
         reviews = data.reviews || [];
         
-        // Transform avatar URL
-        if (company && company.avatar) {
-          company.avatar = company.avatar && company.avatar !== "/placeholder.svg"
-            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${company.avatar.startsWith("/") ? "" : "/"}${company.avatar}`
-            : "/placeholder.svg?height=40&width=40";
-        }
+        // Note: Avatar URL transformation is handled by getProfileImageUrl in components
       } else {
         console.error("Backend returned success=false", data);
       }

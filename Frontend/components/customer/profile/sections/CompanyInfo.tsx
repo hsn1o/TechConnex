@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { uploadCompanyMediaGalleryImages, getCompanyProfileCompletion } from "@/lib/api";
+import { uploadCompanyMediaGalleryImages, getCompanyProfileCompletion, getProfileImageUrl } from "@/lib/api";
 import type { ProfileData } from "../types";
 
 type Props = {
@@ -214,20 +214,8 @@ export default function CompanyInfo({ value, onChange, isEditing, onCompletionUp
   };
 
   const getMediaUrl = (url: string) => {
-    if (!url) return "";
-    
-    // Check if it's a local file path or external URL
-    const isLocalPath = url.startsWith("/uploads/") || url.startsWith("uploads/");
-    if (isLocalPath) {
-      // Normalize the path
-      const normalizedPath = url.replace(/\\/g, "/");
-      const cleanPath = normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`;
-      // Match the pattern used for profile images - ensure we have the full URL
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
-      return `${apiBase}${cleanPath}`;
-    }
-    // For external URLs, return as-is
-    return url;
+    // Use the same helper as profile images for consistency
+    return getProfileImageUrl(url);
   };
   
   const openLightbox = (index: number) => {

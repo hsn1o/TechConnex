@@ -62,6 +62,7 @@ import {
   createPortfolioItem,
   updatePortfolioItem,
   deletePortfolioItem,
+  getProfileImageUrl,
   uploadPortfolioImage,
   getMyCertifications,
   createCertification,
@@ -1130,18 +1131,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                       <div className="relative">
                         <Avatar className="w-24 h-24">
                           <AvatarImage
-                            src={
-                              profileData.profileImageUrl
-                                ? `${
-                                    process.env.NEXT_PUBLIC_API_BASE_URL ||
-                                    "http://localhost:4000"
-                                  }${
-                                    profileData.profileImageUrl.startsWith("/")
-                                      ? ""
-                                      : "/"
-                                  }${profileData.profileImageUrl}`
-                                : "/placeholder.svg?height=96&width=96"
-                            }
+                            src={getProfileImageUrl(profileData.profileImageUrl)}
                           />
                           <AvatarFallback className="text-lg">
                             {profileData.name
@@ -1904,15 +1894,11 @@ export default function ProviderProfilePage(props: Props = {}) {
                         {item.imageUrl ? (
                           <div className="relative h-48 overflow-hidden rounded-t-lg bg-gray-100">
                             {(() => {
-                              // Normalize the URL - handle both relative paths and full URLs
-                              const normalizedUrl = item.imageUrl.replace(/\\/g, "/");
-                              const imageUrl = normalizedUrl.startsWith("http")
-                                ? normalizedUrl
-                                : normalizedUrl.startsWith("/")
-                                ? `${API_BASE}${normalizedUrl}`
-                                : `${API_BASE}/${normalizedUrl}`;
+                              // Use getProfileImageUrl helper for consistent URL handling
+                              const imageUrl = getProfileImageUrl(item.imageUrl);
                               
                               // Check if it's an image file
+                              const normalizedUrl = item.imageUrl.replace(/\\/g, "/");
                               const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(normalizedUrl);
                               
                               if (isImage) {

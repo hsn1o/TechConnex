@@ -39,6 +39,7 @@ import {
   getRecommendedProviders,
   searchProviders,
   getProviderAiDrafts,
+  getProfileImageUrl,
 } from "@/lib/api";
 
 /** Props come from the server page */
@@ -147,15 +148,7 @@ export default function FindProvidersClient({
             completedJobs: provider.completedJobs || 0,
             hourlyRate: provider.hourlyRate || 0,
             location: provider.location || "Malaysia",
-            avatar:
-              provider.avatar && provider.avatar !== "/placeholder.svg"
-                ? `${
-                    process.env.NEXT_PUBLIC_API_BASE_URL ||
-                    "http://localhost:4000"
-                  }${provider.avatar.startsWith("/") ? "" : "/"}${
-                    provider.avatar
-                  }`
-                : "/placeholder.svg?height=60&width=60",
+            avatar: getProfileImageUrl(provider.avatar),
             skills: provider.skills || [],
             verified: provider.isVerified || false,
             matchScore: provider.matchScore,

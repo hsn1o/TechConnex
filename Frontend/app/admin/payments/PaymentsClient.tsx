@@ -49,7 +49,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { getAdminPayments, getAdminPaymentStats } from "@/lib/api";
+import { getAdminPayments, getAdminPaymentStats, getProfileImageUrl } from "@/lib/api";
 import Link from "next/link";
 
 type Payment = {
@@ -407,10 +407,7 @@ export default function PaymentsClient() {
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-5 h-5">
                               <AvatarImage
-                                src={
-                                  payment.project.customer.customerProfile
-                                    ?.profileImageUrl || "/placeholder.svg"
-                                }
+                                src={getProfileImageUrl(payment.project.customer.customerProfile?.profileImageUrl)}
                               />
                               <AvatarFallback>
                                 {payment.project.customer.name.charAt(0)}
@@ -423,10 +420,7 @@ export default function PaymentsClient() {
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-5 h-5">
                               <AvatarImage
-                                src={
-                                  payment.project.provider.providerProfile
-                                    ?.profileImageUrl || "/placeholder.svg"
-                                }
+                                src={getProfileImageUrl(payment.project.provider.providerProfile?.profileImageUrl)}
                               />
                               <AvatarFallback>
                                 {payment.project.provider.name.charAt(0)}

@@ -34,7 +34,7 @@ import {
   FileText,
   X,
 } from "lucide-react";
-import { getAdminPaymentById, confirmAdminBankTransfer } from "@/lib/api";
+import { getAdminPaymentById, confirmAdminBankTransfer, getProfileImageUrl } from "@/lib/api";
 import {
   Dialog,
   DialogContent,
@@ -498,9 +498,9 @@ export default function PaymentDetailClient({
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const avatar =
-                          payment.project.provider.providerProfile
-                            ?.profileImageUrl || "";
+                        const avatar = getProfileImageUrl(
+                          payment.project.provider.providerProfile?.profileImageUrl
+                        );
                         router.push(
                           `/admin/messages?userId=${
                             payment.project.provider.id
@@ -749,9 +749,9 @@ export default function PaymentDetailClient({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const avatar =
-                        payment.project.customer.customerProfile
-                          ?.profileImageUrl || "";
+                      const avatar = getProfileImageUrl(
+                        payment.project.customer.customerProfile?.profileImageUrl
+                      );
                       router.push(
                         `/admin/messages?userId=${
                           payment.project.customer.id
@@ -783,10 +783,7 @@ export default function PaymentDetailClient({
               <div className="flex items-center gap-3">
                 <Avatar className="w-12 h-12">
                   <AvatarImage
-                    src={
-                      payment.project.customer.customerProfile
-                        ?.profileImageUrl || "/placeholder.svg"
-                    }
+                    src={getProfileImageUrl(payment.project.customer.customerProfile?.profileImageUrl)}
                   />
                   <AvatarFallback>
                     {payment.project.customer.name.charAt(0)}
@@ -894,10 +891,7 @@ export default function PaymentDetailClient({
               <div className="flex items-center gap-3">
                 <Avatar className="w-12 h-12">
                   <AvatarImage
-                    src={
-                      payment.project.provider.providerProfile
-                        ?.profileImageUrl || "/placeholder.svg"
-                    }
+                    src={getProfileImageUrl(payment.project.provider.providerProfile?.profileImageUrl)}
                   />
                   <AvatarFallback>
                     {payment.project.provider.name.charAt(0)}
@@ -1168,9 +1162,9 @@ export default function PaymentDetailClient({
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const avatar =
-                          payment.project.provider.providerProfile
-                            ?.profileImageUrl || "";
+                        const avatar = getProfileImageUrl(
+                          payment.project.provider.providerProfile?.profileImageUrl
+                        );
                         router.push(
                           `/admin/messages?userId=${
                             payment.project.provider.id

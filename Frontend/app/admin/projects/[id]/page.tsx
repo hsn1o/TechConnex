@@ -17,6 +17,9 @@ import {
   getAdminProjectById,
   updateAdminProject,
   getDisputesByProject,
+  getProfileImageUrl,
+  getAttachmentUrl,
+  getR2DownloadUrl,
 } from "@/lib/api"
 import {
   ArrowLeft,
@@ -43,7 +46,7 @@ export default function AdminProjectDetailPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
-  const { toast } = useToast()
+  const { toast: toastHook } = useToast()
 
   const [loading, setLoading] = useState(true)
   const [project, setProject] = useState<any>(null)
@@ -686,11 +689,7 @@ export default function AdminProjectDetailPage() {
                 <div className="flex items-start gap-4">
                   <Avatar className="w-16 h-16">
                     <AvatarImage
-                      src={
-                        project.customer?.customerProfile?.profileImageUrl
-                          ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.customer.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.customer.customerProfile.profileImageUrl}`
-                          : undefined
-                      }
+                      src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
                     />
                     <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
                   </Avatar>
@@ -752,11 +751,7 @@ export default function AdminProjectDetailPage() {
                   <div className="flex items-start gap-4">
                     <Avatar className="w-16 h-16">
                       <AvatarImage
-                        src={
-                          project.provider?.providerProfile?.profileImageUrl
-                            ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${project.provider.providerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${project.provider.providerProfile.profileImageUrl}`
-                            : undefined
-                        }
+                        src={getProfileImageUrl(project.provider?.providerProfile?.profileImageUrl)}
                       />
                       <AvatarFallback>{project.provider?.name?.charAt(0) || "P"}</AvatarFallback>
                     </Avatar>
@@ -1232,16 +1227,30 @@ export default function AdminProjectDetailPage() {
                                 {proposal.attachmentUrls.map((url: string, idx: number) => {
                                   const normalized = url.replace(/\\/g, "/")
                                   const fileName = normalized.split("/").pop() || `file-${idx + 1}`
-                                  const fullUrl = `${
-                                    process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-                                  }/${normalized.replace(/^\//, "")}`
+                                  const attachmentUrl = getAttachmentUrl(url)
+                                  const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"))
+                                  
                                   return (
                                     <a
                                       key={idx}
-                                      href={fullUrl}
+                                      href={attachmentUrl === "#" ? undefined : attachmentUrl}
                                       download={fileName}
                                       target="_blank"
                                       rel="noopener noreferrer"
+                                      onClick={isR2Key ? async (e) => {
+                                        e.preventDefault()
+                                        try {
+                                          const downloadUrl = await getR2DownloadUrl(url) // Use original URL/key
+                                          window.open(downloadUrl.downloadUrl, "_blank")
+                                        } catch (error) {
+                                          console.error("Failed to get download URL:", error)
+                                          toastHook({
+                                            title: "Error",
+                                            description: "Failed to download attachment",
+                                            variant: "destructive",
+                                          })
+                                        }
+                                      } : undefined}
                                       className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
                                     >
                                       <Paperclip className="w-4 h-4" />

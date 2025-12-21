@@ -8,12 +8,17 @@ export const disputeController = {
     try {
       const userId = req.user.userId;
       
-      // Handle file uploads - files are attached via multer middleware
-      const uploadedFiles = Array.isArray(req.files)
-        ? req.files.map((f) => f.path.replace(/\\/g, "/")) // e.g. "uploads/disputes/1730349382712_evidence.pdf"
-        : [];
+      // Handle file uploads - now expects R2 keys/URLs from frontend
+      // Frontend sends: { attachments: [{ key, url }, ...] }
+      let uploadedFiles = [];
+      if (req.body.attachments && Array.isArray(req.body.attachments)) {
+        uploadedFiles = req.body.attachments.map((att) => att.url || att.key);
+      } else if (req.body.attachmentUrls && Array.isArray(req.body.attachmentUrls)) {
+        // Backward compatibility: if frontend sends attachmentUrls directly
+        uploadedFiles = req.body.attachmentUrls;
+      }
       
-      // Parse FormData fields - they come as strings from FormData
+      // Parse fields - now comes as JSON (not FormData)
       const { projectId, milestoneId, paymentId, reason, description, contestedAmount, suggestedResolution } = req.body;
       
       console.log("Dispute creation request:", {
@@ -61,7 +66,9 @@ export const disputeController = {
       let finalDescription = description.trim();
       if (uploadedFiles.length > 0) {
         const attachmentMetadata = uploadedFiles.map(file => {
-          const filename = file.split('/').pop() || file.split('\\').pop() || 'attachment';
+          // Extract filename from R2 key or URL
+          const normalized = file.replace(/\\/g, "/");
+          const filename = normalized.split('/').pop() || 'attachment';
           return `[Attachment: ${filename} uploaded by ${userName} on ${new Date(timestamp).toLocaleString()}]`;
         }).join('\n');
         finalDescription = `${finalDescription}\n\n${attachmentMetadata}`;
@@ -119,10 +126,15 @@ export const disputeController = {
       const userId = req.user.userId;
       const { id } = req.params;
       
-      // Handle file uploads - files are attached via multer middleware
-      const uploadedFiles = Array.isArray(req.files)
-        ? req.files.map((f) => f.path.replace(/\\/g, "/"))
-        : [];
+      // Handle file uploads - now expects R2 keys/URLs from frontend
+      // Frontend sends: { attachments: [{ key, url }, ...] }
+      let uploadedFiles = [];
+      if (req.body.attachments && Array.isArray(req.body.attachments)) {
+        uploadedFiles = req.body.attachments.map((att) => att.url || att.key);
+      } else if (req.body.attachmentUrls && Array.isArray(req.body.attachmentUrls)) {
+        // Backward compatibility: if frontend sends attachmentUrls directly
+        uploadedFiles = req.body.attachmentUrls;
+      }
       
       const { reason, description, contestedAmount, suggestedResolution, additionalNotes, projectId } = req.body;
       
@@ -180,7 +192,9 @@ export const disputeController = {
         
         // Store attachments with metadata in description
         const attachmentMetadata = uploadedFiles.map(file => {
-          const filename = file.split('/').pop() || file.split('\\').pop() || 'attachment';
+          // Extract filename from R2 key or URL
+          const normalized = file.replace(/\\/g, "/");
+          const filename = normalized.split('/').pop() || 'attachment';
           return `[Attachment: ${filename} uploaded by ${userName} on ${new Date(timestamp).toLocaleString()}]`;
         }).join('\n');
         

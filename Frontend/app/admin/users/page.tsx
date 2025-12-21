@@ -39,7 +39,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { AdminLayout } from "@/components/admin-layout"
-import { getAdminUsers, getAdminUserStats, suspendUser, activateUser } from "@/lib/api"
+import { getAdminUsers, getAdminUserStats, suspendUser, activateUser, getProfileImageUrl } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 
@@ -384,13 +384,7 @@ export default function AdminUsersPage() {
                       <div className="flex items-center space-x-3">
                         <Avatar>
                           <AvatarImage 
-                            src={
-                              (isProvider && profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg")
-                                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
-                                : (isCustomer && profile?.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg")
-                                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
-                                : "/placeholder.svg"
-                            }
+                            src={getProfileImageUrl(profile?.profileImageUrl)}
                           />
                           <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
                         </Avatar>

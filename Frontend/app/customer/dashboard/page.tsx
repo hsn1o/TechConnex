@@ -32,6 +32,7 @@ import {
   getProjectRequestStats,
   getCompanyProjectStats,
   getRecommendedProviders,
+  getProfileImageUrl,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -127,18 +128,7 @@ export default function CustomerDashboard() {
             progress: project.progress || 0,
             budget: project.budgetMax,
             deadline: project.timeline,
-            avatar: project.provider?.providerProfile?.profileImageUrl
-              ? `${
-                  process.env.NEXT_PUBLIC_API_BASE_URL ||
-                  "http://localhost:4000"
-                }${
-                  project.provider.providerProfile.profileImageUrl.startsWith(
-                    "/"
-                  )
-                    ? ""
-                    : "/"
-                }${project.provider.providerProfile.profileImageUrl}`
-              : "/placeholder.svg?height=40&width=40",
+            avatar: getProfileImageUrl(project.provider?.providerProfile?.profileImageUrl),
             createdAt: project.createdAt,
             category: project.category,
             description: project.description,

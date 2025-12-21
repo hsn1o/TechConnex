@@ -116,11 +116,14 @@ export async function updateMilestoneStatusController(req, res) {
       }
     }
 
-    // Handle file upload - if file was uploaded, use its path
+    // Handle file upload - now accepts R2 key/URL from request body
     let submissionAttachmentUrl = null;
-    if (req.file) {
-      // Convert backslash to forward slash for URLs
-      submissionAttachmentUrl = req.file.path.replace(/\\/g, "/");
+    if (req.body.submissionAttachmentUrl) {
+      // Frontend sends the R2 URL/key after uploading
+      submissionAttachmentUrl = req.body.submissionAttachmentUrl;
+    } else if (req.body.attachment && req.body.attachment.url) {
+      // Alternative format: { attachment: { key, url } }
+      submissionAttachmentUrl = req.body.attachment.url || req.body.attachment.key;
     }
 
     if (!milestoneId) {

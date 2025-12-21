@@ -1,8 +1,6 @@
 import express from "express";
 import ProviderProfileController from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
-import { uploadProfileImage as uploadProfileImageMiddleware } from "../../../middlewares/uploadProfileImage.js";
-import { uploadPortfolioImage as uploadPortfolioImageMiddleware } from "../../../middlewares/uploadPortfolioImage.js";
 
 const router = express.Router();
 
@@ -14,13 +12,13 @@ router.get("/", ProviderProfileController.getProfile);
 router.post("/", ProviderProfileController.createProfile);
 router.put("/", ProviderProfileController.updateProfile);
 router.patch("/", ProviderProfileController.upsertProfile);
-router.post("/upload-image", uploadProfileImageMiddleware, ProviderProfileController.uploadProfileImage);
+router.post("/upload-image", ProviderProfileController.uploadProfileImage);
 router.get("/stats", ProviderProfileController.getProfileStats);
 router.get("/completion", ProviderProfileController.getProfileCompletion);
 router.get("/portfolio", ProviderProfileController.getPortfolio);
 router.get("/portfolio-items", ProviderProfileController.getPortfolioItems);
 router.post("/portfolio-items", ProviderProfileController.createPortfolioItem);
-router.post("/portfolio-items/upload-image", uploadPortfolioImageMiddleware, ProviderProfileController.uploadPortfolioImage);
+router.post("/portfolio-items/upload-image", ProviderProfileController.uploadPortfolioImage);
 router.put("/portfolio-items/:id", ProviderProfileController.updatePortfolioItem);
 router.delete("/portfolio-items/:id", ProviderProfileController.deletePortfolioItem);
 

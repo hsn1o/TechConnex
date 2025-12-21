@@ -4,8 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Globe, FileText } from "lucide-react";
 import type { PortfolioItem } from "../types";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+import { getProfileImageUrl } from "@/lib/api";
 
 export default function PortfolioGrid({ items }: { items: PortfolioItem[] }) {
   if (!items?.length) return <p className="text-xs sm:text-sm text-gray-500 text-center py-4">No portfolio items yet.</p>;
@@ -13,16 +12,10 @@ export default function PortfolioGrid({ items }: { items: PortfolioItem[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       {items.map((it) => {
-        // Normalize the cover URL
+        // Use getProfileImageUrl helper for consistent URL handling
         const normalizedCover = it.cover?.replace(/\\/g, "/") || "";
         const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(normalizedCover);
-        const imageUrl = normalizedCover.startsWith("http")
-          ? normalizedCover
-          : normalizedCover.startsWith("/")
-          ? `${API_BASE}${normalizedCover}`
-          : normalizedCover
-          ? `${API_BASE}/${normalizedCover}`
-          : null;
+        const imageUrl = normalizedCover ? getProfileImageUrl(normalizedCover) : null;
         
         const linkUrl = it.url && it.url !== "#" ? it.url : "#";
         const isExternalLink = linkUrl !== "#";

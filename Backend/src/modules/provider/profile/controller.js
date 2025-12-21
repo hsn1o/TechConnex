@@ -128,31 +128,33 @@ class ProviderProfileController {
     }
   }
 
-  // POST /api/provider/profile/upload-image - Upload profile image
+  // POST /api/provider/profile/upload-image - Upload profile image (now accepts R2 key)
   static async uploadProfileImage(req, res) {
     try {
       const userId = req.user.userId;
+      const { key, url } = req.body;
       
-      if (!req.file) {
+      if (!key) {
         return res.status(400).json({
           success: false,
-          message: "No image file provided",
+          message: "No image key provided",
         });
       }
 
-      // Get the file path (normalize slashes for cross-platform compatibility)
-      const imagePath = req.file.path.replace(/\\/g, "/");
+      // Use the URL if provided (for public files), otherwise use the key
+      // The frontend will handle getting the download URL for private files
+      const imageUrl = url || key;
       
-      // Update profile with image URL
+      // Update profile with image URL/key
       const profile = await ProviderProfileService.updateProfile(userId, {
-        profileImageUrl: imagePath,
+        profileImageUrl: imageUrl,
       });
       
       res.json({
         success: true,
         message: "Profile image uploaded successfully",
         data: {
-          profileImageUrl: imagePath,
+          profileImageUrl: imageUrl,
           profile,
         },
       });
@@ -271,24 +273,27 @@ class ProviderProfileController {
     }
   }
 
-  // POST /api/provider/profile/portfolio-items/upload-image - Upload portfolio image/file
+  // POST /api/provider/profile/portfolio-items/upload-image - Upload portfolio image/file (now accepts R2 key/URL)
   static async uploadPortfolioImage(req, res) {
     try {
-      if (!req.file) {
+      const { key, url } = req.body;
+      
+      if (!key) {
         return res.status(400).json({
           success: false,
-          message: "No file provided",
+          message: "No file key provided",
         });
       }
 
-      // Get the file path (normalize slashes for cross-platform compatibility)
-      const filePath = req.file.path.replace(/\\/g, "/");
+      // Use the URL if provided (for public files), otherwise use the key
+      // The frontend will handle getting the download URL for private files
+      const fileUrl = url || key;
       
       res.json({
         success: true,
         message: "Portfolio file uploaded successfully",
         data: {
-          imageUrl: filePath,
+          imageUrl: fileUrl,
         },
       });
     } catch (error) {

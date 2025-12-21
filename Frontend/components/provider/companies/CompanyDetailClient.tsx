@@ -55,7 +55,7 @@ import {
 } from "lucide-react";
 import type { Company, Review } from "./types";
 import { useRouter } from "next/navigation";
-import { getCompanyOpportunities, sendProposal } from "@/lib/api";
+import { getCompanyOpportunities, sendProposal, getProfileImageUrl } from "@/lib/api";
 import {
   formatTimeline,
   buildTimelineData,
@@ -118,24 +118,8 @@ export default function CompanyDetailClient({
 
   // Helper functions for media gallery
   const getMediaUrl = (url: string) => {
-    if (!url) return "";
-
-    // Check if it's a local file path or external URL
-    const isLocalPath =
-      url.startsWith("/uploads/") || url.startsWith("uploads/");
-    if (isLocalPath) {
-      // Normalize the path
-      const normalizedPath = url.replace(/\\/g, "/");
-      const cleanPath = normalizedPath.startsWith("/")
-        ? normalizedPath
-        : `/${normalizedPath}`;
-      // Construct full URL
-      const apiBase =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
-      return `${apiBase}${cleanPath}`;
-    }
-    // For external URLs, return as-is
-    return url;
+    // Use the same helper as profile images for consistency
+    return getProfileImageUrl(url);
   };
 
   const isImageUrl = (url: string) => {
@@ -255,14 +239,7 @@ export default function CompanyDetailClient({
   }, [company.id]);
 
   const handleContact = () => {
-    const avatarUrl =
-      company.avatar &&
-      company.avatar !== "/placeholder.svg" &&
-      !company.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
-            company.avatar.startsWith("/") ? "" : "/"
-          }${company.avatar}`
-        : "";
+    const avatarUrl = getProfileImageUrl(company.avatar);
     router.push(
       `/provider/messages?userId=${company.id}&name=${encodeURIComponent(
         company.name
@@ -344,21 +321,7 @@ export default function CompanyDetailClient({
           <div className="flex items-start gap-5">
             <Avatar className="w-20 h-20">
               <AvatarImage
-                src={
-                  company.avatar &&
-                  company.avatar !== "/placeholder.svg" &&
-                  company.avatar !== "/placeholder.svg?height=40&width=40" &&
-                  !company.avatar.includes("/placeholder.svg")
-                    ? company.avatar.startsWith("http")
-                      ? company.avatar
-                      : `${
-                          process.env.NEXT_PUBLIC_API_BASE_URL ||
-                          "http://localhost:4000"
-                        }${company.avatar.startsWith("/") ? "" : "/"}${
-                          company.avatar
-                        }`
-                    : "/placeholder.svg"
-                }
+                src={getProfileImageUrl(company.avatar)}
               />
               <AvatarFallback>
                 <Building2 className="w-10 h-10" />

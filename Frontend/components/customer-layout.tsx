@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { getProfileImageUrl } from "@/lib/api";
 
 interface CustomerLayoutProps {
   children: React.ReactNode;
@@ -409,27 +410,10 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                     className="relative h-8 w-8 rounded-full"
                   >
                     <Avatar className="h-8 w-8">
-                      {profile &&
-                      profile.data?.customerProfile?.profileImageUrl ? (
-                        <AvatarImage
-                          src={`${
-                            process.env.NEXT_PUBLIC_API_URL ||
-                            "http://localhost:4000"
-                          }${
-                            profile.data.customerProfile.profileImageUrl.startsWith(
-                              "/"
-                            )
-                              ? ""
-                              : "/"
-                          }${profile.data.customerProfile.profileImageUrl}`}
-                          alt={profile.name || "User"}
-                        />
-                      ) : (
-                        <AvatarImage
-                          src="/placeholder.svg?height=32&width=32"
-                          alt="User"
-                        />
-                      )}
+                      <AvatarImage
+                        src={getProfileImageUrl(profile?.data?.customerProfile?.profileImageUrl)}
+                        alt={profile?.name || "User"}
+                      />
                       <AvatarFallback>
                         {profile && profile.data.name
                           ? profile.data.name

@@ -46,6 +46,9 @@ import {
   rejectProjectRequest,
   getProjectRequestStats,
   exportCompanyProjectRequests,
+  getProfileImageUrl,
+  getAttachmentUrl,
+  getR2DownloadUrl,
 } from "@/lib/api";
 import {
   getCompanyProjectMilestones,
@@ -116,7 +119,7 @@ interface ApiProposal {
 }
 
 export default function CustomerRequestsPage() {
-  const { toast } = useToast();
+  const { toast: toastHook } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [projectFilter, setProjectFilter] = useState("all");
@@ -238,9 +241,7 @@ export default function CustomerRequestsPage() {
               id: proposal.id,
               providerId: provider.id,
               providerName: provider.name,
-              providerAvatar: profile.profileImageUrl && profile.profileImageUrl !== "/placeholder.svg"
-                ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${profile.profileImageUrl.startsWith("/") ? "" : "/"}${profile.profileImageUrl}`
-                : "/placeholder.svg?height=40&width=40",
+              providerAvatar: getProfileImageUrl(profile.profileImageUrl),
               providerRating: profile.rating ?? provider.rating ?? 0,
               providerLocation: profile.location ?? provider.location ?? "",
               providerResponseTime:
@@ -1285,25 +1286,37 @@ export default function CustomerRequestsPage() {
 
                         <div className="space-y-2">
                           {selectedRequest.attachments.map((rawUrl, idx) => {
-                            // rawUrl can look like: "uploads\proposals\1761857633365_Screenshots.pdf"
+                            // rawUrl can look like: "uploads\proposals\1761857633365_Screenshots.pdf" or R2 key
                             // We normalize slashes and extract filename.
-                            const normalized = rawUrl.replace(/\\/g, "/"); // -> "uploads/proposals/..."
+                            const normalized = rawUrl.replace(/\\/g, "/"); // -> "uploads/proposals/..." or R2 key
                             const fileName =
                               normalized.split("/").pop() || `file-${idx + 1}`;
 
-                            // Build absolute URL to download
-                            const fullUrl = `${
-                              process.env.NEXT_PUBLIC_API_URL ||
-                              "http://localhost:4000"
-                            }/${normalized.replace(/^\//, "")}`;
+                            // Use getAttachmentUrl helper for consistent URL handling
+                            const attachmentUrl = getAttachmentUrl(rawUrl);
+                            const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
 
                             return (
                               <a
                                 key={idx}
-                                href={fullUrl}
+                                href={attachmentUrl === "#" ? undefined : attachmentUrl}
                                 download={fileName}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                onClick={isR2Key ? async (e) => {
+                                  e.preventDefault();
+                                  try {
+                                    const downloadUrl = await getR2DownloadUrl(rawUrl); // Use original URL/key
+                                    window.open(downloadUrl.downloadUrl, "_blank");
+                                  } catch (error) {
+                                    console.error("Failed to get download URL:", error);
+                                    toastHook({
+                                      title: "Error",
+                                      description: "Failed to download attachment",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                } : undefined}
                                 className="flex items-start gap-2 sm:gap-3 rounded-lg border border-gray-200 bg-white px-2.5 sm:px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                               >
                                 {/* Icon circle */}

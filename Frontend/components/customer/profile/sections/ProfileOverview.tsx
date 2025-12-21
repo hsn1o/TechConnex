@@ -11,7 +11,7 @@ import { Mail, Phone, MapPin, Camera, Globe, X, Plus, Loader2, Calendar } from "
 import { Separator } from "@/components/ui/separator";
 import { useState, useRef } from "react";
 import type { ProfileData } from "../types";
-import { uploadCompanyProfileImage, getCompanyProfileCompletion } from "@/lib/api";
+import { uploadCompanyProfileImage, getCompanyProfileCompletion, getProfileImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 type Props = {
@@ -152,11 +152,7 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
           <div className="relative mx-auto sm:mx-0">
             <Avatar className="w-20 h-20 sm:w-22 sm:h-22 lg:w-24 lg:h-24">
                 <AvatarImage 
-                  src={
-                    value.customerProfile?.profileImageUrl 
-                      ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${value.customerProfile.profileImageUrl.startsWith("/") ? "" : "/"}${value.customerProfile.profileImageUrl}`
-                      : "/placeholder.svg?height=96&width=96"
-                  } 
+                  src={getProfileImageUrl(value.customerProfile?.profileImageUrl)} 
                 />
               <AvatarFallback className="text-base sm:text-lg">
                 {value.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'CO'}

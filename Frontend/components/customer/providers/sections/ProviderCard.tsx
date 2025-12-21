@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { Provider } from "../types";
 import { useRouter } from "next/navigation";
+import { getProfileImageUrl } from "@/lib/api";
 
 export default function ProviderCard({
   provider,
@@ -34,14 +35,7 @@ export default function ProviderCard({
 
   const handleContact = () => {
     // Navigate to chat with this provider
-    const avatarUrl =
-      provider.avatar &&
-      provider.avatar !== "/placeholder.svg" &&
-      !provider.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
-            provider.avatar.startsWith("/") ? "" : "/"
-          }${provider.avatar}`
-        : "";
+    const avatarUrl = getProfileImageUrl(provider.avatar);
     router.push(
       `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
         provider.name
@@ -100,18 +94,7 @@ export default function ProviderCard({
           <div className="relative flex-shrink-0">
             <Avatar className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16">
               <AvatarImage
-                src={
-                  provider.avatar &&
-                  provider.avatar !== "/placeholder.svg" &&
-                  !provider.avatar.includes("/placeholder.svg")
-                    ? `${
-                        process.env.NEXT_PUBLIC_API_BASE_URL ||
-                        "http://localhost:4000"
-                      }${provider.avatar.startsWith("/") ? "" : "/"}${
-                        provider.avatar
-                      }`
-                    : "/placeholder.svg"
-                }
+                src={getProfileImageUrl(provider.avatar)}
               />
               <AvatarFallback className="text-xs sm:text-sm lg:text-base">
                 {provider.name.charAt(0)}

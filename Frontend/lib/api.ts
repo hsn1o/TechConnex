@@ -3,6 +3,76 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:400
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
 
 /**
+ * Get the full URL for a profile image
+ * Handles both old local paths and new R2 URLs
+ * @param imageUrl - Image URL or key from database
+ * @returns Full URL to the image
+ */
+export function getProfileImageUrl(imageUrl: string | null | undefined): string {
+  if (!imageUrl) {
+    return "/placeholder.svg?height=96&width=96";
+  }
+
+  // If it's already a full URL (R2 public URL or http/https), return as is
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    return imageUrl;
+  }
+
+  // If it's a local path (old format), prepend API base URL
+  if (imageUrl.startsWith("/")) {
+    return `${API_BASE_URL}${imageUrl}`;
+  }
+
+  // Otherwise, treat as relative path
+  return `${API_BASE_URL}/${imageUrl}`;
+}
+
+/**
+ * Get the URL for an attachment (proposal, milestone, etc.)
+ * Handles both old local paths and new R2 URLs/keys
+ * For private R2 files, returns "#" to prevent direct navigation (use onClick with getDownloadUrl)
+ * @param attachmentUrl - Attachment URL or key from database
+ * @returns Full URL for local paths, "#" for R2 keys (use getDownloadUrl), or full URL for R2 public files
+ */
+export function getAttachmentUrl(attachmentUrl: string | null | undefined): string {
+  if (!attachmentUrl) {
+    return "";
+  }
+
+  // If it's already a full URL (R2 public URL or http/https), return as is
+  if (attachmentUrl.startsWith("http://") || attachmentUrl.startsWith("https://")) {
+    return attachmentUrl;
+  }
+
+  // If it's a local path (old format like /uploads/...), prepend API base URL
+  if (attachmentUrl.startsWith("/uploads/") || attachmentUrl.startsWith("uploads/")) {
+    const normalized = attachmentUrl.replace(/\\/g, "/");
+    const cleanPath = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `${API_BASE_URL}${cleanPath}`;
+  }
+
+  // If it starts with /, treat as local path
+  if (attachmentUrl.startsWith("/")) {
+    return `${API_BASE_URL}${attachmentUrl}`;
+  }
+
+  // Check if it's an R2 key (common prefixes: proposals/, milestones/, disputes/, etc.)
+  // R2 keys typically don't start with / and aren't full URLs
+  const r2KeyPrefixes = ["proposals/", "milestones/", "disputes/", "portfolio/", "profile-images/", "media-gallery/"];
+  const isR2Key = r2KeyPrefixes.some(prefix => attachmentUrl.startsWith(prefix)) || 
+                  (!attachmentUrl.includes("://") && !attachmentUrl.startsWith("/") && !attachmentUrl.includes(API_BASE_URL));
+  
+  if (isR2Key) {
+    // Return "#" for R2 keys - frontend should use onClick with getDownloadUrl
+    // This prevents the browser from trying to navigate to a non-existent route
+    return "#";
+  }
+
+  // Otherwise, return as-is (shouldn't happen, but fallback)
+  return attachmentUrl;
+}
+
+/**
  * Extract userId from JWT token stored in localStorage
  */
 export function getUserIdFromToken(): string | null {
@@ -120,20 +190,36 @@ export async function uploadCompanyProfileImage(imageFile: File) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
 
-  const formData = new FormData();
-  formData.append("profileImage", imageFile);
+  // Use the new R2 upload helper
+  const { uploadFile } = await import("./upload");
+  
+  // Upload to R2 with public visibility (profile images should be public)
+  const uploadResult = await uploadFile({
+    file: imageFile,
+    prefix: "profile-images",
+    visibility: "public",
+    category: "image",
+  });
 
+  if (!uploadResult.success) {
+    throw new Error(uploadResult.error || "Failed to upload profile image");
+  }
+
+  // Send the key and URL to backend to update the profile
   const res = await fetch(`${API_BASE_URL}/company/profile/upload-image`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
-      // Don't set Content-Type - let browser set it with boundary for FormData
+      "Content-Type": "application/json",
     },
-    body: formData,
+    body: JSON.stringify({
+      key: uploadResult.key,
+      url: uploadResult.url, // Public URL if visibility is "public"
+    }),
   });
   
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || "Failed to upload profile image");
+  if (!res.ok) throw new Error(data?.message || "Failed to update profile with image");
   return data;
 }
 
@@ -141,22 +227,42 @@ export async function uploadCompanyMediaGalleryImages(imageFiles: File[]) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
 
-  const formData = new FormData();
-  imageFiles.forEach((file) => {
-    formData.append("mediaImages", file);
+  // Use the new R2 upload helper
+  const { uploadFiles } = await import("./upload");
+  
+  // Upload all files to R2 with public visibility (media gallery images should be public)
+  const uploadResults = await uploadFiles(imageFiles, {
+    prefix: "media-gallery",
+    visibility: "public",
+    category: "image",
   });
 
+  // Filter successful uploads
+  const successfulUploads = uploadResults
+    .filter((result) => result.success)
+    .map((result) => ({
+      key: result.key,
+      url: result.url, // Public URL if visibility is "public"
+    }));
+
+  if (successfulUploads.length === 0) {
+    throw new Error("Failed to upload any media gallery images to R2");
+  }
+
+  // Send the keys and URLs to backend to update the profile
   const res = await fetch(`${API_BASE_URL}/company/profile/upload-media`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
-      // Don't set Content-Type - let browser set it with boundary for FormData
+      "Content-Type": "application/json",
     },
-    body: formData,
+    body: JSON.stringify({
+      images: successfulUploads,
+    }),
   });
   
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || "Failed to upload media gallery images");
+  if (!res.ok) throw new Error(data?.message || "Failed to update profile with media gallery images");
   return data;
 }
 
@@ -462,15 +568,75 @@ export async function sendProposal(formData: FormData) {
       ? localStorage.getItem("token")
       : undefined;
 
+  if (!token) throw new Error("Not authenticated");
+
+  // Extract attachments from FormData and upload to R2
+  const attachments = formData.getAll("attachments") as File[];
+  const attachmentResults: Array<{ key: string; url: string }> = [];
+
+  if (attachments.length > 0) {
+    const { uploadFiles } = await import("./upload");
+    
+    // Upload all attachments to R2 with private visibility (proposal attachments should be private)
+    const uploadResults = await uploadFiles(attachments, {
+      prefix: "proposals",
+      visibility: "private",
+      category: "document",
+    });
+
+    // Collect successful uploads
+    attachmentResults.push(
+      ...uploadResults
+        .filter((result) => result.success)
+        .map((result) => ({
+          key: result.key,
+          url: result.url || result.key, // URL will be empty for private files, use key
+        }))
+    );
+  }
+
+  // Convert FormData to plain object (excluding attachments)
+  const proposalData: any = {};
+  const milestonesMap: Record<number, any> = {};
+  
+  for (const [key, value] of formData.entries()) {
+    if (key !== "attachments") {
+      // Handle milestones array - format: milestones[0][sequence], milestones[0][title], etc.
+      const milestoneMatch = key.match(/^milestones\[(\d+)\]\[(\w+)\]$/);
+      if (milestoneMatch) {
+        const index = parseInt(milestoneMatch[1]);
+        const field = milestoneMatch[2];
+        if (!milestonesMap[index]) {
+          milestonesMap[index] = {};
+        }
+        milestonesMap[index][field] = value;
+      } else {
+        // Regular fields
+        proposalData[key] = value;
+      }
+    }
+  }
+
+  // Convert milestones map to array (sorted by index)
+  if (Object.keys(milestonesMap).length > 0) {
+    proposalData.milestones = Object.keys(milestonesMap)
+      .sort((a, b) => parseInt(a) - parseInt(b))
+      .map((key) => milestonesMap[parseInt(key)]);
+  }
+
+  // Add attachments array (always include, even if empty, for backend compatibility)
+  proposalData.attachments = attachmentResults;
+
+  // Send as JSON (no longer need FormData since files are uploaded to R2)
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/provider/proposals`,
     {
       method: "POST",
       headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        // DO NOT set Content-Type manually.
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-      body: formData,
+      body: JSON.stringify(proposalData),
     }
   );
 
@@ -751,31 +917,41 @@ export async function updateProviderMilestoneStatus(
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
 
-  // Use FormData if there's an attachment, otherwise use JSON
-  const useFormData = attachment !== undefined;
+  let submissionAttachmentUrl: string | undefined = undefined;
 
-  let body: FormData | string;
-  let headers: HeadersInit = {
+  // Upload attachment to R2 if provided
+  if (attachment) {
+    const { uploadFile } = await import("./upload");
+    
+    // Upload to R2 with private visibility (milestone attachments should be private)
+    const uploadResult = await uploadFile({
+      file: attachment,
+      prefix: "milestones",
+      visibility: "private",
+      category: attachment.type.startsWith("image/") ? "image" : "document",
+    });
+
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || "Failed to upload milestone attachment to R2");
+    }
+
+    // Use the URL if available (for public files), otherwise use the key
+    // For private files, frontend will need to get download URL when displaying
+    submissionAttachmentUrl = uploadResult.url || uploadResult.key;
+  }
+
+  // Always use JSON now (no FormData needed)
+  const headers: HeadersInit = {
     "Authorization": `Bearer ${token}`,
+    "Content-Type": "application/json",
   };
 
-  if (useFormData) {
-    body = new FormData();
-    body.append("status", status);
-    if (deliverables) {
-      body.append("deliverables", JSON.stringify(deliverables));
-    }
-    if (submissionNote) {
-      body.append("submissionNote", submissionNote);
-    }
-    if (attachment) {
-      body.append("attachment", attachment);
-    }
-    // Don't set Content-Type for FormData - browser will set it with boundary
-  } else {
-    headers["Content-Type"] = "application/json";
-    body = JSON.stringify({ status, deliverables, submissionNote });
-  }
+  const body = JSON.stringify({ 
+    status, 
+    deliverables, 
+    submissionNote,
+    submissionAttachmentUrl,
+  });
 
   const res = await fetch(`${API_BASE}/provider/projects/milestones/${milestoneId}/status`, {
     method: "PUT",
@@ -1330,20 +1506,36 @@ export async function uploadProviderProfileImage(imageFile: File) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
-  const formData = new FormData();
-  formData.append("profileImage", imageFile);
+  // Use the new R2 upload helper
+  const { uploadFile } = await import("./upload");
+  
+  // Upload to R2 with public visibility (profile images should be public)
+  const uploadResult = await uploadFile({
+    file: imageFile,
+    prefix: "profile-images",
+    visibility: "public",
+    category: "image",
+  });
 
+  if (!uploadResult.success) {
+    throw new Error(uploadResult.error || "Failed to upload profile image");
+  }
+
+  // Send the key and URL to backend to update the profile
   const res = await fetch(`${API_BASE}/provider/profile/upload-image`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
-      // Don't set Content-Type - let browser set it with boundary for FormData
+      "Content-Type": "application/json",
     },
-    body: formData,
+    body: JSON.stringify({
+      key: uploadResult.key,
+      url: uploadResult.url, // Public URL if visibility is "public"
+    }),
   });
   
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || "Failed to upload profile image");
+  if (!res.ok) throw new Error(data?.message || "Failed to update profile with image");
   return data;
 }
 
@@ -1455,16 +1647,32 @@ export async function uploadPortfolioImage(imageFile: File) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
-  const formData = new FormData();
-  formData.append("portfolioImage", imageFile);
+  // Use the new R2 upload helper
+  const { uploadFile } = await import("./upload");
+  
+  // Upload to R2 with public visibility (portfolio images should be public)
+  const uploadResult = await uploadFile({
+    file: imageFile,
+    prefix: "portfolio",
+    visibility: "public",
+    category: imageFile.type.startsWith("image/") ? "image" : "document",
+  });
 
+  if (!uploadResult.success) {
+    throw new Error(uploadResult.error || "Failed to upload portfolio file to R2");
+  }
+
+  // Send the key and URL to backend
   const res = await fetch(`${API_BASE}/provider/profile/portfolio-items/upload-image`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
-      // Don't set Content-Type - let browser set it with boundary for FormData
+      "Content-Type": "application/json",
     },
-    body: formData,
+    body: JSON.stringify({
+      key: uploadResult.key,
+      url: uploadResult.url, // Public URL if visibility is "public"
+    }),
   });
   
   const data = await res.json();
@@ -1780,39 +1988,64 @@ export async function createDispute(disputeData: {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
-  // Create FormData for file uploads
-  const formData = new FormData();
-  formData.append("projectId", disputeData.projectId);
-  formData.append("reason", disputeData.reason);
-  formData.append("description", disputeData.description);
-  
+  // Extract attachments and upload to R2
+  const attachments = disputeData.attachments || [];
+  const attachmentResults: Array<{ key: string; url: string }> = [];
+
+  if (attachments.length > 0) {
+    const { uploadFiles } = await import("./upload");
+
+    // Upload all attachments to R2 with private visibility (dispute attachments should be private)
+    // Category will be auto-detected from file type (image, document, or video)
+    const uploadResults = await uploadFiles(attachments, {
+      prefix: "disputes",
+      visibility: "private",
+      // Don't specify category - let it auto-detect from file.type
+    });
+
+    // Collect successful uploads
+    attachmentResults.push(
+      ...uploadResults
+        .filter((result) => result.success)
+        .map((result) => ({
+          key: result.key,
+          url: result.url || result.key, // URL will be empty for private files, use key
+        }))
+    );
+  }
+
+  // Prepare JSON payload
+  const payload: any = {
+    projectId: disputeData.projectId,
+    reason: disputeData.reason,
+    description: disputeData.description,
+  };
+
   if (disputeData.milestoneId) {
-    formData.append("milestoneId", disputeData.milestoneId);
+    payload.milestoneId = disputeData.milestoneId;
   }
   if (disputeData.paymentId) {
-    formData.append("paymentId", disputeData.paymentId);
+    payload.paymentId = disputeData.paymentId;
   }
   if (disputeData.contestedAmount !== undefined) {
-    formData.append("contestedAmount", disputeData.contestedAmount.toString());
+    payload.contestedAmount = disputeData.contestedAmount;
   }
   if (disputeData.suggestedResolution) {
-    formData.append("suggestedResolution", disputeData.suggestedResolution);
+    payload.suggestedResolution = disputeData.suggestedResolution;
   }
-  
-  // Append files
-  if (disputeData.attachments && disputeData.attachments.length > 0) {
-    disputeData.attachments.forEach((file) => {
-      formData.append("attachments", file);
-    });
+
+  // Add attachments array
+  if (attachmentResults.length > 0) {
+    payload.attachments = attachmentResults;
   }
 
   const res = await fetch(`${API_BASE}/disputes`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
-      // Don't set Content-Type - let browser set it with boundary for FormData
+      "Content-Type": "application/json",
     },
-    body: formData,
+    body: JSON.stringify(payload),
   });
   
   const data = await res.json();
@@ -1849,38 +2082,62 @@ export async function updateDispute(disputeId: string, updateData: {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
-  // Create FormData for file uploads
-  const formData = new FormData();
-  
-  if (updateData.reason) formData.append("reason", updateData.reason);
-  if (updateData.description) formData.append("description", updateData.description);
+  // Extract attachments and upload to R2
+  const attachments = updateData.attachments || [];
+  const attachmentResults: Array<{ key: string; url: string }> = [];
+
+  if (attachments.length > 0) {
+    const { uploadFiles } = await import("./upload");
+
+    // Upload all attachments to R2 with private visibility (dispute attachments should be private)
+    // Category will be auto-detected from file type (image, document, or video)
+    const uploadResults = await uploadFiles(attachments, {
+      prefix: "disputes",
+      visibility: "private",
+      // Don't specify category - let it auto-detect from file.type
+    });
+
+    // Collect successful uploads
+    attachmentResults.push(
+      ...uploadResults
+        .filter((result) => result.success)
+        .map((result) => ({
+          key: result.key,
+          url: result.url || result.key, // URL will be empty for private files, use key
+        }))
+    );
+  }
+
+  // Prepare JSON payload
+  const payload: any = {};
+
+  if (updateData.reason) payload.reason = updateData.reason;
+  if (updateData.description) payload.description = updateData.description;
   if (updateData.contestedAmount !== undefined) {
-    formData.append("contestedAmount", updateData.contestedAmount.toString());
+    payload.contestedAmount = updateData.contestedAmount;
   }
   if (updateData.suggestedResolution) {
-    formData.append("suggestedResolution", updateData.suggestedResolution);
+    payload.suggestedResolution = updateData.suggestedResolution;
   }
   if (updateData.additionalNotes) {
-    formData.append("additionalNotes", updateData.additionalNotes);
+    payload.additionalNotes = updateData.additionalNotes;
   }
   if (updateData.projectId) {
-    formData.append("projectId", updateData.projectId);
+    payload.projectId = updateData.projectId;
   }
-  
-  // Append files
-  if (updateData.attachments && updateData.attachments.length > 0) {
-    updateData.attachments.forEach((file) => {
-      formData.append("attachments", file);
-    });
+
+  // Add attachments array
+  if (attachmentResults.length > 0) {
+    payload.attachments = attachmentResults;
   }
 
   const res = await fetch(`${API_BASE}/disputes/${disputeId}`, {
     method: "PATCH",
     headers: {
       "Authorization": `Bearer ${token}`,
-      // Don't set Content-Type - let browser set it with boundary for FormData
+      "Content-Type": "application/json",
     },
-    body: formData,
+    body: JSON.stringify(payload),
   });
   
   const data = await res.json();
@@ -2741,5 +2998,104 @@ export async function confirmAdminBankTransfer(
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message || "Failed to confirm bank transfer");
   return data;
+}
+
+// R2 Upload API functions
+export async function generateR2PresignedUrl(params: {
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  prefix?: string;
+  visibility?: "public" | "private";
+  category?: "image" | "document" | "video";
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  // Validate params before sending
+  if (!params.fileName || typeof params.fileName !== "string" || params.fileName.trim() === "") {
+    throw new Error("fileName is required and must be a non-empty string");
+  }
+  if (!params.mimeType || typeof params.mimeType !== "string" || params.mimeType.trim() === "") {
+    throw new Error("mimeType is required and must be a non-empty string");
+  }
+  if (params.fileSize === undefined || params.fileSize === null || typeof params.fileSize !== "number" || params.fileSize < 0) {
+    throw new Error(`fileSize is required and must be a non-negative number (received: ${params.fileSize}, type: ${typeof params.fileSize})`);
+  }
+
+  // Log params for debugging (remove in production if needed)
+  console.log("Requesting presigned URL with params:", {
+    fileName: params.fileName,
+    mimeType: params.mimeType,
+    fileSize: params.fileSize,
+    fileSizeType: typeof params.fileSize,
+    prefix: params.prefix,
+    visibility: params.visibility,
+    category: params.category,
+  });
+
+  const res = await fetch(`${API_BASE}/uploads/presigned-url`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fileName: params.fileName,
+      mimeType: params.mimeType,
+      fileSize: params.fileSize, // Ensure it's a number
+      prefix: params.prefix,
+      visibility: params.visibility,
+      category: params.category,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    console.error("Presigned URL generation failed:", {
+      status: res.status,
+      message: data?.message,
+      params: params,
+    });
+    throw new Error(data?.message || "Failed to generate presigned URL");
+  }
+  return data as {
+    success: boolean;
+    uploadUrl: string;
+    key: string;
+    accessUrl?: string; // Only present if visibility is "public"
+  };
+}
+
+/**
+ * Get a presigned download URL for a private file
+ * @param key - R2 object key
+ * @param expiresIn - URL expiration in seconds (default: 3600 = 1 hour)
+ * @returns Presigned download URL
+ */
+export async function getR2DownloadUrl(key: string, expiresIn: number = 3600) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const params = new URLSearchParams({
+    key,
+    expiresIn: expiresIn.toString(),
+  });
+
+  const res = await fetch(`${API_BASE}/uploads/download?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to get download URL");
+  return data as {
+    success: boolean;
+    downloadUrl: string;
+    expiresIn: number;
+  };
 }
 

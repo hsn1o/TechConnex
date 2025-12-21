@@ -277,31 +277,33 @@ async function getComprehensiveProfile(req, res) {
   }
 }
 
-// Upload profile image
+// Upload profile image (now accepts R2 key)
 async function uploadProfileImage(req, res) {
   try {
     const userId = req.user.userId;
+    const { key, url } = req.body;
     
-    if (!req.file) {
+    if (!key) {
       return res.status(400).json({
         success: false,
-        message: "No image file provided",
+        message: "No image key provided",
       });
     }
 
-    // Get the file path (normalize slashes for cross-platform compatibility)
-    const imagePath = req.file.path.replace(/\\/g, "/");
+    // Use the URL if provided (for public files), otherwise use the key
+    // The frontend will handle getting the download URL for private files
+    const imageUrl = url || key;
     
-    // Update profile with image URL
+    // Update profile with image URL/key
     const profile = await CompanyProfileService.updateProfile(userId, {
-      profileImageUrl: imagePath,
+      profileImageUrl: imageUrl,
     });
     
     res.status(200).json({
       success: true,
       message: "Profile image uploaded successfully",
       data: {
-        profileImageUrl: imagePath,
+        profileImageUrl: imageUrl,
         profile,
       },
     });
@@ -314,16 +316,17 @@ async function uploadProfileImage(req, res) {
   }
 }
 
-// Upload media gallery images
+// Upload media gallery images (now accepts R2 keys/URLs)
 async function uploadMediaGalleryImages(req, res) {
   try {
     const userId = req.user.userId;
     const MAX_IMAGES = 10;
+    const { images } = req.body; // Array of { key, url } objects from frontend
     
-    if (!req.files || req.files.length === 0) {
+    if (!images || !Array.isArray(images) || images.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "No image files provided",
+        message: "No image data provided",
       });
     }
 
@@ -346,7 +349,7 @@ async function uploadMediaGalleryImages(req, res) {
     }
 
     // Check if adding these files would exceed the limit
-    if (existingMediaGallery.length + req.files.length > MAX_IMAGES) {
+    if (existingMediaGallery.length + images.length > MAX_IMAGES) {
       const allowed = MAX_IMAGES - existingMediaGallery.length;
       return res.status(400).json({
         success: false,
@@ -354,11 +357,11 @@ async function uploadMediaGalleryImages(req, res) {
       });
     }
 
-    // Get the file paths (normalize slashes for cross-platform compatibility)
-    const newImagePaths = req.files.map((file) => file.path.replace(/\\/g, "/"));
+    // Extract URLs from the images array (use url if available, otherwise key)
+    const newImageUrls = images.map((img) => img.url || img.key);
     
     // Merge with existing media gallery
-    const updatedMediaGallery = [...existingMediaGallery, ...newImagePaths];
+    const updatedMediaGallery = [...existingMediaGallery, ...newImageUrls];
     
     // Update profile with new media gallery URLs
     const profile = await CompanyProfileService.updateProfile(userId, {
@@ -370,7 +373,7 @@ async function uploadMediaGalleryImages(req, res) {
       message: "Media gallery images uploaded successfully",
       data: {
         mediaGallery: updatedMediaGallery,
-        uploadedImages: newImagePaths,
+        uploadedImages: newImageUrls,
         profile,
       },
     });

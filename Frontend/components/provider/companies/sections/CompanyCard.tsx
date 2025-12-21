@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, MapPin, MessageSquare, Star, Heart, Building2, Sparkles, ChevronRight } from "lucide-react";
 import type { Company } from "../types";
 import { useRouter } from "next/navigation";
+import { getProfileImageUrl } from "@/lib/api";
 
 export default function CompanyCard({ company }: { company: Company }) {
   const router = useRouter();
@@ -22,14 +23,7 @@ export default function CompanyCard({ company }: { company: Company }) {
 
   const handleContact = () => {
     // Navigate to chat with this company
-    const avatarUrl =
-      company.avatar &&
-      company.avatar !== "/placeholder.svg" &&
-      !company.avatar.includes("/placeholder.svg")
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
-            company.avatar.startsWith("/") ? "" : "/"
-          }${company.avatar}`
-        : "";
+    const avatarUrl = getProfileImageUrl(company.avatar);
     router.push(
       `/provider/messages?userId=${company.id}&name=${encodeURIComponent(
         company.name
@@ -89,21 +83,7 @@ export default function CompanyCard({ company }: { company: Company }) {
           <div className="relative">
             <Avatar className="w-16 h-16">
               <AvatarImage
-                src={
-                  company.avatar &&
-                  company.avatar !== "/placeholder.svg" &&
-                  company.avatar !== "/placeholder.svg?height=40&width=40" &&
-                  !company.avatar.includes("/placeholder.svg")
-                    ? company.avatar.startsWith("http")
-                      ? company.avatar
-                      : `${
-                          process.env.NEXT_PUBLIC_API_BASE_URL ||
-                          "http://localhost:4000"
-                        }${company.avatar.startsWith("/") ? "" : "/"}${
-                          company.avatar
-                        }`
-                    : "/placeholder.svg"
-                }
+                src={getProfileImageUrl(company.avatar)}
               />
               <AvatarFallback>
                 <Building2 className="w-8 h-8" />
