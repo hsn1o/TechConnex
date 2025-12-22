@@ -1,27 +1,51 @@
 import express from "express";
-import multer from "multer";
 import { createKyc, getAllKyc, reviewKycDocument } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
-// Configure multer storage (optional: customize upload folder)
-// store files locally in /uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    // rename file with timestamp to avoid duplicates
-    const uniqueSuffix = Date.now() + "-" + file.originalname;
-    cb(null, uniqueSuffix);
-  },
-});
+// Optional authentication middleware (for registration flows)
+const optionalAuthenticate = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  
+  if (!token) {
+    // No token - proceed without authentication (for registration)
+    req.user = null;
+    return next();
+  }
 
-const upload = multer({ storage });
+  // If token exists, verify it
+  jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+    if (err) {
+      // Invalid token - proceed without authentication (for registration)
+      req.user = null;
+      return next();
+    }
 
-// The "fileUrl" field from FormData will map to this multer field name
-router.post("/", upload.single("file"), createKyc);
+    // ✅ Normalize both possible token formats
+    if (payload.userId && !payload.id) {
+      payload.id = payload.userId;
+    }
+
+    // ✅ Ensure roles array
+    if (Array.isArray(payload.role)) {
+      payload.roles = payload.role;
+    } else if (payload.role) {
+      payload.roles = [payload.role];
+    } else {
+      payload.roles = [];
+    }
+
+    req.user = payload;
+    next();
+  });
+};
+
+// KYC upload now uses R2 - frontend uploads to R2 first, then sends key/URL
+// Authentication is optional for registration flows
+router.post("/", optionalAuthenticate, createKyc);
 router.get("/", authenticateToken, getAllKyc);
 router.put("/:userId", authenticateToken, reviewKycDocument);
 

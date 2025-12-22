@@ -130,7 +130,17 @@ export default function VerificationSection({
     if (!file) {
       return toast({
         title: "Missing information",
-        description: "Select a type and a file.",
+        description: "Please select a file to upload.",
+        variant: "destructive",
+      });
+    }
+
+    // Validate file size (50MB max for documents)
+    const maxSize = 50 * 1024 * 1024; // 50 MB
+    if (file.size > maxSize) {
+      return toast({
+        title: "File too large",
+        description: `Maximum file size is ${(maxSize / (1024 * 1024)).toFixed(0)} MB`,
         variant: "destructive",
       });
     }
@@ -140,32 +150,94 @@ export default function VerificationSection({
     setDocType("");
     setFile(null);
 
-    // perform upload to backend
+    // perform upload to R2 first, then backend
     try {
       setIsUploading(true);
-      const fd = new FormData();
 
-      // append userId if provided as prop
-      if (userId) fd.append("userId", userId);
+      // Upload to R2 first
+      // Category will be auto-detected from file type (image, document, or video)
+      const { uploadFile } = await import("@/lib/upload");
+      
+      let uploadResult;
+      try {
+        uploadResult = await uploadFile({
+          file: file as File,
+          prefix: "kyc",
+          visibility: "private", // KYC documents should be private
+          // Don't specify category - let it auto-detect from file.type
+        });
+      } catch (uploadError: any) {
+        // Handle R2 upload errors
+        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+          throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
+        }
+        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
+          throw new Error(`File size error: ${uploadError.message}`);
+        }
+        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
+          throw new Error(`File type error: ${uploadError.message}`);
+        }
+        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+      }
 
-      fd.append("type", documentType.toString());
-      fd.append("file", file as File);
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || "Failed to upload KYC document to R2");
+      }
 
+      // Send R2 key/URL to backend
       const token =
         typeof window !== "undefined"
           ? localStorage.getItem("token")
           : undefined;
-      const res = await fetch(`${API_BASE}/kyc`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body: fd,
-      });
+      
+      // Token is optional (for registration flows), but required for profile updates
+      if (!token && userId) {
+        throw new Error("Not authenticated: Please log in to upload documents.");
+      }
 
-      const contentType = res.headers.get("content-type") || "";
-      const payload = contentType.includes("application/json")
-        ? await res.json()
-        : { error: await res.text() };
-      if (!res.ok) throw new Error(payload.error || "KYC upload failed");
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/kyc`, {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userId || undefined,
+            type: documentType.toString(),
+            key: uploadResult.key,
+            url: uploadResult.url || uploadResult.key, // Use key if URL is empty (private files)
+            filename: file.name,
+            mimeType: file.type || "application/octet-stream",
+          }),
+        });
+      } catch (fetchError: any) {
+        // Handle network errors
+        if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+          throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
+        }
+        throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+      }
+
+      let payload;
+      try {
+        payload = await res.json();
+      } catch (parseError) {
+        throw new Error("Server response error: Invalid response from server. Please try again.");
+      }
+
+      if (!res.ok) {
+        const errorMsg = payload?.error || payload?.message || `KYC upload failed (${res.status})`;
+        if (res.status === 400) {
+          throw new Error(`Validation error: ${errorMsg}`);
+        } else if (res.status === 401 || res.status === 403) {
+          throw new Error(`Authorization error: ${errorMsg}. Please refresh the page and try again.`);
+        } else if (res.status >= 500) {
+          throw new Error(`Server error: ${errorMsg}. Please try again later.`);
+        }
+        throw new Error(errorMsg);
+      }
 
       const data = payload.data ?? payload;
 
@@ -234,7 +306,7 @@ export default function VerificationSection({
     }
   };
 
-  const handleDownload = (doc: UploadedDocument) => {
+  const handleDownload = async (doc: UploadedDocument) => {
     if (!doc.fileUrl) {
       return toast({
         title: "Download unavailable",
@@ -243,13 +315,33 @@ export default function VerificationSection({
       });
     }
 
-    // Create a temporary anchor element and trigger download
-    const link = document.createElement("a");
-    link.href = doc.fileUrl;
-    link.download = doc.name || "document";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Use getAttachmentUrl to resolve the URL (handles R2 keys, public URLs, local paths)
+      const { getAttachmentUrl, getR2DownloadUrl } = await import("@/lib/api");
+      const attachmentUrl = getAttachmentUrl(doc.fileUrl);
+      const isR2Key = attachmentUrl === "#"; // Check if getAttachmentUrl returned "#"
+
+      if (isR2Key) {
+        // For R2 private keys, fetch a presigned download URL
+        const downloadData = await getR2DownloadUrl(doc.fileUrl);
+        window.open(downloadData.downloadUrl, "_blank");
+      } else {
+        // For public URLs or local paths, download directly
+        const link = document.createElement("a");
+        link.href = attachmentUrl;
+        link.download = doc.name || "document";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error: any) {
+      console.error("Failed to download document:", error);
+      toast({
+        title: "Download failed",
+        description: error.message || "Failed to download document",
+        variant: "destructive",
+      });
+    }
   };
 
   const remove = (id: string) => {

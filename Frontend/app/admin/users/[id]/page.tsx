@@ -15,8 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AdminLayout } from "@/components/admin-layout"
 import { getAdminUserById, suspendUser, activateUser, updateAdminUser } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, Ban, CheckCircle, Building, Users, Calendar, Mail, Phone, MapPin, Globe, Award, Star, DollarSign, FileText, Loader2, Edit, Save, X, MessageSquare } from "lucide-react"
+import { ArrowLeft, Ban, CheckCircle, Building, Users, Calendar, Mail, Phone, MapPin, Globe, Award, Star, DollarSign, FileText, Loader2, Edit, Save, X, MessageSquare, ExternalLink } from "lucide-react"
 import Link from "next/link"
+import { getResumeByUserId, getR2DownloadUrl } from "@/lib/api"
 
 export default function AdminUserDetailPage() {
   const params = useParams()
@@ -30,10 +31,49 @@ export default function AdminUserDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<any>(null)
+  const [resume, setResume] = useState<{ fileUrl: string; uploadedAt: string } | null>(null)
+  const [loadingResume, setLoadingResume] = useState(false)
 
   useEffect(() => {
     loadUserData()
   }, [userId])
+
+  useEffect(() => {
+    const loadResume = async () => {
+      if (!user || !user.role?.includes("PROVIDER")) return;
+      try {
+        setLoadingResume(true);
+        const response = await getResumeByUserId(user.id);
+        if (response.success && response.data) {
+          setResume(response.data);
+        }
+      } catch (error) {
+        // Resume is optional
+        console.error("Failed to load resume:", error);
+      } finally {
+        setLoadingResume(false);
+      }
+    };
+
+    if (user) {
+      loadResume();
+    }
+  }, [user])
+
+  const handleDownloadResume = async () => {
+    if (!resume?.fileUrl) return;
+
+    try {
+      const downloadUrl = await getR2DownloadUrl(resume.fileUrl);
+      window.open(downloadUrl.downloadUrl, "_blank");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to download resume",
+        variant: "destructive",
+      });
+    }
+  };
 
   const loadUserData = async () => {
     try {
@@ -846,6 +886,48 @@ export default function AdminUserDetailPage() {
                           </div>
                         )}
                       </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Resume Section for Providers */}
+                {isProvider && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Resume</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingResume ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                          <span className="ml-2">Loading resume...</span>
+                        </div>
+                      ) : resume ? (
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <FileText className="w-8 h-8 text-gray-400" />
+                            <div>
+                              <p className="font-medium">Resume uploaded</p>
+                              <p className="text-sm text-gray-500">
+                                Uploaded on {new Date(resume.uploadedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDownloadResume}
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Download
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                          <p>No resume uploaded</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}

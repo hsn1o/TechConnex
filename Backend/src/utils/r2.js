@@ -216,6 +216,37 @@ export async function generatePresignedDownloadUrl(key, expiresIn = 3600) {
 }
 
 /**
+ * Download a file from R2
+ * @param {string} key - R2 object key
+ * @returns {Promise<Buffer>} File buffer
+ */
+export async function downloadFileFromR2(key) {
+  if (!r2Client || !R2_BUCKET) {
+    throw new Error("R2 is not configured. Please set R2 environment variables.");
+  }
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+    });
+
+    const response = await r2Client.send(command);
+    
+    // Convert stream to buffer
+    const chunks = [];
+    for await (const chunk of response.Body) {
+      chunks.push(chunk);
+    }
+    
+    return Buffer.concat(chunks);
+  } catch (error) {
+    console.error("Error downloading file from R2:", error);
+    throw new Error(`Failed to download file from R2: ${error.message}`);
+  }
+}
+
+/**
  * Get public URL for a file (if bucket is public)
  * @param {string} key - R2 object key
  * @returns {string} Public URL

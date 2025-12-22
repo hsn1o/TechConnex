@@ -51,6 +51,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
+import { getAttachmentUrl, getR2DownloadUrl } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 // ===== Types that match /api/admin/kyc (see backend adminKycRoutes.js) =====
 export type KycDocStatus = "uploaded" | "verified" | "rejected";
@@ -128,6 +130,7 @@ function getDocumentStatusColor(status: string) {
 
 export default function AdminVerificationsPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+  const { toast } = useToast();
 
   // ===== UI state =====
   const [searchQuery, setSearchQuery] = useState("");
@@ -539,10 +542,29 @@ export default function AdminVerificationsPage() {
                               )}`}
                             />
                             <a
-                              className="truncate underline decoration-dotted"
-                              href={`${API_URL}${doc.fileUrl}`}
-                              target="_blank"
-                              rel="noreferrer"
+                              className="truncate underline decoration-dotted cursor-pointer"
+                              href={undefined}
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  const attachmentUrl = getAttachmentUrl(doc.fileUrl);
+                                  const isR2Key = attachmentUrl === "#";
+                                  
+                                  if (isR2Key) {
+                                    const downloadData = await getR2DownloadUrl(doc.fileUrl);
+                                    window.open(downloadData.downloadUrl, "_blank");
+                                  } else {
+                                    window.open(attachmentUrl, "_blank");
+                                  }
+                                } catch (error: any) {
+                                  console.error("Failed to open document:", error);
+                                  toast({
+                                    title: "Error",
+                                    description: error.message || "Failed to open document",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
                               title={doc.filename}
                             >
                               {doc.type}
@@ -782,20 +804,34 @@ export default function AdminVerificationsPage() {
                                         <p className="text-sm text-gray-500 mb-3">
                                           Filename: {doc.filename}
                                         </p>
-                                        <a
-                                          href={`${API_URL}${doc.fileUrl}`}
-                                          target="_blank"
-                                          rel="noreferrer"
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="w-full bg-transparent"
+                                          onClick={async () => {
+                                            try {
+                                              const attachmentUrl = getAttachmentUrl(doc.fileUrl);
+                                              const isR2Key = attachmentUrl === "#";
+                                              
+                                              if (isR2Key) {
+                                                const downloadData = await getR2DownloadUrl(doc.fileUrl);
+                                                window.open(downloadData.downloadUrl, "_blank");
+                                              } else {
+                                                window.open(attachmentUrl, "_blank");
+                                              }
+                                            } catch (error: any) {
+                                              console.error("Failed to download document:", error);
+                                              toast({
+                                                title: "Error",
+                                                description: error.message || "Failed to download document",
+                                                variant: "destructive",
+                                              });
+                                            }
+                                          }}
                                         >
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="w-full bg-transparent"
-                                          >
-                                            <Download className="w-4 h-4 mr-2" />
-                                            Download
-                                          </Button>
-                                        </a>
+                                          <Download className="w-4 h-4 mr-2" />
+                                          Download
+                                        </Button>
                                       </div>
                                     ))}
                                   </div>

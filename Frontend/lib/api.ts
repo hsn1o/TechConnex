@@ -3009,8 +3009,8 @@ export async function generateR2PresignedUrl(params: {
   visibility?: "public" | "private";
   category?: "image" | "document" | "video";
 }) {
+  // Token is optional (for registration flows)
   const token = getToken();
-  if (!token) throw new Error("Not authenticated");
 
   // Validate params before sending
   if (!params.fileName || typeof params.fileName !== "string" || params.fileName.trim() === "") {
@@ -3034,12 +3034,18 @@ export async function generateR2PresignedUrl(params: {
     category: params.category,
   });
 
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+  
+  // Add authorization header only if token exists
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}/uploads/presigned-url`, {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       fileName: params.fileName,
       mimeType: params.mimeType,
@@ -3065,6 +3071,76 @@ export async function generateR2PresignedUrl(params: {
     key: string;
     accessUrl?: string; // Only present if visibility is "public"
   };
+}
+
+// Resume API functions
+export async function getMyResume() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/resume`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || data?.message || "Failed to get resume");
+  return data;
+}
+
+export async function getResumeByUserId(userId: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/resume/${userId}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || data?.message || "Failed to get resume");
+  return data;
+}
+
+export async function uploadResume(key: string, url?: string) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/resume/upload`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ key, url }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || data?.message || "Failed to upload resume");
+  return data;
+}
+
+export async function deleteResume() {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/resume`, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || data?.message || "Failed to delete resume");
+  return data;
 }
 
 /**

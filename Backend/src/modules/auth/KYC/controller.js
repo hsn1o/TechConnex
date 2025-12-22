@@ -15,21 +15,26 @@ import { createNotification } from "../../notifications/service.js";
 
 export const createKyc = async (req, res) => {
   try {
-    const { userId, type } = req.body;
-    const file = req.file;
+    const { userId, type, key, url, filename, mimeType } = req.body;
 
-    if (!userId || !type || !file) {
+    if (!userId || !type || !key) {
       return res
         .status(400)
-        .json({ error: "userId, type, and file are required" });
+        .json({ error: "userId, type, and key (R2 file key) are required" });
     }
+
+    // Extract filename from key if not provided
+    const finalFilename = filename || key.split("/").pop() || "kyc-document";
+    
+    // Use the R2 key as fileUrl (or the public URL if provided)
+    const fileUrl = url || key;
 
     const newKyc = await createKycDocument({
       userId,
       type,
-      fileUrl: `/uploads/${file.filename}`, // relative URL to uploaded file
-      filename: file.originalname,
-      mimeType: file.mimetype,
+      fileUrl: fileUrl, // R2 key or public URL
+      filename: finalFilename,
+      mimeType: mimeType || "application/octet-stream",
       status: "uploaded",
     });
 

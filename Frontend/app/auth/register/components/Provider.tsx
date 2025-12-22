@@ -222,42 +222,122 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || file.type !== "application/pdf") {
-      alert("PDF files only.");
+    if (!file) return;
+
+    // Validate file type
+    if (file.type !== "application/pdf") {
+      alert("Invalid file type: Only PDF files are allowed for resumes.");
+      if (e.target) {
+        e.target.value = ""; // Reset input
+      }
+      return;
+    }
+
+    // Validate file size (50MB max for documents)
+    const maxSize = 50 * 1024 * 1024; // 50 MB
+    if (file.size > maxSize) {
+      alert(`File size exceeds limit. Maximum size is ${(maxSize / (1024 * 1024)).toFixed(0)} MB`);
+      if (e.target) {
+        e.target.value = ""; // Reset input
+      }
       return;
     }
 
     setResumeFile(file);
     setIsProcessingCV(true);
 
-    const formData = new FormData();
-    formData.append("resume", file);
-
     try {
-      const res = await fetch(`${API_BASE}/resume/analyze`, {
-        method: "POST",
-        body: formData,
-      });
+      // Upload to R2 first
+      const { uploadFile } = await import("@/lib/upload");
+      
+      let uploadResult;
+      try {
+        uploadResult = await uploadFile({
+          file: file,
+          prefix: "resumes",
+          visibility: "private", // Resumes should be private
+          category: "document",
+        });
+      } catch (uploadError: any) {
+        // Handle R2 upload errors
+        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+          throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
+        }
+        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
+          throw new Error(`File size error: ${uploadError.message}`);
+        }
+        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
+          throw new Error(`File type error: ${uploadError.message}`);
+        }
+        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+      }
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || "Failed to upload resume to R2");
+      }
+
+      // Send R2 key to backend for AI analysis
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+      
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/resume/analyze`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            key: uploadResult.key,
+          }),
+        });
+      } catch (fetchError: any) {
+        // Handle network errors
+        if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+          throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
+        }
+        throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+      }
 
       if (!res.ok) {
-        const errorText = await res.text();
-        let errorMessage = "Resume analysis failed.";
+        let errorMessage = "Resume analysis failed";
         try {
+          const errorText = await res.text();
           const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.error || errorMessage;
+          errorMessage = errorJson.error || errorJson.message || errorMessage;
         } catch {
           errorMessage = `Server error: ${res.status} ${res.statusText}`;
+        }
+
+        if (res.status === 400) {
+          throw new Error(`Validation error: ${errorMessage}`);
+        } else if (res.status === 401 || res.status === 403) {
+          throw new Error(`Authorization error: ${errorMessage}`);
+        } else if (res.status >= 500) {
+          throw new Error(`Server error: ${errorMessage}. Please try again later.`);
         }
         throw new Error(errorMessage);
       }
 
-      const result = await res.json();
+      let result;
+      try {
+        result = await res.json();
+      } catch (parseError) {
+        throw new Error("Server response error: Invalid response from server. Please try again.");
+      }
+
       setCvExtractedData(result.data);
       setShowAIResults(true);
       setAiProcessingComplete(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Resume upload failed:", err);
-      alert(err instanceof Error ? err.message : "Resume analysis failed.");
+      const errorMessage = err instanceof Error ? err.message : "Resume analysis failed. Please try again.";
+      alert(errorMessage);
+      // Reset file on error
+      setResumeFile(null);
+      if (e.target) {
+        e.target.value = ""; // Reset input
+      }
     } finally {
       setIsProcessingCV(false);
     }

@@ -23,12 +23,14 @@ import {
   Award,
   Loader2,
   Globe,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import type { Provider, PortfolioItem, Review } from "./types";
 import PortfolioGrid from "./sections/PortfolioGrid";
 import ReviewsList from "./sections/ReviewsList";
 import { useRouter } from "next/navigation";
-import { getProviderCompletedProjects, getProfileImageUrl } from "@/lib/api";
+import { getProviderCompletedProjects, getProfileImageUrl, getResumeByUserId, getR2DownloadUrl } from "@/lib/api";
 import ProposalPopup from "./ProposalPopup";
 
 export default function ProviderDetailClient({
@@ -44,6 +46,8 @@ export default function ProviderDetailClient({
   const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   const [isProposalPopupOpen, setIsProposalPopupOpen] = useState(false);
+  const [resume, setResume] = useState<{ fileUrl: string; uploadedAt: string } | null>(null);
+  const [loadingResume, setLoadingResume] = useState(false);
   const router = useRouter();
 
   // Update saved state when provider prop changes (e.g., after refresh)
@@ -69,6 +73,37 @@ export default function ProviderDetailClient({
 
     loadCompletedProjects();
   }, [provider.id]);
+
+  // Load resume
+  useEffect(() => {
+    const loadResume = async () => {
+      try {
+        setLoadingResume(true);
+        const response = await getResumeByUserId(provider.id);
+        if (response.success && response.data) {
+          setResume(response.data);
+        }
+      } catch (error) {
+        // Resume is optional, so we don't show error
+        console.error("Failed to load resume:", error);
+      } finally {
+        setLoadingResume(false);
+      }
+    };
+
+    loadResume();
+  }, [provider.id]);
+
+  const handleDownloadResume = async () => {
+    if (!resume?.fileUrl) return;
+
+    try {
+      const downloadUrl = await getR2DownloadUrl(resume.fileUrl);
+      window.open(downloadUrl.downloadUrl, "_blank");
+    } catch (error: any) {
+      alert("Failed to download resume: " + (error.message || "Unknown error"));
+    }
+  };
 
   const handleContact = (provider: any) => {
     const avatarUrl = getProfileImageUrl(provider.avatar);
@@ -366,6 +401,40 @@ export default function ProviderDetailClient({
               <ReviewsList reviews={reviews} />
             </CardContent>
           </Card>
+
+          {/* Resume */}
+          {resume && (
+            <Card>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Resume</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Provider's resume
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <FileText className="w-8 h-8 text-gray-400" />
+                    <div>
+                      <p className="font-medium text-sm sm:text-base">Resume</p>
+                      <p className="text-xs sm:text-sm text-gray-500">
+                        Uploaded on {new Date(resume.uploadedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadResume}
+                    className="text-xs sm:text-sm"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}

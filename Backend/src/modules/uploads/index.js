@@ -1,6 +1,7 @@
 // modules/uploads/index.js
 import express from "express";
 import { authenticateToken } from "../../middlewares/auth.js";
+import jwt from "jsonwebtoken";
 import { 
   generatePresignedUploadUrl, 
   generateFileKey, 
@@ -12,6 +13,44 @@ import { PrismaClient } from "@prisma/client";
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+// Optional authentication middleware (for registration flows)
+const optionalAuthenticate = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  
+  if (!token) {
+    // No token - proceed without authentication (for registration)
+    req.user = null;
+    return next();
+  }
+
+  // If token exists, verify it
+  jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+    if (err) {
+      // Invalid token - proceed without authentication (for registration)
+      req.user = null;
+      return next();
+    }
+
+    // ✅ Normalize both possible token formats
+    if (payload.userId && !payload.id) {
+      payload.id = payload.userId;
+    }
+
+    // ✅ Ensure roles array
+    if (Array.isArray(payload.role)) {
+      payload.roles = payload.role;
+    } else if (payload.role) {
+      payload.roles = [payload.role];
+    } else {
+      payload.roles = [];
+    }
+
+    req.user = payload;
+    next();
+  });
+};
 
 /**
  * POST /uploads/presigned-url
@@ -35,7 +74,8 @@ const prisma = new PrismaClient();
  *   accessUrl?: string (public URL, only if visibility is "public")
  * }
  */
-router.post("/presigned-url", authenticateToken, async (req, res) => {
+// Presigned URL endpoint - authentication is optional for registration flows
+router.post("/presigned-url", optionalAuthenticate, async (req, res) => {
   try {
     const { fileName, mimeType, fileSize, prefix = "uploads", visibility = "private", category } = req.body;
 
@@ -66,13 +106,14 @@ router.post("/presigned-url", authenticateToken, async (req, res) => {
       });
     }
 
-    // Get user ID from token
-    const userId = req.user?.userId || req.user?.id;
+    // Get user ID from token (if authenticated) or use temporary ID for registration
+    let userId = req.user?.userId || req.user?.id;
+    
+    // If no user ID (registration flow), use a temporary identifier
+    // This will be replaced with actual user ID after registration
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User ID not found in token",
-      });
+      // Use timestamp-based temporary ID for registration uploads
+      userId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     }
 
     // Generate unique file key
@@ -254,6 +295,72 @@ router.get("/download", authenticateToken, async (req, res) => {
           
           if (dispute) {
             hasAccess = true;
+          }
+        }
+      }
+      
+      // Check for KYC documents: users can access their own KYC documents, admins can access all (already checked above)
+      if (!hasAccess && key.startsWith("kyc/")) {
+        // Extract user ID from key (format: kyc/userId/timestamp-random-filename)
+        const keyParts = key.split("/");
+        if (keyParts.length >= 2) {
+          const fileUserId = keyParts[1];
+          
+          // User can access their own KYC documents
+          if (fileUserId === userId) {
+            hasAccess = true;
+          } else {
+            // Check if the file is associated with a KYC document for this user
+            const kycDoc = await prisma.kycDocument.findFirst({
+              where: {
+                fileUrl: { contains: key },
+                userId: userId, // User owns the KYC document
+              },
+            });
+            if (kycDoc) {
+              hasAccess = true;
+            }
+          }
+        }
+      }
+      
+      // Check for resume documents: users can access their own resumes, companies and admins can access provider resumes
+      if (!hasAccess && key.startsWith("resumes/")) {
+        // Extract user ID from key (format: resumes/userId/timestamp-random-filename)
+        const keyParts = key.split("/");
+        if (keyParts.length >= 2) {
+          const fileUserId = keyParts[1];
+          
+          // User can access their own resume
+          if (fileUserId === userId) {
+            hasAccess = true;
+          } else {
+            // Check if the file is associated with a resume for this user
+            const resume = await prisma.resume.findFirst({
+              where: {
+                fileUrl: { contains: key },
+                userId: userId, // User owns the resume
+              },
+            });
+            if (resume) {
+              hasAccess = true;
+            } else {
+              // Check if user is a company (CUSTOMER) or admin - they can access provider resumes
+              const isCustomer = Array.isArray(userRoles) 
+                ? userRoles.includes("CUSTOMER") 
+                : userRoles === "CUSTOMER";
+              
+              // Companies and admins can access any provider's resume
+              // Verify that the fileUserId is a provider by checking if they have a provider profile
+              if (isCustomer || isAdmin) {
+                const providerProfile = await prisma.providerProfile.findUnique({
+                  where: { userId: fileUserId },
+                });
+                if (providerProfile) {
+                  hasAccess = true;
+                }
+              }
+            }
           }
         }
       }

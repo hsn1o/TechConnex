@@ -71,7 +71,12 @@ import {
   getUserIdFromToken,
   getKycDocuments,
   API_BASE,
+  getMyResume,
+  uploadResume,
+  deleteResume,
+  getR2DownloadUrl,
 } from "@/lib/api";
+import { uploadFile } from "@/lib/upload";
 import { useToast } from "@/hooks/use-toast";
 import { useRef } from "react";
 import VerificationSection from "@/components/customer/profile/sections/VerificationSection";
@@ -212,17 +217,22 @@ export default function ProviderProfilePage(props: Props = {}) {
   const [docs, setDocs] = useState<UploadedDocument[]>(
     initialUploadedDocuments ?? []
   );
+  const [resume, setResume] = useState<{ fileUrl: string; uploadedAt: string } | null>(null);
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const [deletingResume, setDeletingResume] = useState(false);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
 
   // Load profile data on component mount
   useEffect(() => {
     const loadProfileData = async () => {
       try {
         setLoading(true);
-        const [profileResponse, statsResponse, completionResponse] =
+        const [profileResponse, statsResponse, completionResponse, resumeResponse] =
           await Promise.all([
           getProviderProfile(),
           getProviderProfileStats(),
             getProviderProfileCompletion(),
+            getMyResume().catch(() => ({ success: false, data: null })), // Resume is optional
           ]);
 
         if (profileResponse.success) {
@@ -265,6 +275,10 @@ export default function ProviderProfilePage(props: Props = {}) {
         if (completionResponse.success) {
           setProfileCompletion(completionResponse.data.completion || 0);
           setCompletionSuggestions(completionResponse.data.suggestions || []);
+        }
+
+        if (resumeResponse.success && resumeResponse.data) {
+          setResume(resumeResponse.data);
         }
       } catch (error) {
         console.error("Error loading profile data:", error);
@@ -369,11 +383,8 @@ export default function ProviderProfilePage(props: Props = {}) {
           const mapped = docsData.map((d) => {
             const item = d as Record<string, unknown>;
             const fileUrl = item.fileUrl ? String(item.fileUrl) : undefined;
-            // Construct full URL if it's a relative path
-            const fullFileUrl =
-              fileUrl && fileUrl.startsWith("/")
-                ? `${API_BASE}${fileUrl}`
-                : fileUrl;
+            // Use getAttachmentUrl helper for consistent URL handling (R2 keys, public URLs, local paths)
+            // Note: We'll resolve the actual URL when downloading, not here
             return {
               id: String(item.id ?? ""),
               name: String(item.filename ?? item.fileUrl ?? item.id ?? ""),
@@ -408,7 +419,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                     hour12: true,
                   })
                 : undefined,
-              fileUrl: fullFileUrl,
+              fileUrl: fileUrl, // Keep original fileUrl (R2 key or path) - will be resolved when downloading
               reviewer: item.reviewer
                 ? {
                     id: (item.reviewer as any).id,
@@ -685,6 +696,149 @@ export default function ProviderProfilePage(props: Props = {}) {
       </ProviderLayout>
     );
   }
+
+  // Resume handlers
+  const handleResumeClick = () => {
+    resumeInputRef.current?.click();
+  };
+
+  const handleResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (file.type !== "application/pdf") {
+      toast({
+        title: "Invalid file type",
+        description: "Only PDF files are allowed for resumes",
+        variant: "destructive",
+      });
+      if (e.target) {
+        e.target.value = ""; // Reset input
+      }
+      return;
+    }
+
+    // Validate file size (50MB max for documents)
+    const maxSize = 50 * 1024 * 1024; // 50 MB
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: `Maximum file size is ${(maxSize / (1024 * 1024)).toFixed(0)} MB`,
+        variant: "destructive",
+      });
+      if (e.target) {
+        e.target.value = ""; // Reset input
+      }
+      return;
+    }
+
+    setUploadingResume(true);
+    try {
+      // Upload to R2 first
+      let uploadResult;
+      try {
+        uploadResult = await uploadFile({
+          file: file,
+          prefix: "resumes",
+          visibility: "private",
+          category: "document",
+        });
+      } catch (uploadError: any) {
+        // Handle R2 upload errors
+        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+          throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
+        }
+        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
+          throw new Error(`File size error: ${uploadError.message}`);
+        }
+        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
+          throw new Error(`File type error: ${uploadError.message}`);
+        }
+        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+      }
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || "Failed to upload resume to R2");
+      }
+
+      // Send R2 key to backend
+      let response;
+      try {
+        response = await uploadResume(uploadResult.key);
+      } catch (apiError: any) {
+        // Handle API errors
+        if (apiError.message?.includes("network") || apiError.message?.includes("fetch") || apiError.name === "TypeError") {
+          throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
+        }
+        if (apiError.message?.includes("401") || apiError.message?.includes("403")) {
+          throw new Error("Authorization error: Your session may have expired. Please refresh the page and try again.");
+        }
+        throw apiError;
+      }
+
+      if (response.success) {
+        setResume(response.data);
+        toast({
+          title: "Success",
+          description: "Resume uploaded successfully",
+        });
+      } else {
+        throw new Error(response.error || "Failed to save resume");
+      }
+    } catch (error: any) {
+      console.error("Resume upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload resume. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingResume(false);
+      if (resumeInputRef.current) {
+        resumeInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDeleteResume = async () => {
+    if (!confirm("Are you sure you want to delete your resume? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingResume(true);
+    try {
+      await deleteResume();
+      setResume(null);
+      toast({
+        title: "Success",
+        description: "Resume deleted successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.message || "Failed to delete resume",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingResume(false);
+    }
+  };
+
+  const handleDownloadResume = async () => {
+    if (!resume?.fileUrl) return;
+
+    try {
+      const downloadUrl = await getR2DownloadUrl(resume.fileUrl);
+      window.open(downloadUrl.downloadUrl, "_blank");
+    } catch (error: any) {
+      toast({
+        title: "Download failed",
+        description: error.message || "Failed to download resume",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Certification handlers
   const handleAddCertification = () => {
@@ -1349,6 +1503,105 @@ export default function ProviderProfilePage(props: Props = {}) {
                   </CardContent>
                 </Card>
 
+                {/* Resume Management */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        Resume
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <input
+                      ref={resumeInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handleResumeChange}
+                      className="hidden"
+                    />
+                    {resume ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <FileText className="w-8 h-8 text-gray-400" />
+                            <div>
+                              <p className="font-medium">Resume uploaded</p>
+                              <p className="text-sm text-gray-500">
+                                Uploaded on {new Date(resume.uploadedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleDownloadResume}
+                            >
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Download
+                            </Button>
+                            {isEditing && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleResumeClick}
+                                disabled={uploadingResume}
+                              >
+                                {uploadingResume ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Upload className="w-4 h-4 mr-2" />
+                                )}
+                                Replace
+                              </Button>
+                            )}
+                            {isEditing && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleDeleteResume}
+                                disabled={deletingResume}
+                              >
+                                {deletingResume ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                )}
+                                Delete
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <p className="text-gray-500 mb-4">No resume uploaded yet</p>
+                        {isEditing && (
+                          <Button
+                            onClick={handleResumeClick}
+                            disabled={uploadingResume}
+                          >
+                            {uploadingResume ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4 mr-2" />
+                                Upload Resume (PDF)
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Certifications */}
                 <Card>
                   <CardHeader>
@@ -2003,11 +2256,15 @@ export default function ProviderProfilePage(props: Props = {}) {
                                         // Reload completion
                                         try {
                                           const completionResponse = await getProviderProfileCompletion();
-                                          if (completionResponse.success) {
-                                            setProfileCompletion(completionResponse.data.completion || 0);
-                                            setCompletionSuggestions(completionResponse.data.suggestions || []);
-                                          }
-                                        } catch (error) {
+        if (completionResponse.success) {
+          setProfileCompletion(completionResponse.data.completion || 0);
+          setCompletionSuggestions(completionResponse.data.suggestions || []);
+        }
+
+        if (resumeResponse.success && resumeResponse.data) {
+          setResume(resumeResponse.data);
+        }
+      } catch (error) {
                                           console.error("Failed to fetch completion:", error);
                                         }
                                       } catch (error: any) {

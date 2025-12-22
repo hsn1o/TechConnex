@@ -259,14 +259,103 @@ export default function SignupPage() {
   };
 
   const uploadResume = async (userId: string, file: File) => {
-    const formData = new FormData();
-    formData.append("resume", file);
-    formData.append("userId", userId);
+    // Validate file type
+    if (file.type !== "application/pdf") {
+      throw new Error("Invalid file type: Only PDF files are allowed for resumes.");
+    }
 
-    return fetch(`${API_BASE}/resume/upload`, {
-      method: "POST",
-      body: formData,
-    });
+    // Validate file size (50MB max for documents)
+    const maxSize = 50 * 1024 * 1024; // 50 MB
+    if (file.size > maxSize) {
+      throw new Error(`File size exceeds limit. Maximum size is ${(maxSize / (1024 * 1024)).toFixed(0)} MB`);
+    }
+
+    try {
+      // Upload to R2 first
+      const { uploadFile } = await import("@/lib/upload");
+      
+      let uploadResult;
+      try {
+        uploadResult = await uploadFile({
+          file: file,
+          prefix: "resumes",
+          visibility: "private", // Resumes should be private
+          category: "document",
+        });
+      } catch (uploadError: any) {
+        // Handle R2 upload errors
+        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+          throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
+        }
+        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
+          throw new Error(`File size error: ${uploadError.message}`);
+        }
+        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
+          throw new Error(`File type error: ${uploadError.message}`);
+        }
+        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+      }
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || "Failed to upload resume to R2");
+      }
+
+      // Send R2 key/URL to backend
+      // Token is optional (for registration flows)
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add authorization header only if token exists
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/resume/upload`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            userId,
+            key: uploadResult.key,
+            url: uploadResult.url || uploadResult.key, // Use key if URL is empty (private files)
+          }),
+        });
+      } catch (fetchError: any) {
+        // Handle network errors
+        if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+          throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
+        }
+        throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+      }
+
+      if (!res.ok) {
+        let errorMessage = "Resume upload failed";
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData?.error || errorData?.message || errorMessage;
+        } catch {
+          errorMessage = `Resume upload failed (${res.status} ${res.statusText})`;
+        }
+
+        if (res.status === 400) {
+          throw new Error(`Validation error: ${errorMessage}`);
+        } else if (res.status === 401 || res.status === 403) {
+          throw new Error(`Authorization error: ${errorMessage}`);
+        } else if (res.status >= 500) {
+          throw new Error(`Server error: ${errorMessage}. Please try again later.`);
+        }
+        throw new Error(errorMessage);
+      }
+
+      return res;
+    } catch (error: any) {
+      console.error("Resume upload error:", error);
+      throw error;
+    }
   };
 
   const uploadCertifications = async (
@@ -285,38 +374,112 @@ export default function SignupPage() {
 
     // ✅ Check if user accidentally selected a folder
     if ((kycFile as any).type === "" && (kycFile as any).size === 0) {
-      setError("You cannot upload a folder. Please select a valid file.");
-      return { ok: false, error: "Folder selected instead of file" };
+      const errorMsg = "You cannot upload a folder. Please select a valid file.";
+      setError(errorMsg);
+      return { ok: false, error: errorMsg };
+    }
+
+    // Validate file size (50MB max for documents)
+    const maxSize = 50 * 1024 * 1024; // 50 MB
+    if (kycFile.size > maxSize) {
+      const errorMsg = `File size exceeds limit. Maximum size is ${(maxSize / (1024 * 1024)).toFixed(0)} MB`;
+      setError(errorMsg);
+      return { ok: false, error: errorMsg };
     }
 
     try {
       setIsUploadingKyc(true);
 
-      const fd = new FormData();
-      fd.append("userId", userId);
-      fd.append(
-        "type",
-        userRole === "provider" ? "PROVIDER_ID" : "COMPANY_REG"
-      );
-      fd.append("file", kycFile); // must match backend multer.single("file")
+      // Upload to R2 first
+      // Category will be auto-detected from file type (image, document, or video)
+      const { uploadFile } = await import("@/lib/upload");
+      
+      let uploadResult;
+      try {
+        uploadResult = await uploadFile({
+          file: kycFile,
+          prefix: "kyc",
+          visibility: "private", // KYC documents should be private
+          // Don't specify category - let it auto-detect from file.type
+        });
+      } catch (uploadError: any) {
+        // Handle R2 upload errors
+        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+          throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
+        }
+        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
+          throw new Error(`File size error: ${uploadError.message}`);
+        }
+        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
+          throw new Error(`File type error: ${uploadError.message}`);
+        }
+        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+      }
 
-      const res = await fetch(`${API_BASE}/kyc`, {
-        method: "POST",
-        body: fd,
-      });
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || "Failed to upload KYC document to R2");
+      }
 
-      const contentType = res.headers.get("content-type") || "";
-      const payload = contentType.includes("application/json")
-        ? await res.json()
-        : { error: await res.text() };
+      // Send R2 key/URL to backend
+      // Token is optional (for registration flows)
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
 
-      if (!res.ok) throw new Error(payload.error || "KYC upload failed");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add authorization header only if token exists
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/kyc`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            userId,
+            type: userRole === "provider" ? "PROVIDER_ID" : "COMPANY_REG",
+            key: uploadResult.key,
+            url: uploadResult.url || uploadResult.key, // Use key if URL is empty (private files)
+            filename: kycFile.name,
+            mimeType: kycFile.type || "application/octet-stream",
+          }),
+        });
+      } catch (fetchError: any) {
+        // Handle network errors
+        if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+          throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
+        }
+        throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+      }
+
+      let payload;
+      try {
+        payload = await res.json();
+      } catch (parseError) {
+        throw new Error(`Server response error: Invalid response from server. Please try again.`);
+      }
+
+      if (!res.ok) {
+        const errorMsg = payload?.error || payload?.message || `KYC upload failed (${res.status})`;
+        if (res.status === 400) {
+          throw new Error(`Validation error: ${errorMsg}`);
+        } else if (res.status === 401 || res.status === 403) {
+          throw new Error(`Authorization error: ${errorMsg}`);
+        } else if (res.status >= 500) {
+          throw new Error(`Server error: ${errorMsg}. Please try again later.`);
+        }
+        throw new Error(errorMsg);
+      }
 
       return { ok: true, data: payload.data };
     } catch (e: any) {
       console.error("KYC upload error:", e);
-      setError(e.message || "KYC upload failed");
-      return { ok: false, error: e.message };
+      const errorMessage = e.message || "KYC upload failed. Please try again.";
+      setError(errorMessage);
+      return { ok: false, error: errorMessage };
     } finally {
       setIsUploadingKyc(false);
     }
