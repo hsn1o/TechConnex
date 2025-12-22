@@ -12,7 +12,7 @@ import {
   payMilestone,
   getCompanyProjectStats
 } from "./service.js";
-import { analyzeProjectDocument } from "./document-analyzer.js";
+import { analyzeProjectDocument, analyzeProjectDocumentFromR2 } from "./document-analyzer.js";
 import { CreateProjectDto, GetProjectsDto, UpdateProjectDto  } from "./dto.js";
 import { generateCustomerProjectsPDF } from "../../../utils/projectsPdfGenerator.js";
 
@@ -428,22 +428,21 @@ export async function exportProjectsController(req, res) {
   }
 }
 
-// POST /api/company/projects/analyze-document - Analyze project document
+// POST /api/company/projects/analyze-document - Analyze project document from R2
 export async function analyzeProjectDocumentController(req, res) {
   try {
-    const filePath = req.file?.path;
-    const mimeType = req.file?.mimetype;
+    const { key, mimeType, fileName } = req.body; // R2 key from frontend
 
-    if (!filePath) {
+    if (!key) {
       return res.status(400).json({
         success: false,
-        error: "No document uploaded.",
+        error: "No document key provided.",
       });
     }
 
-    console.log("Analyzing project document:", filePath);
+    console.log("Analyzing project document from R2:", key);
 
-    const extracted = await analyzeProjectDocument(filePath, mimeType);
+    const extracted = await analyzeProjectDocumentFromR2(key, mimeType, fileName);
     
     return res.json({
       success: true,

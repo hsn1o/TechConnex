@@ -68,6 +68,7 @@ export default function NewProjectPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisStage, setAnalysisStage] = useState<string>(""); // Track current stage: "uploading" | "analyzing"
 
   const [errors, setErrors] = useState<{
     title?: string;
@@ -215,11 +216,12 @@ export default function NewProjectPage() {
       return;
     }
 
-    // Validate file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // Validate file size (50MB max for documents)
+    const maxSize = 50 * 1024 * 1024; // 50 MB
+    if (file.size > maxSize) {
       toast({
         title: "File too large",
-        description: "File size must be less than 10MB.",
+        description: `Maximum file size is ${(maxSize / (1024 * 1024)).toFixed(0)} MB`,
         variant: "destructive",
       });
       return;
@@ -228,8 +230,12 @@ export default function NewProjectPage() {
     setUploadedFile(file);
     setIsAnalyzing(true);
     setAnalysisError(null);
+    setAnalysisStage("uploading");
 
     try {
+      // The analyzeProjectDocument function handles R2 upload internally
+      // We'll update the stage when analysis starts
+      setAnalysisStage("analyzing");
       const response = await analyzeProjectDocument(file);
       
       if (response.success && response.data) {
@@ -303,17 +309,22 @@ export default function NewProjectPage() {
           title: "Document analyzed successfully",
           description: "Form has been auto-filled. Review and adjust as needed.",
         });
+      } else {
+        throw new Error(response.error || response.message || "Document analysis failed");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Document analysis error:", error);
-      setAnalysisError(error instanceof Error ? error.message : "Failed to analyze document");
+      const errorMessage = error instanceof Error ? error.message : "Failed to analyze document. Please try again.";
+      setAnalysisError(errorMessage);
+      setUploadedFile(null); // Reset file on error
       toast({
         title: "Analysis failed",
-        description: error instanceof Error ? error.message : "Failed to analyze document",
+        description: errorMessage,
         variant: "destructive",
-    });
+      });
     } finally {
       setIsAnalyzing(false);
+      setAnalysisStage("");
     }
   };
 
@@ -494,7 +505,7 @@ export default function NewProjectPage() {
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
                         <p className="text-xs text-gray-500">
-                          PDF, Word, Excel, or TXT (MAX. 10MB)
+                          PDF, Word, Excel, or TXT (MAX. 50MB)
                         </p>
                       </div>
                       <input
@@ -507,9 +518,27 @@ export default function NewProjectPage() {
                       />
                     </label>
                     {isAnalyzing && (
-                      <div className="flex items-center justify-center gap-2 text-blue-600">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Analyzing document with AI...</span>
+                      <div className="flex flex-col items-center justify-center gap-4 p-6 bg-white border-2 border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-center gap-3">
+                          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                          <div className="flex flex-col">
+                            <span className="text-base font-semibold text-blue-900">
+                              {analysisStage === "uploading" 
+                                ? "Uploading document to cloud..." 
+                                : "AI is analyzing your document..."}
+                            </span>
+                            <span className="text-sm text-blue-600">
+                              {analysisStage === "uploading" 
+                                ? "Please wait while we upload your file" 
+                                : "This may take a few moments"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full max-w-md">
+                          <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{ width: analysisStage === "uploading" ? "40%" : "80%" }}></div>
+                          </div>
+                        </div>
                       </div>
                     )}
                     {analysisError && (
@@ -519,25 +548,67 @@ export default function NewProjectPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between p-3 bg-white border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <File className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-white border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <File className="w-5 h-5 text-blue-600" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
                       </div>
+                      {!isAnalyzing && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRemoveFile}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleRemoveFile}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                    {isAnalyzing && (
+                      <div className="flex flex-col items-center justify-center gap-4 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg">
+                        <div className="flex items-center justify-center gap-3">
+                          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                          <div className="flex flex-col">
+                            <span className="text-lg font-semibold text-blue-900">
+                              {analysisStage === "uploading" 
+                                ? "Uploading document to cloud..." 
+                                : "AI is analyzing your document..."}
+                            </span>
+                            <span className="text-sm text-blue-600">
+                              {analysisStage === "uploading" 
+                                ? "Please wait while we upload your file securely" 
+                                : "Extracting project information, this may take a few moments"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full max-w-md">
+                          <div className="h-2.5 bg-blue-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-in-out" 
+                              style={{ width: analysisStage === "uploading" ? "40%" : "80%" }}
+                            ></div>
+                          </div>
+                        </div>
+                        {analysisStage === "analyzing" && (
+                          <div className="flex items-center gap-2 text-xs text-blue-600">
+                            <Sparkles className="w-4 h-4" />
+                            <span>AI is extracting project details, budget, timeline, and requirements...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {analysisError && !isAnalyzing && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-600">{analysisError}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

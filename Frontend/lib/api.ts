@@ -320,20 +320,107 @@ export async function analyzeProjectDocument(file: File) {
 
   if (!token) throw new Error("Not authenticated");
 
-  const formData = new FormData();
-  formData.append("document", file);
+  try {
+    // Upload to R2 first
+    const { uploadFile } = await import("@/lib/upload");
+    
+    // Validate file type
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "text/plain",
+    ];
+    
+    const allowedExtensions = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt"];
+    const fileExt = file.name.toLowerCase().substring(file.name.lastIndexOf("."));
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExt)) {
+      throw new Error("Invalid file type. Only PDF, Word, Excel, and TXT files are allowed.");
+    }
 
-  const res = await fetch(`${API_BASE}/company/projects/analyze-document`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-    },
-    body: formData,
-  });
+    // Validate file size (50MB max for documents)
+    const maxSize = 50 * 1024 * 1024; // 50 MB
+    if (file.size > maxSize) {
+      throw new Error(`File size exceeds limit. Maximum size is ${(maxSize / (1024 * 1024)).toFixed(0)} MB`);
+    }
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error || data?.message || "Failed to analyze document");
-  return data;
+    // Upload to R2
+    let uploadResult;
+    try {
+      uploadResult = await uploadFile({
+        file: file,
+        prefix: "project-documents",
+        visibility: "private",
+        category: "document",
+      });
+    } catch (uploadError: any) {
+      // Handle R2 upload errors
+      if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+        throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
+      }
+      if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
+        throw new Error(`File size error: ${uploadError.message}`);
+      }
+      if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
+        throw new Error(`File type error: ${uploadError.message}`);
+      }
+      throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+    }
+
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || "Failed to upload document to R2");
+    }
+
+    // Send R2 key to backend for analysis
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/company/projects/analyze-document`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          key: uploadResult.key,
+          mimeType: file.type || "application/octet-stream",
+          fileName: file.name,
+        }),
+      });
+    } catch (fetchError: any) {
+      // Handle network errors
+      if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+        throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
+      }
+      throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+    }
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseError) {
+      throw new Error("Server response error: Invalid response from server. Please try again.");
+    }
+
+    if (!res.ok) {
+      const errorMsg = data?.error || data?.message || `Document analysis failed (${res.status})`;
+      if (res.status === 400) {
+        throw new Error(`Validation error: ${errorMsg}`);
+      } else if (res.status === 401 || res.status === 403) {
+        throw new Error(`Authorization error: ${errorMsg}. Please refresh the page and try again.`);
+      } else if (res.status >= 500) {
+        throw new Error(`Server error: ${errorMsg}. Please try again later.`);
+      }
+      throw new Error(errorMsg);
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error("Document analysis error:", error);
+    throw error;
+  }
 }
 
 export async function createProject(projectData: {
