@@ -28,7 +28,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { toast } from "sonner";
 
 export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -55,9 +55,9 @@ export default function AdminSettingsPage() {
   }, []);
 
   // ✅ Handle input updates
-  const handleInputChange = (key: string, value: any) => {
-    setSettings((prev: any) => ({
-      ...prev,
+  const handleInputChange = (key: string, value: unknown) => {
+    setSettings((prev: Record<string, unknown> | null) => ({
+      ...(prev || {}),
       [key]: value,
     }));
   };

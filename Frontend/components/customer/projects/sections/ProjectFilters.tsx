@@ -24,7 +24,7 @@ export default function ProjectFilters({
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+      <Select value={status} onValueChange={(v) => setStatus(v as "all" | Project["status"])}>
         <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All</SelectItem>

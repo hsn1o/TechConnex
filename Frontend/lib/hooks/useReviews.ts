@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getCompanyReviews,
   getProviderReviews,
@@ -16,6 +16,14 @@ import {
 } from "../api";
 
 // Types
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages?: number;
+  pages?: number;
+}
+
 export interface Review {
   id: string;
   projectId: string;
@@ -137,7 +145,9 @@ export function useCompanyReviews(params?: {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<any>(null);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+
+  const paramsString = useMemo(() => JSON.stringify(params), [params]);
 
   const fetchReviews = useCallback(async () => {
     setLoading(true);
@@ -146,12 +156,14 @@ export function useCompanyReviews(params?: {
       const data = await getCompanyReviews(params);
       setReviews(data.reviews || []);
       setPagination(data.pagination || null);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch reviews");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to fetch reviews");
+      setError(error.message);
     } finally {
       setLoading(false);
     }
-  }, [JSON.stringify(params)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsString]);
 
   useEffect(() => {
     fetchReviews();
@@ -177,8 +189,9 @@ export function useCompanyReviewStatistics() {
     try {
       const data = await getCompanyReviewStatistics();
       setStatistics(data.statistics);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch statistics");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to fetch statistics");
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -207,8 +220,9 @@ export function useCompletedProjectsForReview() {
     try {
       const data = await getCompletedProjectsForCompanyReview();
       setProjects(data.projects || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch completed projects");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to fetch completed projects");
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -238,7 +252,9 @@ export function useProviderReviews(params?: {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<any>(null);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+
+  const paramsString = useMemo(() => JSON.stringify(params), [params]);
 
   const fetchReviews = useCallback(async () => {
     setLoading(true);
@@ -247,12 +263,14 @@ export function useProviderReviews(params?: {
       const data = await getProviderReviews(params);
       setReviews(data.reviews || []);
       setPagination(data.pagination || null);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch reviews");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to fetch reviews");
+      setError(error.message);
     } finally {
       setLoading(false);
     }
-  }, [JSON.stringify(params)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsString]);
 
   useEffect(() => {
     fetchReviews();
@@ -278,8 +296,9 @@ export function useProviderReviewStatistics() {
     try {
       const data = await getProviderReviewStatistics();
       setStatistics(data.statistics);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch statistics");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to fetch statistics");
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -308,8 +327,9 @@ export function useProviderCompletedProjectsForReview() {
     try {
       const data = await getCompletedProjectsForProviderReview();
       setProjects(data.projects || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch completed projects");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to fetch completed projects");
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -357,8 +377,9 @@ export function useReviewActions() {
       } else {
         return await createCompanyReview(reviewData);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to create review");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to create review");
+      setError(error.message);
       throw err;
     } finally {
       setLoading(false);
@@ -374,8 +395,9 @@ export function useReviewActions() {
     setError(null);
     try {
       return await createReviewReply(reviewId, content, isProvider);
-    } catch (err: any) {
-      setError(err.message || "Failed to create reply");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to create reply");
+      setError(error.message);
       throw err;
     } finally {
       setLoading(false);
@@ -402,8 +424,9 @@ export function useReviewActions() {
       } else {
         return await updateCompanyReview(reviewId, reviewData);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to update review");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to update review");
+      setError(error.message);
       throw err;
     } finally {
       setLoading(false);
@@ -422,8 +445,9 @@ export function useReviewActions() {
       } else {
         return await deleteCompanyReview(reviewId);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to delete review");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Failed to delete review");
+      setError(error.message);
       throw err;
     } finally {
       setLoading(false);

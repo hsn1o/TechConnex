@@ -34,8 +34,6 @@ import {
   Calendar,
   MessageSquare,
   Reply,
-  Pencil,
-  Trash2,
   Clock,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
@@ -246,10 +244,10 @@ export default function ProviderReviewsPage() {
       });
       refetchGivenReviews();
       refetchProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Unable to delete review",
-        description: error?.message ?? "Please try again later.",
+        description: error instanceof Error ? error.message : "Please try again later.",
         variant: "destructive",
       });
     }
@@ -335,8 +333,8 @@ export default function ProviderReviewsPage() {
       handleReviewDialogOpenChange(false);
       refetchGivenReviews();
       refetchProjects();
-    } catch (error: any) {
-      const message = error?.message ?? "Unable to save your review.";
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unable to save your review.";
       toast({
         title: message.includes("already exists")
           ? "Review already submitted"
@@ -375,10 +373,10 @@ export default function ProviderReviewsPage() {
       setReplyDialogOpen(false);
       setReplyContent("");
       refetchReceivedReviews();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Unable to post reply",
-        description: error?.message ?? "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
     }
@@ -647,8 +645,6 @@ function ReviewList({
 function ReviewCard({
   review,
   type,
-  onEdit,
-  onDelete,
   onReply,
 }: {
   review: Review;
@@ -1012,7 +1008,7 @@ function ReplyDialog({
         <DialogHeader>
           <DialogTitle>Reply to review</DialogTitle>
           <DialogDescription>
-            Respond publicly to the company's feedback.
+            Respond publicly to the company&apos;s feedback.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

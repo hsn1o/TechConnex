@@ -37,10 +37,6 @@ import {
   Eye,
   MessageSquare,
   Calendar,
-  Edit,
-  Trash2,
-  Archive,
-  Star,
   Clock,
   Loader2,
   AlertTriangle,
@@ -57,8 +53,8 @@ export default function CustomerProjectsPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState("grid");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<any>(null);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [editingProject, setEditingProject] = useState<Record<string, unknown> | null>(null);
+  const [projects, setProjects] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -230,16 +226,12 @@ export default function CustomerProjectsPage() {
     }
   });
 
-  const handleEditProject = (project: any) => {
-    setEditingProject(project);
-    setIsEditDialogOpen(true);
-  };
 
   const handleSaveProject = async () => {
     if (!editingProject) return;
     try {
       // Prepare a minimal, safe payload: only send fields the user just edited.
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         title: editingProject.title,
         description: editingProject.description,
         category: editingProject.category,
@@ -289,19 +281,6 @@ export default function CustomerProjectsPage() {
     }
   };
 
-  const handleDeleteProject = (projectId: number) => {
-    toast({
-      title: "Project Deleted",
-      description: "Project has been deleted successfully",
-    });
-  };
-
-  const handleArchiveProject = (projectId: number) => {
-    toast({
-      title: "Project Archived",
-      description: "Project has been archived successfully",
-    });
-  };
 
   const stats = {
     total: projects.length,

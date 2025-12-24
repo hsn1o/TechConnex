@@ -1,7 +1,6 @@
 "use client";
-import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,13 +26,11 @@ import {
   Star,
   Download,
   Edit,
-  MoreHorizontal,
   Eye,
   Send,
   Loader2,
   X,
   Check,
-  MapPin,
   Paperclip,
 } from "lucide-react";
 import NextLink from "next/link";
@@ -79,12 +76,10 @@ import {
   approveCompanyMilestones,
   approveIndividualMilestone,
   requestMilestoneChanges,
-  payMilestone,
   type Milestone,
 } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { formatTimeline } from "@/lib/timeline-utils";
-import { createPaymentIntentAPI, finalizePaymentAPI } from "@/lib/api-payment";
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
 import { RichEditor } from "@/components/markdown/RichTextEditor";
 import MilestonePayment from "@/components/MilestonePayment";
@@ -95,6 +90,7 @@ export default function ProjectDetailsPage({
   params: { id: string };
 }) {
   const { toast: toastHook } = useToast();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +106,7 @@ export default function ProjectDetailsPage({
     string | null
   >(null);
   const [selectedProposalForAction, setSelectedProposalForAction] =
-    useState<any>(null);
+    useState<ProviderRequest | null>(null);
 
   // for milestone editing after accepting
   const [milestonesOpen, setMilestonesOpen] = useState(false);
@@ -132,11 +128,11 @@ export default function ProjectDetailsPage({
   const [originalMilestonesDraft, setOriginalMilestonesDraft] = useState<Milestone[]>([]);
 
   const [activeTab, setActiveTab] = useState("overview");
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<Record<string, unknown> | null>(null);
   const [token, setToken] = useState<string>("");
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [projectMessages, setProjectMessages] = useState<any[]>([]);
-  const [projectFiles, setProjectFiels] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<Record<string, unknown> | null>(null);
+  const [projectMessages, setProjectMessages] = useState<Record<string, unknown>[]>([]);
+  const [projectFiles, setProjectFiels] = useState<Record<string, unknown>[]>([]);
 
   // Extract id from params which may be a Promise in newer Next.js versions
   const [resolvedId, setResolvedId] = useState<string | null>(null);
@@ -157,7 +153,7 @@ export default function ProjectDetailsPage({
 
   // Project milestone management
   const [milestoneEditorOpen, setMilestoneEditorOpen] = useState(false);
-  const [projectMilestones, setProjectMilestones] = useState<any[]>([]);
+  const [projectMilestones, setProjectMilestones] = useState<Milestone[]>([]);
   const [savingMilestones, setSavingMilestones] = useState(false);
   const [milestoneApprovalState, setMilestoneApprovalState] = useState({
     milestonesLocked: false,
@@ -175,13 +171,12 @@ export default function ProjectDetailsPage({
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedMilestoneForPayment, setSelectedMilestoneForPayment] =
-    useState<any>(null);
-  const [processingPayment, setProcessingPayment] = useState(false);
+    useState<Milestone | null>(null);
 
   // controls the proposal "View Details" dialog
   const [proposalDetailsOpen, setProposalDetailsOpen] = useState(false);
   const [selectedProposalDetails, setSelectedProposalDetails] =
-    useState<any>(null);
+    useState<ProviderRequest | null>(null);
 
   // controls the post-accept milestone review/approval dialog
   const [milestoneFinalizeOpen, setMilestoneFinalizeOpen] = useState(false);
@@ -189,7 +184,7 @@ export default function ProjectDetailsPage({
   // Dispute creation state
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [viewDisputeDialogOpen, setViewDisputeDialogOpen] = useState(false);
-  const [currentDispute, setCurrentDispute] = useState<any>(null);
+  const [currentDispute, setCurrentDispute] = useState<Record<string, unknown> | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeDescription, setDisputeDescription] = useState("");
   const [disputeContestedAmount, setDisputeContestedAmount] = useState("");
@@ -242,46 +237,6 @@ export default function ProjectDetailsPage({
       : `${process.env.NEXT_PUBLIC_API_URL}/${normalized.replace(/^\//, "")}`;
   };
 
-  // This matches what the backend returns for each proposal
-  interface ApiProposal {
-    id: string;
-    serviceRequest: {
-      id: string;
-      title: string;
-    };
-    provider: {
-      id: string;
-      name: string;
-      avatarUrl?: string;
-      rating: number;
-      location: string;
-      responseTime: string;
-      portfolio: string[];
-      experience: string;
-      skills: string[];
-      providerProfile?: {
-        avatarUrl?: string;
-        rating?: number;
-        location?: string;
-        responseTime?: string;
-        portfolios?: string[];
-        experience?: string;
-        skills?: string[];
-      };
-    };
-    bidAmount: number;
-    deliveryTime: number;
-    coverLetter: string;
-    status: "PENDING" | "ACCEPTED" | "REJECTED";
-    submittedAt: string;
-    milestones: Array<{
-      title: string;
-      amount: number;
-      dueDate: string;
-      order: number;
-    }>;
-    attachmentUrls?: string[];
-  }
   // this array drives the Bids tab UI
   const [proposals, setProposals] = useState<ProviderRequest[]>([]);
 
@@ -289,41 +244,10 @@ export default function ProjectDetailsPage({
   const [bidsLoading, setBidsLoading] = useState<boolean>(true);
   const [bidsError, setBidsError] = useState<string | null>(null);
 
-  // Turn array | string | object into a string[] for bullet lists
-  const toList = (v: any): string[] => {
-    if (v == null) return [];
-    if (Array.isArray(v))
-      return v
-        .map(String)
-        .map((s) => s.trim())
-        .filter(Boolean);
-    if (typeof v === "string")
-      return v
-        .split(/\r?\n|,/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-    if (typeof v === "object") {
-      try {
-        // Flatten simple objects into "key: value" points
-        return Object.entries(v)
-          .flatMap(([k, val]) => {
-            if (Array.isArray(val)) return val.map((x) => `${k}: ${String(x)}`);
-            if (val && typeof val === "object")
-              return `${k}: ${JSON.stringify(val)}`;
-            return `${k}: ${String(val)}`;
-          })
-          .filter(Boolean);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
-
   useEffect(() => {
     if (!project) return;
     // Convert requirements/deliverables: if array, convert to markdown; if string, use as-is
-    const convertToMarkdown = (value: any): string => {
+    const convertToMarkdown = (value: unknown): string => {
       if (!value) return "";
       if (typeof value === "string") return value;
       if (Array.isArray(value)) {
@@ -358,7 +282,7 @@ export default function ProjectDetailsPage({
   useEffect(() => {
     let mounted = true;
     Promise.resolve(params)
-      .then((p: any) => {
+      .then((p: { id?: string }) => {
         if (mounted) setResolvedId(p?.id ?? null);
       })
       .catch(() => {
@@ -403,7 +327,7 @@ export default function ProjectDetailsPage({
       if (data?.success) {
         const filtered = Array.isArray(data.data)
           ? data.data.filter(
-              (msg: any) => String(msg.projectId) === String(params.id)
+              (msg: Record<string, unknown>) => String(msg.projectId) === String(params.id)
             )
           : [];
 
@@ -427,53 +351,53 @@ export default function ProjectDetailsPage({
   }, [activeTab, token, project]);
 
   // Safe formatter for numbers - prevents calling toLocaleString on undefined
-  const fmt = (v: any, fallback = "0") => {
+  const fmt = (v: unknown, fallback = "0") => {
     if (v === null || v === undefined) return fallback;
     const n = Number(v);
     return Number.isFinite(n) ? n.toLocaleString() : fallback;
   };
 
   // Ensure a value is an array before mapping
-  const asArray = <T,>(v: any): T[] => (Array.isArray(v) ? v : []);
+  const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? v : []);
 
   // Helper function to map API proposals to ProviderRequest format
-  const mapProposalsToProviderRequests = (
-    rawProposals: any[]
+  const mapProposalsToProviderRequests = useCallback((
+    rawProposals: Record<string, unknown>[]
   ): ProviderRequest[] => {
-    return rawProposals.map((p: any): ProviderRequest => {
-      const provider = p.provider || {};
-      const profile = provider.providerProfile || {};
+    return rawProposals.map((p: Record<string, unknown>): ProviderRequest => {
+      const provider = (p.provider as Record<string, unknown>) || {};
+      const profile = (provider.providerProfile as Record<string, unknown>) || {};
 
       return {
-        id: p.id,
-        providerId: provider.id,
-        providerName: provider.name,
-        providerAvatar: getProfileImageUrl(profile.profileImageUrl),
-        providerRating: profile.rating ?? provider.rating ?? 0,
-        providerLocation: profile.location ?? provider.location ?? "",
+        id: p.id as string,
+        providerId: provider.id as string,
+        providerName: provider.name as string,
+        providerAvatar: getProfileImageUrl(profile.profileImageUrl as string | undefined),
+        providerRating: (profile.rating as number | undefined) ?? (provider.rating as number | undefined) ?? 0,
+        providerLocation: (profile.location as string | undefined) ?? (provider.location as string | undefined) ?? "",
         providerResponseTime:
-          profile.responseTime ?? provider.responseTime ?? "",
-        projectId: p.serviceRequest?.id,
-        projectTitle: p.serviceRequest?.title,
-        bidAmount: p.bidAmount,
-        proposedTimeline: formatTimeline(p.deliveryTime, "day") || "",
-        coverLetter: p.coverLetter,
+          (profile.responseTime as string | undefined) ?? (provider.responseTime as string | undefined) ?? "",
+        projectId: (p.serviceRequest as Record<string, unknown> | undefined)?.id as string | undefined,
+        projectTitle: (p.serviceRequest as Record<string, unknown> | undefined)?.title as string | undefined,
+        bidAmount: p.bidAmount as number,
+        proposedTimeline: formatTimeline(p.deliveryTime as string | number | undefined, "day") || "",
+        coverLetter: p.coverLetter as string,
         status: p.status
-          ? (p.status.toLowerCase() as "pending" | "accepted" | "rejected")
+          ? (String(p.status).toLowerCase() as "pending" | "accepted" | "rejected")
           : "pending",
-        submittedAt: p.createdAt || p.submittedAt || "",
+        submittedAt: (p.createdAt as string | undefined) || (p.submittedAt as string | undefined) || "",
         skills: Array.isArray(profile.skills)
-          ? profile.skills
+          ? profile.skills as string[]
           : Array.isArray(provider.skills)
-          ? provider.skills
+          ? provider.skills as string[]
           : [],
         portfolio: Array.isArray(profile.portfolios)
-          ? profile.portfolios
+          ? profile.portfolios as string[]
           : Array.isArray(provider.portfolio)
-          ? provider.portfolio
+          ? provider.portfolio as string[]
           : [],
-        experience: profile.experience ?? provider.experience ?? "",
-        attachments: Array.isArray(p.attachmentUrls) ? p.attachmentUrls : [],
+        experience: (profile.experience as string | undefined) ?? (provider.experience as string | undefined) ?? "",
+        attachments: Array.isArray(p.attachmentUrls) ? p.attachmentUrls as string[] : [],
         milestones: Array.isArray(p.milestones)
           ? p.milestones.map(
               (m: {
@@ -493,7 +417,7 @@ export default function ProjectDetailsPage({
           : [],
       };
     });
-  };
+  }, []);
 
   // Fetch project data + proposals (bids)
   useEffect(() => {
@@ -525,7 +449,7 @@ export default function ProjectDetailsPage({
           if (disputeRes.success && disputeRes.data) {
             setCurrentDispute(disputeRes.data);
           }
-        } catch (err) {
+        } catch {
           // No dispute exists yet, which is fine
           console.log("No dispute found for project");
         }
@@ -538,9 +462,10 @@ export default function ProjectDetailsPage({
           serviceRequestId = loadedProject.id;
         } else {
           // For Projects, use the serviceRequestId from backend (if available)
+          const projectRecord = loadedProject as Record<string, unknown>;
           serviceRequestId =
-            (loadedProject as any).serviceRequestId ||
-            (loadedProject as any).originalRequestId ||
+            (projectRecord?.serviceRequestId as string | undefined) ||
+            (projectRecord?.originalRequestId as string | undefined) ||
             null;
         }
 
@@ -570,11 +495,12 @@ export default function ProjectDetailsPage({
           );
           setProposals([]);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load project/proposals:", err);
 
-        setError(err?.message || "Failed to load project");
-        setBidsError(err?.message || "Failed to load proposals");
+        const errorMessage = err instanceof Error ? err.message : "Failed to load project";
+        setError(errorMessage);
+        setBidsError(errorMessage);
 
         setProposals([]);
       } finally {
@@ -584,7 +510,7 @@ export default function ProjectDetailsPage({
     };
 
     fetchAll();
-  }, [resolvedId]);
+  }, [resolvedId, mapProposalsToProviderRequests]);
 
   // Function to refresh all project data
   const refreshProjectData = async () => {
@@ -602,16 +528,16 @@ export default function ProjectDetailsPage({
       // Refresh milestones
       const milestoneData = await getCompanyProjectMilestones(loadedProject.id);
       const loadedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m: any) => ({
+        ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
             ...m,
-            sequence: m.order,
-            submissionAttachmentUrl: m.submissionAttachmentUrl,
-            submissionNote: m.submissionNote,
-            submittedAt: m.submittedAt,
-            startDeliverables: m.startDeliverables,
-            submitDeliverables: m.submitDeliverables,
-            revisionNumber: m.revisionNumber,
-            submissionHistory: m.submissionHistory,
+            sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
+            submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl ?? (m as Record<string, unknown>).submissionAttachmentUrl,
+            submissionNote: (m as Milestone).submissionNote ?? (m as Record<string, unknown>).submissionNote,
+            submittedAt: (m as Milestone).submittedAt ?? (m as Record<string, unknown>).submittedAt,
+            startDeliverables: (m as Milestone).startDeliverables ?? (m as Record<string, unknown>).startDeliverables,
+            submitDeliverables: (m as Milestone).submitDeliverables ?? (m as Record<string, unknown>).submitDeliverables,
+            revisionNumber: (m as Milestone).revisionNumber ?? (m as Record<string, unknown>).revisionNumber,
+            submissionHistory: (m as Milestone).submissionHistory ?? (m as Record<string, unknown>).submissionHistory,
           }))
         : [];
       setProjectMilestones(loadedMilestones);
@@ -629,7 +555,7 @@ export default function ProjectDetailsPage({
         if (disputeRes.success && disputeRes.data) {
           setCurrentDispute(disputeRes.data);
         }
-      } catch (err) {
+      } catch {
         // No dispute exists, which is fine
       }
 
@@ -638,9 +564,10 @@ export default function ProjectDetailsPage({
       if (loadedProject.type === "ServiceRequest") {
         serviceRequestId = loadedProject.id;
       } else {
+        const projectRecord = loadedProject as Record<string, unknown>;
         serviceRequestId =
-          (loadedProject as any)?.serviceRequestId ||
-          (loadedProject as any)?.originalRequestId ||
+          (projectRecord?.serviceRequestId as string | undefined) ||
+          (projectRecord?.originalRequestId as string | undefined) ||
           null;
       }
 
@@ -661,8 +588,8 @@ export default function ProjectDetailsPage({
 
           const mappedProposals = mapProposalsToProviderRequests(rawProposals);
           setProposals(mappedProposals);
-        } catch (err) {
-          console.warn("Failed to refresh proposals:", err);
+        } catch {
+          console.warn("Failed to refresh proposals");
         }
       }
     } catch (err) {
@@ -678,17 +605,17 @@ export default function ProjectDetailsPage({
         const milestoneData = await getCompanyProjectMilestones(project.id);
         setProjectMilestones(
           Array.isArray(milestoneData.milestones)
-            ? milestoneData.milestones.map((m: any) => ({
+            ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
                 ...m,
-                sequence: m.order,
+                sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
                 // Ensure all milestone fields are included
-                submissionAttachmentUrl: m.submissionAttachmentUrl,
-                submissionNote: m.submissionNote,
-                submittedAt: m.submittedAt,
-                startDeliverables: m.startDeliverables,
-                submitDeliverables: m.submitDeliverables,
-                revisionNumber: m.revisionNumber,
-                submissionHistory: m.submissionHistory,
+                submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl ?? (m as Record<string, unknown>).submissionAttachmentUrl,
+                submissionNote: (m as Milestone).submissionNote ?? (m as Record<string, unknown>).submissionNote,
+                submittedAt: (m as Milestone).submittedAt ?? (m as Record<string, unknown>).submittedAt,
+                startDeliverables: (m as Milestone).startDeliverables ?? (m as Record<string, unknown>).startDeliverables,
+                submitDeliverables: (m as Milestone).submitDeliverables ?? (m as Record<string, unknown>).submitDeliverables,
+                revisionNumber: (m as Milestone).revisionNumber ?? (m as Record<string, unknown>).revisionNumber,
+                submissionHistory: (m as Milestone).submissionHistory ?? (m as Record<string, unknown>).submissionHistory,
               }))
             : []
         );
@@ -733,7 +660,7 @@ export default function ProjectDetailsPage({
     );
   }
 
-  const norm = (s: any) => String(s || "").toUpperCase();
+  const norm = (s: unknown) => String(s || "").toUpperCase();
 
   const getStatusColor = (status: string) => {
     const S = norm(status);
@@ -856,23 +783,18 @@ export default function ProjectDetailsPage({
     typeof safeProject.requirements === "string"
       ? safeProject.requirements
       : Array.isArray(safeProject.requirements)
-      ? safeProject.requirements.map((r: any) => `- ${r}`).join("\n")
+      ? safeProject.requirements.map((r: unknown) => `- ${String(r)}`).join("\n")
       : "";
   const deliverables =
     typeof safeProject.deliverables === "string"
       ? safeProject.deliverables
       : Array.isArray(safeProject.deliverables)
-      ? safeProject.deliverables.map((d: any) => `- ${d}`).join("\n")
+      ? safeProject.deliverables.map((d: unknown) => `- ${String(d)}`).join("\n")
       : "";
-  const milestones = asArray<any>(safeProject.milestones);
-  const bids = asArray<any>(safeProject.bids);
-  const files = asArray<any>(safeProject.files);
-  const messages = asArray<any>(safeProject.messages);
+  const messages = asArray<Record<string, unknown>>(safeProject.messages);
   const currentUserId = currentUser?.id;
   const msgsToRender =
     projectMessages && projectMessages.length > 0 ? projectMessages : messages;
-
-  const router = useRouter();
 
   const provider =
     project?.provider ??
@@ -880,7 +802,7 @@ export default function ProjectDetailsPage({
       id: project?.providerId,
       name: project?.providerName ?? project?.provider?.name,
       avatar: project?.provider?.avatarUrl ?? project?.providerAvatar,
-    } as any);
+    } as Record<string, unknown>);
 
   const handleContact = () => {
     if (!provider || !provider.id) return;
@@ -902,16 +824,15 @@ export default function ProjectDetailsPage({
   };
   // ⬇️ ADD THIS just after you define `project` (and `proposals` if present)
   const currency = project?.currency ?? "RM";
-  const viewCount = Number(project?.viewCount ?? 0);
   const bidCount = Number(
     project?.bidCount ?? (Array.isArray(proposals) ? proposals.length : 0)
   );
-  const startDate = project?.startDate ? new Date(project.startDate) : null;
-  const endDate = project?.endDate ? new Date(project.endDate) : null;
+  const startDate = project?.startDate ? new Date(project.startDate as string | number | Date) : null;
+  const endDate = project?.endDate ? new Date(project.endDate as string | number | Date) : null;
 
   const handleSave = async () => {
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         title: edit.title,
         description: edit.description,
         category: edit.category,
@@ -1040,16 +961,16 @@ export default function ProjectDetailsPage({
       // Refresh milestones from API
       const milestoneData = await getCompanyProjectMilestones(project.id);
       const refreshedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m: any) => ({
+        ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
             ...m,
-            sequence: m.order,
-            submissionAttachmentUrl: m.submissionAttachmentUrl,
-            submissionNote: m.submissionNote,
-            submittedAt: m.submittedAt,
-            startDeliverables: m.startDeliverables,
-            submitDeliverables: m.submitDeliverables,
-            revisionNumber: m.revisionNumber,
-            submissionHistory: m.submissionHistory,
+            sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
+            submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl ?? (m as Record<string, unknown>).submissionAttachmentUrl,
+            submissionNote: (m as Milestone).submissionNote ?? (m as Record<string, unknown>).submissionNote,
+            submittedAt: (m as Milestone).submittedAt ?? (m as Record<string, unknown>).submittedAt,
+            startDeliverables: (m as Milestone).startDeliverables ?? (m as Record<string, unknown>).startDeliverables,
+            submitDeliverables: (m as Milestone).submitDeliverables ?? (m as Record<string, unknown>).submitDeliverables,
+            revisionNumber: (m as Milestone).revisionNumber ?? (m as Record<string, unknown>).revisionNumber,
+            submissionHistory: (m as Milestone).submissionHistory ?? (m as Record<string, unknown>).submissionHistory,
           }))
         : [];
       
@@ -1189,27 +1110,26 @@ export default function ProjectDetailsPage({
   };
 
   // Handle payment button click
-  const handlePayMilestone = (milestoneId: string, amount: number) => {
+  const handlePayMilestone = (milestoneId: string) => {
     const milestone = projectMilestones.find((m) => m.id === milestoneId);
     if (milestone) {
       setSelectedMilestoneForPayment(milestone);
       setPaymentDialogOpen(true);
     }
   };
-  const stripe = useStripe();
-  const elements = useElements();
 
-  const handleAcceptProposal = async (proposal: any) => {
+  const handleAcceptProposal = async (proposal: ProviderRequest) => {
     try {
-      const proposalId = proposal.id || (proposal as any)?.id;
+      const proposalId = proposal.id || (proposal as ProviderRequest)?.id;
       setProcessingId(proposalId);
       const response = await acceptProjectRequest(proposalId, true);
 
       // Get the created project ID from the response
-      const projectId = response?.id || response?.project?.id;
+      const projectId = (response as Record<string, unknown>)?.id as string | undefined || 
+                        ((response as Record<string, unknown>)?.project as Record<string, unknown> | undefined)?.id as string | undefined;
 
       // Optimistic status update
-      setProposals((prev: any[]) =>
+      setProposals((prev: ProviderRequest[]) =>
         prev.map((p) =>
           p.id === proposalId ? { ...p, status: "accepted" as const } : p
         )
@@ -1219,9 +1139,9 @@ export default function ProjectDetailsPage({
       if (projectId) {
         const milestoneData = await getCompanyProjectMilestones(projectId);
         const loadedDraftMilestones = Array.isArray(milestoneData.milestones)
-          ? milestoneData.milestones.map((m: any) => ({
+          ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
               ...m,
-              sequence: m.order,
+              sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
             }))
           : [];
         setMilestonesDraft(loadedDraftMilestones);
@@ -1353,9 +1273,9 @@ export default function ProjectDetailsPage({
       // Refresh milestones from API
       const milestoneData = await getCompanyProjectMilestones(activeProjectId);
       const refreshedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m: any) => ({
+        ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
             ...m,
-            sequence: m.order,
+            sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
           }))
         : [];
       
@@ -1418,7 +1338,7 @@ export default function ProjectDetailsPage({
   };
 
   // Reject proposal flow
-  const handleStartRejectProposal = (proposal: any) => {
+  const handleStartRejectProposal = (proposal: ProviderRequest) => {
     setSelectedProposalForAction(proposal);
     setRejectDialogOpen(true);
   };
@@ -1431,7 +1351,7 @@ export default function ProjectDetailsPage({
       await rejectProjectRequest(selectedProposalForAction.id, rejectReason);
 
       // 🔁 Don't remove it. Just mark REJECTED (use lowercase to match ProviderRequest interface).
-      setProposals((prev: any[]) =>
+      setProposals((prev: ProviderRequest[]) =>
         prev.map((p) =>
           p.id === selectedProposalForAction.id
             ? { ...p, status: "rejected" }
@@ -1440,11 +1360,12 @@ export default function ProjectDetailsPage({
       );
 
       // Refresh proposals from server to ensure we have the latest status
+      const projectRecord = project as Record<string, unknown>;
       const serviceRequestId =
         project?.type === "ServiceRequest"
           ? project.id
-          : (project as any)?.serviceRequestId ||
-            (project as any)?.originalRequestId ||
+          : (projectRecord?.serviceRequestId as string | undefined) ||
+            (projectRecord?.originalRequestId as string | undefined) ||
             resolvedId;
 
       if (serviceRequestId) {
@@ -1511,7 +1432,7 @@ export default function ProjectDetailsPage({
 
     try {
       setCreatingDispute(true);
-      const response = await createDispute({
+      await createDispute({
         projectId: project.id,
         milestoneId: selectedMilestoneForDispute || undefined,
         reason: disputeReason.trim(),
@@ -1542,10 +1463,10 @@ export default function ProjectDetailsPage({
       setDisputeSuggestedResolution("");
       setDisputeAttachments([]);
       setSelectedMilestoneForDispute(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create/update dispute",
+        description: error instanceof Error ? error.message : "Failed to create/update dispute",
         variant: "destructive",
       });
     } finally {
@@ -1561,10 +1482,10 @@ export default function ProjectDetailsPage({
         setCurrentDispute(disputeRes.data);
         setViewDisputeDialogOpen(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to load dispute",
+        description: error instanceof Error ? error.message : "Failed to load dispute",
         variant: "destructive",
       });
     }
@@ -1606,10 +1527,10 @@ export default function ProjectDetailsPage({
       // Reset form
       setDisputeAdditionalNotes("");
       setDisputeUpdateAttachments([]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update dispute",
+        description: error instanceof Error ? error.message : "Failed to update dispute",
         variant: "destructive",
       });
     } finally {
@@ -1937,7 +1858,7 @@ export default function ProjectDetailsPage({
                       {project.providerProposedTimeline && (
                         <div>
                           <p className="text-xs text-gray-500 mb-1">
-                            Provider's Proposed Timeline:
+                            Provider&apos;s Proposed Timeline:
                           </p>
                           <p className="text-xs sm:text-sm text-gray-900 font-medium">
                             {formatTimeline(
@@ -2266,13 +2187,13 @@ export default function ProjectDetailsPage({
                                 </p>
                                 <div className="space-y-3">
                                   {milestone.submissionHistory.map(
-                                    (history: any, idx: number) => {
+                                    (history: Record<string, unknown>, idx: number) => {
                                       // Calculate revision number: first submission is revision 1, then 2, 3, etc.
                                       // The revision number in history is the one BEFORE it was rejected
                                       const revisionNumber =
                                         history.revisionNumber !== undefined &&
                                         history.revisionNumber !== null
-                                          ? history.revisionNumber
+                                          ? (history.revisionNumber as number)
                                           : idx + 1;
 
                                       return (
@@ -2447,7 +2368,7 @@ export default function ProjectDetailsPage({
                           </Dialog>
                           {milestone.status === "LOCKED" &&
                             projectMilestones.findIndex(
-                              (m: any) =>
+                              (m: Milestone) =>
                                 m.status === "LOCKED" &&
                                 project.status === "IN_PROGRESS"
                             ) === index && (
@@ -2797,7 +2718,7 @@ export default function ProjectDetailsPage({
                                     attachments: p.attachments || [],
                                     skills: p.skills || [],
                                     portfolio: p.portfolio || [],
-                                    experience: (p as any).experience || "",
+                                    experience: (p as ProviderRequest & { experience?: string }).experience || "",
                                   });
                                   setProposalDetailsOpen(true);
                                 }}
@@ -2983,15 +2904,15 @@ export default function ProjectDetailsPage({
                       milestone.submissionHistory &&
                       Array.isArray(milestone.submissionHistory)
                     ) {
-                      milestone.submissionHistory.forEach((history: any) => {
+                      milestone.submissionHistory.forEach((history: Record<string, unknown>) => {
                         if (history.submissionAttachmentUrl) {
                           milestoneAttachments.push({
-                            url: history.submissionAttachmentUrl,
+                            url: history.submissionAttachmentUrl as string,
                             milestoneTitle: `${milestone.title} (Revision ${
-                              history.revisionNumber || "N/A"
+                              (history.revisionNumber as number | undefined) || "N/A"
                             })`,
                             milestoneId: milestone.id,
-                            submittedAt: history.submittedAt,
+                            submittedAt: history.submittedAt as string | undefined,
                           });
                         }
                       });
@@ -3082,16 +3003,16 @@ export default function ProjectDetailsPage({
               <CardContent>
                 {(() => {
                   const messageAttachments = projectFiles.flatMap(
-                    (message: any) =>
+                    (message: Record<string, unknown>) =>
                       Array.isArray(message.attachments)
                         ? message.attachments.map((url: string) => ({
                             url,
                             senderName:
-                              message.sender?.name ||
-                              message.senderName ||
+                              (message.sender as Record<string, unknown>)?.name as string ||
+                              (message.senderName as string) ||
                               "User",
-                            messageId: message.id,
-                            timestamp: message.createdAt || message.timestamp,
+                            messageId: message.id as string,
+                            timestamp: (message.createdAt as string) || (message.timestamp as string),
                           }))
                         : []
                   );
@@ -3169,18 +3090,15 @@ export default function ProjectDetailsPage({
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">
                 <div className="space-y-3 sm:space-y-4 max-h-96 overflow-y-auto">
-                  {msgsToRender.map((message: any) => {
+                  {msgsToRender.map((message: Record<string, unknown>) => {
+                    const messageSender = message.sender as Record<string, unknown> | undefined;
                     const isCurrentUser =
-                      String(message.senderId || message.sender?.id) ===
+                      String(message.senderId || messageSender?.id) ===
                       String(currentUserId);
-                    const text = message.content ?? message.message ?? "";
-                    const ts = message.createdAt ?? message.timestamp ?? "";
-                    const avatarChar =
-                      (
-                        message.sender?.name ||
-                        message.senderName ||
-                        (isCurrentUser ? "You" : "User")
-                      )?.charAt?.(0) || "U";
+                    const text = (message.content as string) ?? (message.message as string) ?? "";
+                    const ts = (message.createdAt as string) ?? (message.timestamp as string) ?? "";
+                    const senderName = (messageSender?.name as string) || (message.senderName as string) || (isCurrentUser ? "You" : "User");
+                    const avatarChar = senderName?.charAt?.(0) || "U";
 
                     return (
                       <div
@@ -3217,11 +3135,20 @@ export default function ProjectDetailsPage({
                                       return (
                                         <div key={index} className="text-xs">
                                           {isImage(url) ? (
-                                            <img
-                                              src={url}
-                                              alt={name}
-                                              className="w-32 h-auto rounded border cursor-pointer"
-                                            />
+                                            <div className="relative w-32 h-auto rounded border cursor-pointer">
+                                              <Image
+                                                src={url}
+                                                alt={name}
+                                                width={128}
+                                                height={128}
+                                                className="w-32 h-auto rounded border"
+                                                unoptimized
+                                                onError={(e) => {
+                                                  const target = e.target as HTMLImageElement;
+                                                  target.style.display = "none";
+                                                }}
+                                              />
+                                            </div>
                                           ) : isPDF(url) ? (
                                             <a
                                               href={url}
@@ -3824,7 +3751,7 @@ export default function ProjectDetailsPage({
             <DialogTitle>Request Details</DialogTitle>
             <DialogDescription>
               Detailed information about{" "}
-              {selectedProposalDetails?.provider?.name || "Provider"}'s request
+              {selectedProposalDetails?.provider?.name || "Provider"}&apos;s request
             </DialogDescription>
           </DialogHeader>
 
@@ -4041,11 +3968,11 @@ export default function ProjectDetailsPage({
                     <div className="space-y-4">
                       {selectedProposalDetails.milestones
                         .sort(
-                          (a: any, b: any) =>
+                          (a: { order?: number; sequence?: number }, b: { order?: number; sequence?: number }) =>
                             (a.order || a.sequence || 0) -
                             (b.order || b.sequence || 0)
                         )
-                        .map((m: any, idx: number) => (
+                        .map((m: { title?: string; amount?: number; dueDate?: string; order?: number; sequence?: number; description?: string }, idx: number) => (
                           <Card key={idx} className="border border-gray-200">
                             <CardContent className="p-4 space-y-2 text-sm">
                               {/* Top row: title + amount */}
@@ -4137,9 +4064,6 @@ export default function ProjectDetailsPage({
                                   });
                                 }
                               } : undefined}
-                              download={fileName}
-                              target="_blank"
-                              rel="noopener noreferrer"
                               className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                             >
                               {/* Icon circle */}
@@ -4566,9 +4490,9 @@ export default function ProjectDetailsPage({
                     <SelectValue placeholder="Select a milestone (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projectMilestones.map((m: any) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.title} - RM{m.amount?.toLocaleString() || 0}
+                    {projectMilestones.map((m: Milestone) => (
+                      <SelectItem key={m.id} value={m.id || ""}>
+                        {m.title} - RM{(m.amount || 0).toLocaleString()}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -4827,7 +4751,7 @@ export default function ProjectDetailsPage({
                             {updates.map((update: string, idx: number) => {
                               // Parse update format: [Update by Name on Date]: content
                               // Also handle old format: [Update by userId]: content
-                              let match = update.match(
+                              const match = update.match(
                                 /^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/
                               );
                               let userName = "";
@@ -4983,7 +4907,7 @@ export default function ProjectDetailsPage({
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {currentDispute.resolutionNotes.map(
-                        (note: any, index: number) => (
+                        (note: Record<string, unknown>, index: number) => (
                           <div
                             key={index}
                             className="bg-white p-4 rounded-lg border-l-4 border-purple-500"

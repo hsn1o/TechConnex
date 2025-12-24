@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MessageItem } from "../types";
 
-export default function MessagesTab({ projectId, items }: { projectId: string; items: MessageItem[] }) {
+export default function MessagesTab({ items }: { projectId: string; items: MessageItem[] }) {
   const [list, setList] = useState(items);
   const [text, setText] = useState("");
 

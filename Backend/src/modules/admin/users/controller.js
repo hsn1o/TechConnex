@@ -108,5 +108,23 @@ export const userController = {
       });
     }
   },
+
+  async createUser(req, res) {
+    try {
+      const userData = req.body;
+      const user = await userService.createUser(userData);
+      
+      res.json({
+        success: true,
+        message: "User created successfully",
+        data: user,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  },
 };
 

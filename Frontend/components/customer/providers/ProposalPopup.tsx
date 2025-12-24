@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,14 +50,7 @@ export default function ProposalPopup({
     }
   };
 
-  // Fetch open project requests
-  useEffect(() => {
-    if (isOpen) {
-      fetchProjectRequests();
-    }
-  }, [isOpen]);
-
-  const fetchProjectRequests = async () => {
+  const fetchProjectRequests = useCallback(async () => {
     const { token } = getUserAndToken();
     if (!token) return;
 
@@ -83,17 +76,24 @@ export default function ProposalPopup({
         }
         
         const openProjects = projects.filter(
-          (proj: any) => proj.status === "OPEN" && proj.projectId === null
+          (proj: Record<string, unknown>) => proj.status === "OPEN" && proj.projectId === null
         );
         console.log("📋 Open projects:", openProjects);
-        setProjectRequests(openProjects);
+        setProjectRequests(openProjects as ServiceRequest[]);
       }
     } catch (error) {
       console.error("Error fetching project requests", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch open project requests
+  useEffect(() => {
+    if (isOpen) {
+      fetchProjectRequests();
+    }
+  }, [isOpen, fetchProjectRequests]);
 
   const handleSendProposal = async () => {
     const { userId, token } = getUserAndToken();
@@ -164,7 +164,7 @@ export default function ProposalPopup({
         alert("Failed to send proposal: Timeout");
       }, 10000);
 
-      socket.emit("send_message", messageData, (response: any) => {
+      socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
         clearTimeout(emitTimeout);
         console.log("📨 Socket callback response:", response);
 

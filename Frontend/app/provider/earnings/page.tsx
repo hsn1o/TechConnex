@@ -27,7 +27,6 @@ import {
   Eye,
   CreditCard,
   Wallet,
-  PieChart,
   BarChart3,
   Edit,
   Trash2,
@@ -61,24 +60,48 @@ interface PayoutMethod {
   updatedAt: string;
 }
 
+type EarningsData = {
+  totalEarnings: number;
+  thisMonth: number;
+  monthlyGrowth: number;
+  pendingPayments: number;
+  availableBalance: number;
+  averageProjectValue: number;
+  stripeAccountId?: string;
+};
+
+type QuickStats = {
+  projectsThisMonth: number;
+  successRate: number;
+  repeatClientsPercent: number;
+};
+
+type Payment = {
+  id: string;
+  project: string;
+  client: string;
+  milestone: string;
+  amount: number;
+  status: string;
+  date: string;
+  avatar?: string;
+};
+
+type MonthlyEarning = {
+  month: string;
+  projects: number;
+  amount: number;
+};
+
 export default function ProviderEarningsPage() {
   const router = useRouter();
   const [timeFilter, setTimeFilter] = useState("this-month");
-  const [earningsData, setEarningsData] = useState<any>(null);
-  const [quickStats, setQuickStats] = useState<any>(null);
-  const [recentPayments, setRecentPayments] = useState<any[]>([]);
-  const [monthlyEarnings, setMonthlyEarnings] = useState<any[]>([]);
-  const [bankAccount, setBankAccount] = useState<any[]>([]);
+  const [earningsData, setEarningsData] = useState<EarningsData | null>(null);
+  const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
+  const [recentPayments, setRecentPayments] = useState<Payment[]>([]);
+  const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarning[]>([]);
   const [loading, setLoading] = useState(true);
-  const [withdrawAmount, setWithdrawAmount] = useState(0);
-  const [selectedBank, setSelectedBank] = useState<string | null>(null);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [withdrawMessage, setWithdrawMessage] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newBankName, setNewBankName] = useState("");
-  const [newAccountNumber, setNewAccountNumber] = useState("");
-  const [newAccountName, setNewAccountName] = useState("");
-  const [newSwiftCode, setNewSwiftCode] = useState("");
   const [editingMethod, setEditingMethod] = useState<PayoutMethod | null>(null);
   const [payoutMethods, setPayoutMethods] = useState<PayoutMethod[]>([]);
   const [formData, setFormData] = useState({
@@ -90,59 +113,6 @@ export default function ProviderEarningsPage() {
     accountEmail: "",
     walletId: "",
   });
-  const handleWithdraw = async () => {
-    if (!selectedBank) {
-      alert("Please select a bank account");
-      return;
-    }
-
-    if (withdrawAmount <= 0) {
-      alert("Please enter a valid amount");
-      return;
-    }
-
-    if (withdrawAmount > earningsData.availableBalance) {
-      alert("Amount exceeds available balance");
-      return;
-    }
-
-    setIsWithdrawing(true);
-    setWithdrawMessage("");
-
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No auth token found");
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/payments/withdraw`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            amount: withdrawAmount,
-            bank: selectedBank,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || "Withdrawal failed");
-
-      setWithdrawMessage(
-        `✅ Withdrawal requested successfully! Payout ID: ${data.payoutId}`
-      );
-      // Optionally refresh earnings data
-    } catch (err: any) {
-      console.error(err);
-      setWithdrawMessage(`❌ ${err.message}`);
-    } finally {
-      setIsWithdrawing(false);
-    }
-  };
 
   useEffect(() => {
     const fetchEarnings = async () => {
@@ -262,11 +232,12 @@ export default function ProviderEarningsPage() {
       setEditingMethod(null);
       resetForm();
       await fetchPayoutMethods();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to save payout method";
       toast({
         title: "Error",
-        description: err.message || "Failed to save payout method",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -290,11 +261,12 @@ export default function ProviderEarningsPage() {
         description: "Payout method removed successfully",
       });
       await fetchPayoutMethods();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete payout method";
       toast({
         title: "Error",
-        description: err.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -437,7 +409,6 @@ export default function ProviderEarningsPage() {
       </ProviderLayout>
     );
   }
-  const hasStripeAccount = !!earningsData.stripeAccountId;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -465,32 +436,6 @@ export default function ProviderEarningsPage() {
     }
   };
 
-  const getCardIcon = (brand: string) => {
-    switch (brand.toLowerCase()) {
-      case "visa":
-        return "💳";
-      case "mastercard":
-        return "💳";
-      case "amex":
-        return "💳";
-      default:
-        return "💳";
-    }
-  };
-
-  const handleSetDefaultPaymentMethod = (methodId: string) => {
-    toast({
-      title: "Default Payment Method Updated",
-      description: "Your default payment method has been changed.",
-    });
-  };
-
-  const handleRemovePaymentMethod = (methodId: string) => {
-    toast({
-      title: "Payment Method Removed",
-      description: "The payment method has been removed from your account.",
-    });
-  };
 
   return (
     <ProviderLayout>
@@ -722,7 +667,7 @@ export default function ProviderEarningsPage() {
                         Projects This Month
                       </span>
                       <span className="font-semibold">
-                        {quickStats.projectsThisMonth.toLocaleString()}
+                        {quickStats?.projectsThisMonth.toLocaleString() ?? 0}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -730,7 +675,7 @@ export default function ProviderEarningsPage() {
                         Success Rate
                       </span>
                       <span className="font-semibold">
-                        {quickStats.successRate.toLocaleString()}%
+                        {quickStats?.successRate.toLocaleString() ?? 0}%
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -738,7 +683,7 @@ export default function ProviderEarningsPage() {
                         Repeat Clients
                       </span>
                       <span className="font-semibold">
-                        {quickStats.repeatClientsPercent.toLocaleString()}%
+                        {quickStats?.repeatClientsPercent.toLocaleString() ?? 0}%
                       </span>
                     </div>
                   </CardContent>

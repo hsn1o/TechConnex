@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { AdminLayout } from "@/components/admin-layout";
 import {
@@ -25,12 +25,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Star,
   Search,
-  Filter,
   Trash2,
   Eye,
   MessageSquare,
-  TrendingUp,
-  Users,
   Building2,
   User,
   ExternalLink,
@@ -92,11 +89,7 @@ export default function AdminReviewsPage() {
     providerReviews: 0,
   });
 
-  useEffect(() => {
-    fetchReviews();
-  }, [activeTab]);
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
@@ -139,17 +132,21 @@ export default function AdminReviewsPage() {
       } else {
         throw new Error("Failed to fetch reviews");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading reviews:", error);
       toast({
         title: "Error loading reviews",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to load reviews",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, toast]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
 
   const handleDeleteReview = async (reviewId: string) => {
     if (
@@ -182,11 +179,11 @@ export default function AdminReviewsPage() {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to delete review");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting review:", error);
       toast({
         title: "Error deleting review",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to delete review",
         variant: "destructive",
       });
     }

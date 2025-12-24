@@ -53,10 +53,10 @@ export default function LandingPage() {
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
           <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-100">
-            🇲🇾 Built for Malaysia's Digital Economy
+            🇲🇾 Built for Malaysia&apos;s Digital Economy
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            Connect with Malaysia's
+            Connect with Malaysia&apos;s
             <span className="text-blue-600 block">Top ICT Professionals</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
@@ -117,7 +117,7 @@ export default function LandingPage() {
               Why Choose TechConnect?
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Built specifically for Malaysia's ICT ecosystem with local
+              Built specifically for Malaysia&apos;s ICT ecosystem with local
               compliance and payment methods
             </p>
           </div>
@@ -158,7 +158,7 @@ export default function LandingPage() {
                 <CardTitle>Verified Professionals</CardTitle>
                 <CardDescription>
                   All ICT specialists undergo KYC verification and skill
-                  assessment. Work with confidence knowing they're qualified.
+                  assessment. Work with confidence knowing they&apos;re qualified.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -260,7 +260,7 @@ export default function LandingPage() {
                 <span className="text-xl font-bold">TechConnect</span>
               </div>
               <p className="text-gray-400">
-                Malaysia's premier ICT service marketplace connecting businesses
+                Malaysia&apos;s premier ICT service marketplace connecting businesses
                 with top tech talent.
               </p>
             </div>

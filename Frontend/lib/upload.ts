@@ -116,11 +116,11 @@ export async function uploadFile(options: UploadOptions): Promise<UploadResult> 
       key: presignedData.key,
       url: presignedData.accessUrl, // Only present if visibility is "public"
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       key: "",
-      error: error.message || "Upload failed",
+      error: error instanceof Error ? error.message : "Upload failed",
     };
   }
 }
@@ -231,8 +231,8 @@ export async function getDownloadUrl(key: string, expiresIn: number = 3600): Pro
   try {
     const result = await getR2DownloadUrl(key, expiresIn);
     return result.downloadUrl;
-  } catch (error: any) {
-    throw new Error(error.message || "Failed to get download URL");
+  } catch (error: unknown) {
+    throw new Error(error instanceof Error ? error.message : "Failed to get download URL");
   }
 }
 

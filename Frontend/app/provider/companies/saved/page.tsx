@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ProviderLayout } from "@/components/provider-layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Eye, MapPin, Star, Trash2, Building2 } from "lucide-react";
 import type { Company } from "@/components/provider/companies/types";
+import { getProfileImageUrl } from "@/lib/api";
 
 export default function SavedCompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -25,7 +25,7 @@ export default function SavedCompaniesPage() {
   };
   const token = localStorage.getItem("token") || "";
 
-  const fetchSaved = async () => {
+  const fetchSaved = useCallback(async () => {
     try {
       const userId = getUserId();
       if (!userId) {
@@ -54,11 +54,11 @@ export default function SavedCompaniesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchSaved();
-  }, []);
+  }, [fetchSaved]);
 
   const unsave = async (companyId: string) => {
     try {

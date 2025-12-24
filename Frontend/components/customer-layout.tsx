@@ -31,8 +31,6 @@ import {
   MessageSquare,
   Settings,
   Bell,
-  Search,
-  Plus,
   LogOut,
   User,
   CreditCard,
@@ -56,7 +54,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
   const router = useRouter();
 
   // Profile state
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
   // Logout function
@@ -107,17 +105,17 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
             })
             .finally(() => setProfileLoading(false));
         }
-      } catch (error) {
+      } catch {
         router.push("/auth/login");
       }
     }
   }, [router]);
 
   // Notifications state
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<any | null>(
+  const [selectedNotification, setSelectedNotification] = useState<Record<string, unknown> | null>(
     null
   );
 

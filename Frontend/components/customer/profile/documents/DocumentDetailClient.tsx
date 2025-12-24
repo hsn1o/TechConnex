@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Download, FileText, CheckCircle, XCircle, Clock, Eye, Trash2, Upload, Calendar, User as UserIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { DocumentDetail, Timeline, Note } from "./types";
+import type { DocumentDetail } from "./types";
 
 
 

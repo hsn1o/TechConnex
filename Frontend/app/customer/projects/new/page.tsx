@@ -23,7 +23,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  ArrowLeft,
   Zap,
   Clock,
   Shield,
@@ -35,7 +34,6 @@ import {
   X,
   CheckCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
 import { createProject, analyzeProjectDocument } from "@/lib/api";
 import { toast } from "@/components/ui/use-toast";
@@ -123,7 +121,7 @@ export default function NewProjectPage() {
     "Adobe XD",
   ];
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Mark as manually edited if user changes a field
     if (fieldSources[field] !== "manual") {
@@ -312,7 +310,7 @@ export default function NewProjectPage() {
       } else {
         throw new Error(response.error || response.message || "Document analysis failed");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Document analysis error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to analyze document. Please try again.";
       setAnalysisError(errorMessage);
@@ -471,7 +469,7 @@ export default function NewProjectPage() {
               Create New Project
             </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">
-              Tell us about your ICT project and we'll find the perfect match
+              Tell us about your ICT project and we&apos;ll find the perfect match
             </p>
           </div>
         </div>
@@ -489,7 +487,7 @@ export default function NewProjectPage() {
                   </CardTitle>
                 </div>
                 <CardDescription className="text-xs sm:text-sm text-blue-700">
-                  Upload your project proposal, requirements document, or project brief (PDF, Word, Excel, TXT) and we'll auto-fill the form for you
+                  Upload your project proposal, requirements document, or project brief (PDF, Word, Excel, TXT) and we&apos;ll auto-fill the form for you
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">

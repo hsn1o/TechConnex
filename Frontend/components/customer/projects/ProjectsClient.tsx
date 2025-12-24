@@ -27,33 +27,33 @@ export default function ProjectsClient() {
         });
 
         // Transform service requests to Project format
-        const transformedProjects: Project[] = (response.serviceRequests || []).map((sr: any) => ({
-          id: sr.id,
-          title: sr.title,
-          description: sr.description || "",
-          provider: sr.project?.provider?.name || null,
+        const transformedProjects: Project[] = (response.serviceRequests || []).map((sr: Record<string, unknown>) => ({
+          id: sr.id as string,
+          title: sr.title as string,
+          description: (sr.description as string) || "",
+          provider: ((sr.project as Record<string, unknown>)?.provider as Record<string, unknown>)?.name as string || null,
           status: sr.status === "OPEN" ? "pending" : sr.status === "MATCHED" ? "in_progress" : "completed",
           progress: sr.project ? 50 : 0, // Mock progress for active projects
-          budget: sr.budgetMax ?? 0,
+          budget: (sr.budgetMax as number) ?? 0,
           spent: 0, // Will be calculated from payments
-          deadline: sr.timeline || "",
-          startDate: sr.createdAt,
+          deadline: (sr.timeline as string) || "",
+          startDate: sr.createdAt as string,
           avatar: "/placeholder.svg",
-          category: (sr.category || "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase()),
-          milestones: sr.project?.milestones?.length || 0,
-          completedMilestones: sr.project?.milestones?.filter((m: any) => m.status === "APPROVED").length || 0,
-          proposals: sr.proposals || [],
-          timeline: sr.timeline,
-          priority: sr.priority,
-          ndaSigned: sr.ndaSigned || false,
-          aiStackSuggest: sr.aiStackSuggest || [],
+          category: ((sr.category as string) || "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase()),
+          milestones: Array.isArray((sr.project as Record<string, unknown>)?.milestones) ? ((sr.project as Record<string, unknown>).milestones as unknown[]).length : 0,
+          completedMilestones: Array.isArray((sr.project as Record<string, unknown>)?.milestones) ? ((sr.project as Record<string, unknown>).milestones as Array<Record<string, unknown>>).filter((m) => m.status === "APPROVED").length : 0,
+          proposals: Array.isArray(sr.proposals) ? sr.proposals : [],
+          timeline: sr.timeline as string | undefined,
+          priority: sr.priority as "Low" | "Medium" | "High" | undefined,
+          ndaSigned: Boolean(sr.ndaSigned),
+          aiStackSuggest: Array.isArray(sr.aiStackSuggest) ? (sr.aiStackSuggest as string[]) : [],
           // Additional fields from service request
-          budgetMin: sr.budgetMin,
-          budgetMax: sr.budgetMax,
-          requirements: sr.requirements,
-          deliverables: sr.deliverables,
-          customer: sr.customer,
-          project: sr.project,
+          budgetMin: sr.budgetMin as number | undefined,
+          budgetMax: sr.budgetMax as number | undefined,
+          requirements: sr.requirements as string | undefined,
+          deliverables: sr.deliverables as string | undefined,
+          customer: sr.customer as Record<string, unknown> | undefined,
+          project: sr.project as Record<string, unknown> | undefined,
         }));
 
         setProjects(transformedProjects);

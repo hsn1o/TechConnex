@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,7 +37,6 @@ import {
   CheckCircle2,
   MessageSquare,
   Heart,
-  ArrowLeft,
   Building2,
   Globe,
   Users,
@@ -80,6 +79,28 @@ type ProposalFormData = {
   attachments: File[];
 };
 
+type TransformedOpportunity = {
+  id: string;
+  title: string;
+  description: string;
+  fullDescription: string;
+  budget: string;
+  budgetMin: number;
+  budgetMax: number;
+  timeline: string;
+  originalTimeline: string | null;
+  originalTimelineInDays: number;
+  skills: string[];
+  category: string;
+  priority: string;
+  requirements: string[];
+  deliverables: string[];
+  proposals: number;
+  hasSubmitted: boolean;
+  postedTime: string;
+  originalData: Record<string, unknown>;
+};
+
 export default function CompanyDetailClient({
   company,
   reviews,
@@ -95,9 +116,9 @@ export default function CompanyDetailClient({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Opportunities state
-  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [opportunities, setOpportunities] = useState<TransformedOpportunity[]>([]);
   const [loadingOpportunities, setLoadingOpportunities] = useState(true);
-  const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<TransformedOpportunity | null>(null);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [submittingProposal, setSubmittingProposal] = useState(false);
   const [proposalData, setProposalData] = useState<ProposalFormData>({
@@ -188,19 +209,19 @@ export default function CompanyDetailClient({
         const response = await getCompanyOpportunities(company.id);
         if (response.success && response.data) {
           // Transform opportunities to match the format expected by the UI
-          const transformed = response.data.map((opp: any) => ({
-            id: opp.id,
-            title: opp.title,
-            description: opp.description,
-            fullDescription: opp.description,
-            budget: `RM ${opp.budgetMin?.toLocaleString()} - RM ${opp.budgetMax?.toLocaleString()}`,
-            budgetMin: opp.budgetMin || 0,
-            budgetMax: opp.budgetMax || 0,
-            timeline: formatTimeline(opp.timeline) || "Not specified",
-            originalTimeline: opp.timeline || null,
+          const transformed = response.data.map((opp: Record<string, unknown>) => ({
+            id: String(opp.id || ""),
+            title: String(opp.title || ""),
+            description: String(opp.description || ""),
+            fullDescription: String(opp.description || ""),
+            budget: `RM ${(opp.budgetMin as number)?.toLocaleString() || 0} - RM ${(opp.budgetMax as number)?.toLocaleString() || 0}`,
+            budgetMin: (opp.budgetMin as number) || 0,
+            budgetMax: (opp.budgetMax as number) || 0,
+            timeline: formatTimeline(opp.timeline as string) || "Not specified",
+            originalTimeline: (opp.timeline as string) || null,
             originalTimelineInDays: (() => {
               if (!opp.timeline) return 0;
-              const timelineStr = opp.timeline.toLowerCase().trim();
+              const timelineStr = String(opp.timeline).toLowerCase().trim();
               const match = timelineStr.match(
                 /^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/
               );
@@ -211,18 +232,18 @@ export default function CompanyDetailClient({
               }
               return 0;
             })(),
-            skills: opp.skills || [],
-            category: opp.category,
-            priority: opp.priority,
+            skills: Array.isArray(opp.skills) ? (opp.skills as string[]) : [],
+            category: String(opp.category || ""),
+            priority: String(opp.priority || ""),
             requirements: Array.isArray(opp.requirements)
-              ? opp.requirements
+              ? (opp.requirements as string[])
               : [],
             deliverables: Array.isArray(opp.deliverables)
-              ? opp.deliverables
+              ? (opp.deliverables as string[])
               : [],
-            proposals: opp.proposalCount || 0,
-            hasSubmitted: opp.hasProposed || false,
-            postedTime: new Date(opp.createdAt).toLocaleDateString(),
+            proposals: (opp.proposalCount as number) || 0,
+            hasSubmitted: Boolean(opp.hasProposed),
+            postedTime: new Date(String(opp.createdAt || "")).toLocaleDateString(),
             originalData: opp,
           }));
           setOpportunities(transformed);
@@ -487,10 +508,12 @@ export default function CompanyDetailClient({
                     >
                       <div className="w-full h-48 bg-gray-100 relative overflow-hidden">
                         {isImageUrl(url) ? (
-                          <img
+                          <Image
                             src={getMediaUrl(url)}
                             alt={`Company media ${index + 1}`}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized
                             onError={(e) => {
                               // Show placeholder if image fails to load
                               const target = e.target as HTMLImageElement;
@@ -760,7 +783,7 @@ export default function CompanyDetailClient({
                 No open opportunities
               </h3>
               <p className="text-gray-600">
-                This company doesn't have any open projects at the moment.
+                This company doesn&apos;t have any open projects at the moment.
               </p>
             </div>
           ) : (
@@ -881,7 +904,7 @@ export default function CompanyDetailClient({
           <DialogHeader>
             <DialogTitle className="text-xl">Submit Proposal</DialogTitle>
             <DialogDescription>
-              Submit your proposal for "{selectedOpportunity?.title}"
+              Submit your proposal for &quot;{selectedOpportunity?.title}&quot;
             </DialogDescription>
           </DialogHeader>
 
@@ -1244,7 +1267,13 @@ export default function CompanyDetailClient({
             <Button
               onClick={async () => {
                 // Validation
-                const errors: any = {};
+                const errors: {
+                  bidAmount?: string;
+                  timelineAmount?: string;
+                  timelineUnit?: string;
+                  coverLetter?: string;
+                  milestones?: string;
+                } = {};
                 const bidAmountNum = Number(proposalData.bidAmount);
                 if (
                   !proposalData.bidAmount ||
@@ -1323,10 +1352,15 @@ export default function CompanyDetailClient({
                     proposalData.timelineUnit
                   );
 
+                  if (!selectedOpportunity) {
+                    toast.error("No opportunity selected");
+                    return;
+                  }
+
                   const formData = new FormData();
                   formData.append(
                     "serviceRequestId",
-                    selectedOpportunity.originalData.id
+                    String(selectedOpportunity.originalData.id || "")
                   );
                   formData.append("bidAmount", bidAmountNum.toString());
                   formData.append("deliveryTime", timelineInDays.toString());
@@ -1362,17 +1396,19 @@ export default function CompanyDetailClient({
                   if (response.success) {
                     toast.success("Proposal submitted successfully!");
                     setIsProposalModalOpen(false);
-                    setOpportunities((prev) =>
-                      prev.map((opp) =>
-                        opp.id === selectedOpportunity.id
-                          ? {
-                              ...opp,
-                              hasSubmitted: true,
-                              proposals: opp.proposals + 1,
-                            }
-                          : opp
-                      )
-                    );
+                    if (selectedOpportunity) {
+                      setOpportunities((prev) =>
+                        prev.map((opp) =>
+                          opp.id === selectedOpportunity.id
+                            ? {
+                                ...opp,
+                                hasSubmitted: true,
+                                proposals: opp.proposals + 1,
+                              }
+                            : opp
+                        )
+                      );
+                    }
                     setProposalData({
                       coverLetter: "",
                       bidAmount: "",
@@ -1387,9 +1423,10 @@ export default function CompanyDetailClient({
                       response.message || "Failed to submit proposal"
                     );
                   }
-                } catch (error: any) {
+                } catch (error: unknown) {
                   console.error("Error submitting proposal:", error);
-                  toast.error(error.message || "Failed to submit proposal");
+                  const errorMessage = error instanceof Error ? error.message : "Failed to submit proposal";
+                  toast.error(errorMessage);
                 } finally {
                   setSubmittingProposal(false);
                 }
@@ -1452,29 +1489,33 @@ export default function CompanyDetailClient({
               )}
 
               {/* Image Display */}
-              <div className="w-full h-full flex items-center justify-center p-4 md:p-8">
+              <div className="w-full h-full flex items-center justify-center p-4 md:p-8 relative">
                 {isImageUrl(company.mediaGallery[currentImageIndex]) ? (
-                  <img
-                    src={getMediaUrl(company.mediaGallery[currentImageIndex])}
-                    alt={`Company media ${currentImageIndex + 1}`}
-                    className="max-w-full max-h-[70vh] object-contain rounded-lg"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = "none";
-                      const parent = target.parentElement;
-                      if (
-                        parent &&
-                        !parent.querySelector(".image-placeholder")
-                      ) {
-                        const placeholder = document.createElement("div");
-                        placeholder.className =
-                          "image-placeholder w-full h-full flex items-center justify-center text-white";
-                        placeholder.innerHTML =
-                          '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
-                        parent.appendChild(placeholder);
-                      }
-                    }}
-                  />
+                  <div className="relative w-full h-full max-h-[70vh]">
+                    <Image
+                      src={getMediaUrl(company.mediaGallery[currentImageIndex])}
+                      alt={`Company media ${currentImageIndex + 1}`}
+                      fill
+                      className="object-contain rounded-lg"
+                      unoptimized
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        const parent = target.parentElement;
+                        if (
+                          parent &&
+                          !parent.querySelector(".image-placeholder")
+                        ) {
+                          const placeholder = document.createElement("div");
+                          placeholder.className =
+                            "image-placeholder w-full h-full flex items-center justify-center text-white";
+                          placeholder.innerHTML =
+                            '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                          parent.appendChild(placeholder);
+                        }
+                      }}
+                    />
+                  </div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white">
                     <ImageIcon className="w-24 h-24 text-gray-400" />

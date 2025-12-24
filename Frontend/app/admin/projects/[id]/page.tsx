@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useState, useEffect, useCallback } from "react"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -29,9 +29,7 @@ import {
   Loader2,
   AlertTriangle,
   Calendar,
-  DollarSign,
   Users,
-  FileText,
   CheckCircle,
   Clock,
   Paperclip,
@@ -44,86 +42,88 @@ import { Globe, MapPin, Star } from "lucide-react"
 
 export default function AdminProjectDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const projectId = params.id as string
   const { toast: toastHook } = useToast()
 
   const [loading, setLoading] = useState(true)
-  const [project, setProject] = useState<any>(null)
-  const [disputes, setDisputes] = useState<any[]>([])
+  const [project, setProject] = useState<Record<string, unknown> | null>(null)
+  const [disputes, setDisputes] = useState<Array<Record<string, unknown>>>([])
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState<any>(null)
+  const [formData, setFormData] = useState<Record<string, unknown> | null>(null)
 
-  useEffect(() => {
-    loadProject()
-    loadDisputes()
-  }, [projectId])
-
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     try {
       setLoading(true)
       const response = await getAdminProjectById(projectId)
       if (response.success) {
-        setProject(response.data)
-        initializeFormData(response.data)
+        setProject(response.data as Record<string, unknown>)
+        initializeFormData(response.data as Record<string, unknown>)
       }
-    } catch (error: any) {
-      toast({
+    } catch (error: unknown) {
+      toastHook({
         title: "Error",
-        description: error.message || "Failed to load project",
+        description: error instanceof Error ? error.message : "Failed to load project",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId, toastHook])
 
-  const loadDisputes = async () => {
+  const loadDisputes = useCallback(async () => {
     try {
       const response = await getDisputesByProject(projectId)
       if (response.success) {
-        setDisputes(response.data || [])
+        setDisputes((response.data || []) as Array<Record<string, unknown>>)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to load disputes:", error)
     }
-  }
+  }, [projectId])
 
-  const initializeFormData = (projectData: any) => {
+  useEffect(() => {
+    loadProject()
+    loadDisputes()
+  }, [loadProject, loadDisputes])
+
+  const initializeFormData = (projectData: Record<string, unknown>) => {
     // Handle requirements and deliverables (can be string or array)
     const requirements = typeof projectData.requirements === "string"
       ? projectData.requirements
       : Array.isArray(projectData.requirements)
-      ? projectData.requirements.map((r: any) => `- ${r}`).join("\n")
+      ? projectData.requirements.map((r: unknown) => `- ${String(r)}`).join("\n")
       : ""
     
     const deliverables = typeof projectData.deliverables === "string"
       ? projectData.deliverables
       : Array.isArray(projectData.deliverables)
-      ? projectData.deliverables.map((d: any) => `- ${d}`).join("\n")
+      ? projectData.deliverables.map((d: unknown) => `- ${String(d)}`).join("\n")
       : ""
 
     setFormData({
-      title: projectData.title || "",
-      description: projectData.description || "",
-      category: projectData.category || "",
-      budgetMin: projectData.budgetMin || 0,
-      budgetMax: projectData.budgetMax || 0,
-      timeline: projectData.timeline || projectData.originalTimeline || "",
-      priority: projectData.priority || "medium",
-      status: projectData.status || "IN_PROGRESS",
+      title: (projectData.title as string) || "",
+      description: (projectData.description as string) || "",
+      category: (projectData.category as string) || "",
+      budgetMin: (projectData.budgetMin as number) || 0,
+      budgetMax: (projectData.budgetMax as number) || 0,
+      timeline: (projectData.timeline as string) || (projectData.originalTimeline as string) || "",
+      priority: (projectData.priority as string) || "medium",
+      status: (projectData.status as string) || "IN_PROGRESS",
       requirements: requirements,
       deliverables: deliverables,
-      skills: Array.isArray(projectData.skills) ? projectData.skills.join(", ") : "",
+      skills: Array.isArray(projectData.skills) ? (projectData.skills as string[]).join(", ") : "",
     })
   }
 
-  const handleFieldChange = (field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      [field]: value,
-    }))
+  const handleFieldChange = (field: string, value: unknown) => {
+    setFormData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        [field]: value,
+      }
+    })
   }
 
   const handleSave = async () => {
@@ -135,7 +135,7 @@ export default function AdminProjectDetailPage() {
       const isServiceRequest = project.type === "serviceRequest"
       
       // Prepare update data
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
@@ -151,7 +151,7 @@ export default function AdminProjectDetailPage() {
       }
 
       // Convert skills from comma-separated string to array
-      if (formData.skills) {
+      if (formData.skills && typeof formData.skills === "string") {
         const skillsArray = formData.skills
           .split(",")
           .map((s: string) => s.trim())
@@ -162,26 +162,26 @@ export default function AdminProjectDetailPage() {
       }
 
       // Include requirements and deliverables as markdown strings
-      if (formData.requirements !== undefined) {
-        updateData.requirements = formData.requirements.trim() || null
+      if (formData.requirements !== undefined && formData.requirements !== null) {
+        updateData.requirements = (typeof formData.requirements === "string" ? formData.requirements.trim() : String(formData.requirements)) || null
       }
-      if (formData.deliverables !== undefined) {
-        updateData.deliverables = formData.deliverables.trim() || null
+      if (formData.deliverables !== undefined && formData.deliverables !== null) {
+        updateData.deliverables = (typeof formData.deliverables === "string" ? formData.deliverables.trim() : String(formData.deliverables)) || null
       }
 
       const response = await updateAdminProject(projectId, updateData)
       if (response.success) {
-        toast({
+        toastHook({
           title: "Success",
           description: "Project updated successfully",
         })
         setIsEditing(false)
         loadProject()
       }
-    } catch (error: any) {
-      toast({
+    } catch (error: unknown) {
+      toastHook({
         title: "Error",
-        description: error.message || "Failed to update project",
+        description: error instanceof Error ? error.message : "Failed to update project",
         variant: "destructive",
       })
     } finally {
@@ -312,14 +312,15 @@ export default function AdminProjectDetailPage() {
   }
 
   const isServiceRequest = project.type === "serviceRequest"
-  const completedMilestones = project.milestones?.filter(
-    (m: any) => m.status === "APPROVED" || m.status === "PAID"
+  const milestonesArray = Array.isArray(project.milestones) ? project.milestones : []
+  const completedMilestones = milestonesArray.filter(
+    (m: Record<string, unknown>) => m.status === "APPROVED" || m.status === "PAID"
   ).length || 0
-  const totalMilestones = project.milestones?.length || 0
+  const totalMilestones = milestonesArray.length || 0
   const progress = isServiceRequest ? 0 : (totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0)
   
   // Calculate approved price (sum of all milestone amounts)
-  const approvedPrice = project.milestones?.reduce((sum: number, m: any) => sum + (m.amount || 0), 0) || 0
+  const approvedPrice = milestonesArray.reduce((sum: number, m: Record<string, unknown>) => sum + ((m.amount as number) || 0), 0) || 0
   
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -333,13 +334,13 @@ export default function AdminProjectDetailPage() {
   const requirements = typeof project.requirements === "string" 
     ? project.requirements 
     : Array.isArray(project.requirements)
-    ? project.requirements.map((r: any) => `- ${r}`).join("\n")
+    ? project.requirements.map((r: unknown) => `- ${String(r)}`).join("\n")
     : ""
   
   const deliverables = typeof project.deliverables === "string"
     ? project.deliverables
     : Array.isArray(project.deliverables)
-    ? project.deliverables.map((d: any) => `- ${d}`).join("\n")
+    ? project.deliverables.map((d: unknown) => `- ${String(d)}`).join("\n")
     : ""
 
   return (
@@ -868,8 +869,8 @@ export default function AdminProjectDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {project.milestones && project.milestones.length > 0 ? (
-                    project.milestones.map((milestone: any, index: number) => (
+                  {milestonesArray.length > 0 ? (
+                    milestonesArray.map((milestone: Record<string, unknown>, index: number) => (
                       <div key={milestone.id} className="flex gap-4">
                         <div className="flex flex-col items-center">
                           {getMilestoneStatusIcon(milestone.status)}
@@ -1027,7 +1028,7 @@ export default function AdminProjectDetailPage() {
                                   📚 Previous Submission History:
                                 </p>
                                 <div className="space-y-3">
-                                  {milestone.submissionHistory.map((history: any, idx: number) => {
+                                  {Array.isArray(milestone.submissionHistory) && (milestone.submissionHistory as Array<Record<string, unknown>>).map((history: Record<string, unknown>, idx: number) => {
                                     const revisionNumber =
                                       history.revisionNumber !== undefined &&
                                       history.revisionNumber !== null
@@ -1146,9 +1147,9 @@ export default function AdminProjectDetailPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {project.proposals && project.proposals.length > 0 ? (
+                  {Array.isArray(project.proposals) && project.proposals.length > 0 ? (
                     <div className="space-y-4">
-                      {project.proposals.map((proposal: any) => (
+                      {(project.proposals as Array<Record<string, unknown>>).map((proposal: Record<string, unknown>) => (
                         <div key={proposal.id} className="border rounded-lg p-4">
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center gap-3">
@@ -1207,7 +1208,7 @@ export default function AdminProjectDetailPage() {
                                 Proposed Milestones ({proposal.milestones.length})
                               </p>
                               <div className="space-y-2">
-                                {proposal.milestones.map((milestone: any, idx: number) => (
+                                {Array.isArray(proposal.milestones) && (proposal.milestones as Array<Record<string, unknown>>).map((milestone: Record<string, unknown>, idx: number) => (
                                   <div key={milestone.id || idx} className="p-2 bg-gray-50 rounded text-sm">
                                     <p className="font-medium">{milestone.title}</p>
                                     <p className="text-gray-600">
@@ -1292,8 +1293,8 @@ export default function AdminProjectDetailPage() {
                   const proposalAttachments: string[] = []
                   
                   // For ServiceRequests, collect attachments from all proposals
-                  if (isServiceRequest && project.proposals) {
-                    project.proposals.forEach((proposal: any) => {
+                  if (isServiceRequest && Array.isArray(project.proposals)) {
+                    (project.proposals as Array<Record<string, unknown>>).forEach((proposal: Record<string, unknown>) => {
                       if (proposal.attachmentUrls && Array.isArray(proposal.attachmentUrls)) {
                         proposalAttachments.push(...proposal.attachmentUrls)
                       }
@@ -1375,7 +1376,7 @@ export default function AdminProjectDetailPage() {
                       submittedAt?: string
                     }> = []
 
-                    project.milestones?.forEach((milestone: any) => {
+                    milestonesArray.forEach((milestone: Record<string, unknown>) => {
                     if (milestone.submissionAttachmentUrl) {
                       milestoneAttachments.push({
                         url: milestone.submissionAttachmentUrl,
@@ -1389,7 +1390,7 @@ export default function AdminProjectDetailPage() {
                       milestone.submissionHistory &&
                       Array.isArray(milestone.submissionHistory)
                     ) {
-                      milestone.submissionHistory.forEach((history: any) => {
+                      (milestone.submissionHistory as Array<Record<string, unknown>>).forEach((history: Record<string, unknown>) => {
                         if (history.submissionAttachmentUrl) {
                           milestoneAttachments.push({
                             url: history.submissionAttachmentUrl,
@@ -1479,7 +1480,7 @@ export default function AdminProjectDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {disputes.map((dispute: any) => (
+                    {disputes.map((dispute: Record<string, unknown>) => (
                       <div key={dispute.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div>

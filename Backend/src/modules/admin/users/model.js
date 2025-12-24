@@ -1,8 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 export const userModel = {
+  async getUserByEmail(email) {
+    return prisma.user.findUnique({ where: { email } });
+  },
+
   async getAllUsers(filters = {}) {
     const where = {};
 
@@ -310,6 +314,123 @@ export const userModel = {
       customers,
       admins,
     };
+  },
+
+  async createUser(userData) {
+    const { role, providerProfile, customerProfile, ...baseUserData } = userData;
+    
+    // Determine roles array
+    let rolesArray = [];
+    if (role === "ADMIN") {
+      rolesArray = ["ADMIN"];
+    } else if (role === "PROVIDER") {
+      rolesArray = ["PROVIDER"];
+    } else if (role === "CUSTOMER") {
+      rolesArray = ["CUSTOMER"];
+    } else {
+      rolesArray = role || ["CUSTOMER"];
+    }
+
+    // Create user with appropriate profile
+    // Always create profile for PROVIDER and CUSTOMER roles (even if empty)
+    const user = await prisma.user.create({
+      data: {
+        ...baseUserData,
+        role: { set: rolesArray },
+        status: baseUserData.status || "ACTIVE",
+        kycStatus: baseUserData.kycStatus || "pending_verification",
+        isVerified: baseUserData.isVerified ?? false,
+        providerProfile: role === "PROVIDER"
+          ? {
+              create: {
+                bio: providerProfile?.bio || "",
+                major: providerProfile?.major || null,
+                location: providerProfile?.location || "",
+                hourlyRate: providerProfile?.hourlyRate
+                  ? new Prisma.Decimal(providerProfile.hourlyRate)
+                  : null,
+                availability: providerProfile?.availability || null,
+                languages: providerProfile?.languages || [],
+                website: providerProfile?.website || null,
+                skills: providerProfile?.skills || [],
+                yearsExperience: providerProfile?.yearsExperience || null,
+                minimumProjectBudget: providerProfile?.minimumProjectBudget
+                  ? new Prisma.Decimal(providerProfile.minimumProjectBudget)
+                  : null,
+                maximumProjectBudget: providerProfile?.maximumProjectBudget
+                  ? new Prisma.Decimal(providerProfile.maximumProjectBudget)
+                  : null,
+                preferredProjectDuration: providerProfile?.preferredProjectDuration || null,
+                workPreference: providerProfile?.workPreference || "remote",
+                teamSize: providerProfile?.teamSize || 1,
+                rating: new Prisma.Decimal(0.0),
+                totalReviews: 0,
+                totalProjects: 0,
+                totalEarnings: new Prisma.Decimal(0.0),
+                viewsCount: 0,
+                successRate: new Prisma.Decimal(0.0),
+                responseTime: 0,
+                isFeatured: false,
+              },
+            }
+          : undefined,
+        customerProfile: role === "CUSTOMER"
+          ? {
+              create: {
+                description: customerProfile?.description || "",
+                industry: customerProfile?.industry || "",
+                location: customerProfile?.location || "",
+                website: customerProfile?.website || null,
+                profileImageUrl: customerProfile?.profileImageUrl || null,
+                socialLinks: customerProfile?.socialLinks || null,
+                languages: customerProfile?.languages || [],
+                companySize: customerProfile?.companySize || null,
+                employeeCount: customerProfile?.employeeCount || null,
+                establishedYear: customerProfile?.establishedYear || null,
+                annualRevenue: customerProfile?.annualRevenue
+                  ? new Prisma.Decimal(customerProfile.annualRevenue)
+                  : null,
+                fundingStage: customerProfile?.fundingStage || null,
+                preferredContractTypes: customerProfile?.preferredContractTypes || [],
+                averageBudgetRange: customerProfile?.averageBudgetRange || null,
+                remotePolicy: customerProfile?.remotePolicy || null,
+                hiringFrequency: customerProfile?.hiringFrequency || null,
+                categoriesHiringFor: customerProfile?.categoriesHiringFor || [],
+                rating: 0,
+                reviewCount: 0,
+                totalSpend: null,
+                projectsPosted: 0,
+                mission: customerProfile?.mission || null,
+                values: customerProfile?.values || [],
+                benefits: customerProfile?.benefits || null,
+                mediaGallery: customerProfile?.mediaGallery || [],
+              },
+            }
+          : undefined,
+      },
+      include: {
+        providerProfile: true,
+        customerProfile: true,
+      },
+    });
+
+    // Auto-create Settings for the new user
+    await prisma.settings.create({
+      data: {
+        userId: user.id,
+        emailNotifications: true,
+        smsNotifications: false,
+        projectUpdates: true,
+        marketingEmails: false,
+        weeklyReports: true,
+        profileVisibility: "public",
+        showEmail: false,
+        showPhone: false,
+        allowMessages: true,
+      },
+    });
+
+    return user;
   },
 };
 

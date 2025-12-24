@@ -144,13 +144,9 @@ export default function SignupPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editCertification, setEditCertification] =
     useState<Certification | null>(null);
-  const handleEditCertification = (index: number) => {
-    setEditingIndex(index);
-    setEditCertification({ ...certifications[index] });
-  };
 
   const [isProcessingCV, setIsProcessingCV] = useState(false);
-  const [cvExtractedData, setCvExtractedData] = useState<any>(null);
+  const [cvExtractedData, setCvExtractedData] = useState<Record<string, unknown> | null>(null);
   const [showAIResults, setShowAIResults] = useState(false);
   const [aiProcessingComplete, setAiProcessingComplete] = useState(false);
 
@@ -203,7 +199,6 @@ export default function SignupPage() {
     "" | "PASSPORT" | "IC" | "COMPANY_REGISTRATION"
   >("");
   const [kycFile, setKycFile] = useState<File | null>(null);
-  const [isUploadingKyc, setIsUploadingKyc] = useState(false);
   const [emailStatus, setEmailStatus] = useState<
     "idle" | "checking" | "available" | "used"
   >("idle");
@@ -282,18 +277,19 @@ export default function SignupPage() {
           visibility: "private", // Resumes should be private
           category: "document",
         });
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         // Handle R2 upload errors
-        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+        const errorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
+        if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
           throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
         }
-        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
-          throw new Error(`File size error: ${uploadError.message}`);
+        if (errorMessage.includes("size") || errorMessage.includes("limit")) {
+          throw new Error(`File size error: ${errorMessage}`);
         }
-        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
-          throw new Error(`File type error: ${uploadError.message}`);
+        if (errorMessage.includes("type") || errorMessage.includes("format")) {
+          throw new Error(`File type error: ${errorMessage}`);
         }
-        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+        throw new Error(`Upload failed: ${errorMessage || "Unknown error occurred during file upload"}`);
       }
 
       if (!uploadResult.success) {
@@ -324,12 +320,14 @@ export default function SignupPage() {
             url: uploadResult.url || uploadResult.key, // Use key if URL is empty (private files)
           }),
         });
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         // Handle network errors
-        if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+        const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        const errorName = fetchError instanceof Error ? fetchError.name : "";
+        if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorName === "TypeError") {
           throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
         }
-        throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+        throw new Error(`Server connection failed: ${errorMessage || "Unknown error"}`);
       }
 
       if (!res.ok) {
@@ -352,7 +350,7 @@ export default function SignupPage() {
       }
 
       return res;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Resume upload error:", error);
       throw error;
     }
@@ -373,7 +371,7 @@ export default function SignupPage() {
     if (!kycFile) return { ok: true }; // skip if no file
 
     // ✅ Check if user accidentally selected a folder
-    if ((kycFile as any).type === "" && (kycFile as any).size === 0) {
+    if (kycFile.type === "" && kycFile.size === 0) {
       const errorMsg = "You cannot upload a folder. Please select a valid file.";
       setError(errorMsg);
       return { ok: false, error: errorMsg };
@@ -388,8 +386,6 @@ export default function SignupPage() {
     }
 
     try {
-      setIsUploadingKyc(true);
-
       // Upload to R2 first
       // Category will be auto-detected from file type (image, document, or video)
       const { uploadFile } = await import("@/lib/upload");
@@ -402,18 +398,19 @@ export default function SignupPage() {
           visibility: "private", // KYC documents should be private
           // Don't specify category - let it auto-detect from file.type
         });
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         // Handle R2 upload errors
-        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+        const errorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
+        if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
           throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
         }
-        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
-          throw new Error(`File size error: ${uploadError.message}`);
+        if (errorMessage.includes("size") || errorMessage.includes("limit")) {
+          throw new Error(`File size error: ${errorMessage}`);
         }
-        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
-          throw new Error(`File type error: ${uploadError.message}`);
+        if (errorMessage.includes("type") || errorMessage.includes("format")) {
+          throw new Error(`File type error: ${errorMessage}`);
         }
-        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+        throw new Error(`Upload failed: ${errorMessage || "Unknown error occurred during file upload"}`);
       }
 
       if (!uploadResult.success) {
@@ -447,18 +444,20 @@ export default function SignupPage() {
             mimeType: kycFile.type || "application/octet-stream",
           }),
         });
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         // Handle network errors
-        if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+        const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        const errorName = fetchError instanceof Error ? fetchError.name : "";
+        if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorName === "TypeError") {
           throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
         }
-        throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+        throw new Error(`Server connection failed: ${errorMessage || "Unknown error"}`);
       }
 
       let payload;
       try {
         payload = await res.json();
-      } catch (parseError) {
+      } catch {
         throw new Error(`Server response error: Invalid response from server. Please try again.`);
       }
 
@@ -475,13 +474,11 @@ export default function SignupPage() {
       }
 
       return { ok: true, data: payload.data };
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("KYC upload error:", e);
-      const errorMessage = e.message || "KYC upload failed. Please try again.";
+      const errorMessage = e instanceof Error ? e.message : "KYC upload failed. Please try again.";
       setError(errorMessage);
       return { ok: false, error: errorMessage };
-    } finally {
-      setIsUploadingKyc(false);
     }
   };
 
@@ -564,7 +561,8 @@ export default function SignupPage() {
         case 2:
           return !!(formData.location && formData.industry);
         case 3:
-          formData.companyDescription &&
+          return !!(
+            formData.companyDescription &&
             formData.companySize &&
             formData.establishedYear &&
             formData.annualRevenue &&
@@ -575,8 +573,8 @@ export default function SignupPage() {
             formData.hiringFrequency &&
             formData.categoriesHiringFor &&
             formData.mission &&
-            formData.values;
-          return true;
+            formData.values
+          );
         case 4:
           return Boolean(formData.acceptedTerms); // or Boolean(formData.acceptedTerms) if using boolean
 
@@ -699,7 +697,7 @@ export default function SignupPage() {
           ? `${API_BASE}/auth/provider/register`
           : `${API_BASE}/auth/company/register`;
 
-      const requestData: any = {
+      const requestData: Record<string, unknown> = {
         email: formData.email,
         password: formData.password,
         name: userRole === "customer" ? formData.companyName: formData.name,
@@ -887,7 +885,7 @@ export default function SignupPage() {
                             Hire Freelancers
                           </h3>
                           <p className="text-gray-600 mb-6 leading-relaxed">
-                            I'm a company looking to hire talented ICT
+                            I&apos;m a company looking to hire talented ICT
                             professionals for my projects
                           </p>
                           <div className="space-y-3 mb-6">
@@ -941,7 +939,7 @@ export default function SignupPage() {
                             Work as Freelancer
                           </h3>
                           <p className="text-gray-600 mb-6 leading-relaxed">
-                            I'm a freelancer offering ICT services and want to
+                            I&apos;m a freelancer offering ICT services and want to
                             find exciting projects
                           </p>
                           <div className="space-y-3 mb-6">

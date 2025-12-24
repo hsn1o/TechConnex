@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Clock, Check, X, Search, RefreshCw, Download, Eye } from "lucide-react";
+import { MessageSquare, Search, RefreshCw, Download } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Option, ProviderRequest } from "./types";
@@ -14,6 +13,37 @@ import StatsBar from "./sections/StatsBar";
 import RequestCard from "./sections/RequestCard";
 import DetailsDialog from "./sections/DetailsDialog";
 import RejectDialog from "./sections/RejectDialog";
+
+// Types for API response
+interface ApiServiceRequest {
+  id: string;
+  customerId: string;
+  title: string;
+  description: string;
+  category: string;
+  budgetMin: number;
+  budgetMax: number;
+  timeline: string;
+  aiStackSuggest?: string[];
+  priority: string;
+  status: string;
+  ndaSigned: boolean;
+  proposals?: ApiProposal[];
+}
+
+interface ApiProposal {
+  id: string;
+  providerId: string;
+  bidAmount: number;
+  deliveryTime?: number;
+  coverLetter: string;
+  createdAt: string;
+  attachmentUrl?: string;
+  provider?: {
+    name?: string;
+    location?: string;
+  };
+}
 
 export default function RequestsClient({
   projects,
@@ -52,8 +82,8 @@ export default function RequestsClient({
         const res = await fetch(`http://localhost:4000/api/service-requests/${userId}`);
         const data = await res.json();
         const list: ProviderRequest[] = [];
-        (data.serviceRequests || []).forEach((sr: any) => {
-          (sr.proposals || []).forEach((p: any) => {
+        ((data.serviceRequests as ApiServiceRequest[]) || []).forEach((sr: ApiServiceRequest) => {
+          ((sr.proposals as ApiProposal[]) || []).forEach((p: ApiProposal) => {
             list.push({
               id: p.id,
               providerId: p.providerId,
@@ -91,8 +121,8 @@ export default function RequestsClient({
           });
         });
         setRequests(list);
-      } catch (e: any) {
-        setError(e.message || "Failed to fetch requests.");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to fetch requests.");
       } finally {
         setLoading(false);
       }
@@ -179,12 +209,12 @@ export default function RequestsClient({
 
       setRequests((prev) => prev.map((x) => (x.id === requestId ? { ...x, status: "accepted" } as ProviderRequest : x)));
       toast("Request Accepted", { description: "Provider notified. Project created." });
-    } catch (e: any) {
-      toast("Failed to accept request", { description: e.message });
+    } catch (e: unknown) {
+      toast("Failed to accept request", { description: e instanceof Error ? e.message : "An error occurred" });
     }
   };
 
-  const reject = (requestId: string, _reason: string) => {
+  const reject = (requestId: string) => {
     setRequests((prev) => prev.map((x) => (x.id === requestId ? { ...x, status: "rejected" } : x)));
     toast("Request Rejected", { description: "The provider has been notified." });
   };
@@ -200,8 +230,8 @@ export default function RequestsClient({
       const a = document.createElement("a");
       a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      toast("Failed to download PDF", { description: e.message });
+    } catch (e: unknown) {
+      toast("Failed to download PDF", { description: e instanceof Error ? e.message : "An error occurred" });
     }
   };
 
@@ -310,7 +340,7 @@ export default function RequestsClient({
       <RejectDialog
         open={rejectOpen}
         onOpenChange={setRejectOpen}
-        onConfirm={(reason) => { if (selected) reject(selected.id, reason); }}
+        onConfirm={() => { if (selected) reject(selected.id); }}
       />
     </div>
   );

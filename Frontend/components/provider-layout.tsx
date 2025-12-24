@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -22,14 +22,12 @@ import {
   MessageSquare,
   Settings,
   Bell,
-  Search,
   DollarSign,
   LogOut,
   User,
   BarChart3,
   Menu,
   X,
-  Star,
   Plus,
   Building2,
 } from "lucide-react";
@@ -53,17 +51,23 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const routerRef = useRef(router);
+
+  // Update ref when router changes
+  useEffect(() => {
+    routerRef.current = router;
+  }, [router]);
 
   // Profile state
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
 
   // Notifications state
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<any | null>(
+  const [selectedNotification, setSelectedNotification] = useState<Record<string, unknown> | null>(
     null
   );
 
@@ -155,7 +159,7 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
       if (!user || !token) {
         console.log("❌ No user or token found, redirecting to login");
         // User is not authenticated, redirect to login
-        router.push("/auth/login");
+        routerRef.current.push("/auth/login");
         return;
       }
 
@@ -167,13 +171,13 @@ export function ProviderLayout({ children }: ProviderLayoutProps) {
         console.log("👤 User ID extracted:", userId);
       } catch (e) {
         console.error("❌ Error parsing user data:", e);
-        router.push("/auth/login");
+        routerRef.current.push("/auth/login");
         return;
       }
 
       if (!userId) {
         console.log("❌ No user ID found, redirecting to login");
-        router.push("/auth/login");
+        routerRef.current.push("/auth/login");
         return;
       }
       const API_URL =

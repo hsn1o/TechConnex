@@ -42,7 +42,7 @@ export default function ProviderProjectsPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Array<Record<string, unknown>>>([]);
   const [stats, setStats] = useState({
     totalProjects: 0,
     activeProjects: 0,

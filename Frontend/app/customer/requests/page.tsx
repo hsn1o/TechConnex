@@ -145,8 +145,8 @@ export default function CustomerRequestsPage() {
   >([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const asArray = <T,>(v: any): T[] => (Array.isArray(v) ? v : []);
-  const fmt = (v: any, fallback = "0") => {
+  const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? v : []);
+  const fmt = (v: unknown, fallback = "0") => {
     if (v === null || v === undefined) return fallback;
     const n = Number(v);
     return Number.isFinite(n) ? n.toLocaleString() : fallback;
@@ -235,13 +235,13 @@ export default function CustomerRequestsPage() {
           : [];
         const mappedRequests: ProviderRequest[] = proposals.map(
           (proposal: ApiProposal) => {
-            const provider = (proposal as any).provider || {};
-            const profile = provider.providerProfile || {};
+            const provider = (proposal as ApiProposal & { provider?: Record<string, unknown> }).provider || {};
+            const profile = (provider as Record<string, unknown>).providerProfile as Record<string, unknown> || {};
             return {
               id: proposal.id,
               providerId: provider.id,
               providerName: provider.name,
-              providerAvatar: getProfileImageUrl(profile.profileImageUrl),
+              providerAvatar: getProfileImageUrl(profile.profileImageUrl as string | null | undefined),
               providerRating: profile.rating ?? provider.rating ?? 0,
               providerLocation: profile.location ?? provider.location ?? "",
               providerResponseTime:
@@ -373,12 +373,12 @@ export default function CustomerRequestsPage() {
         setMilestonesOpen(true);
       }
 
-      toast({
+      toastHook({
         title: "Request Accepted",
         description: "Edit milestones and confirm to finalize.",
       });
     } catch (err) {
-      toast({
+      toastHook({
         title: "Error",
         description:
           err instanceof Error ? err.message : "Failed to accept request",
@@ -449,7 +449,7 @@ export default function CustomerRequestsPage() {
 
     if (hasErrors) {
       setMilestoneErrors(errors);
-      toast({
+      toastHook({
         title: "Validation Error",
         description: "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
         variant: "destructive",
@@ -480,22 +480,22 @@ export default function CustomerRequestsPage() {
       // Refresh milestones from API
       const milestoneData = await getCompanyProjectMilestones(activeProjectId);
       const refreshedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m: any) => ({
+        ? milestoneData.milestones.map((m: Record<string, unknown>) => ({
             ...m,
-            sequence: m.order,
-          }))
+            sequence: (m.order as number) ?? (m.sequence as number) ?? 0,
+          } as Milestone))
         : [];
       
       // Update both current and original milestones with fresh data
       setMilestones(refreshedMilestones);
       setOriginalMilestones(JSON.parse(JSON.stringify(refreshedMilestones)));
 
-      toast({
+      toastHook({
         title: "Milestones updated",
         description: "Milestone changes have been saved.",
       });
     } catch (e) {
-      toast({
+      toastHook({
         title: "Save failed",
         description:
           e instanceof Error ? e.message : "Could not save milestones",
@@ -523,7 +523,7 @@ export default function CustomerRequestsPage() {
       setMilestonesOpen(false);
 
       // 2. Toast feedback
-      toast({
+      toastHook({
         title: "Milestones approved",
         description: res.milestonesLocked
           ? "Milestones are now locked. Work can start and payments will follow these milestones."
@@ -533,7 +533,7 @@ export default function CustomerRequestsPage() {
       // 3. Open summary / receipt dialog
       setMilestoneFinalizeOpen(true);
     } catch (e) {
-      toast({
+      toastHook({
         title: "Approval failed",
         description:
           e instanceof Error ? e.message : "Could not approve milestones",
@@ -557,12 +557,12 @@ export default function CustomerRequestsPage() {
       setRejectDialogOpen(false);
       setRejectReason("");
 
-      toast({
+      toastHook({
         title: "Request Rejected",
         description: "The provider has been notified about the rejection.",
       });
     } catch (err) {
-      toast({
+      toastHook({
         title: "Error",
         description:
           err instanceof Error ? err.message : "Failed to reject request",
@@ -629,12 +629,12 @@ export default function CustomerRequestsPage() {
                   link.click();
                   document.body.removeChild(link);
                   URL.revokeObjectURL(url);
-                  toast({
+                  toastHook({
                     title: "Export successful",
                     description: "Requests exported as PDF",
                   });
                 } catch (err) {
-                  toast({
+                  toastHook({
                     title: "Export failed",
                     description: err instanceof Error ? err.message : "Failed to export requests",
                     variant: "destructive",
@@ -1028,7 +1028,7 @@ export default function CustomerRequestsPage() {
                 <DialogHeader>
                   <DialogTitle className="text-base sm:text-lg">Request Details</DialogTitle>
                   <DialogDescription className="text-xs sm:text-sm">
-                    Detailed information about {selectedRequest.providerName}'s
+                    Detailed information about {selectedRequest.providerName}&apos;s
                     request
                   </DialogDescription>
                 </DialogHeader>
@@ -1540,7 +1540,7 @@ export default function CustomerRequestsPage() {
                           const selectedDate = e.target.value;
                           const today = new Date().toISOString().split("T")[0];
                           if (selectedDate < today) {
-                            toast({
+                            toastHook({
                               title: "Invalid Date",
                               description:
                                 "Due date cannot be in the past. Please select today or a future date.",

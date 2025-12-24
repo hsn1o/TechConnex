@@ -84,7 +84,7 @@ export interface KycUser {
   kycStatus: KycStatus;
   createdAt: string;
   documents: KycDoc[];
-  profile?: any; // ✅ add profile (can type later as ProviderProfile | CustomerProfile)
+  profile?: Record<string, unknown>; // ✅ add profile (can type later as ProviderProfile | CustomerProfile)
 }
 
 // Map backend KycStatus -> UI status pills
@@ -162,42 +162,43 @@ export default function AdminVerificationsPage() {
       // Group docs by userId
       const grouped: Record<string, KycUser> = {};
 
-      rawData.forEach((item: any) => {
-        const u = item.user;
-        if (!grouped[u.id]) {
-          grouped[u.id] = {
-            id: u.id,
-            name: u.name || "Unnamed",
-            email: u.email,
-            role: Array.isArray(u.role) ? u.role[0] : u.role,
-            kycStatus: u.kycStatus,
-            createdAt: u.createdAt,
-            profile: u.profile, // ✅ Add this line
+      rawData.forEach((item: Record<string, unknown>) => {
+        const u = item.user as Record<string, unknown>;
+        const userId = u.id as string;
+        if (!grouped[userId]) {
+          grouped[userId] = {
+            id: userId,
+            name: (u.name as string) || "Unnamed",
+            email: u.email as string,
+            role: (Array.isArray(u.role) ? u.role[0] : u.role) as Role,
+            kycStatus: u.kycStatus as KycStatus,
+            createdAt: u.createdAt as string,
+            profile: u.profile as Record<string, unknown> | undefined, // ✅ Add this line
             documents: [],
           };
         }
 
         // Push this KYC doc
-        grouped[u.id].documents.push({
-          id: item.id,
-          type: item.type,
-          fileUrl: item.fileUrl,
-          filename: item.filename,
-          mimeType: item.mimeType,
-          status: item.status,
-          uploadedAt: item.uploadedAt,
-          reviewNotes: item.reviewNotes,
-          reviewedBy: item.reviewedBy,
-          reviewedAt: item.reviewedAt,
+        grouped[userId].documents.push({
+          id: item.id as string,
+          type: item.type as KycDoc["type"],
+          fileUrl: item.fileUrl as string,
+          filename: item.filename as string,
+          mimeType: item.mimeType as string | undefined,
+          status: item.status as KycDocStatus,
+          uploadedAt: item.uploadedAt as string | undefined,
+          reviewNotes: item.reviewNotes as string | undefined,
+          reviewedBy: item.reviewedBy as string | undefined,
+          reviewedAt: item.reviewedAt as string | undefined,
         });
       });
 
       // Convert to array
       const formattedData = Object.values(grouped);
       setUsers(formattedData);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("❌ KYC fetch error:", e);
-      setError(e?.message || "Failed to fetch KYC list");
+      setError(e instanceof Error ? e.message : "Failed to fetch KYC list");
     } finally {
       setLoading(false);
     }
@@ -205,6 +206,7 @@ export default function AdminVerificationsPage() {
 
   useEffect(() => {
     fetchKyc();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ===== Derived =====
@@ -315,16 +317,10 @@ export default function AdminVerificationsPage() {
       setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
       setSelectedUser(null);
       setReviewNotes("");
-    } catch (e: any) {
-      alert(e?.message || "Operation failed");
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Operation failed");
     }
   }
-
-  const canReviewUser = (user: KycUser | null) => {
-    if (!user || !user.documents?.length) return false;
-    // Return true only if ALL docs are not in "uploaded" state
-    return user.documents.every((doc) => doc.status !== "uploaded");
-  };
 
   return (
     <AdminLayout>
@@ -556,11 +552,11 @@ export default function AdminVerificationsPage() {
                                   } else {
                                     window.open(attachmentUrl, "_blank");
                                   }
-                                } catch (error: any) {
+                                } catch (error: unknown) {
                                   console.error("Failed to open document:", error);
                                   toast({
                                     title: "Error",
-                                    description: error.message || "Failed to open document",
+                                    description: error instanceof Error ? error.message : "Failed to open document",
                                     variant: "destructive",
                                   });
                                 }
@@ -819,11 +815,11 @@ export default function AdminVerificationsPage() {
                                               } else {
                                                 window.open(attachmentUrl, "_blank");
                                               }
-                                            } catch (error: any) {
+                                            } catch (error: unknown) {
                                               console.error("Failed to download document:", error);
                                               toast({
                                                 title: "Error",
-                                                description: error.message || "Failed to download document",
+                                                description: error instanceof Error ? error.message : "Failed to download document",
                                                 variant: "destructive",
                                               });
                                             }

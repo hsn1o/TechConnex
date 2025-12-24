@@ -1,12 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Heading from "@tiptap/extension-heading";
-import BulletList from "@tiptap/extension-bullet-list";
-import OrderedList from "@tiptap/extension-ordered-list";
-import ListItem from "@tiptap/extension-list-item";
 import Placeholder from "@tiptap/extension-placeholder";
 import "./styles.css";
 
@@ -94,7 +90,7 @@ export const RichEditor: React.FC<RichEditorProps> = ({
 };
 
 interface ToolbarProps {
-  editor: any;
+  editor: Editor | null;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {

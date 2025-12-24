@@ -22,7 +22,6 @@ import {
   Phone,
   MapPin,
   Globe,
-  FileText,
   Upload,
   X,
   Plus,
@@ -147,8 +146,8 @@ interface ProviderRegistrationProps {
   setNewCertification: React.Dispatch<React.SetStateAction<Certification>>;
   isProcessingCV: boolean;
   setIsProcessingCV: React.Dispatch<React.SetStateAction<boolean>>;
-  cvExtractedData: any;
-  setCvExtractedData: React.Dispatch<React.SetStateAction<any>>;
+  cvExtractedData: Record<string, unknown> | null;
+  setCvExtractedData: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>;
   showAIResults: boolean;
   setShowAIResults: React.Dispatch<React.SetStateAction<boolean>>;
   aiProcessingComplete: boolean;
@@ -258,18 +257,19 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           visibility: "private", // Resumes should be private
           category: "document",
         });
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         // Handle R2 upload errors
-        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+        const errorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
+        if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
           throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
         }
-        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
-          throw new Error(`File size error: ${uploadError.message}`);
+        if (errorMessage.includes("size") || errorMessage.includes("limit")) {
+          throw new Error(`File size error: ${errorMessage}`);
         }
-        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
-          throw new Error(`File type error: ${uploadError.message}`);
+        if (errorMessage.includes("type") || errorMessage.includes("format")) {
+          throw new Error(`File type error: ${errorMessage}`);
         }
-        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+        throw new Error(`Upload failed: ${errorMessage || "Unknown error occurred during file upload"}`);
       }
 
       if (!uploadResult.success) {
@@ -291,12 +291,14 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
             key: uploadResult.key,
           }),
         });
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         // Handle network errors
-        if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+        const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        const errorName = fetchError instanceof Error ? fetchError.name : "";
+        if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorName === "TypeError") {
           throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
         }
-        throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+        throw new Error(`Server connection failed: ${errorMessage || "Unknown error"}`);
       }
 
       if (!res.ok) {
@@ -322,14 +324,14 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
       let result;
       try {
         result = await res.json();
-      } catch (parseError) {
+      } catch {
         throw new Error("Server response error: Invalid response from server. Please try again.");
       }
 
-      setCvExtractedData(result.data);
+      setCvExtractedData(result.data as Record<string, unknown>);
       setShowAIResults(true);
       setAiProcessingComplete(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Resume upload failed:", err);
       const errorMessage = err instanceof Error ? err.message : "Resume analysis failed. Please try again.";
       alert(errorMessage);
@@ -442,28 +444,28 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
     if (!cvExtractedData) return;
 
     // 🔹 Basic info
-    if (cvExtractedData.bio) {
+    if (cvExtractedData.bio && typeof cvExtractedData.bio === "string") {
       handleInputChange("bio", cvExtractedData.bio);
     }
-    if (cvExtractedData.yearsExperience) {
+    if (cvExtractedData.yearsExperience && typeof cvExtractedData.yearsExperience === "string") {
       handleInputChange("yearsExperience", cvExtractedData.yearsExperience);
     }
-    if (cvExtractedData.suggestedHourlyRate) {
+    if (cvExtractedData.suggestedHourlyRate && typeof cvExtractedData.suggestedHourlyRate === "string") {
       handleInputChange("hourlyRate", cvExtractedData.suggestedHourlyRate);
     }
 
     // 🔹 Location
-    if (cvExtractedData.location) {
+    if (cvExtractedData.location && typeof cvExtractedData.location === "string") {
       handleInputChange("location", cvExtractedData.location);
     }
 
     // 🔹 Portfolio URLs (AI returns `portfolioUrls`)
     if (
-      cvExtractedData.portfolioUrls &&
+      Array.isArray(cvExtractedData.portfolioUrls) &&
       cvExtractedData.portfolioUrls.length > 0
     ) {
       setPortfolioUrls((prev) => {
-        const newLinks = cvExtractedData.portfolioUrls
+        const newLinks = (cvExtractedData.portfolioUrls as string[])
           .map((url: string) => url.trim())
           .filter((url: string) => !prev.includes(url));
         return [...prev, ...newLinks];
@@ -471,14 +473,14 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
     }
 
     // 🔹 Official Website
-    if (cvExtractedData.website) {
+    if (cvExtractedData.website && typeof cvExtractedData.website === "string") {
       handleInputChange("website", cvExtractedData.website);
     }
 
     // 🔹 Skills
-    if (cvExtractedData.skills && cvExtractedData.skills.length > 0) {
+    if (Array.isArray(cvExtractedData.skills) && cvExtractedData.skills.length > 0) {
       setSelectedSkills((prev) => {
-        const newSkills = cvExtractedData.skills.filter(
+        const newSkills = (cvExtractedData.skills as string[]).filter(
           (skill: string) => !prev.includes(skill)
         );
         return [...prev, ...newSkills];
@@ -486,9 +488,9 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
     }
 
     // 🔹 Languages
-    if (cvExtractedData.languages && cvExtractedData.languages.length > 0) {
+    if (Array.isArray(cvExtractedData.languages) && cvExtractedData.languages.length > 0) {
       setSelectedLanguages((prev) => {
-        const newLanguages = cvExtractedData.languages.filter(
+        const newLanguages = (cvExtractedData.languages as string[]).filter(
           (lang: string) => !prev.includes(lang)
         );
         return [...prev, ...newLanguages];
@@ -497,16 +499,16 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
 
     // 🔹 Certifications (with certificate link or serial)
     if (
-      cvExtractedData.certifications &&
+      Array.isArray(cvExtractedData.certifications) &&
       cvExtractedData.certifications.length > 0
     ) {
       setCertifications((prev) => {
-        const newCerts = cvExtractedData.certifications.map((cert: any) => ({
-          name: cert.name || "",
-          issuer: cert.issuer || "",
-          issuedDate: cert.issuedDate || "",
-          serialNumber: cert.serialNumber || "", // ✅ NEW
-          verificationLink: cert.verificationLink || "", // ✅ NEW
+        const newCerts = (cvExtractedData.certifications as Array<Record<string, unknown>>).map((cert) => ({
+          name: (cert.name as string) || "",
+          issuer: (cert.issuer as string) || "",
+          issuedDate: (cert.issuedDate as string) || "",
+          serialNumber: (cert.serialNumber as string) || "", // ✅ NEW
+          verificationLink: (cert.verificationLink as string) || "", // ✅ NEW
         }));
         return [...prev, ...newCerts];
       });
@@ -528,7 +530,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Account Setup</h2>
             <p className="text-gray-600">
-              Let's start with your basic information
+              Let&apos;s start with your basic information
             </p>
           </div>
 
@@ -563,7 +565,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
               </div>
 
               <p className="text-xs text-gray-500">
-                We'll use this email <strong>now</strong> when you click{" "}
+                We&apos;ll use this email <strong>now</strong> when you click{" "}
                 <em>Next</em> to check availability.
               </p>
 
@@ -749,197 +751,215 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
           </div>
 
           {/* AI Results Modal/Section */}
-          {showAIResults && cvExtractedData && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-6 border-2 border-blue-200 rounded-lg bg-blue-50"
-            >
-              <div className="flex items-center mb-4">
-                <Zap className="w-6 h-6 text-blue-600 mr-2" />
-                <h3 className="text-lg font-semibold text-blue-900">
-                  AI Extracted Information
-                </h3>
-              </div>
+          {showAIResults && cvExtractedData && (() => {
+            const bio = typeof cvExtractedData.bio === "string" ? cvExtractedData.bio : null;
+            const skills = Array.isArray(cvExtractedData.skills) ? (cvExtractedData.skills as string[]) : null;
+            const languages = Array.isArray(cvExtractedData.languages) ? (cvExtractedData.languages as string[]) : null;
+            const yearsExp = typeof cvExtractedData.yearsExperience === "string" ? cvExtractedData.yearsExperience : null;
+            const hourlyRate = typeof cvExtractedData.suggestedHourlyRate === "string" ? cvExtractedData.suggestedHourlyRate : null;
+            const location = typeof cvExtractedData.location === "string" ? cvExtractedData.location : null;
+            const portfolioUrls = Array.isArray(cvExtractedData.portfolioUrls) ? (cvExtractedData.portfolioUrls as string[]) : null;
+            const officialWebsite = typeof cvExtractedData.officialWebsite === "string" ? cvExtractedData.officialWebsite : null;
+            const certifications = Array.isArray(cvExtractedData.certifications) ? (cvExtractedData.certifications as Array<Record<string, unknown>>) : null;
 
-              <div className="space-y-4 mb-6">
-                {/* Bio / Summary */}
-                {cvExtractedData.bio && (
-                  <div>
-                    <Label className="text-sm font-medium text-blue-800">
-                      Professional Summary:
-                    </Label>
-                    <p className="text-sm text-blue-700 bg-white/50 p-3 rounded border mt-1">
-                      {cvExtractedData.bio}
-                    </p>
-                  </div>
-                )}
-
-                {/* Skills */}
-                {cvExtractedData.skills?.length > 0 && (
-                  <div>
-                    <Label className="text-sm font-medium text-blue-800">
-                      Skills Found ({cvExtractedData.skills.length}):
-                    </Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {cvExtractedData.skills.map(
-                        (skill: string, i: number) => (
-                          <Badge key={i} className="bg-blue-600 text-white">
-                            {skill}
-                          </Badge>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Languages */}
-                {cvExtractedData.languages?.length > 0 && (
-                  <div>
-                    <Label className="text-sm font-medium text-blue-800">
-                      Languages ({cvExtractedData.languages.length}):
-                    </Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {cvExtractedData.languages.map(
-                        (lang: string, i: number) => (
-                          <Badge key={i} className="bg-green-600 text-white">
-                            {lang}
-                          </Badge>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Experience and Rate */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {cvExtractedData.yearsExperience && (
-                    <div>
-                      <Label className="text-sm font-medium text-blue-800">
-                        Experience:
-                      </Label>
-                      <p className="text-sm text-blue-700">
-                        {cvExtractedData.yearsExperience}
-                      </p>
-                    </div>
-                  )}
-                  {cvExtractedData.suggestedHourlyRate && (
-                    <div>
-                      <Label className="text-sm font-medium text-blue-800">
-                        Suggested Rate:
-                      </Label>
-                      <p className="text-sm text-blue-700">
-                        RM {cvExtractedData.suggestedHourlyRate}/hour
-                      </p>
-                    </div>
-                  )}
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 border-2 border-blue-200 rounded-lg bg-blue-50"
+              >
+                <div className="flex items-center mb-4">
+                  <Zap className="w-6 h-6 text-blue-600 mr-2" />
+                  <h3 className="text-lg font-semibold text-blue-900">
+                    AI Extracted Information
+                  </h3>
                 </div>
 
-                {/* Location */}
-                {cvExtractedData.location && (
-                  <div>
-                    <Label className="text-sm font-medium text-blue-800">
-                      Location:
-                    </Label>
-                    <p className="text-sm text-blue-700 bg-white/50 p-2 rounded border mt-1">
-                      {cvExtractedData.location}
-                    </p>
-                  </div>
-                )}
-
-                {/* Portfolio URLs */}
-                {cvExtractedData.portfolioUrls?.length > 0 && (
-                  <div>
-                    <Label className="text-sm font-medium text-blue-800">
-                      Portfolio Links:
-                    </Label>
-                    <ul className="list-disc pl-5 text-sm text-blue-700 mt-1">
-                      {cvExtractedData.portfolioUrls.map(
-                        (url: string, i: number) => (
-                          <li key={i}>
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline hover:text-blue-900"
-                            >
-                              {url}
-                            </a>
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Official Website */}
-                {cvExtractedData.officialWebsite && (
-                  <div>
-                    <Label className="text-sm font-medium text-blue-800">
-                      Official Website:
-                    </Label>
-                    <p className="text-sm text-blue-700">
-                      <a
-                        href={cvExtractedData.officialWebsite}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline hover:text-blue-900"
-                      >
-                        {cvExtractedData.officialWebsite}
-                      </a>
-                    </p>
-                  </div>
-                )}
-
-                {/* Certifications */}
-                {cvExtractedData.certifications?.length > 0 && (
-                  <div>
-                    <Label className="text-sm font-medium text-blue-800">
-                      Certifications:
-                    </Label>
-                    <div className="space-y-3 mt-2">
-                      {cvExtractedData.certifications.map(
-                        (cert: any, i: number) => (
-                          <div
-                            key={i}
-                            className="text-sm text-blue-700 bg-white/50 p-3 rounded border"
-                          >
-                            <p>
-                              <span className="font-medium">{cert.name}</span> —{" "}
-                              {cert.issuer}
-                              {cert.issuedDate && (
-                                <span className="text-blue-600">
-                                  {" "}
-                                  ({cert.issuedDate})
-                                </span>
-                              )}
-                            </p>
-                            {cert.serialNumber && (
-                              <p className="text-xs mt-1 text-blue-800">
-                                Serial:{" "}
-                                <span className="font-mono">
-                                  {cert.serialNumber}
-                                </span>
-                              </p>
-                            )}
-                            {cert.certificateLink && (
-                              <p className="text-xs mt-1">
-                                <a
-                                  href={cert.certificateLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="underline text-blue-700 hover:text-blue-900"
-                                >
-                                  View Certificate
-                                </a>
-                              </p>
-                            )}
-                          </div>
-                        )
-                      )}
+                <div className="space-y-4 mb-6">
+                  {/* Bio / Summary */}
+                  {bio && (
+                    <div>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Professional Summary:
+                      </Label>
+                      <p className="text-sm text-blue-700 bg-white/50 p-3 rounded border mt-1">
+                        {bio}
+                      </p>
                     </div>
+                  )}
+
+                  {/* Skills */}
+                  {skills && skills.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Skills Found ({skills.length}):
+                      </Label>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {skills.map(
+                          (skill: string, i: number) => (
+                            <Badge key={i} className="bg-blue-600 text-white">
+                              {skill}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Languages */}
+                  {languages && languages.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Languages ({languages.length}):
+                      </Label>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {languages.map(
+                          (lang: string, i: number) => (
+                            <Badge key={i} className="bg-green-600 text-white">
+                              {lang}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Experience and Rate */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {yearsExp && (
+                      <div>
+                        <Label className="text-sm font-medium text-blue-800">
+                          Experience:
+                        </Label>
+                        <p className="text-sm text-blue-700">
+                          {yearsExp}
+                        </p>
+                      </div>
+                    )}
+                    {hourlyRate && (
+                      <div>
+                        <Label className="text-sm font-medium text-blue-800">
+                          Suggested Rate:
+                        </Label>
+                        <p className="text-sm text-blue-700">
+                          RM {hourlyRate}/hour
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* Location */}
+                  {location && (
+                    <div>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Location:
+                      </Label>
+                      <p className="text-sm text-blue-700 bg-white/50 p-2 rounded border mt-1">
+                        {location}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Portfolio URLs */}
+                  {portfolioUrls && portfolioUrls.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Portfolio Links:
+                      </Label>
+                      <ul className="list-disc pl-5 text-sm text-blue-700 mt-1">
+                        {portfolioUrls.map(
+                          (url: string, i: number) => (
+                            <li key={i}>
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline hover:text-blue-900"
+                              >
+                                {url}
+                              </a>
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Official Website */}
+                  {officialWebsite && (
+                    <div>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Official Website:
+                      </Label>
+                      <p className="text-sm text-blue-700">
+                        <a
+                          href={officialWebsite}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-blue-900"
+                        >
+                          {officialWebsite}
+                        </a>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Certifications */}
+                  {certifications && certifications.length > 0 && (
+                    <div>
+                      <Label className="text-sm font-medium text-blue-800">
+                        Certifications:
+                      </Label>
+                      <div className="space-y-3 mt-2">
+                        {certifications.map(
+                          (cert, i: number) => {
+                            const certName = String(cert.name || "");
+                            const certIssuer = String(cert.issuer || "");
+                            const certIssuedDate = cert.issuedDate ? String(cert.issuedDate) : null;
+                            const certSerial = cert.serialNumber ? String(cert.serialNumber) : null;
+                            const certLink = cert.certificateLink ? String(cert.certificateLink) : null;
+                            return (
+                              <div
+                                key={i}
+                                className="text-sm text-blue-700 bg-white/50 p-3 rounded border"
+                              >
+                                <p>
+                                  <span className="font-medium">{certName}</span> —{" "}
+                                  {certIssuer}
+                                  {certIssuedDate && (
+                                    <span className="text-blue-600">
+                                      {" "}
+                                      ({certIssuedDate})
+                                    </span>
+                                  )}
+                                </p>
+                                {certSerial && (
+                                  <p className="text-xs mt-1 text-blue-800">
+                                    Serial:{" "}
+                                    <span className="font-mono">
+                                      {certSerial}
+                                    </span>
+                                  </p>
+                                )}
+                                {certLink && (
+                                  <p className="text-xs mt-1">
+                                    <a
+                                      href={certLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="underline text-blue-700 hover:text-blue-900"
+                                    >
+                                      View Certificate
+                                    </a>
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
               </div>
 
               {/* Action Buttons */}
@@ -964,7 +984,8 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                 💡 You can review and edit all information in the next steps
               </p>
             </motion.div>
-          )}
+            );
+          })()}
 
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
@@ -1477,7 +1498,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                     className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     value={newCertification.name}
                     onChange={(e) =>
-                      setNewCertification((prev: any) => ({
+                      setNewCertification((prev) => ({
                         ...prev,
                         name: e.target.value,
                       }))
@@ -1492,7 +1513,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                     className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     value={newCertification.issuer}
                     onChange={(e) =>
-                      setNewCertification((prev: any) => ({
+                      setNewCertification((prev) => ({
                         ...prev,
                         issuer: e.target.value,
                       }))
@@ -1510,7 +1531,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                     className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     value={newCertification.issuedDate}
                     onChange={(e) =>
-                      setNewCertification((prev: any) => ({
+                      setNewCertification((prev) => ({
                         ...prev,
                         issuedDate: e.target.value,
                       }))
@@ -1529,7 +1550,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                       className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                       value={newCertification.serialNumber || ""}
                       onChange={(e) =>
-                        setNewCertification((prev: any) => ({
+                        setNewCertification((prev) => ({
                           ...prev,
                           serialNumber: e.target.value,
                         }))
@@ -1547,7 +1568,7 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                       className="bg-white/50 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                       value={newCertification.sourceUrl || ""}
                       onChange={(e) =>
-                        setNewCertification((prev: any) => ({
+                        setNewCertification((prev) => ({
                           ...prev,
                           sourceUrl: e.target.value,
                         }))
@@ -1673,40 +1694,40 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                     placeholder="Certification Name"
                     value={editCertification.name}
                     onChange={(e) =>
-                      setEditCertification((prev: any) => ({
+                      setEditCertification((prev) => prev ? ({
                         ...prev,
                         name: e.target.value,
-                      }))
+                      }) : null)
                     }
                   />
                   <Input
                     placeholder="Issuer"
                     value={editCertification.issuer}
                     onChange={(e) =>
-                      setEditCertification((prev: any) => ({
+                      setEditCertification((prev) => prev ? ({
                         ...prev,
                         issuer: e.target.value,
-                      }))
+                      }) : null)
                     }
                   />
                   <Input
                     type="date"
                     value={editCertification.issuedDate}
                     onChange={(e) =>
-                      setEditCertification((prev: any) => ({
+                      setEditCertification((prev) => prev ? ({
                         ...prev,
                         issuedDate: e.target.value,
-                      }))
+                      }) : null)
                     }
                   />
                   <Input
                     placeholder="Serial Number"
                     value={editCertification.serialNumber || ""}
                     onChange={(e) =>
-                      setEditCertification((prev: any) => ({
+                      setEditCertification((prev) => prev ? ({
                         ...prev,
                         serialNumber: e.target.value,
-                      }))
+                      }) : null)
                     }
                   />
                   <Input
@@ -1714,10 +1735,10 @@ const ProviderRegistration: React.FC<ProviderRegistrationProps> = ({
                     placeholder="Verification Link"
                     value={editCertification.sourceUrl || ""}
                     onChange={(e) =>
-                      setEditCertification((prev: any) => ({
+                      setEditCertification((prev) => prev ? ({
                         ...prev,
                         sourceUrl: e.target.value,
-                      }))
+                      }) : null)
                     }
                   />
                 </div>

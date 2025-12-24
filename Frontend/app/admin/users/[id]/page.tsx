@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,9 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AdminLayout } from "@/components/admin-layout"
 import { getAdminUserById, suspendUser, activateUser, updateAdminUser } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, Ban, CheckCircle, Building, Users, Calendar, Mail, Phone, MapPin, Globe, Award, Star, DollarSign, FileText, Loader2, Edit, Save, X, MessageSquare, ExternalLink } from "lucide-react"
+import { ArrowLeft, Ban, CheckCircle, Building, Users, Star, DollarSign, FileText, Loader2, Edit, Save, X, MessageSquare, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { getResumeByUserId, getR2DownloadUrl } from "@/lib/api"
+
+// Helper type for user data with property access
+type UserData = Record<string, unknown> & {
+  [key: string]: unknown;
+};
 
 export default function AdminUserDetailPage() {
   const params = useParams()
@@ -26,24 +30,43 @@ export default function AdminUserDetailPage() {
   const { toast } = useToast()
   
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UserData | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState<any>(null)
+  const [formData, setFormData] = useState<UserData | null>(null)
   const [resume, setResume] = useState<{ fileUrl: string; uploadedAt: string } | null>(null)
   const [loadingResume, setLoadingResume] = useState(false)
 
+  const loadUserData = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await getAdminUserById(userId)
+      if (response.success) {
+        setUser(response.data as UserData)
+        initializeFormData(response.data as UserData)
+      }
+    } catch (error: unknown) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to load user data",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [userId, toast])
+
   useEffect(() => {
     loadUserData()
-  }, [userId])
+  }, [loadUserData])
 
   useEffect(() => {
     const loadResume = async () => {
-      if (!user || !user.role?.includes("PROVIDER")) return;
+      if (!user || !Array.isArray(user.role) || !user.role.includes("PROVIDER")) return;
       try {
         setLoadingResume(true);
-        const response = await getResumeByUserId(user.id);
+        const response = await getResumeByUserId(user.id as string);
         if (response.success && response.data) {
           setResume(response.data);
         }
@@ -66,98 +89,81 @@ export default function AdminUserDetailPage() {
     try {
       const downloadUrl = await getR2DownloadUrl(resume.fileUrl);
       window.open(downloadUrl.downloadUrl, "_blank");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to download resume",
+        description: error instanceof Error ? error.message : "Failed to download resume",
         variant: "destructive",
       });
     }
   };
 
-  const loadUserData = async () => {
-    try {
-      setLoading(true)
-      const response = await getAdminUserById(userId)
-      if (response.success) {
-        setUser(response.data)
-        initializeFormData(response.data)
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load user data",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const initializeFormData = (userData: any) => {
-    const isProvider = userData.role?.includes("PROVIDER")
-    const profile = isProvider ? userData.providerProfile : userData.customerProfile
+  const initializeFormData = (userData: UserData) => {
+    const userRole = Array.isArray(userData.role) ? userData.role : []
+    const isProvider = userRole.includes("PROVIDER")
+    const profile = (isProvider ? userData.providerProfile : userData.customerProfile) as Record<string, unknown> | undefined
     
     setFormData({
       // User fields
-      name: userData.name || "",
-      email: userData.email || "",
-      phone: userData.phone || "",
-      isVerified: userData.isVerified || false,
-      status: userData.status || "ACTIVE",
-      kycStatus: userData.kycStatus || "pending_verification",
+      name: (userData.name as string) || "",
+      email: (userData.email as string) || "",
+      phone: (userData.phone as string) || "",
+      isVerified: (userData.isVerified as boolean) || false,
+      status: (userData.status as string) || "ACTIVE",
+      kycStatus: (userData.kycStatus as string) || "pending_verification",
       // Profile fields (provider or customer)
       ...(isProvider && profile ? {
         providerProfile: {
-          bio: profile.bio || "",
-          location: profile.location || "",
-          hourlyRate: profile.hourlyRate || "",
-          availability: profile.availability || "",
-          website: profile.website || "",
-          skills: profile.skills || [],
-          languages: profile.languages || [],
-          yearsExperience: profile.yearsExperience || "",
-          minimumProjectBudget: profile.minimumProjectBudget || "",
-          maximumProjectBudget: profile.maximumProjectBudget || "",
-          preferredProjectDuration: profile.preferredProjectDuration || "",
-          workPreference: profile.workPreference || "remote",
-          teamSize: profile.teamSize || 1,
+          bio: (profile.bio as string) || "",
+          location: (profile.location as string) || "",
+          hourlyRate: (profile.hourlyRate as string) || "",
+          availability: (profile.availability as string) || "",
+          website: (profile.website as string) || "",
+          skills: (Array.isArray(profile.skills) ? profile.skills : []) as string[],
+          languages: (Array.isArray(profile.languages) ? profile.languages : []) as string[],
+          yearsExperience: (profile.yearsExperience as string) || "",
+          minimumProjectBudget: (profile.minimumProjectBudget as string) || "",
+          maximumProjectBudget: (profile.maximumProjectBudget as string) || "",
+          preferredProjectDuration: (profile.preferredProjectDuration as string) || "",
+          workPreference: (profile.workPreference as string) || "remote",
+          teamSize: (profile.teamSize as number) || 1,
         }
       } : {
         customerProfile: {
-          description: profile?.description || "",
-          industry: profile?.industry || "",
-          location: profile?.location || "",
-          website: profile?.website || "",
-          socialLinks: profile?.socialLinks || [],
-          languages: profile?.languages || [],
-          companySize: profile?.companySize || "",
-          employeeCount: profile?.employeeCount || "",
-          establishedYear: profile?.establishedYear || "",
-          annualRevenue: profile?.annualRevenue || "",
-          fundingStage: profile?.fundingStage || "",
-          preferredContractTypes: profile?.preferredContractTypes || [],
-          averageBudgetRange: profile?.averageBudgetRange || "",
-          remotePolicy: profile?.remotePolicy || "",
-          hiringFrequency: profile?.hiringFrequency || "",
-          categoriesHiringFor: profile?.categoriesHiringFor || [],
-          mission: profile?.mission || "",
-          values: profile?.values || [],
+          description: (profile?.description as string) || "",
+          industry: (profile?.industry as string) || "",
+          location: (profile?.location as string) || "",
+          website: (profile?.website as string) || "",
+          socialLinks: (Array.isArray(profile?.socialLinks) ? profile.socialLinks : []) as string[],
+          languages: (Array.isArray(profile?.languages) ? profile.languages : []) as string[],
+          companySize: (profile?.companySize as string) || "",
+          employeeCount: (profile?.employeeCount as string) || "",
+          establishedYear: (profile?.establishedYear as string) || "",
+          annualRevenue: (profile?.annualRevenue as string) || "",
+          fundingStage: (profile?.fundingStage as string) || "",
+          preferredContractTypes: (Array.isArray(profile?.preferredContractTypes) ? profile.preferredContractTypes : []) as string[],
+          averageBudgetRange: (profile?.averageBudgetRange as string) || "",
+          remotePolicy: (profile?.remotePolicy as string) || "",
+          hiringFrequency: (profile?.hiringFrequency as string) || "",
+          categoriesHiringFor: (Array.isArray(profile?.categoriesHiringFor) ? profile.categoriesHiringFor : []) as string[],
+          mission: (profile?.mission as string) || "",
+          values: (Array.isArray(profile?.values) ? profile.values : []) as string[],
           benefits: profile?.benefits || null,
-          mediaGallery: profile?.mediaGallery || [],
+          mediaGallery: (Array.isArray(profile?.mediaGallery) ? profile.mediaGallery : []) as string[],
         }
       }),
     })
   }
 
-  const handleFieldChange = (field: string, value: any, isProfile = false) => {
-    setFormData((prev: any) => {
-      if (isProfile && prev) {
-        const profileKey = user?.role?.includes("PROVIDER") ? "providerProfile" : "customerProfile"
+  const handleFieldChange = (field: string, value: unknown, isProfile = false) => {
+    setFormData((prev) => {
+      if (!prev) return prev;
+      if (isProfile) {
+        const profileKey = Array.isArray(user?.role) && user.role.includes("PROVIDER") ? "providerProfile" : "customerProfile"
         return {
           ...prev,
           [profileKey]: {
-            ...(prev[profileKey] || {}),
+            ...((prev[profileKey] as Record<string, unknown>) || {}),
             [field]: value,
           },
         }
@@ -183,10 +189,10 @@ export default function AdminUserDetailPage() {
         setIsEditing(false)
         loadUserData()
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update user",
+        description: error instanceof Error ? error.message : "Failed to update user",
         variant: "destructive",
       })
     } finally {
@@ -202,10 +208,11 @@ export default function AdminUserDetailPage() {
   }
 
   const handleArrayFieldChange = (field: string, value: string, action: "add" | "remove" | "update") => {
-    setFormData((prev: any) => {
+    setFormData((prev) => {
       if (!prev) return prev
-      const profileKey = user?.role?.includes("PROVIDER") ? "providerProfile" : "customerProfile"
-      const currentArray = prev[profileKey]?.[field] || []
+      const profileKey = Array.isArray(user?.role) && user.role.includes("PROVIDER") ? "providerProfile" : "customerProfile"
+      const profile = prev[profileKey] as Record<string, unknown> | undefined
+      const currentArray = (Array.isArray(profile?.[field]) ? profile[field] : []) as string[]
       
       let newArray = [...currentArray]
       
@@ -220,7 +227,7 @@ export default function AdminUserDetailPage() {
       return {
         ...prev,
         [profileKey]: {
-          ...(prev[profileKey] || {}),
+          ...(profile || {}),
           [field]: newArray,
         },
       }
@@ -242,10 +249,10 @@ export default function AdminUserDetailPage() {
         })
         loadUserData()
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to suspend user",
+        description: error instanceof Error ? error.message : "Failed to suspend user",
         variant: "destructive",
       })
     } finally {
@@ -268,10 +275,10 @@ export default function AdminUserDetailPage() {
         })
         loadUserData()
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to activate user",
+        description: error instanceof Error ? error.message : "Failed to activate user",
         variant: "destructive",
       })
     } finally {
@@ -321,9 +328,10 @@ export default function AdminUserDetailPage() {
     )
   }
 
-  const isProvider = user.role?.includes("PROVIDER")
-  const isCustomer = user.role?.includes("CUSTOMER")
-  const profile = isProvider ? user.providerProfile : user.customerProfile
+  const userRole = Array.isArray(user?.role) ? user.role : []
+  const isProvider = userRole.includes("PROVIDER")
+  const isCustomer = userRole.includes("CUSTOMER")
+  const profile = (isProvider ? user?.providerProfile : user?.customerProfile) as Record<string, unknown> | undefined
 
   return (
     <AdminLayout>
@@ -337,8 +345,8 @@ export default function AdminUserDetailPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
-              <p className="text-gray-600">{user.email}</p>
+              <h1 className="text-3xl font-bold text-gray-900">{user?.name as string}</h1>
+              <p className="text-gray-600">{user?.email as string}</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -417,15 +425,15 @@ export default function AdminUserDetailPage() {
 
         {/* Status and Role Badges */}
         <div className="flex gap-4">
-          <Badge className={getStatusColor(user.status)}>
-            {user.status}
+          <Badge className={getStatusColor(user?.status as string || "")}>
+            {user?.status as string || ""}
           </Badge>
-          {user.role?.map((r: string) => (
+          {Array.isArray(user?.role) && (user.role as string[]).map((r: string) => (
             <Badge key={r} className={getRoleColor([r])}>
               {r}
             </Badge>
           ))}
-          {user.isVerified && (
+          {(user?.isVerified as boolean) && (
             <Badge className="bg-green-100 text-green-800">
               <CheckCircle className="w-3 h-3 mr-1" />
               Verified
@@ -438,10 +446,10 @@ export default function AdminUserDetailPage() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            {user.KycDocument && user.KycDocument.length > 0 && (
+            {Array.isArray(user?.KycDocument) && user.KycDocument.length > 0 && (
               <TabsTrigger value="documents">Documents</TabsTrigger>
             )}
-            {((user.projectsAsProvider && user.projectsAsProvider.length > 0) || (user.projectsAsCustomer && user.projectsAsCustomer.length > 0)) && (
+            {((Array.isArray(user?.projectsAsProvider) && user.projectsAsProvider.length > 0) || (Array.isArray(user?.projectsAsCustomer) && user.projectsAsCustomer.length > 0)) && (
               <TabsTrigger value="projects">Projects</TabsTrigger>
             )}
           </TabsList>
@@ -463,7 +471,7 @@ export default function AdminUserDetailPage() {
                         onChange={(e) => handleFieldChange("name", e.target.value)}
                       />
                     ) : (
-                      <p className="font-medium">{user.name}</p>
+                      <p className="font-medium">{user?.name as string}</p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -472,11 +480,11 @@ export default function AdminUserDetailPage() {
                       <Input
                         id="email"
                         type="email"
-                        value={formData?.email || ""}
+                        value={(formData?.email as string) || ""}
                         onChange={(e) => handleFieldChange("email", e.target.value)}
                       />
                     ) : (
-                      <p className="font-medium">{user.email}</p>
+                      <p className="font-medium">{user?.email as string}</p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -485,19 +493,19 @@ export default function AdminUserDetailPage() {
                       <Input
                         id="phone"
                         type="tel"
-                        value={formData?.phone || ""}
+                        value={(formData?.phone as string) || ""}
                         onChange={(e) => handleFieldChange("phone", e.target.value)}
                         placeholder="Optional"
                       />
                     ) : (
-                      <p className="font-medium">{user.phone || "—"}</p>
+                      <p className="font-medium">{(user?.phone as string) || "—"}</p>
                     )}
                   </div>
                   <div className="space-y-2">
                     <Label>KYC Status</Label>
                     {isEditing ? (
                       <Select
-                        value={formData?.kycStatus || "pending_verification"}
+                        value={(formData?.kycStatus as string) || "pending_verification"}
                         onValueChange={(value) => handleFieldChange("kycStatus", value)}
                       >
                         <SelectTrigger>
@@ -550,7 +558,7 @@ export default function AdminUserDetailPage() {
                       </div>
                     ) : (
                       <div>
-                        {user.isVerified ? (
+                        {(user?.isVerified as boolean) ? (
                           <Badge className="bg-green-100 text-green-800">
                             <CheckCircle className="w-3 h-3 mr-1" />
                             Verified
@@ -564,7 +572,7 @@ export default function AdminUserDetailPage() {
                   <div className="space-y-2">
                     <Label>Joined</Label>
                     <p className="font-medium">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {new Date(user?.createdAt as string).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -572,14 +580,14 @@ export default function AdminUserDetailPage() {
             </Card>
 
             {/* Profile Stats */}
-            {isProvider && user.providerProfile && (
+            {isProvider && user?.providerProfile && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Projects</p>
-                        <p className="text-2xl font-bold">{user.providerProfile.totalProjects || 0}</p>
+                        <p className="text-2xl font-bold">{((user.providerProfile as Record<string, unknown>).totalProjects as number) || 0}</p>
                       </div>
                       <Users className="w-8 h-8 text-blue-600" />
                     </div>
@@ -590,7 +598,7 @@ export default function AdminUserDetailPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Rating</p>
-                        <p className="text-2xl font-bold">{Number(user.providerProfile.rating) || 0}</p>
+                        <p className="text-2xl font-bold">{Number((user.providerProfile as Record<string, unknown>).rating) || 0}</p>
                       </div>
                       <Star className="w-8 h-8 text-yellow-600" />
                     </div>
@@ -601,7 +609,7 @@ export default function AdminUserDetailPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Earnings</p>
-                        <p className="text-2xl font-bold">RM {Number(user.providerProfile.totalEarnings || 0).toLocaleString()}</p>
+                        <p className="text-2xl font-bold">RM {Number((user.providerProfile as Record<string, unknown>).totalEarnings || 0).toLocaleString()}</p>
                       </div>
                       <DollarSign className="w-8 h-8 text-green-600" />
                     </div>
@@ -610,14 +618,14 @@ export default function AdminUserDetailPage() {
               </div>
             )}
 
-            {isCustomer && user.customerProfile && (
+            {isCustomer && user?.customerProfile && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Projects Posted</p>
-                        <p className="text-2xl font-bold">{user.customerProfile.projectsPosted || 0}</p>
+                        <p className="text-2xl font-bold">{((user.customerProfile as Record<string, unknown>).projectsPosted as number) || 0}</p>
                       </div>
                       <Building className="w-8 h-8 text-purple-600" />
                     </div>
@@ -628,7 +636,7 @@ export default function AdminUserDetailPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                        <p className="text-2xl font-bold">RM {Number(user.customerProfile.totalSpend || 0).toLocaleString()}</p>
+                        <p className="text-2xl font-bold">RM {Number((user.customerProfile as Record<string, unknown>).totalSpend || 0).toLocaleString()}</p>
                       </div>
                       <DollarSign className="w-8 h-8 text-green-600" />
                     </div>
@@ -652,13 +660,13 @@ export default function AdminUserDetailPage() {
                         {isEditing ? (
                           <Textarea
                             id="bio"
-                            value={formData.providerProfile?.bio || ""}
+                            value={((formData.providerProfile as Record<string, unknown>)?.bio as string) || ""}
                             onChange={(e) => handleFieldChange("bio", e.target.value, true)}
                             placeholder="Enter bio"
                             rows={4}
                           />
                         ) : (
-                          <p>{profile.bio || "—"}</p>
+                          <p>{(profile.bio as string) || "—"}</p>
                         )}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1345,18 +1353,18 @@ export default function AdminUserDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {user.KycDocument.map((doc: any) => (
-                      <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    {Array.isArray(user.KycDocument) && (user.KycDocument as Array<Record<string, unknown>>).map((doc) => (
+                      <div key={doc.id as string} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex items-center gap-4">
                           <FileText className="w-8 h-8 text-gray-400" />
                           <div>
-                            <p className="font-medium">{doc.filename}</p>
-                            <p className="text-sm text-gray-500">{doc.type}</p>
-                            <p className="text-xs text-gray-400">Status: {doc.status}</p>
+                            <p className="font-medium">{doc.filename as string}</p>
+                            <p className="text-sm text-gray-500">{doc.type as string}</p>
+                            <p className="text-xs text-gray-400">Status: {doc.status as string}</p>
                           </div>
                         </div>
                         <a
-                          href={`${process.env.NEXT_PUBLIC_API_URL}${doc.fileUrl}`}
+                          href={`${process.env.NEXT_PUBLIC_API_URL}${doc.fileUrl as string}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -1380,23 +1388,23 @@ export default function AdminUserDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {isProvider && user.projectsAsProvider && user.projectsAsProvider.map((project: any) => (
-                      <Link key={project.id} href={`/admin/projects/${project.id}`}>
+                    {isProvider && Array.isArray(user.projectsAsProvider) && (user.projectsAsProvider as Array<Record<string, unknown>>).map((project) => (
+                      <Link key={project.id as string} href={`/admin/projects/${project.id as string}`}>
                         <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                           <div className="flex-1">
-                            <p className="font-medium">{project.title}</p>
+                            <p className="font-medium">{project.title as string}</p>
                             {project.description && (
-                              <p className="text-sm text-gray-500 line-clamp-2 mt-1">{project.description}</p>
+                              <p className="text-sm text-gray-500 line-clamp-2 mt-1">{project.description as string}</p>
                             )}
                             <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                              <span>Status: <Badge variant="outline" className="ml-1">{project.status}</Badge></span>
+                              <span>Status: <Badge variant="outline" className="ml-1">{project.status as string}</Badge></span>
                               {project.customer && (
-                                <span>Customer: {project.customer.name}</span>
+                                <span>Customer: {(project.customer as Record<string, unknown>).name as string}</span>
                               )}
                               {project.budgetMin && project.budgetMax && (
-                                <span>Budget: RM {project.budgetMin.toLocaleString()} - RM {project.budgetMax.toLocaleString()}</span>
+                                <span>Budget: RM {Number(project.budgetMin).toLocaleString()} - RM {Number(project.budgetMax).toLocaleString()}</span>
                               )}
-                              <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
+                              <span>Created: {new Date(project.createdAt as string).toLocaleDateString()}</span>
                             </div>
                           </div>
                           <Button variant="ghost" size="sm">
@@ -1405,23 +1413,23 @@ export default function AdminUserDetailPage() {
                         </div>
                       </Link>
                     ))}
-                    {isCustomer && user.projectsAsCustomer && user.projectsAsCustomer.map((project: any) => (
-                      <Link key={project.id} href={`/admin/projects/${project.id}`}>
+                    {isCustomer && Array.isArray(user.projectsAsCustomer) && (user.projectsAsCustomer as Array<Record<string, unknown>>).map((project) => (
+                      <Link key={project.id as string} href={`/admin/projects/${project.id as string}`}>
                         <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
                           <div className="flex-1">
-                            <p className="font-medium">{project.title}</p>
+                            <p className="font-medium">{project.title as string}</p>
                             {project.description && (
-                              <p className="text-sm text-gray-500 line-clamp-2 mt-1">{project.description}</p>
+                              <p className="text-sm text-gray-500 line-clamp-2 mt-1">{project.description as string}</p>
                             )}
                             <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                              <span>Status: <Badge variant="outline" className="ml-1">{project.status}</Badge></span>
+                              <span>Status: <Badge variant="outline" className="ml-1">{project.status as string}</Badge></span>
                               {project.provider && (
-                                <span>Provider: {project.provider.name}</span>
+                                <span>Provider: {(project.provider as Record<string, unknown>).name as string}</span>
                               )}
                               {project.budgetMin && project.budgetMax && (
-                                <span>Budget: RM {project.budgetMin.toLocaleString()} - RM {project.budgetMax.toLocaleString()}</span>
+                                <span>Budget: RM {Number(project.budgetMin).toLocaleString()} - RM {Number(project.budgetMax).toLocaleString()}</span>
                               )}
-                              <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
+                              <span>Created: {new Date(project.createdAt as string).toLocaleDateString()}</span>
                             </div>
                           </div>
                           <Button variant="ghost" size="sm">

@@ -37,7 +37,6 @@ export default function ProfileClient(props: Props = {}) {
   const {
     profileData: initialProfileData,
     uploadedDocuments: initialUploadedDocuments,
-    documentTypes: initialDocumentTypes,
     stats: initialStats,
   } = props;
   const { toast } = useToast();
@@ -58,19 +57,7 @@ export default function ProfileClient(props: Props = {}) {
     []
   );
 
-  const documentTypes: DocumentType[] = initialDocumentTypes ?? [
-    {
-      value: "business_registration",
-      label: "Business Registration Certificate (SSM)",
-    },
-    { value: "tax_document", label: "Tax Identification Number" },
-    { value: "bank_statement", label: "Bank Account Statement" },
-    { value: "company_profile", label: "Company Profile/Brochure" },
-    { value: "director_id", label: "Director's Identification (IC/Passport)" },
-    { value: "authorization_letter", label: "Authorization Letter" },
-    { value: "financial_statement", label: "Financial Statement" },
-    { value: "other", label: "Other Documents" },
-  ];
+  // documentTypes removed - not used in component
 
   const defaultProfile: ProfileData = {
     email: "",
@@ -247,13 +234,13 @@ export default function ProfileClient(props: Props = {}) {
               // prefer the reviewer's display name when available (item.reviewer.name),
               // otherwise fall back to any top-level reviewedBy value
               reviewedBy:
-                item.reviewer && (item.reviewer as any).name
-                  ? String((item.reviewer as any).name)
+                item.reviewer && typeof item.reviewer === "object" && item.reviewer !== null && "name" in item.reviewer
+                  ? String((item.reviewer as Record<string, unknown>).name)
                   : item.reviewedBy
                   ? String(item.reviewedBy)
                   : undefined,
               reviewedAt: item.reviewedAt
-                ? new Date(item.reviewedAt as any).toLocaleString("en-MY", {
+                ? new Date(String(item.reviewedAt)).toLocaleString("en-MY", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
@@ -263,11 +250,11 @@ export default function ProfileClient(props: Props = {}) {
                   })
                 : undefined,
               fileUrl: fullFileUrl,
-              reviewer: item.reviewer
+              reviewer: item.reviewer && typeof item.reviewer === "object" && item.reviewer !== null
                 ? {
-                    id: (item.reviewer as any).id,
-                    name: (item.reviewer as any).name,
-                    email: (item.reviewer as any).email,
+                    id: String((item.reviewer as Record<string, unknown>).id || ""),
+                    name: String((item.reviewer as Record<string, unknown>).name || ""),
+                    email: (item.reviewer as Record<string, unknown>).email ? String((item.reviewer as Record<string, unknown>).email) : undefined,
                   }
                 : null,
             } as UploadedDocument;
@@ -287,7 +274,8 @@ export default function ProfileClient(props: Props = {}) {
         setIsLoading(false);
       }
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // initialProfileData and toast are intentionally excluded
 
   // Recompute stats when profile changes
   useEffect(() => {

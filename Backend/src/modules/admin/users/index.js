@@ -13,6 +13,9 @@ router.get("/", userController.getAllUsers);
 // Get user stats
 router.get("/stats", userController.getUserStats);
 
+// Create new user
+router.post("/", userController.createUser);
+
 // Get user by ID
 router.get("/:id", userController.getUserById);
 

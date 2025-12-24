@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -30,24 +29,25 @@ import {
   Filter,
   MoreHorizontal,
   Eye,
-  Edit,
   Ban,
   CheckCircle,
   AlertTriangle,
   Users,
   Building,
   Loader2,
+  Copy,
+  Check,
 } from "lucide-react"
 import { AdminLayout } from "@/components/admin-layout"
-import { getAdminUsers, getAdminUserStats, suspendUser, activateUser, getProfileImageUrl } from "@/lib/api"
+import { getAdminUsers, getAdminUserStats, suspendUser, activateUser, getProfileImageUrl, createAdminUser } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+import { Label } from "@/components/ui/label"
 
 export default function AdminUsersPage() {
-  const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<Array<Record<string, unknown>>>([])
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -58,24 +58,25 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [roleFilter, setRoleFilter] = useState("all")
-  const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [selectedUser, setSelectedUser] = useState<Record<string, unknown> | null>(null)
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false)
   const [activateDialogOpen, setActivateDialogOpen] = useState(false)
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [createLoading, setCreateLoading] = useState(false)
+  const [generatedPassword, setGeneratedPassword] = useState("")
+  const [passwordCopied, setPasswordCopied] = useState(false)
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "CUSTOMER" as "ADMIN" | "PROVIDER" | "CUSTOMER",
+  })
 
-  useEffect(() => {
-    loadUsers()
-    loadStats()
-  }, [])
-
-  useEffect(() => {
-    loadUsers()
-  }, [searchQuery, statusFilter, roleFilter])
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true)
-      const filters: any = {}
+      const filters: Record<string, string> = {}
       if (statusFilter !== "all") filters.status = statusFilter
       if (roleFilter !== "all") filters.role = roleFilter
       if (searchQuery) filters.search = searchQuery
@@ -83,7 +84,7 @@ export default function AdminUsersPage() {
       const response = await getAdminUsers(filters)
       console.log("Admin users response:", response)
       if (response.success) {
-        setUsers(response.data || [])
+        setUsers((response.data || []) as Array<Record<string, unknown>>)
       } else {
         console.error("Failed to load users:", response.error)
         toast({
@@ -92,17 +93,17 @@ export default function AdminUsersPage() {
           variant: "destructive",
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading users:", error)
       toast({
         title: "Error",
-        description: error.message || "Failed to load users",
+        description: error instanceof Error ? error.message : "Failed to load users",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchQuery, statusFilter, roleFilter, toast])
 
   const loadStats = async () => {
     try {
@@ -110,17 +111,26 @@ export default function AdminUsersPage() {
       if (response.success) {
         setStats(response.data)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to load stats:", error)
     }
   }
 
-  const handleSuspendClick = (user: any) => {
+  useEffect(() => {
+    loadUsers()
+    loadStats()
+  }, [loadUsers])
+
+  useEffect(() => {
+    loadUsers()
+  }, [loadUsers])
+
+  const handleSuspendClick = (user: Record<string, unknown>) => {
     setSelectedUser(user)
     setSuspendDialogOpen(true)
   }
 
-  const handleActivateClick = (user: any) => {
+  const handleActivateClick = (user: Record<string, unknown>) => {
     setSelectedUser(user)
     setActivateDialogOpen(true)
   }
@@ -130,7 +140,7 @@ export default function AdminUsersPage() {
 
     try {
       setActionLoading(true)
-      const response = await suspendUser(selectedUser.id)
+      const response = await suspendUser(selectedUser.id as string)
       if (response.success) {
         toast({
           title: "Success",
@@ -141,10 +151,10 @@ export default function AdminUsersPage() {
         loadUsers()
         loadStats()
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to suspend user",
+        description: error instanceof Error ? error.message : "Failed to suspend user",
         variant: "destructive",
       })
     } finally {
@@ -157,7 +167,7 @@ export default function AdminUsersPage() {
 
     try {
       setActionLoading(true)
-      const response = await activateUser(selectedUser.id)
+      const response = await activateUser(selectedUser.id as string)
       if (response.success) {
         toast({
           title: "Success",
@@ -168,16 +178,110 @@ export default function AdminUsersPage() {
         loadUsers()
         loadStats()
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to activate user",
+        description: error instanceof Error ? error.message : "Failed to activate user",
         variant: "destructive",
       })
     } finally {
       setActionLoading(false)
     }
   }
+
+  // Generate random password
+  const generatePassword = () => {
+    const length = 12
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+    let password = ""
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length))
+    }
+    setGeneratedPassword(password)
+    setPasswordCopied(false)
+    return password
+  }
+
+  // Copy password to clipboard
+  const copyPassword = async () => {
+    if (generatedPassword) {
+      try {
+        await navigator.clipboard.writeText(generatedPassword)
+        setPasswordCopied(true)
+        toast({
+          title: "Copied!",
+          description: "Password copied to clipboard",
+        })
+        setTimeout(() => setPasswordCopied(false), 2000)
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to copy password",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  // Handle add user form submission
+  const handleAddUser = async () => {
+    if (!formData.name || !formData.email) {
+      toast({
+        title: "Validation Error",
+        description: "Name and email are required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Generate password if not already generated
+    const password = generatedPassword || generatePassword()
+
+    try {
+      setCreateLoading(true)
+      const response = await createAdminUser({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        role: formData.role,
+        password: password,
+      })
+
+      if (response.success) {
+        toast({
+          title: "Success",
+          description: "User created successfully",
+        })
+        setAddUserDialogOpen(false)
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          role: "CUSTOMER",
+        })
+        setGeneratedPassword("")
+        setPasswordCopied(false)
+        loadUsers()
+        loadStats()
+      }
+    } catch (error: unknown) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create user",
+        variant: "destructive",
+      })
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
+  // Generate password when dialog opens
+  useEffect(() => {
+    if (addUserDialogOpen && !generatedPassword) {
+      generatePassword()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addUserDialogOpen])
 
 
   const getStatusColor = (status: string) => {
@@ -230,7 +334,7 @@ export default function AdminUsersPage() {
               <Filter className="w-4 h-4 mr-2" />
               Export Data
             </Button>
-            <Button>
+            <Button onClick={() => setAddUserDialogOpen(true)}>
               <Users className="w-4 h-4 mr-2" />
               Add User
             </Button>
@@ -374,59 +478,73 @@ export default function AdminUsersPage() {
                     </TableRow>
                   ) : (
                     users.map((user) => {
-                      const isProvider = user.role?.includes("PROVIDER")
-                      const isCustomer = user.role?.includes("CUSTOMER")
-                      const profile = isProvider ? user.providerProfile : user.customerProfile
+                      const userRole = Array.isArray(user.role) ? user.role : []
+                      const isProvider = userRole.includes("PROVIDER")
+                      const isCustomer = userRole.includes("CUSTOMER")
+                      const profile = (isProvider ? user.providerProfile : user.customerProfile) as Record<string, unknown> | undefined
+                      const userName = user.name as string | undefined
+                      const userEmail = user.email as string | undefined
+                      const userStatus = user.status as string | undefined
+                      const userCreatedAt = user.createdAt as string | undefined
                       
                       return (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id as string}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <Avatar>
                           <AvatarImage 
-                            src={getProfileImageUrl(profile?.profileImageUrl)}
+                            src={getProfileImageUrl(profile?.profileImageUrl as string | undefined)}
                           />
-                          <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                          <AvatarFallback>{(userName?.charAt(0) || "U") as string}</AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-medium">{user.name}</p>
-                            {user.isVerified && <CheckCircle className="w-4 h-4 text-green-500" />}
+                            <p className="font-medium">{userName as string}</p>
+                            {(user.isVerified as boolean) && <CheckCircle className="w-4 h-4 text-green-500" />}
                           </div>
-                          <p className="text-sm text-gray-500">{user.email}</p>
-                          {profile?.location && (
-                            <p className="text-xs text-gray-400">{profile.location}</p>
-                          )}
-                          {isProvider && profile?.bio && (
-                            <p className="text-xs text-gray-400 line-clamp-1">{profile.bio}</p>
-                          )}
-                          {isCustomer && profile?.description && (
-                            <p className="text-xs text-gray-400 line-clamp-1">{profile.description}</p>
-                          )}
+                          <p className="text-sm text-gray-500">{userEmail as string}</p>
+                          {(() => {
+                            const location = profile?.location as string | undefined;
+                            return location ? (
+                              <p className="text-xs text-gray-400">{location}</p>
+                            ) : null;
+                          })()}
+                          {(() => {
+                            const bio = isProvider ? (profile?.bio as string | undefined) : undefined;
+                            return bio ? (
+                              <p className="text-xs text-gray-400 line-clamp-1">{bio}</p>
+                            ) : null;
+                          })()}
+                          {(() => {
+                            const description = isCustomer ? (profile?.description as string | undefined) : undefined;
+                            return description ? (
+                              <p className="text-xs text-gray-400 line-clamp-1">{description}</p>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getRoleColor(user.role)}>
-                              {getPrimaryRole(user.role)}
+                      <Badge className={getRoleColor(userRole)}>
+                              {getPrimaryRole(userRole)}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(user.status)}>
-                              {user.status || "ACTIVE"}
+                      <Badge className={getStatusColor(userStatus || "")}>
+                              {userStatus || "ACTIVE"}
                       </Badge>
                     </TableCell>
                     <TableCell>
                             {isProvider ? (
                               <div>
-                                <p className="font-medium">{profile?.totalProjects || 0} projects</p>
+                                <p className="font-medium">{(profile?.totalProjects as number || 0)} projects</p>
                                 <p className="text-sm text-gray-500">
                                   RM {Number(profile?.totalEarnings || 0).toLocaleString()} earned
                                 </p>
                               </div>
                             ) : (
                       <div>
-                                <p className="font-medium">{profile?.projectsPosted || 0} posted</p>
+                                <p className="font-medium">{(profile?.projectsPosted as number || 0)} posted</p>
                         <p className="text-sm text-gray-500">
                                   RM {Number(profile?.totalSpend || 0).toLocaleString()} spent
                         </p>
@@ -444,7 +562,7 @@ export default function AdminUsersPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                            <p className="text-sm">{formatDate(user.createdAt)}</p>
+                            <p className="text-sm">{formatDate(userCreatedAt || "")}</p>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -498,7 +616,7 @@ export default function AdminUsersPage() {
             <DialogHeader>
               <DialogTitle>Suspend User</DialogTitle>
               <DialogDescription>
-                Are you sure you want to suspend {selectedUser?.name}? They will not be able to login until activated.
+                Are you sure you want to suspend {selectedUser?.name as string}? They will not be able to login until activated.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -533,7 +651,7 @@ export default function AdminUsersPage() {
             <DialogHeader>
               <DialogTitle>Activate User</DialogTitle>
               <DialogDescription>
-                Are you sure you want to activate {selectedUser?.name}? They will be able to login again.
+                Are you sure you want to activate {selectedUser?.name as string}? They will be able to login again.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -555,6 +673,142 @@ export default function AdminUsersPage() {
                   </>
                 ) : (
                   "Activate User"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add User Dialog */}
+        <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New User</DialogTitle>
+              <DialogDescription>
+                Create a new user account. A password will be automatically generated.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {/* Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Name *</Label>
+                <Input
+                  id="name"
+                  placeholder="Enter full name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter email address"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="Enter phone number (optional)"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+
+              {/* Role */}
+              <div className="space-y-2">
+                <Label htmlFor="role">Role *</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value: "ADMIN" | "PROVIDER" | "CUSTOMER") =>
+                    setFormData({ ...formData, role: value })
+                  }
+                >
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ADMIN">Admin</SelectItem>
+                    <SelectItem value="PROVIDER">Provider</SelectItem>
+                    <SelectItem value="CUSTOMER">Customer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Generated Password */}
+              <div className="space-y-2">
+                <Label>Generated Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={generatedPassword}
+                    readOnly
+                    className="font-mono"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={copyPassword}
+                    title="Copy password"
+                  >
+                    {passwordCopied ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={generatePassword}
+                  >
+                    Regenerate
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-500">
+                  This password will be used for the initial login. Make sure to copy it before closing this dialog.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAddUserDialogOpen(false)
+                  setFormData({
+                    name: "",
+                    email: "",
+                    phone: "",
+                    role: "CUSTOMER",
+                  })
+                  setGeneratedPassword("")
+                  setPasswordCopied(false)
+                }}
+                disabled={createLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddUser}
+                disabled={createLoading || !formData.name || !formData.email}
+              >
+                {createLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create User"
                 )}
               </Button>
             </DialogFooter>

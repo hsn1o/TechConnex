@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +18,6 @@ import {
   CheckCircle2,
   MessageSquare,
   Heart,
-  ArrowLeft,
   Award,
   Loader2,
   Globe,
@@ -43,11 +41,18 @@ export default function ProviderDetailClient({
   reviews: Review[];
 }) {
   const [saved, setSaved] = useState<boolean>(!!provider.saved);
-  const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
+  const [portfolioProjects, setPortfolioProjects] = useState<Array<{
+    id: string;
+    title: string;
+    description?: string;
+    category?: string;
+    technologies?: string[];
+    client?: string;
+    completedDate?: string;
+  }>>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   const [isProposalPopupOpen, setIsProposalPopupOpen] = useState(false);
   const [resume, setResume] = useState<{ fileUrl: string; uploadedAt: string } | null>(null);
-  const [loadingResume, setLoadingResume] = useState(false);
   const router = useRouter();
 
   // Update saved state when provider prop changes (e.g., after refresh)
@@ -78,7 +83,6 @@ export default function ProviderDetailClient({
   useEffect(() => {
     const loadResume = async () => {
       try {
-        setLoadingResume(true);
         const response = await getResumeByUserId(provider.id);
         if (response.success && response.data) {
           setResume(response.data);
@@ -86,8 +90,6 @@ export default function ProviderDetailClient({
       } catch (error) {
         // Resume is optional, so we don't show error
         console.error("Failed to load resume:", error);
-      } finally {
-        setLoadingResume(false);
       }
     };
 
@@ -100,12 +102,12 @@ export default function ProviderDetailClient({
     try {
       const downloadUrl = await getR2DownloadUrl(resume.fileUrl);
       window.open(downloadUrl.downloadUrl, "_blank");
-    } catch (error: any) {
-      alert("Failed to download resume: " + (error.message || "Unknown error"));
+    } catch (error: unknown) {
+      alert("Failed to download resume: " + (error instanceof Error ? error.message : "Unknown error"));
     }
   };
 
-  const handleContact = (provider: any) => {
+  const handleContact = (provider: Provider) => {
     const avatarUrl = getProfileImageUrl(provider.avatar);
     router.push(
       `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
@@ -408,7 +410,7 @@ export default function ProviderDetailClient({
               <CardHeader className="p-4 sm:p-6">
                 <CardTitle className="text-base sm:text-lg">Resume</CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
-                  Provider's resume
+                  Provider&apos;s resume
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">

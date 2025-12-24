@@ -29,7 +29,6 @@ import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
 import {
   getCompanyProjects,
-  getProjectRequestStats,
   getCompanyProjectStats,
   getRecommendedProviders,
   getProfileImageUrl,
@@ -49,17 +48,17 @@ export type Project = {
   deadline?: string;
   avatar?: string;
   createdAt?: string;
-  [key: string]: any; // for any extra fields
+  [key: string]: unknown; // for any extra fields
 };
 
 export default function CustomerDashboard() {
   const { toast } = useToast();
   const router = useRouter();
-  const handleContact = (provider: any) => {
+  const handleContact = (provider: Record<string, unknown>) => {
     router.push(
       `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
-        provider.name
-      )}&avatar=${encodeURIComponent(provider.avatar || "")}`
+        (provider.name as string) || ""
+      )}&avatar=${encodeURIComponent((provider.avatar as string) || "")}`
     );
   };
   const [stats, setStats] = useState<{
@@ -78,7 +77,7 @@ export default function CustomerDashboard() {
   // Use Project[] as the type for recentProjects
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
-  const [recommendedProviders, setRecommendedProviders] = useState<any[]>([]);
+  const [recommendedProviders, setRecommendedProviders] = useState<Array<Record<string, unknown>>>([]);
   const [recommendedLoading, setRecommendedLoading] = useState(true);
   const [recommendationsCacheInfo, setRecommendationsCacheInfo] = useState<{
     cachedAt: number | null;
@@ -119,7 +118,7 @@ export default function CustomerDashboard() {
         });
         if (projectsResponse.success && projectsResponse.items) {
           // Map projects to expected structure
-          const mappedProjects = projectsResponse.items.map((project: any) => ({
+          const mappedProjects = projectsResponse.items.map((project: Record<string, unknown>) => ({
             id: project.id,
             title: project.title,
             provider: project.provider?.name,
@@ -147,7 +146,7 @@ export default function CustomerDashboard() {
           if (recommendationsResponse.success) {
             const mappedProviders = (
               recommendationsResponse.recommendations || []
-            ).map((provider: any) => ({
+            ).map((provider: Record<string, unknown>) => ({
               id: provider.id,
               name: provider.name,
               specialty: provider.major || "ICT Professional",
@@ -283,7 +282,7 @@ export default function CustomerDashboard() {
               Dashboard
             </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">
-              Welcome back! Here's what's happening with your projects.
+              Welcome back! Here&apos;s what&apos;s happening with your projects.
             </p>
           </div>
           <Link href="/customer/projects/new" className="w-full sm:w-auto">

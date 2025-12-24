@@ -104,7 +104,7 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
         customerProfile: {
           ...value.customerProfile || {},
           profileImageUrl: result.data.profileImageUrl,
-        } as any,
+        } as Record<string, unknown>,
       });
       toast({
         title: "Success",
@@ -124,10 +124,10 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
           console.error("Failed to fetch completion:", error);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload profile image",
+        description: error instanceof Error ? error.message : "Failed to upload profile image",
         variant: "destructive",
       });
     } finally {
@@ -375,7 +375,7 @@ export default function ProfileOverview({ value, onChange, isEditing, onCompleti
                   <Globe className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                   <p>No social links added yet</p>
                   <p className="text-sm">
-                    Add links to showcase your company's social media presence
+                    Add links to showcase your company&apos;s social media presence
                   </p>
                 </div>
               )}

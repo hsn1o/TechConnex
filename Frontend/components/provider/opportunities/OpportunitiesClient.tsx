@@ -46,7 +46,7 @@ export default function OpportunitiesClient({ opportunities: initial }: { opport
     });
   }, [opportunities, search, category]);
 
-  const submitProposal = (p: ProposalDraft) => {
+  const submitProposal = () => {
     if (!selected) return;
     // mock update: mark as submitted and increment proposals
     setOpportunities((prev) =>
@@ -123,7 +123,7 @@ export default function OpportunitiesClient({ opportunities: initial }: { opport
         draft={draft}
         setDraft={setDraft}
         opportunity={selected}
-        onSubmit={() => submitProposal(draft)}
+        onSubmit={() => submitProposal()}
       />
     </div>
   );

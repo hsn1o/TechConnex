@@ -26,7 +26,7 @@ export default async function CompanyDetailPage({
     try {
       const user = JSON.parse(userCookie);
       userId = user?.id || null;
-    } catch (error) {
+    } catch {
       // Ignore parsing errors
     }
   }

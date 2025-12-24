@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Bid } from "../types";
 
-export default function BidsTab({ projectId, items }: { projectId: string; items: Bid[] }) {
+export default function BidsTab({ items }: { projectId: string; items: Bid[] }) {
   return (
     <Card>
       <CardHeader><CardTitle>Bids</CardTitle></CardHeader>

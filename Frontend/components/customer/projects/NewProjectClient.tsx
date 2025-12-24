@@ -26,7 +26,6 @@ import {
   ArrowLeft,
   ShieldCheck,
   CheckCircle2,
-  Scale,
   Sparkles,
   ChevronRight,
 } from "lucide-react";
@@ -161,14 +160,14 @@ export default function NewProjectClient() {
         deliverables: form.deliverables,
       };
 
-      const response = await createProject(payload);
+      await createProject(payload);
       
       // Show success message
       alert("Project created successfully! Providers will now be able to send proposals.");
       router.push("/customer/projects");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Failed to create project:", e);
-      alert(e.message || "Failed to create project. Please try again.");
+      alert(e instanceof Error ? e.message : "Failed to create project. Please try again.");
     } finally {
       setSubmitting(false);
     }

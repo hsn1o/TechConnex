@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -36,7 +35,6 @@ import {
   MapPin,
   Calendar,
   Award,
-  Eye,
   Edit,
   Plus,
   Trash2,
@@ -79,6 +77,7 @@ import {
 import { uploadFile } from "@/lib/upload";
 import { useToast } from "@/hooks/use-toast";
 import { useRef } from "react";
+import Image from "next/image";
 import VerificationSection from "@/components/customer/profile/sections/VerificationSection";
 import {
   ProfileData,
@@ -93,12 +92,48 @@ type Props = {
   stats?: Stats;
 };
 
+type PortfolioProject = {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  technologies?: string[];
+  client?: string;
+  completedDate?: string;
+  approvedPrice?: number;
+};
+
+type PortfolioItem = {
+  id: string;
+  title: string;
+  description?: string;
+  techStack?: string[];
+  client?: string;
+  date?: string;
+  imageUrl?: string;
+  externalUrl?: string;
+};
+
+type Certification = {
+  id: string;
+  name: string;
+  issuer: string;
+  issuedDate?: string;
+  serialNumber?: string;
+  sourceUrl?: string;
+  verified?: boolean;
+};
+
+type Reviewer = {
+  id: string;
+  name: string;
+  email?: string;
+};
+
 export default function ProviderProfilePage(props: Props = {}) {
   const {
     profileData: initialProfileData,
     uploadedDocuments: initialUploadedDocuments,
-    documentTypes: initialDocumentTypes,
-    stats: initialStats,
   } = props;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -171,11 +206,11 @@ export default function ProviderProfilePage(props: Props = {}) {
   const [newPortfolioLink, setNewPortfolioLink] = useState("");
 
   // State for portfolio projects (platform projects)
-  const [portfolioProjects, setPortfolioProjects] = useState<any[]>([]);
+  const [portfolioProjects, setPortfolioProjects] = useState<PortfolioProject[]>([]);
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   
   // State for portfolio items (external work)
-  const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [loadingPortfolioItems, setLoadingPortfolioItems] = useState(false);
   const [showPortfolioDialog, setShowPortfolioDialog] = useState(false);
   const [editingPortfolioIndex, setEditingPortfolioIndex] = useState<number | null>(null);
@@ -196,7 +231,7 @@ export default function ProviderProfilePage(props: Props = {}) {
   }>({});
 
   // State for certifications
-  const [certifications, setCertifications] = useState<any[]>([]);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
   const [loadingCertifications, setLoadingCertifications] = useState(false);
   const [showCertDialog, setShowCertDialog] = useState(false);
   const [editingCertIndex, setEditingCertIndex] = useState<number | null>(null);
@@ -404,13 +439,13 @@ export default function ProviderProfilePage(props: Props = {}) {
               // prefer the reviewer's display name when available (item.reviewer.name),
               // otherwise fall back to any top-level reviewedBy value
               reviewedBy:
-                item.reviewer && (item.reviewer as any).name
-                  ? String((item.reviewer as any).name)
+                item.reviewer && typeof item.reviewer === "object" && "name" in item.reviewer
+                  ? String((item.reviewer as Reviewer).name)
                   : item.reviewedBy
                   ? String(item.reviewedBy)
                   : undefined,
               reviewedAt: item.reviewedAt
-                ? new Date(item.reviewedAt as any).toLocaleString("en-MY", {
+                ? new Date(String(item.reviewedAt)).toLocaleString("en-MY", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
@@ -420,11 +455,11 @@ export default function ProviderProfilePage(props: Props = {}) {
                   })
                 : undefined,
               fileUrl: fileUrl, // Keep original fileUrl (R2 key or path) - will be resolved when downloading
-              reviewer: item.reviewer
+              reviewer: item.reviewer && typeof item.reviewer === "object"
                 ? {
-                    id: (item.reviewer as any).id,
-                    name: (item.reviewer as any).name,
-                    email: (item.reviewer as any).email,
+                    id: String((item.reviewer as Reviewer).id || ""),
+                    name: String((item.reviewer as Reviewer).name || ""),
+                    email: (item.reviewer as Reviewer).email ? String((item.reviewer as Reviewer).email) : undefined,
                   }
                 : null,
             } as UploadedDocument;
@@ -437,7 +472,7 @@ export default function ProviderProfilePage(props: Props = {}) {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [initialProfileData]);
 
   // Save profile data
   const handleSaveProfile = async () => {
@@ -487,7 +522,7 @@ export default function ProviderProfilePage(props: Props = {}) {
   };
 
   // Handle input changes
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number) => {
     setProfileData((prev) => ({
       ...prev,
       [field]: value,
@@ -671,10 +706,11 @@ export default function ProviderProfilePage(props: Props = {}) {
         setProfileCompletion(completionResponse.data.completion || 0);
         setCompletionSuggestions(completionResponse.data.suggestions || []);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload profile image";
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload profile image",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -744,18 +780,19 @@ export default function ProviderProfilePage(props: Props = {}) {
           visibility: "private",
           category: "document",
         });
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         // Handle R2 upload errors
-        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+        const errorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
+        if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
           throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
         }
-        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
-          throw new Error(`File size error: ${uploadError.message}`);
+        if (errorMessage.includes("size") || errorMessage.includes("limit")) {
+          throw new Error(`File size error: ${errorMessage}`);
         }
-        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
-          throw new Error(`File type error: ${uploadError.message}`);
+        if (errorMessage.includes("type") || errorMessage.includes("format")) {
+          throw new Error(`File type error: ${errorMessage}`);
         }
-        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+        throw new Error(`Upload failed: ${errorMessage || "Unknown error occurred during file upload"}`);
       }
 
       if (!uploadResult.success) {
@@ -766,15 +803,17 @@ export default function ProviderProfilePage(props: Props = {}) {
       let response;
       try {
         response = await uploadResume(uploadResult.key);
-      } catch (apiError: any) {
+      } catch (apiError: unknown) {
         // Handle API errors
-        if (apiError.message?.includes("network") || apiError.message?.includes("fetch") || apiError.name === "TypeError") {
+        const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+        const errorName = apiError instanceof Error ? apiError.name : "";
+        if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorName === "TypeError") {
           throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
         }
-        if (apiError.message?.includes("401") || apiError.message?.includes("403")) {
+        if (errorMessage.includes("401") || errorMessage.includes("403")) {
           throw new Error("Authorization error: Your session may have expired. Please refresh the page and try again.");
         }
-        throw apiError;
+        throw apiError instanceof Error ? apiError : new Error(String(apiError));
       }
 
       if (response.success) {
@@ -786,11 +825,12 @@ export default function ProviderProfilePage(props: Props = {}) {
       } else {
         throw new Error(response.error || "Failed to save resume");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Resume upload error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload resume. Please try again.";
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload resume. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -814,10 +854,11 @@ export default function ProviderProfilePage(props: Props = {}) {
         title: "Success",
         description: "Resume deleted successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete resume";
       toast({
         title: "Delete failed",
-        description: error.message || "Failed to delete resume",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -831,10 +872,11 @@ export default function ProviderProfilePage(props: Props = {}) {
     try {
       const downloadUrl = await getR2DownloadUrl(resume.fileUrl);
       window.open(downloadUrl.downloadUrl, "_blank");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to download resume";
       toast({
         title: "Download failed",
-        description: error.message || "Failed to download resume",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -964,10 +1006,11 @@ export default function ProviderProfilePage(props: Props = {}) {
         sourceUrl: "",
       });
       setEditingCertIndex(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save certification";
       toast({
         title: "Error",
-        description: error.message || "Failed to save certification",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -1003,10 +1046,11 @@ export default function ProviderProfilePage(props: Props = {}) {
           setCompletionSuggestions(completionResponse.data.suggestions || []);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete certification";
       toast({
         title: "Error",
-        description: error.message || "Failed to delete certification",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -1106,10 +1150,11 @@ export default function ProviderProfilePage(props: Props = {}) {
       });
       setNewTechStack("");
       setEditingPortfolioIndex(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save portfolio item";
       toast({
         title: "Error",
-        description: error.message || "Failed to save portfolio item",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -1632,7 +1677,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                         <p>No certifications added yet</p>
                         {isEditing && (
                           <p className="text-sm mt-2">
-                            Click "Add Certification" to add your professional
+                            Click &quot;Add Certification&quot; to add your professional
                             certifications
                           </p>
                         )}
@@ -2012,7 +2057,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                   <div>
                     <h2 className="text-2xl font-bold">Projects Completed</h2>
                     <p className="text-gray-600">
-                      Projects you've completed on this platform
+                      Projects you&apos;ve completed on this platform
                     </p>
                   </div>
                 </div>
@@ -2156,30 +2201,13 @@ export default function ProviderProfilePage(props: Props = {}) {
                               
                               if (isImage) {
                                 return (
-                                  <img
+                                  <Image
                                     src={imageUrl}
-                                    alt={item.title}
+                                    alt={item.title || "Portfolio item"}
+                                    width={400}
+                                    height={192}
                                     className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = "none";
-                                      // Show fallback if image fails
-                                      const parent = target.parentElement;
-                                      if (parent) {
-                                        parent.innerHTML = `
-                                          <div class="w-full h-full flex items-center justify-center bg-gray-100">
-                                            <div class="text-center p-4">
-                                              <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center mx-auto mb-2">
-                                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                                </svg>
-                                              </div>
-                                              <p class="text-xs text-gray-500">Image not available</p>
-                                            </div>
-                                          </div>
-                                        `;
-                                      }
-                                    }}
+                                    unoptimized
                                   />
                                 );
                               } else {
@@ -2222,7 +2250,7 @@ export default function ProviderProfilePage(props: Props = {}) {
                                   onClick={() => {
                                     setPortfolioFormData({
                                       title: item.title,
-                                      description: item.description,
+                                      description: item.description || "",
                                       techStack: item.techStack || [],
                                       client: item.client || "",
                                       date: item.date ? new Date(item.date).toISOString().split('T')[0] : "",
@@ -2256,21 +2284,18 @@ export default function ProviderProfilePage(props: Props = {}) {
                                         // Reload completion
                                         try {
                                           const completionResponse = await getProviderProfileCompletion();
-        if (completionResponse.success) {
-          setProfileCompletion(completionResponse.data.completion || 0);
-          setCompletionSuggestions(completionResponse.data.suggestions || []);
-        }
-
-        if (resumeResponse.success && resumeResponse.data) {
-          setResume(resumeResponse.data);
-        }
-      } catch (error) {
+                                          if (completionResponse.success) {
+                                            setProfileCompletion(completionResponse.data.completion || 0);
+                                            setCompletionSuggestions(completionResponse.data.suggestions || []);
+                                          }
+                                        } catch (error) {
                                           console.error("Failed to fetch completion:", error);
                                         }
-                                      } catch (error: any) {
+                                      } catch (error: unknown) {
+                                        const errorMessage = error instanceof Error ? error.message : "Failed to delete portfolio item";
                                         toast({
                                           title: "Error",
-                                          description: error.message || "Failed to delete portfolio item",
+                                          description: errorMessage,
                                           variant: "destructive",
                                         });
                                       }
@@ -2891,8 +2916,8 @@ export default function ProviderProfilePage(props: Props = {}) {
                       What is a Portfolio Item?
                     </p>
                     <p className="text-sm text-green-700">
-                      Portfolio items are work, studies, or projects you've completed outside this platform. 
-                      This is different from "Projects Completed" which shows your work done on this platform.
+                      Portfolio items are work, studies, or projects you&apos;ve completed outside this platform. 
+                      This is different from &quot;Projects Completed&quot; which shows your work done on this platform.
                     </p>
                   </div>
                 </div>
@@ -3080,10 +3105,11 @@ export default function ProviderProfilePage(props: Props = {}) {
                             description: "File uploaded successfully",
                           });
                         }
-                      } catch (error: any) {
+                      } catch (error: unknown) {
+                        const errorMessage = error instanceof Error ? error.message : "Failed to upload file";
                         toast({
                           title: "Upload failed",
-                          description: error.message || "Failed to upload file",
+                          description: errorMessage,
                           variant: "destructive",
                         });
                       } finally {
@@ -3112,22 +3138,13 @@ export default function ProviderProfilePage(props: Props = {}) {
                         
                         if (isImage) {
                           return (
-                            <img
+                            <Image
                               src={imageUrl}
                               alt="Portfolio preview"
+                              width={400}
+                              height={128}
                               className="w-full h-32 object-cover rounded-lg border bg-gray-100"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = "none";
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = `
-                                    <div class="w-full h-32 flex items-center justify-center bg-gray-100 rounded-lg border">
-                                      <p class="text-sm text-gray-500">Image preview unavailable</p>
-                                    </div>
-                                  `;
-                                }
-                              }}
+                              unoptimized
                             />
                           );
                         } else {

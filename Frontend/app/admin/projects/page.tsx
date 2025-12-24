@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
@@ -36,21 +35,15 @@ import { getAdminProjects, getAdminProjectStats } from "@/lib/api"
 import Link from "next/link"
 
 export default function AdminProjectsPage() {
-  const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
-  const [projects, setProjects] = useState<any[]>([])
-  const [stats, setStats] = useState<any>(null)
+  const [projects, setProjects] = useState<Array<Record<string, unknown>>>([])
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
 
-  useEffect(() => {
-    loadProjects()
-    loadStats()
-  }, [statusFilter])
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       setLoading(true)
       const response = await getAdminProjects({
@@ -58,29 +51,34 @@ export default function AdminProjectsPage() {
         search: searchQuery || undefined,
       })
       if (response.success) {
-        setProjects(response.data || [])
+        setProjects((response.data || []) as Array<Record<string, unknown>>)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to load projects",
+        description: error instanceof Error ? error.message : "Failed to load projects",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, searchQuery, toast])
 
   const loadStats = async () => {
     try {
       const response = await getAdminProjectStats()
       if (response.success) {
-        setStats(response.data)
+        setStats(response.data as Record<string, unknown>)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to load stats:", error)
     }
   }
+
+  useEffect(() => {
+    loadProjects()
+    loadStats()
+  }, [loadProjects])
 
 
   const getStatusText = (status: string, type?: string) => {
@@ -121,15 +119,16 @@ export default function AdminProjectsPage() {
     }
   }
 
-  const calculateProgress = (project: any) => {
+  const calculateProgress = (project: Record<string, unknown>) => {
     // ServiceRequests don't have progress yet
     if (project.type === "serviceRequest") return 0
     
-    if (!project.milestones || project.milestones.length === 0) return 0
-    const completed = project.milestones.filter(
-      (m: any) => m.status === "APPROVED" || m.status === "PAID"
+    const milestones = Array.isArray(project.milestones) ? project.milestones : []
+    if (milestones.length === 0) return 0
+    const completed = milestones.filter(
+      (m: Record<string, unknown>) => m.status === "APPROVED" || m.status === "PAID"
     ).length
-    return Math.round((completed / project.milestones.length) * 100)
+    return Math.round((completed / milestones.length) * 100)
   }
 
   const filteredProjects = projects.filter((project) => {
@@ -317,10 +316,11 @@ export default function AdminProjectsPage() {
                       const isServiceRequest = project.type === "serviceRequest"
                       const progress = calculateProgress(project)
                       const disputesCount = project.Dispute?.length || 0
+                      const milestonesArray = Array.isArray(project.milestones) ? project.milestones : []
                       const completedMilestones =
-                        project.milestones?.filter((m: any) => m.status === "APPROVED" || m.status === "PAID")
+                        milestonesArray.filter((m: Record<string, unknown>) => m.status === "APPROVED" || m.status === "PAID")
                           .length || 0
-                      const totalMilestones = project.milestones?.length || 0
+                      const totalMilestones = milestonesArray.length || 0
                       const proposalsCount = project.proposalsCount || project.proposals?.length || 0
 
                       return (

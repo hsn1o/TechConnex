@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Milestone } from "../types";
 
 export default function MilestonesTab({
-  projectId, items,
+  items,
 }: { projectId: string; items: Milestone[] }) {
   const [list, setList] = useState(items);
 

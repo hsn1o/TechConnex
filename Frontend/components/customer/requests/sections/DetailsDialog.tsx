@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Download, MapPin, Star, X, Check } from "lucide-react";
+import { Clock, Download, MapPin, Star, X, Check } from "lucide-react";
 import type { ProviderRequest } from "../types";
 
 export default function DetailsDialog({
@@ -29,7 +29,7 @@ export default function DetailsDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Request Details</DialogTitle>
-          <DialogDescription>Detailed information about {request.providerName}'s request</DialogDescription>
+          <DialogDescription>Detailed information about {request.providerName}&apos;s request</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

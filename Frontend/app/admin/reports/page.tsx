@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,7 +29,6 @@ import {
   FileText,
   PieChart,
   RefreshCw,
-  X,
   Loader2,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
@@ -71,21 +70,21 @@ export default function AdminReportsPage() {
     avgRating: 0,
     ratingChange: 0,
   });
-  const [monthlyData, setMonthlyData] = useState<any[]>([]);
-  const [categoryBreakdown, setCategoryBreakdown] = useState<any[]>([]);
-  const [topProviders, setTopProviders] = useState<any[]>([]);
-  const [topCustomers, setTopCustomers] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<Array<Record<string, unknown>>>([]);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<Array<Record<string, unknown>>>([]);
+  const [topProviders, setTopProviders] = useState<Array<Record<string, unknown>>>([]);
+  const [topCustomers, setTopCustomers] = useState<Array<Record<string, unknown>>>([]);
 
   // Category detail modal state
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [categoryDetails, setCategoryDetails] = useState<any>(null);
+  const [categoryDetails, setCategoryDetails] = useState<Record<string, unknown> | null>(null);
   const [loadingCategoryDetails, setLoadingCategoryDetails] = useState(false);
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {
+      const params: Record<string, unknown> = {
         dateRange: dateRange === "custom" ? undefined : dateRange,
       };
 
@@ -97,14 +96,14 @@ export default function AdminReportsPage() {
       const response = await getAdminReports(params);
 
       if (response.success && response.data) {
-        setOverviewStats(response.data.overviewStats || overviewStats);
+        setOverviewStats((prev) => response.data.overviewStats || prev);
         setMonthlyData(response.data.monthlyData || []);
         setCategoryBreakdown(response.data.categoryBreakdown || []);
 
         // Ensure providers have IDs and validate data structure
         const providers = (response.data.topProviders || [])
-          .filter((provider: any) => provider && provider.id) // Only include providers with valid IDs
-          .map((provider: any) => ({
+          .filter((provider: Record<string, unknown>) => provider && provider.id) // Only include providers with valid IDs
+          .map((provider: Record<string, unknown>) => ({
             id: provider.id,
             name: provider.name || "Unknown Provider",
             projects: provider.projects || 0,
@@ -115,8 +114,8 @@ export default function AdminReportsPage() {
 
         // Ensure customers have IDs and validate data structure
         const customers = (response.data.topCustomers || [])
-          .filter((customer: any) => customer && customer.id) // Only include customers with valid IDs
-          .map((customer: any) => ({
+          .filter((customer: Record<string, unknown>) => customer && customer.id) // Only include customers with valid IDs
+          .map((customer: Record<string, unknown>) => ({
             id: customer.id,
             name: customer.name || "Unknown Customer",
             projects: customer.projects || 0,
@@ -131,21 +130,21 @@ export default function AdminReportsPage() {
           variant: "destructive",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to load reports",
+        description: error instanceof Error ? error.message : "Failed to load reports",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [dateRange, customStartDate, customEndDate, toast]);
 
   useEffect(() => {
     loadReports();
-  }, [dateRange, customStartDate, customEndDate]);
+  }, [loadReports]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -159,7 +158,7 @@ export default function AdminReportsPage() {
     setCategoryDetails(null);
 
     try {
-      const params: any = {
+      const params: Record<string, unknown> = {
         category,
         dateRange: dateRange === "custom" ? undefined : dateRange,
       };
@@ -175,10 +174,10 @@ export default function AdminReportsPage() {
       } else {
         throw new Error("Failed to load category details");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to load category details",
+        description: error instanceof Error ? error.message : "Failed to load category details",
         variant: "destructive",
       });
     } finally {
@@ -188,7 +187,7 @@ export default function AdminReportsPage() {
 
   const handleExportReport = async () => {
     try {
-      const params: any = {
+      const params: Record<string, unknown> = {
         reportType,
         dateRange: dateRange === "custom" ? undefined : dateRange,
         format: "pdf",
@@ -216,10 +215,10 @@ export default function AdminReportsPage() {
         title: "Success",
         description: "PDF report exported successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to export report",
+        description: error instanceof Error ? error.message : "Failed to export report",
         variant: "destructive",
       });
     }
@@ -227,7 +226,7 @@ export default function AdminReportsPage() {
 
   const handleQuickReport = async (type: string) => {
     try {
-      const params: any = {
+      const params: Record<string, unknown> = {
         reportType: type,
         dateRange: dateRange === "custom" ? undefined : dateRange,
         format: "pdf",
@@ -284,10 +283,10 @@ export default function AdminReportsPage() {
         title: "Success",
         description: `${type} report exported successfully as PDF`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "Failed to export report",
+        description: error instanceof Error ? error.message : "Failed to export report",
         variant: "destructive",
       });
     }
@@ -886,26 +885,26 @@ export default function AdminReportsPage() {
                       <CardContent>
                         <div className="space-y-4">
                           {categoryDetails.monthlyTrends.map(
-                            (month: any, index: number) => (
+                            (month: Record<string, unknown>, index: number) => (
                               <div key={index} className="space-y-2">
                                 <div className="flex justify-between items-center">
                                   <span className="text-sm font-medium">
                                     {month.month} {month.year}
                                   </span>
                                   <span className="text-sm text-gray-500">
-                                    RM{(month.revenue / 1000).toFixed(0)}K
+                                    RM{((month.revenue as number) / 1000).toFixed(0)}K
                                   </span>
                                 </div>
                                 <Progress
                                   value={
                                     categoryDetails.monthlyTrends.length > 0
-                                      ? (month.revenue /
+                                      ? (((month.revenue as number) /
                                           Math.max(
                                             ...categoryDetails.monthlyTrends.map(
-                                              (m: any) => m.revenue
+                                              (m: Record<string, unknown>) => m.revenue as number
                                             )
                                           )) *
-                                        100
+                                        100)
                                       : 0
                                   }
                                   className="h-2"
@@ -934,7 +933,7 @@ export default function AdminReportsPage() {
                     {categoryDetails.projects &&
                     categoryDetails.projects.length > 0 ? (
                       <div className="space-y-3">
-                        {categoryDetails.projects.map((project: any) => (
+                        {categoryDetails.projects.map((project: Record<string, unknown>) => (
                           <Link
                             key={project.id}
                             href={`/admin/projects/${project.id}`}
@@ -1005,7 +1004,7 @@ export default function AdminReportsPage() {
                     {categoryDetails.providers &&
                     categoryDetails.providers.length > 0 ? (
                       <div className="space-y-3">
-                        {categoryDetails.providers.map((provider: any) => (
+                        {categoryDetails.providers.map((provider: Record<string, unknown>) => (
                           <Link
                             key={provider.id}
                             href={`/admin/users/${provider.id}`}
@@ -1064,7 +1063,7 @@ export default function AdminReportsPage() {
                     {categoryDetails.customers &&
                     categoryDetails.customers.length > 0 ? (
                       <div className="space-y-3">
-                        {categoryDetails.customers.map((customer: any) => (
+                        {categoryDetails.customers.map((customer: Record<string, unknown>) => (
                           <Link
                             key={customer.id}
                             href={`/admin/users/${customer.id}`}

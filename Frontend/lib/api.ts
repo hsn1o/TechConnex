@@ -150,7 +150,7 @@ export async function getCompanyProfileCompletion() {
   return data;
 }
 
-export async function updateCompanyProfile(profileData: any) {
+export async function updateCompanyProfile(profileData: Record<string, unknown>) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
 
@@ -168,7 +168,7 @@ export async function updateCompanyProfile(profileData: any) {
   return data;
 }
 
-export async function upsertCompanyProfile(profileData: any) {
+export async function upsertCompanyProfile(profileData: Record<string, unknown>) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : undefined;
   if (!token) throw new Error("Not authenticated");
 
@@ -356,18 +356,19 @@ export async function analyzeProjectDocument(file: File) {
         visibility: "private",
         category: "document",
       });
-    } catch (uploadError: any) {
+    } catch (uploadError: unknown) {
       // Handle R2 upload errors
-      if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+      const error = uploadError instanceof Error ? uploadError : new Error(String(uploadError));
+      if (error.message?.includes("network") || error.message?.includes("fetch")) {
         throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
       }
-      if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
-        throw new Error(`File size error: ${uploadError.message}`);
+      if (error.message?.includes("size") || error.message?.includes("limit")) {
+        throw new Error(`File size error: ${error.message}`);
       }
-      if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
-        throw new Error(`File type error: ${uploadError.message}`);
+      if (error.message?.includes("type") || error.message?.includes("format")) {
+        throw new Error(`File type error: ${error.message}`);
       }
-      throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+      throw new Error(`Upload failed: ${error.message || "Unknown error occurred during file upload"}`);
     }
 
     if (!uploadResult.success) {
@@ -389,18 +390,19 @@ export async function analyzeProjectDocument(file: File) {
           fileName: file.name,
         }),
       });
-    } catch (fetchError: any) {
+    } catch (fetchError: unknown) {
       // Handle network errors
-      if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+      const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+      if (error.message?.includes("network") || error.message?.includes("fetch") || error.name === "TypeError") {
         throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
       }
-      throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+      throw new Error(`Server connection failed: ${error.message || "Unknown error"}`);
     }
 
     let data;
     try {
       data = await res.json();
-    } catch (parseError) {
+    } catch {
       throw new Error("Server response error: Invalid response from server. Please try again.");
     }
 
@@ -417,9 +419,9 @@ export async function analyzeProjectDocument(file: File) {
     }
 
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Document analysis error:", error);
-    throw error;
+    throw error instanceof Error ? error : new Error(String(error));
   }
 }
 
@@ -683,8 +685,8 @@ export async function sendProposal(formData: FormData) {
   }
 
   // Convert FormData to plain object (excluding attachments)
-  const proposalData: any = {};
-  const milestonesMap: Record<number, any> = {};
+  const proposalData: Record<string, unknown> = {};
+  const milestonesMap: Record<number, Record<string, unknown>> = {};
   
   for (const [key, value] of formData.entries()) {
     if (key !== "attachments") {
@@ -997,7 +999,7 @@ export async function updateProviderProjectStatus(id: string, status: string) {
 export async function updateProviderMilestoneStatus(
   milestoneId: string, 
   status: string, 
-  deliverables?: any,
+  deliverables?: unknown,
   submissionNote?: string,
   attachment?: File
 ) {
@@ -1133,13 +1135,13 @@ export type Milestone = {
   order?: number;
   completedAt?: string;
   progress?: number;
-  startDeliverables?: any; // When starting work (LOCKED -> IN_PROGRESS)
-  submitDeliverables?: any; // When submitting work (IN_PROGRESS -> SUBMITTED)
+  startDeliverables?: unknown; // When starting work (LOCKED -> IN_PROGRESS)
+  submitDeliverables?: unknown; // When submitting work (IN_PROGRESS -> SUBMITTED)
   submissionAttachmentUrl?: string;
   submissionNote?: string;
   submittedAt?: string;
   revisionNumber?: number; // Track submission iterations
-  submissionHistory?: any[]; // Array of previous submissions
+  submissionHistory?: unknown[]; // Array of previous submissions
 };
 
 function getToken() {
@@ -1165,13 +1167,13 @@ export async function getCompanyProjectMilestones(projectId: string) {
       dueDate: string;
       order: number;
       status: string;
-      startDeliverables?: any;
-      submitDeliverables?: any;
+      startDeliverables?: unknown;
+      submitDeliverables?: unknown;
       submissionAttachmentUrl?: string;
       submissionNote?: string;
       submittedAt?: string;
       revisionNumber?: number;
-      submissionHistory?: any[];
+      submissionHistory?: unknown[];
     }>;
     milestonesLocked: boolean;
     companyApproved: boolean;
@@ -1204,7 +1206,7 @@ export async function approveCompanyMilestones(projectId: string) {
     success: boolean; 
     approved: boolean; 
     locked: boolean; 
-    milestones: any[];
+    milestones: Milestone[];
     milestonesLocked: boolean;
     companyApproved: boolean;
     providerApproved: boolean;
@@ -1299,7 +1301,7 @@ export async function approveProviderMilestones(projectId: string) {
     success: boolean; 
     approved: boolean; 
     locked: boolean; 
-    milestones: any[];
+    milestones: Milestone[];
     milestonesLocked: boolean;
     companyApproved: boolean;
     providerApproved: boolean;
@@ -1553,7 +1555,7 @@ export async function getProviderProfile() {
   return data;
 }
 
-export async function updateProviderProfile(profileData: any) {
+export async function updateProviderProfile(profileData: Record<string, unknown>) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
@@ -1571,7 +1573,7 @@ export async function updateProviderProfile(profileData: any) {
   return data;
 }
 
-export async function upsertProviderProfile(profileData: any) {
+export async function upsertProviderProfile(profileData: Record<string, unknown>) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
@@ -2043,7 +2045,7 @@ export async function activateUser(userId: string) {
   return data;
 }
 
-export async function updateAdminUser(userId: string, updateData: any) {
+export async function updateAdminUser(userId: string, updateData: Record<string, unknown>) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
@@ -2058,6 +2060,32 @@ export async function updateAdminUser(userId: string, updateData: any) {
   
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || "Failed to update user");
+  return data;
+}
+
+export async function createAdminUser(userData: {
+  name: string;
+  email: string;
+  phone?: string;
+  role: "ADMIN" | "PROVIDER" | "CUSTOMER";
+  password: string;
+  providerProfile?: Record<string, unknown>;
+  customerProfile?: Record<string, unknown>;
+}) {
+  const token = getToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/admin/users`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+  
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || "Failed to create user");
   return data;
 }
 
@@ -2102,7 +2130,7 @@ export async function createDispute(disputeData: {
   }
 
   // Prepare JSON payload
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     projectId: disputeData.projectId,
     reason: disputeData.reason,
     description: disputeData.description,
@@ -2196,7 +2224,7 @@ export async function updateDispute(disputeId: string, updateData: {
   }
 
   // Prepare JSON payload
-  const payload: any = {};
+  const payload: Record<string, unknown> = {};
 
   if (updateData.reason) payload.reason = updateData.reason;
   if (updateData.description) payload.description = updateData.description;
@@ -2415,7 +2443,7 @@ export async function getAdminProjectById(projectId: string) {
   return data;
 }
 
-export async function updateAdminProject(projectId: string, updateData: any) {
+export async function updateAdminProject(projectId: string, updateData: Record<string, unknown>) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 

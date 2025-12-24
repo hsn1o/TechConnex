@@ -35,23 +35,14 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  MessageSquare,
-  Calendar,
-  DollarSign,
-  Clock,
-  User,
   MapPin,
   Globe,
-  Star,
   CheckCircle,
   AlertCircle,
   Loader2,
-  Upload,
   Send,
   Paperclip,
   ThumbsUp,
-  Users,
-  Zap,
   Eye,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
@@ -79,6 +70,50 @@ type ProposalFormData = {
   attachments: File[];
 };
 
+type OpportunityMilestone = {
+  id?: string;
+  order?: number;
+  title: string;
+  description?: string;
+  amount?: number;
+  dueDate?: string;
+};
+
+type OpportunityCustomer = {
+  id?: string;
+  name?: string;
+  email?: string;
+  customerProfile?: {
+    profileImageUrl?: string;
+    location?: string;
+    website?: string;
+    industry?: string;
+    companySize?: string;
+    projectsPosted?: number;
+  };
+};
+
+type Opportunity = {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  timeline?: string;
+  priority?: string;
+  skills?: string[];
+  requirements?: string | string[];
+  deliverables?: string | string[];
+  milestones?: OpportunityMilestone[];
+  customer?: OpportunityCustomer;
+  hasProposed?: boolean;
+  createdAt: string;
+  _count?: {
+    proposals?: number;
+  };
+};
+
 export default function OpportunityDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -86,7 +121,7 @@ export default function OpportunityDetailsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [opportunity, setOpportunity] = useState<any>(null);
+  const [opportunity, setOpportunity] = useState<Opportunity | null>(null);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [submittingProposal, setSubmittingProposal] = useState(false);
 
@@ -117,12 +152,6 @@ export default function OpportunityDetailsPage() {
   const MAX_FILES = 3;
   const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
-  useEffect(() => {
-    if (opportunityId) {
-      loadOpportunity();
-    }
-  }, [opportunityId]);
-
   const loadOpportunity = async () => {
     try {
       setLoading(true);
@@ -133,13 +162,21 @@ export default function OpportunityDetailsPage() {
       } else {
         setError("Failed to load opportunity");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error loading opportunity:", err);
-      setError(err.message || "Failed to load opportunity");
+      const errorMessage = err instanceof Error ? err.message : "Failed to load opportunity";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (opportunityId) {
+      loadOpportunity();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opportunityId]);
 
   // Keep sequences clean and sorted
   const normalizeDraftSequences = (items: Milestone[]) =>
@@ -342,7 +379,7 @@ export default function OpportunityDetailsPage() {
 
     // if there are validation problems, stop here and toast
     if (messages.length > 0) {
-      toast.error(messages.map((m, i) => `• ${m}`).join("\n"));
+      toast.error(messages.map((m) => `• ${m}`).join("\n"));
       return;
     }
 
@@ -442,11 +479,10 @@ export default function OpportunityDetailsPage() {
       } else {
         toast.error(response.message || "Failed to submit proposal");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error submitting proposal:", err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to submit proposal"
-      );
+      const errorMessage = err instanceof Error ? err.message : "Failed to submit proposal";
+      toast.error(errorMessage);
     } finally {
       setSubmittingProposal(false);
     }
@@ -554,14 +590,14 @@ export default function OpportunityDetailsPage() {
     typeof opportunity.requirements === "string"
       ? opportunity.requirements
       : Array.isArray(opportunity.requirements)
-      ? opportunity.requirements.map((r: any) => `- ${r}`).join("\n")
+      ? opportunity.requirements.map((r: string | unknown) => `- ${String(r)}`).join("\n")
       : "";
 
   const deliverables =
     typeof opportunity.deliverables === "string"
       ? opportunity.deliverables
       : Array.isArray(opportunity.deliverables)
-      ? opportunity.deliverables.map((d: any) => `- ${d}`).join("\n")
+      ? opportunity.deliverables.map((d: string | unknown) => `- ${String(d)}`).join("\n")
       : "";
 
   // Get client profile image
@@ -744,7 +780,7 @@ export default function OpportunityDetailsPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {opportunity.milestones.map((milestone: any, index: number) => (
+                        {opportunity.milestones.map((milestone: OpportunityMilestone, index: number) => (
                           <div key={milestone.id || index} className="border rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-3">
@@ -907,7 +943,7 @@ export default function OpportunityDetailsPage() {
             <DialogHeader>
               <DialogTitle className="text-xl">Submit Proposal</DialogTitle>
               <DialogDescription>
-                Submit your proposal for "{opportunity.title}"
+                Submit your proposal for &quot;{opportunity.title}&quot;
               </DialogDescription>
             </DialogHeader>
 

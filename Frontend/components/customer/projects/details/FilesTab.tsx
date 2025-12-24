@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Upload } from "lucide-react";
 import type { FileItem } from "../types";
 
-export default function FilesTab({ projectId, items }: { projectId: string; items: FileItem[] }) {
+export default function FilesTab({ items }: { projectId: string; items: FileItem[] }) {
   const download = async (f: FileItem) => {
     // wire to your backend when ready
     console.log("download", f);

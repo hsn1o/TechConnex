@@ -27,7 +27,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -44,20 +43,16 @@ import {
   CreditCard,
   Download,
   Search,
-  Filter,
   Calendar,
   DollarSign,
   CheckCircle,
   Clock,
   AlertCircle,
-  Plus,
   Eye,
   Receipt,
   TrendingUp,
   Wallet,
   Send,
-  Edit,
-  Trash2,
   ArrowUpRight,
   ArrowDownRight,
 } from "lucide-react";
@@ -67,21 +62,71 @@ import { apiFetch, API_BASE } from "@/lib/api";
 import Link from "next/link";
 import MilestonePayment from "@/components/MilestonePayment";
 
+type Transaction = {
+  id: string;
+  description: string;
+  project: string;
+  provider: string;
+  milestone: string;
+  method: string;
+  reference: string;
+  status: string;
+  date: string;
+  amount: number;
+  type: string;
+};
+
+type Budget = {
+  id: string;
+  category: string;
+  allocated: number;
+  spent: number;
+  remaining: number;
+  projects: number;
+  period?: string;
+};
+
+type UpcomingPayment = {
+  id: string;
+  projectId: string;
+  project: string;
+  milestone: string;
+  status: string;
+  amount: number;
+  dueDate: string;
+  sequence: number;
+};
+
+type Invoice = {
+  id: string;
+  number: string;
+  status: string;
+  amount: number;
+  issueDate: string;
+  dueDate: string;
+  paidDate?: string;
+  provider: string;
+  items: Array<{
+    description: string;
+    quantity: number;
+    rate: number;
+    amount: number;
+  }>;
+};
+
 export default function CustomerBillingPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
-  const [addBudgetOpen, setAddBudgetOpen] = useState(false);
   const [editBudgetOpen, setEditBudgetOpen] = useState(false);
-  const [selectedBudget, setSelectedBudget] = useState<any>(null);
+  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [selectedMilestoneForPayment, setSelectedMilestoneForPayment] =
-    useState<any>(null);
+    useState<UpcomingPayment | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const refreshProjectData = () => {
     // TODO: implement data refresh after payment
@@ -94,65 +139,10 @@ export default function CustomerBillingPage() {
     averageTransaction: 0,
     completedPayments: 0,
   });
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [budgets, setBudgets] = useState<any[]>([]);
-  const [upcomingPayments, setUpcomingPayments] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([]);
   const [loading, setLoading] = useState(true);
-  // Mock data
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [loadingInvoices, setLoadingInvoices] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        const data = await apiFetch("/company/billing/invoices");
-        setInvoices(data?.invoices || []);
-      } catch (err: unknown) {
-        console.error(err);
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Failed to fetch invoices");
-        }
-      } finally {
-        setLoadingInvoices(false);
-      }
-    };
-
-    fetchInvoices();
-  }, []);
-
-  const paymentMethods = [
-    {
-      id: "card-1",
-      type: "credit_card",
-      brand: "Visa",
-      last4: "4242",
-      expiryMonth: 12,
-      expiryYear: 2025,
-      isDefault: true,
-      name: "Ahmad Rahman",
-    },
-    {
-      id: "card-2",
-      type: "credit_card",
-      brand: "Mastercard",
-      last4: "8888",
-      expiryMonth: 8,
-      expiryYear: 2026,
-      isDefault: false,
-      name: "Ahmad Rahman",
-    },
-    {
-      id: "bank-1",
-      type: "bank_account",
-      bankName: "Maybank",
-      last4: "1234",
-      accountName: "Tech Innovations Sdn Bhd",
-      isDefault: false,
-    },
-  ];
 
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch =
@@ -249,18 +239,6 @@ export default function CustomerBillingPage() {
     }
   };
 
-  const getCardIcon = (brand: string) => {
-    switch (brand.toLowerCase()) {
-      case "visa":
-        return "💳";
-      case "mastercard":
-        return "💳";
-      case "amex":
-        return "💳";
-      default:
-        return "💳";
-    }
-  };
 
   const handleViewTransactionDetails = (transactionId: string) => {
     router.push(`/customer/billing/transactions/${transactionId}`);
@@ -281,11 +259,12 @@ export default function CustomerBillingPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
+      const errorMessage = e instanceof Error ? e.message : "Failed to download receipt";
       toast({
         title: "Error downloading receipt",
-        description: e.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -317,24 +296,17 @@ export default function CustomerBillingPage() {
         title: "Report Downloaded",
         description: "Your billing report has been downloaded.",
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
+      const errorMessage = e instanceof Error ? e.message : "Failed to export report";
       toast({
         title: "Error exporting report",
-        description: e.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
   };
 
-  const handleViewBudgetDetails = (budgetId: string) => {
-    router.push(`/customer/billing/budgets/${budgetId}`);
-  };
-
-  const handleEditBudget = (budget: any) => {
-    setSelectedBudget(budget);
-    setEditBudgetOpen(true);
-  };
 
   const handleSaveBudgetEdit = () => {
     toast({
@@ -344,12 +316,7 @@ export default function CustomerBillingPage() {
     setEditBudgetOpen(false);
   };
 
-  const handleViewInvoice = (invoice: any) => {
-    setSelectedInvoice(invoice);
-    setInvoiceDialogOpen(true);
-  };
-
-  const handleDownloadInvoice = (invoice: any) => {
+  const handleDownloadInvoice = (invoice: Invoice) => {
     toast({
       title: "Downloading Invoice",
       description: `Invoice ${invoice.number} is being downloaded.`,
@@ -357,8 +324,8 @@ export default function CustomerBillingPage() {
   };
 
   // Handle payment button click
-  const handlePayMilestone = (milestoneId: string, amount: number) => {
-    const milestone = upcomingPayments.find((m: any) => m.id === milestoneId);
+  const handlePayMilestone = (milestoneId: string) => {
+    const milestone = upcomingPayments.find((m) => m.id === milestoneId);
     if (milestone) {
       setSelectedMilestoneForPayment(milestone);
       setPaymentDialogOpen(true);
@@ -373,19 +340,6 @@ export default function CustomerBillingPage() {
     setAddPaymentMethodOpen(false);
   };
 
-  const handleSetDefaultPaymentMethod = (methodId: string) => {
-    toast({
-      title: "Default Payment Method Updated",
-      description: "Your default payment method has been changed.",
-    });
-  };
-
-  const handleRemovePaymentMethod = (methodId: string) => {
-    toast({
-      title: "Payment Method Removed",
-      description: "The payment method has been removed from your account.",
-    });
-  };
 
   // ✅ Fetch all billing data
   useEffect(() => {
@@ -407,30 +361,30 @@ export default function CustomerBillingPage() {
         });
         setBudgets(overviewRes.data.budgets || []);
         setTransactions(
-          (txnRes.transactions || []).map((txn: any) => ({
-            id: txn.id,
-            description: txn.metadata?.milestoneTitle || "",
-            project: txn.project?.title || "",
-            provider: txn.metadata?.providerEmail || "",
-            milestone: txn.milestone?.title || "",
-            method: txn.method,
-            reference: txn.stripePaymentIntentId,
-            status: txn.status.toLowerCase(),
-            date: txn.createdAt,
-            amount: txn.amount,
+          (txnRes.transactions || []).map((txn: Record<string, unknown>) => ({
+            id: (txn.id as string) || "",
+            description: ((txn.metadata as Record<string, unknown>)?.milestoneTitle as string) || "",
+            project: ((txn.project as Record<string, unknown>)?.title as string) || "",
+            provider: ((txn.metadata as Record<string, unknown>)?.providerEmail as string) || "",
+            milestone: ((txn.milestone as Record<string, unknown>)?.title as string) || "",
+            method: (txn.method as string) || "",
+            reference: (txn.stripePaymentIntentId as string) || "",
+            status: ((txn.status as string) || "").toLowerCase(),
+            date: (txn.createdAt as string) || "",
+            amount: (txn.amount as number) || 0,
             type: "payment",
           }))
         );
         setUpcomingPayments(
-          (upcomingRes.data || []).flatMap((project: any) =>
-            project.milestones.map((milestone: any, index: number) => ({
-              id: milestone.id,
-              projectId: project.id,
-              project: project.title,
-              milestone: milestone.title,
-              status: milestone.status,
-              amount: milestone.amount,
-              dueDate: milestone.dueDate,
+          (upcomingRes.data || []).flatMap((project: Record<string, unknown>) =>
+            ((project.milestones as Array<Record<string, unknown>>) || []).map((milestone: Record<string, unknown>, index: number) => ({
+              id: (milestone.id as string) || "",
+              projectId: (project.id as string) || "",
+              project: (project.title as string) || "",
+              milestone: (milestone.title as string) || "",
+              status: (milestone.status as string) || "",
+              amount: (milestone.amount as number) || 0,
+              dueDate: (milestone.dueDate as string) || "",
               sequence: index,
             }))
           )
@@ -487,7 +441,7 @@ export default function CustomerBillingPage() {
                     Add a new credit card or bank account to your account.
                   </DialogDescription>
                 </DialogHeader>
-                <AddPaymentMethodForm onSubmit={handleAddPaymentMethod} />
+                <AddPaymentMethodForm />
               </DialogContent>
             </Dialog>
           </div>
@@ -693,7 +647,7 @@ export default function CustomerBillingPage() {
                             size="sm"
                             className="mt-2"
                             onClick={() =>
-                              handlePayMilestone(payment.id, payment.amount)
+                              handlePayMilestone(payment.id)
                             }
                           >
                             <Send className="w-3 h-3 mr-1" />
@@ -914,9 +868,7 @@ export default function CustomerBillingPage() {
                     No transactions found
                   </h3>
                   <p className="text-gray-600">
-                    {searchTerm ||
-                    filterStatus !== "all" ||
-                    filterPeriod !== "all"
+                    {searchTerm || filterPeriod !== "all"
                       ? "Try adjusting your search or filter criteria."
                       : "You haven't made any payments yet."}
                   </p>
@@ -1352,7 +1304,7 @@ export default function CustomerBillingPage() {
                       </TableHeader>
                       <TableBody>
                         {selectedInvoice.items.map(
-                          (item: any, index: number) => (
+                          (item: { description: string; quantity: number; rate: number; amount: number }, index: number) => (
                             <TableRow key={index}>
                               <TableCell>{item.description}</TableCell>
                               <TableCell>{item.quantity}</TableCell>
@@ -1417,7 +1369,7 @@ export default function CustomerBillingPage() {
             <MilestonePayment
               milestone={{
                 id: selectedMilestoneForPayment?.id || "",
-                title: selectedMilestoneForPayment?.title || "",
+                title: selectedMilestoneForPayment?.milestone || "",
                 amount: selectedMilestoneForPayment?.amount || 0,
                 projectId: selectedMilestoneForPayment?.projectId || "",
               }}
@@ -1462,7 +1414,7 @@ export default function CustomerBillingPage() {
                 </div>
                 <div>
                   <Label htmlFor="edit-period">Period</Label>
-                  <Select defaultValue={selectedBudget.period.toLowerCase()}>
+                  <Select defaultValue={selectedBudget.period?.toLowerCase() || "monthly"}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -1491,7 +1443,7 @@ export default function CustomerBillingPage() {
   );
 }
 
-function AddPaymentMethodForm({ onSubmit }: { onSubmit: () => void }) {
+function AddPaymentMethodForm() {
   return (
     <div className="space-y-4">
       <Tabs defaultValue="card">

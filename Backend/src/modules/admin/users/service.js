@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { userModel } from "./model.js";
 
 export const userService = {
@@ -55,6 +56,27 @@ export const userService = {
       return stats;
     } catch (error) {
       throw new Error(`Failed to get user stats: ${error.message}`);
+    }
+  },
+
+  async createUser(userData) {
+    try {
+      // Check if user with email already exists
+      const existingUser = await userModel.getUserByEmail(userData.email);
+      if (existingUser) {
+        throw new Error("User with this email already exists");
+      }
+
+      // Hash the password before creating user
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      
+      const user = await userModel.createUser({
+        ...userData,
+        password: hashedPassword,
+      });
+      return user;
+    } catch (error) {
+      throw new Error(`Failed to create user: ${error.message}`);
     }
   },
 };

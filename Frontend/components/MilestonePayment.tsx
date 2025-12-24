@@ -20,13 +20,13 @@ interface MilestonePaymentProps {
     amount: number;
     projectId: string;
   };
-  onSuccess: () => void;
+  onSuccess?: () => void;
   type: string;
 }
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-function CheckoutForm({ milestone, onSuccess, type }: MilestonePaymentProps) {
+function CheckoutForm({ milestone, type }: MilestonePaymentProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -55,7 +55,7 @@ function CheckoutForm({ milestone, onSuccess, type }: MilestonePaymentProps) {
         setErrorMessage(error.message || "Payment failed");
         setIsProcessing(false);
       }
-    } catch (err) {
+    } catch {
       setErrorMessage("An unexpected error occurred");
       setIsProcessing(false);
     }
@@ -86,7 +86,6 @@ function CheckoutForm({ milestone, onSuccess, type }: MilestonePaymentProps) {
 
 export default function MilestonePayment({
   milestone,
-  onSuccess,
   type,
 }: MilestonePaymentProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -158,7 +157,7 @@ export default function MilestonePayment({
       </p>
 
       <Elements stripe={stripePromise} options={options}>
-        <CheckoutForm milestone={milestone} onSuccess={onSuccess} type={type} />
+        <CheckoutForm milestone={milestone} type={type} />
       </Elements>
     </div>
   );

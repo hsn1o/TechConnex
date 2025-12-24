@@ -6,9 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -39,8 +36,6 @@ import {
   Search,
   Plus,
   Reply,
-  Pencil,
-  Trash2,
   Clock,
 } from "lucide-react";
 import { CustomerLayout } from "@/components/customer-layout";
@@ -70,8 +65,6 @@ const CUSTOMER_CATEGORY_KEYS = [
   "timelinessRating",
   "professionalismRating",
 ] as const;
-
-type CustomerCategoryKey = (typeof CUSTOMER_CATEGORY_KEYS)[number];
 
 function computeCustomerOverallRating(form: ReviewFormState) {
   const ratings = CUSTOMER_CATEGORY_KEYS.map((key) => form[key]).filter(
@@ -273,10 +266,10 @@ export default function CustomerReviewsPage() {
       });
       refetchGivenReviews();
       refetchProjects();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Unable to delete review",
-        description: error?.message ?? "Please try again later.",
+        description: error instanceof Error ? error.message : "Please try again later.",
         variant: "destructive",
       });
     }
@@ -355,8 +348,8 @@ export default function CustomerReviewsPage() {
       handleReviewDialogOpenChange(false);
       refetchGivenReviews();
       refetchProjects();
-    } catch (error: any) {
-      const message = error?.message ?? "Unable to save your review.";
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unable to save your review.";
       toast({
         title: message.includes("already exists")
           ? "Review already submitted"
@@ -394,10 +387,10 @@ export default function CustomerReviewsPage() {
       });
       handleReplyDialogOpenChange(false);
       refetchReceivedReviews();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Unable to post reply",
-        description: error?.message ?? "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
     }
@@ -668,8 +661,6 @@ function ReviewList({
 function ReviewCard({
   review,
   type,
-  onEdit,
-  onDelete,
   onReply,
 }: {
   review: Review;
@@ -1015,7 +1006,7 @@ function ReplyDialog({
         <DialogHeader>
           <DialogTitle>Reply to review</DialogTitle>
           <DialogDescription>
-            Respond publicly to the provider's feedback.
+            Respond publicly to the provider&apos;s feedback.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

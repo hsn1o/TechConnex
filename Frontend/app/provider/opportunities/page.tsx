@@ -35,14 +35,12 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Search,
-  Filter,
   ThumbsUp,
   Eye,
   Clock,
   DollarSign,
   Users,
   MapPin,
-  Zap,
   Star,
   Send,
   Paperclip,
@@ -69,10 +67,71 @@ import {
 import Link from "next/link";
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
 
+type OpportunityCustomer = {
+  id?: string;
+  name?: string;
+  email?: string;
+  isVerified?: boolean;
+  createdAt?: string;
+  customerProfile?: {
+    profileImageUrl?: string;
+    location?: string;
+    companySize?: string;
+    industry?: string;
+    projectsPosted?: number;
+    totalSpend?: number | string;
+  };
+};
+
+type OpportunityData = {
+  id: string;
+  title: string;
+  description?: string;
+  fullDescription?: string;
+  client: string;
+  clientId: string | null;
+  budget: string;
+  budgetMin: number;
+  budgetMax: number;
+  budgetType: string;
+  timeline: string;
+  originalTimeline: string | null;
+  originalTimelineInDays: number;
+  skills: string[];
+  postedTime: string;
+  matchScore?: number;
+  proposals: number;
+  category?: string;
+  location: string;
+  clientRating: number;
+  projectsPosted: number;
+  avatar: string;
+  urgent: boolean;
+  verified: boolean;
+  hasSubmitted: boolean;
+  requirements: string;
+  deliverables: string;
+  clientInfo: {
+    companySize: string;
+    industry: string;
+    memberSince: string;
+    totalSpent: string;
+    avgRating: number;
+  };
+  originalData: Record<string, unknown>;
+  aiExplanation?: string | null;
+  serviceRequestId: string;
+};
+
+type AiDraft = {
+  referenceId: string;
+  summary?: string;
+};
+
 export default function ProviderOpportunitiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [selectedProject, setSelectedProject] = useState<OpportunityData | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   type Milestone = {
@@ -102,14 +161,14 @@ export default function ProviderOpportunitiesPage() {
   });
 
   // API state
-  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [opportunities, setOpportunities] = useState<OpportunityData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submittingProposal, setSubmittingProposal] = useState(false);
 
   // Recommended opportunities state
   const [recommendedOpportunities, setRecommendedOpportunities] = useState<
-    any[]
+    OpportunityData[]
   >([]);
   const [loadingRecommended, setLoadingRecommended] = useState(true);
   const [errorRecommended, setErrorRecommended] = useState<string | null>(null);
@@ -141,24 +200,24 @@ export default function ProviderOpportunitiesPage() {
   // Helper function to map opportunity data
   // useRecommendationInsights: if true, use aiExplanation from opportunity (for recommended tab), if false, ignore it (for all tab - will use drafts)
   const mapOpportunityData = (
-    opportunity: any,
+    opportunity: Record<string, unknown>,
     useRecommendationInsights: boolean = false
-  ) => ({
-    id: opportunity.id,
-    title: opportunity.title,
-    description: opportunity.description,
-    fullDescription: opportunity.description,
-    client: opportunity.customer?.name || "Unknown Client",
-    clientId: opportunity.customer?.id || null,
-    budget: `RM ${opportunity.budgetMin?.toLocaleString()} - RM ${opportunity.budgetMax?.toLocaleString()}`,
-    budgetMin: opportunity.budgetMin || 0,
-    budgetMax: opportunity.budgetMax || 0,
+  ): OpportunityData => ({
+    id: String(opportunity.id || ""),
+    title: String(opportunity.title || ""),
+    description: opportunity.description ? String(opportunity.description) : undefined,
+    fullDescription: opportunity.description ? String(opportunity.description) : undefined,
+    client: (opportunity.customer as OpportunityCustomer)?.name || "Unknown Client",
+    clientId: (opportunity.customer as OpportunityCustomer)?.id || null,
+    budget: `RM ${((opportunity.budgetMin as number) || 0).toLocaleString()} - RM ${((opportunity.budgetMax as number) || 0).toLocaleString()}`,
+    budgetMin: (opportunity.budgetMin as number) || 0,
+    budgetMax: (opportunity.budgetMax as number) || 0,
     budgetType: "fixed",
-    timeline: formatTimeline(opportunity.timeline) || "Not specified",
-    originalTimeline: opportunity.timeline || null,
+    timeline: formatTimeline(opportunity.timeline as string) || "Not specified",
+    originalTimeline: (opportunity.timeline as string) || null,
     originalTimelineInDays: (() => {
       if (!opportunity.timeline) return 0;
-      const timelineStr = opportunity.timeline.toLowerCase().trim();
+      const timelineStr = String(opportunity.timeline).toLowerCase().trim();
       const match = timelineStr.match(
         /^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/
       );
@@ -169,42 +228,42 @@ export default function ProviderOpportunitiesPage() {
       }
       return 0;
     })(),
-    skills: opportunity.skills || [],
-    postedTime: new Date(opportunity.createdAt).toLocaleDateString(),
-    matchScore: opportunity.matchScore || undefined,
-    proposals: opportunity._count?.proposals || opportunity.proposalCount || 0,
-    category: opportunity.category,
+    skills: Array.isArray(opportunity.skills) ? (opportunity.skills as string[]) : [],
+    postedTime: new Date(String(opportunity.createdAt || Date.now())).toLocaleDateString(),
+    matchScore: opportunity.matchScore ? Number(opportunity.matchScore) : undefined,
+    proposals: ((opportunity._count as { proposals?: number })?.proposals) || (opportunity.proposalCount as number) || 0,
+    category: opportunity.category ? String(opportunity.category) : undefined,
     location:
-      opportunity.customer?.customerProfile?.location || "Not specified",
+      (opportunity.customer as OpportunityCustomer)?.customerProfile?.location || "Not specified",
     clientRating: 4.5,
-    projectsPosted: opportunity.customer?.customerProfile?.projectsPosted || 0,
-    avatar: getProfileImageUrl(opportunity.customer?.customerProfile?.profileImageUrl),
+    projectsPosted: (opportunity.customer as OpportunityCustomer)?.customerProfile?.projectsPosted || 0,
+    avatar: getProfileImageUrl((opportunity.customer as OpportunityCustomer)?.customerProfile?.profileImageUrl),
     urgent: opportunity.priority === "High",
-    verified: opportunity.customer?.isVerified || false,
-    hasSubmitted: opportunity.hasProposed || false,
+    verified: (opportunity.customer as OpportunityCustomer)?.isVerified || false,
+    hasSubmitted: (opportunity.hasProposed as boolean) || false,
     requirements:
       typeof opportunity.requirements === "string"
         ? opportunity.requirements
         : Array.isArray(opportunity.requirements)
-        ? opportunity.requirements.map((r: any) => `- ${r}`).join("\n")
+        ? (opportunity.requirements as unknown[]).map((r: unknown) => `- ${String(r)}`).join("\n")
         : "",
     deliverables:
       typeof opportunity.deliverables === "string"
         ? opportunity.deliverables
         : Array.isArray(opportunity.deliverables)
-        ? opportunity.deliverables.map((d: any) => `- ${d}`).join("\n")
+        ? (opportunity.deliverables as unknown[]).map((d: unknown) => `- ${String(d)}`).join("\n")
         : "",
     clientInfo: {
       companySize:
-        opportunity.customer?.customerProfile?.companySize || "Not specified",
+        (opportunity.customer as OpportunityCustomer)?.customerProfile?.companySize || "Not specified",
       industry:
-        opportunity.customer?.customerProfile?.industry || "Not specified",
-      memberSince: new Date(opportunity.customer?.createdAt || Date.now())
+        (opportunity.customer as OpportunityCustomer)?.customerProfile?.industry || "Not specified",
+      memberSince: new Date((opportunity.customer as OpportunityCustomer)?.createdAt || Date.now())
         .getFullYear()
         .toString(),
-      totalSpent: opportunity.customer?.customerProfile?.totalSpend
+      totalSpent: (opportunity.customer as OpportunityCustomer)?.customerProfile?.totalSpend
         ? `RM ${Number(
-            opportunity.customer.customerProfile.totalSpend
+            (opportunity.customer as OpportunityCustomer).customerProfile?.totalSpend
           ).toLocaleString()}`
         : "RM 0",
       avgRating: 4.5,
@@ -213,9 +272,9 @@ export default function ProviderOpportunitiesPage() {
     // Only use aiExplanation from opportunity if useRecommendationInsights is true (for recommended tab)
     // For "All" tab, this will be null and we'll use drafts instead
     aiExplanation: useRecommendationInsights
-      ? opportunity.aiExplanation || null
+      ? (opportunity.aiExplanation ? String(opportunity.aiExplanation) : null)
       : null,
-    serviceRequestId: opportunity.id, // ID for fetching AI drafts
+    serviceRequestId: String(opportunity.id || ""), // ID for fetching AI drafts
   });
 
   // Fetch all opportunities from API
@@ -235,12 +294,12 @@ export default function ProviderOpportunitiesPage() {
         if (response.success) {
           // For "All" tab: Don't use recommendation insights, only use drafts
           let mappedOpportunities = (response.opportunities || []).map(
-            (opp: any) => mapOpportunityData(opp, false) // false = don't use recommendation insights
+            (opp: Record<string, unknown>) => mapOpportunityData(opp, false) // false = don't use recommendation insights
           );
 
           // Fetch AiDraft summaries and merge into opportunities (this is the only source of AI insights for "All" tab)
           const serviceRequestIds = mappedOpportunities
-            .map((opp: any) => opp.serviceRequestId)
+            .map((opp: OpportunityData) => opp.serviceRequestId)
             .filter(Boolean);
           if (serviceRequestIds.length > 0) {
             try {
@@ -248,15 +307,15 @@ export default function ProviderOpportunitiesPage() {
                 serviceRequestIds
               );
               if (draftRes?.success && Array.isArray(draftRes.drafts)) {
-                const draftMap = new Map(
-                  draftRes.drafts.map((d: any) => [d.referenceId, d.summary])
+                const draftMap = new Map<string, string>(
+                  (draftRes.drafts as AiDraft[]).map((d: AiDraft) => [d.referenceId, d.summary || ""])
                 );
-                mappedOpportunities = mappedOpportunities.map((opp: any) => ({
+                mappedOpportunities = mappedOpportunities.map((opp: OpportunityData) => ({
                   ...opp,
                   // Only use draft summary for "All" tab
                   aiExplanation:
                     opp.serviceRequestId && draftMap.has(opp.serviceRequestId)
-                      ? draftMap.get(opp.serviceRequestId)
+                      ? draftMap.get(opp.serviceRequestId) || null
                       : null,
                 }));
               }
@@ -281,7 +340,7 @@ export default function ProviderOpportunitiesPage() {
     };
 
     fetchOpportunities();
-  }, [searchQuery, categoryFilter, toast]);
+  }, [searchQuery, categoryFilter]);
 
   // Fetch recommended opportunities
   useEffect(() => {
@@ -295,12 +354,12 @@ export default function ProviderOpportunitiesPage() {
           // For "AI Recommended" tab: Use recommendation insights (aiExplanation from API), don't fetch drafts
           // Map the data but ensure aiExplanation from recommendation API is preserved
           const mappedRecommended = (response.recommendations || []).map(
-            (opp: any) => {
+            (opp: Record<string, unknown>) => {
               const mapped = mapOpportunityData(opp, true); // true = use recommendation insights
               // Explicitly preserve the aiExplanation from the recommendation API response
               return {
                 ...mapped,
-                aiExplanation: opp.aiExplanation || null, // Use aiExplanation directly from API response
+                aiExplanation: opp.aiExplanation ? String(opp.aiExplanation) : null, // Use aiExplanation directly from API response
               };
             }
           );
@@ -387,19 +446,14 @@ export default function ProviderOpportunitiesPage() {
       matchesCategory = !opportunity.hasSubmitted;
     } else if (categoryFilter !== "all") {
       matchesCategory = opportunity.category
-        .toLowerCase()
-        .includes(categoryFilter.toLowerCase());
+        ? opportunity.category.toLowerCase().includes(categoryFilter.toLowerCase())
+        : false;
     }
 
     return matchesSearch && matchesCategory;
   });
 
-  const handleViewDetails = (opportunity: any) => {
-    setSelectedProject(opportunity);
-    setIsDetailsModalOpen(true);
-  };
-
-  const handleSubmitProposal = (opportunity: any) => {
+  const handleSubmitProposal = (opportunity: OpportunityData) => {
     setSelectedProject(opportunity);
     setIsProposalModalOpen(true);
     setProposalData({
@@ -586,7 +640,7 @@ export default function ProviderOpportunitiesPage() {
 
     // if there are validation problems, stop here and toast
     if (messages.length > 0) {
-      toast.error(messages.map((m, i) => `• ${m}`).join("\n"));
+      toast.error(messages.map((m) => `• ${m}`).join("\n"));
       return;
     }
 
@@ -629,7 +683,7 @@ export default function ProviderOpportunitiesPage() {
 
       formDataToSend.append(
         "serviceRequestId",
-        selectedProject.originalData.id
+        String(selectedProject.originalData.id || "")
       );
 
       formDataToSend.append(
@@ -1238,7 +1292,7 @@ export default function ProviderOpportunitiesPage() {
                       </div>
                     )}
                   <div className="space-y-3 sm:space-y-4">
-                    {recommendedOpportunities.map((opportunity: any) => {
+                    {recommendedOpportunities.map((opportunity: OpportunityData) => {
                       const isExpanded =
                         expandedOpportunityId === opportunity.id;
                       return (
@@ -1560,10 +1614,10 @@ export default function ProviderOpportunitiesPage() {
                           <span className="text-gray-600">Match Score:</span>
                           <Badge
                             className={getMatchScoreColor(
-                              selectedProject.matchScore
+                              selectedProject.matchScore || 0
                             )}
                           >
-                            {selectedProject.matchScore}%
+                            {selectedProject.matchScore || 0}%
                           </Badge>
                         </div>
                       </CardContent>
@@ -1677,7 +1731,9 @@ export default function ProviderOpportunitiesPage() {
               <Button
                 onClick={() => {
                   setIsDetailsModalOpen(false);
-                  handleSubmitProposal(selectedProject);
+                  if (selectedProject) {
+                    handleSubmitProposal(selectedProject);
+                  }
                 }}
                 disabled={selectedProject?.hasSubmitted}
               >
@@ -1698,7 +1754,7 @@ export default function ProviderOpportunitiesPage() {
             <DialogHeader>
               <DialogTitle className="text-xl">Submit Proposal</DialogTitle>
               <DialogDescription>
-                Submit your proposal for "{selectedProject?.title}"
+                Submit your proposal for &quot;{selectedProject?.title}&quot;
               </DialogDescription>
             </DialogHeader>
 

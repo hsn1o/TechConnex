@@ -34,6 +34,13 @@ function genId() {
 
 type ActionType = typeof actionTypes
 
+// Export actionTypes as a type-only value to satisfy linter
+export type { ActionType }
+
+// Use actionTypes as a value reference to satisfy linter
+// It's primarily used for type inference, but we reference it here to avoid unused var warning
+void actionTypes;
+
 type Action =
   | {
       type: ActionType["ADD_TOAST"]
@@ -158,7 +165,7 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
-      onOpenChange: (open) => {
+      onOpenChange: (open: boolean) => {
         if (!open) dismiss()
       },
     },

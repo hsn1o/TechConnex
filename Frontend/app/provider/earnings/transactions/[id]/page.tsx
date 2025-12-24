@@ -13,16 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
-  Download,
   Receipt,
   CheckCircle,
   Clock,
   AlertCircle,
   CreditCard,
   DollarSign,
-  FileText,
   User,
-  Building,
   MapPin,
   Phone,
   Mail,
@@ -32,12 +29,47 @@ import { useToast } from "@/hooks/use-toast";
 import { apiFetch, API_BASE } from "@/lib/api";
 import { ProviderLayout } from "@/components/provider-layout";
 
+type Transaction = {
+  id: string;
+  stripePaymentIntentId: string;
+  status: string;
+  createdAt: string;
+  providerAmount: number;
+  amount: number;
+  platformFeeAmount: number;
+  method: string;
+  bankTransferRef?: string;
+  timeline?: Array<{ status: string; timestamp: string }>;
+  project: {
+    title: string;
+    provider: {
+      name: string;
+      email: string;
+      phone: string;
+      providerProfile?: {
+        location?: string;
+      };
+    };
+    customer: {
+      name: string;
+      email: string;
+      phone: string;
+      customerProfile?: {
+        location?: string;
+      };
+    };
+  };
+  milestone: {
+    title: string;
+  };
+};
+
 export default function TransactionDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { id } = useParams();
 
-  const [transaction, setTransaction] = useState<any>(null);
+  const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,12 +79,13 @@ export default function TransactionDetailPage() {
       try {
         const json = await apiFetch(`/provider/earnings/${id}`);
         setTransaction(json.data);
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error(e);
-        setError(e.message);
+        const errorMessage = e instanceof Error ? e.message : "Failed to load transaction";
+        setError(errorMessage);
         toast({
           title: "Error",
-          description: e.message,
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -131,26 +164,20 @@ export default function TransactionDetailPage() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `receipt_${transaction.stripePaymentIntentId}.pdf`;
+      link.download = `receipt_${transaction?.stripePaymentIntentId || "receipt"}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
+      const errorMessage = e instanceof Error ? e.message : "Failed to download receipt";
       toast({
         title: "Error downloading receipt",
-        description: e.message,
+        description: errorMessage,
         variant: "destructive",
       });
     }
-  };
-
-  const handleDownloadInvoice = () => {
-    toast({
-      title: "Downloading Invoice",
-      description: "Your invoice is being downloaded.",
-    });
   };
 
   // Derive timeline events: use provided timeline or fallback to current status
@@ -362,7 +389,7 @@ export default function TransactionDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {timelineEvents.map((event: any, index: number) => (
+                  {timelineEvents.map((event: { status: string; timestamp: string }, index: number) => (
                     <div key={index} className="flex gap-4">
                       <div className="flex flex-col items-center">
                         <div

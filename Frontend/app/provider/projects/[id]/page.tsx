@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -35,19 +35,14 @@ import {
 } from "@/components/ui/select";
 import { toast, useToast } from "@/components/ui/use-toast";
 import { 
-  ArrowLeft, 
   MessageSquare, 
-  Calendar, 
   DollarSign, 
-  Clock, 
   User, 
   MapPin, 
   Globe, 
-  Star,
   CheckCircle,
   AlertCircle,
   Loader2,
-  Upload,
   Send,
   Paperclip,
   Download,
@@ -58,7 +53,6 @@ import {
 import { ProviderLayout } from "@/components/provider-layout";
 import {
   getProviderProjectById,
-  updateProviderProjectStatus,
   updateProviderMilestoneStatus,
   getProviderProjectMilestones,
   updateProviderProjectMilestones,
@@ -75,16 +69,103 @@ import { formatTimeline } from "@/lib/timeline-utils";
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
 import { Separator } from "@/components/separator";
 
+type ProjectCustomer = {
+  id: string;
+  name: string;
+  email?: string;
+  customerProfile?: {
+    profileImageUrl?: string;
+    industry?: string;
+    location?: string;
+    website?: string;
+  };
+};
+
+type ProjectProposal = {
+  id: string;
+  attachmentUrls?: string[];
+  createdAt?: string;
+  submittedAt?: string;
+  deliveryTime?: number;
+};
+
+type ProjectData = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  category: string;
+  budgetMin: number;
+  budgetMax: number;
+  approvedPrice?: number;
+  progress?: number;
+  completedMilestones?: number;
+  totalMilestones?: number;
+  skills?: string[];
+  requirements?: string | string[];
+  deliverables?: string | string[];
+  milestones?: Milestone[];
+  bids?: unknown[];
+  files?: unknown[];
+  messages?: unknown[];
+  customer?: ProjectCustomer;
+  customerId?: string;
+  provider?: { id: string; name: string };
+  providerId?: string;
+  createdAt: string;
+  originalTimeline?: string | null;
+  providerProposedTimeline?: number | null;
+  proposal?: ProjectProposal;
+  Proposal?: ProjectProposal;
+};
+
+type DisputeData = {
+  id: string;
+  status: string;
+  reason: string;
+  description: string;
+  contestedAmount?: number;
+  suggestedResolution?: string;
+  attachments?: string[];
+  milestone?: { title: string; amount: number };
+  raisedBy?: { id: string; name: string };
+  createdAt: string;
+  updatedAt: string;
+  resolution?: string;
+  resolutionNotes?: Array<{
+    note: string;
+    adminName?: string;
+    createdAt: string;
+  }>;
+};
+
+type UserData = {
+  id: string;
+  name?: string;
+  email?: string;
+};
+
+type MessageData = {
+  id: string;
+  content?: string;
+  message?: string;
+  senderId?: string;
+  sender?: { id: string; name: string };
+  senderName?: string;
+  createdAt?: string;
+  timestamp?: string;
+  attachments?: string[];
+};
+
 export default function ProviderProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const { toast: toastHook } = useToast();
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isMilestoneDialogOpen, setIsMilestoneDialogOpen] = useState(false);
-  const [selectedMilestone, setSelectedMilestone] = useState<any>(null);
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
   const [milestoneDeliverables, setMilestoneDeliverables] = useState("");
   const [submitDeliverables, setSubmitDeliverables] = useState("");
   const [submissionNote, setSubmissionNote] = useState("");
@@ -114,7 +195,7 @@ export default function ProviderProjectDetailsPage() {
   // Dispute creation state
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [viewDisputeDialogOpen, setViewDisputeDialogOpen] = useState(false);
-  const [currentDispute, setCurrentDispute] = useState<any>(null);
+  const [currentDispute, setCurrentDispute] = useState<DisputeData | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeDescription, setDisputeDescription] = useState("");
   const [disputeContestedAmount, setDisputeContestedAmount] = useState("");
@@ -129,9 +210,9 @@ export default function ProviderProjectDetailsPage() {
   const [disputeUpdateAttachments, setDisputeUpdateAttachments] = useState<
     File[]
   >([]);
-  const [projectMessages, setProjectMessages] = useState<any[]>([]);
+  const [projectMessages, setProjectMessages] = useState<MessageData[]>([]);
   const [token, setToken] = useState<string>("");
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
 
   // Load auth from localStorage on mount
@@ -163,7 +244,7 @@ export default function ProviderProjectDetailsPage() {
             if (disputeRes.success && disputeRes.data) {
               setCurrentDispute(disputeRes.data);
             }
-          } catch (err) {
+          } catch {
             // No dispute exists yet, which is fine
             console.log("No dispute found for project");
           }
@@ -193,18 +274,18 @@ export default function ProviderProjectDetailsPage() {
         const milestoneData = await getProviderProjectMilestones(project.id);
         setProjectMilestones(
           Array.isArray(milestoneData.milestones) 
-            ? milestoneData.milestones.map((m: any) => ({
+            ? milestoneData.milestones.map((m) => ({
                 ...m,
-                sequence: m.order,
+                sequence: (m as Milestone & { order?: number }).order ?? (m as Milestone).sequence ?? 0,
                 // Ensure all milestone fields are included
-                submissionAttachmentUrl: m.submissionAttachmentUrl,
-                submissionNote: m.submissionNote,
-                submittedAt: m.submittedAt,
-                startDeliverables: m.startDeliverables,
-                submitDeliverables: m.submitDeliverables,
-                revisionNumber: m.revisionNumber,
-                submissionHistory: m.submissionHistory,
-              }))
+                submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl,
+                submissionNote: (m as Milestone).submissionNote,
+                submittedAt: (m as Milestone).submittedAt,
+                startDeliverables: (m as Milestone).startDeliverables,
+                submitDeliverables: (m as Milestone).submitDeliverables,
+                revisionNumber: (m as Milestone).revisionNumber,
+                submissionHistory: (m as Milestone).submissionHistory,
+              } as Milestone))
             : []
         );
         setMilestoneApprovalState({
@@ -277,12 +358,6 @@ export default function ProviderProjectDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, token, project]);
 
-  // Safe formatter for numbers - prevents calling toLocaleString on undefined
-  const fmt = (v: any, fallback = "0") => {
-    if (v === null || v === undefined) return fallback;
-    const n = Number(v);
-    return Number.isFinite(n) ? n.toLocaleString() : fallback;
-  };
 
   const updateProjectMilestone = (i: number, patch: Partial<Milestone>) => {
     setProjectMilestones((prev) =>
@@ -389,17 +464,17 @@ export default function ProviderProjectDetailsPage() {
       // Refresh milestones from API
       const milestoneData = await getProviderProjectMilestones(project.id);
       const refreshedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m: any) => ({
+        ? milestoneData.milestones.map((m) => ({
             ...m,
-            sequence: m.order,
-            submissionAttachmentUrl: m.submissionAttachmentUrl,
-            submissionNote: m.submissionNote,
-            submittedAt: m.submittedAt,
-            startDeliverables: m.startDeliverables,
-            submitDeliverables: m.submitDeliverables,
-            revisionNumber: m.revisionNumber,
-            submissionHistory: m.submissionHistory,
-          }))
+            sequence: (m as Milestone & { order?: number }).order ?? (m as Milestone).sequence ?? 0,
+            submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl,
+            submissionNote: (m as Milestone).submissionNote,
+            submittedAt: (m as Milestone).submittedAt,
+            startDeliverables: (m as Milestone).startDeliverables,
+            submitDeliverables: (m as Milestone).submitDeliverables,
+            revisionNumber: (m as Milestone).revisionNumber,
+            submissionHistory: (m as Milestone).submissionHistory,
+          } as Milestone))
         : [];
       
       // Update both current and original milestones with fresh data
@@ -463,33 +538,6 @@ export default function ProviderProjectDetailsPage() {
     }
   };
 
-  const handleStatusUpdate = async (newStatus: string) => {
-    try {
-      setUpdating(true);
-      const response = await updateProviderProjectStatus(
-        params.id as string,
-        newStatus
-      );
-      
-      if (response.success) {
-        setProject(response.project);
-        toast({
-          title: "Success",
-          description: "Project status updated successfully",
-        });
-        setIsStatusDialogOpen(false);
-      }
-    } catch (err) {
-      toast({
-        title: "Error",
-        description:
-          err instanceof Error ? err.message : "Failed to update status",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   // Function to refresh all project data
   const refreshProjectData = async () => {
@@ -507,17 +555,17 @@ export default function ProviderProjectDetailsPage() {
       );
       if (milestoneData.milestones) {
         const loadedMilestones = Array.isArray(milestoneData.milestones)
-          ? milestoneData.milestones.map((m: any) => ({
+          ? milestoneData.milestones.map((m) => ({
               ...m,
-              sequence: m.order,
-              submissionAttachmentUrl: m.submissionAttachmentUrl,
-              submissionNote: m.submissionNote,
-              submittedAt: m.submittedAt,
-              startDeliverables: m.startDeliverables,
-              submitDeliverables: m.submitDeliverables,
-              revisionNumber: m.revisionNumber,
-              submissionHistory: m.submissionHistory,
-            }))
+              sequence: (m as Milestone & { order?: number }).order ?? (m as Milestone).sequence ?? 0,
+              submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl,
+              submissionNote: (m as Milestone).submissionNote,
+              submittedAt: (m as Milestone).submittedAt,
+              startDeliverables: (m as Milestone).startDeliverables,
+              submitDeliverables: (m as Milestone).submitDeliverables,
+              revisionNumber: (m as Milestone).revisionNumber,
+              submissionHistory: (m as Milestone).submissionHistory,
+            } as Milestone))
           : [];
         setProjectMilestones(loadedMilestones);
         setOriginalProjectMilestones(JSON.parse(JSON.stringify(loadedMilestones))); // Deep copy
@@ -535,7 +583,7 @@ export default function ProviderProjectDetailsPage() {
         if (disputeRes.success && disputeRes.data) {
           setCurrentDispute(disputeRes.data);
         }
-      } catch (err) {
+      } catch {
         // No dispute exists, which is fine
       }
     } catch (err) {
@@ -543,7 +591,7 @@ export default function ProviderProjectDetailsPage() {
     }
   };
   // Ensure a value is an array before mapping
-  const asArray = <T,>(v: any): T[] => (Array.isArray(v) ? v : []);
+  const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? v : []);
 
   const handleMilestoneUpdate = async (status: string) => {
     try {
@@ -568,6 +616,15 @@ export default function ProviderProjectDetailsPage() {
         deliverables = milestoneDeliverables
           ? { description: milestoneDeliverables }
           : undefined;
+      }
+
+      if (!selectedMilestone?.id) {
+        toast({
+          title: "Error",
+          description: "Selected milestone is missing",
+          variant: "destructive",
+        });
+        return;
       }
 
       const response = await updateProviderMilestoneStatus(
@@ -627,7 +684,7 @@ export default function ProviderProjectDetailsPage() {
 
     try {
       setCreatingDispute(true);
-      const response = await createDispute({
+      await createDispute({
         projectId: project.id,
         milestoneId: selectedMilestoneForDispute || undefined,
         reason: disputeReason.trim(),
@@ -658,10 +715,11 @@ export default function ProviderProjectDetailsPage() {
       setDisputeSuggestedResolution("");
       setDisputeAttachments([]);
       setSelectedMilestoneForDispute(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create/update dispute";
       toast({
         title: "Error",
-        description: error.message || "Failed to create/update dispute",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -677,10 +735,11 @@ export default function ProviderProjectDetailsPage() {
         setCurrentDispute(disputeRes.data);
         setViewDisputeDialogOpen(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load dispute";
       toast({
         title: "Error",
-        description: error.message || "Failed to load dispute",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -722,10 +781,11 @@ export default function ProviderProjectDetailsPage() {
       // Reset form
       setDisputeAdditionalNotes("");
       setDisputeUpdateAttachments([]);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update dispute";
       toast({
         title: "Error",
-        description: error.message || "Failed to update dispute",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -906,47 +966,25 @@ export default function ProviderProjectDetailsPage() {
   }
 
   // Normalize project data to safe arrays to avoid runtime errors
-  const safeProject = project ?? {};
-  const skills = asArray<string>(safeProject.skills);
-  // Requirements and deliverables are now markdown strings
-  const requirements =
-    typeof safeProject.requirements === "string"
-      ? safeProject.requirements
-      : Array.isArray(safeProject.requirements)
-      ? safeProject.requirements.map((r: any) => `- ${r}`).join("\n")
-      : "";
-  const deliverables =
-    typeof safeProject.deliverables === "string"
-      ? safeProject.deliverables
-      : Array.isArray(safeProject.deliverables)
-      ? safeProject.deliverables.map((d: any) => `- ${d}`).join("\n")
-      : "";
-  const milestones = asArray<any>(safeProject.milestones);
-  const bids = asArray<any>(safeProject.bids);
-  const files = asArray<any>(safeProject.files);
-  const messages = asArray<any>(safeProject.messages);
+  const safeProject = project ?? ({} as ProjectData);
+  const messages = asArray<MessageData>(safeProject.messages);
   const currentUserId = currentUser?.id;
   const msgsToRender =
     projectMessages && projectMessages.length > 0 ? projectMessages : messages;
 
-  const provider =
-    project?.customer ??
-    ({
-      id: project?.customer?.id,
-      name: project?.customer?.name,
-      avatar: project?.customer?.customerProfile.profileImageUrl,
-    } as any);
+  const provider = project?.customer;
 
   const handleContact = () => {
     if (!provider || !provider.id) return;
 
+    const profileImageUrl = provider.customerProfile?.profileImageUrl;
     const avatarUrl =
-      provider.avatar &&
-      provider.avatar !== "/placeholder.svg" &&
-      !provider.avatar.includes("/placeholder.svg")
+      profileImageUrl &&
+      profileImageUrl !== "/placeholder.svg" &&
+      !profileImageUrl.includes("/placeholder.svg")
         ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
-            provider.avatar.startsWith("/") ? "" : "/"
-          }${provider.avatar}`
+            profileImageUrl.startsWith("/") ? "" : "/"
+          }${profileImageUrl}`
         : "";
 
     router.push(
@@ -987,8 +1025,9 @@ export default function ProviderProjectDetailsPage() {
                   onClick={() => setDisputeDialogOpen(true)}
                   disabled={
                     creatingDispute ||
-                    (project?.status === "DISPUTED" &&
-                      currentDispute?.status === "CLOSED")
+                    Boolean(project?.status === "DISPUTED" &&
+                      currentDispute &&
+                      (currentDispute as DisputeData).status === "CLOSED")
                   }
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
@@ -1124,7 +1163,7 @@ export default function ProviderProjectDetailsPage() {
                         <div className="mt-2 space-y-3">
                           {Array.isArray(project.requirements) ? (
                             project.requirements.map(
-                              (req: string | any, index: number) => (
+                              (req: string | unknown, index: number) => (
                                 <div key={index} className="text-gray-700">
                                   <MarkdownViewer
                                     content={
@@ -1159,7 +1198,7 @@ export default function ProviderProjectDetailsPage() {
                         <div className="mt-2 space-y-3">
                           {Array.isArray(project.deliverables) ? (
                             project.deliverables.map(
-                              (del: string | any, index: number) => (
+                              (del: string | unknown, index: number) => (
                                 <div key={index} className="text-gray-700">
                                   <MarkdownViewer
                                     content={
@@ -1258,7 +1297,7 @@ export default function ProviderProjectDetailsPage() {
                     <div className="space-y-4">
                       {projectMilestones && projectMilestones.length > 0 ? (
                         projectMilestones.map(
-                          (milestone: any, index: number) => (
+                          (milestone: Milestone, index: number) => (
                             <div
                               key={milestone.id}
                               className="border rounded-lg p-4"
@@ -1280,10 +1319,10 @@ export default function ProviderProjectDetailsPage() {
                               <div className="flex items-center gap-3">
                                   <Badge
                                     className={getMilestoneStatusColor(
-                                      milestone.status
+                                      milestone.status || ""
                                     )}
                                   >
-                                  {getMilestoneStatusText(milestone.status)}
+                                  {getMilestoneStatusText(milestone.status || "")}
                                 </Badge>
                                 <span className="text-sm font-medium">
                                   {formatCurrency(milestone.amount)}
@@ -1312,11 +1351,11 @@ export default function ProviderProjectDetailsPage() {
                                       </div>
                                     )}
                                   {milestone.status === "LOCKED" &&
-                                    project.status === "IN_PROGRESS" &&
+                                    project?.status === "IN_PROGRESS" &&
                                     projectMilestones.findIndex(
-                                      (m: any) =>
+                                      (m: Milestone) =>
                                         m.status === "LOCKED" &&
-                                        project.status === "IN_PROGRESS"
+                                        project?.status === "IN_PROGRESS"
                                     ) === index && (
                                       <AlertCircle className="w-4 h-4 text-amber-600" />
                                     )}
@@ -1347,13 +1386,13 @@ export default function ProviderProjectDetailsPage() {
                             </div>
 
                               {/* Show warning for first locked milestone that complies */}
-                              {milestone.status === "LOCKED" &&
-                                project.status === "IN_PROGRESS" &&
+                              {(milestone.status === "LOCKED" &&
+                                project?.status === "IN_PROGRESS" &&
                                 projectMilestones.findIndex(
-                                  (m: any) =>
+                                  (m: Milestone) =>
                                     m.status === "LOCKED" &&
-                                    project.status === "IN_PROGRESS"
-                                ) === index && (
+                                    project?.status === "IN_PROGRESS"
+                                ) === index) ? (
                                   <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
                                     <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                                     <p className="text-sm text-amber-800">
@@ -1366,26 +1405,28 @@ export default function ProviderProjectDetailsPage() {
                                           : "You can't start work until the client has paid."
                                       }
                                     </p>
-                          </div>
-                                )}
+                                  </div>
+                                ) : null}
 
                               {/* Show start deliverables if available (persists even after status changes) */}
-                              {milestone.startDeliverables && (
-                                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                  <p className="text-sm font-medium text-green-900 mb-1">
-                                    📋 Plan / Deliverables (When Starting Work):
-                                  </p>
-                                  <p className="text-sm text-green-800 whitespace-pre-wrap">
-                                    {typeof milestone.startDeliverables ===
-                                      "object" &&
-                                    milestone.startDeliverables.description
-                                      ? milestone.startDeliverables.description
-                                      : JSON.stringify(
-                                          milestone.startDeliverables
-                                        )}
-                                  </p>
-                                </div>
-                              )}
+                              {(() => {
+                                if (!milestone.startDeliverables) return null as React.ReactNode;
+                                return (
+                                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                    <p className="text-sm font-medium text-green-900 mb-1">
+                                      📋 Plan / Deliverables (When Starting Work):
+                                    </p>
+                                    <p className="text-sm text-green-800 whitespace-pre-wrap">
+                                      {typeof milestone.startDeliverables === "object" &&
+                                      milestone.startDeliverables &&
+                                      "description" in milestone.startDeliverables &&
+                                      typeof milestone.startDeliverables.description === "string"
+                                        ? milestone.startDeliverables.description
+                                        : String(milestone.startDeliverables ?? "")}
+                                    </p>
+                                  </div>
+                                ) as React.ReactNode;
+                              })() as React.ReactNode}
 
                               {/* Show submit deliverables if available (persists even after status changes) */}
                               {milestone.submitDeliverables && (
@@ -1395,13 +1436,15 @@ export default function ProviderProjectDetailsPage() {
                                     Submitting):
                                   </p>
                                   <p className="text-sm text-purple-800 whitespace-pre-wrap">
-                                    {typeof milestone.submitDeliverables ===
-                                      "object" &&
-                                    milestone.submitDeliverables.description
-                                      ? milestone.submitDeliverables.description
-                                      : JSON.stringify(
-                                          milestone.submitDeliverables
-                                        )}
+                                    {(() => {
+                                      if (typeof milestone.submitDeliverables === "object" &&
+                                          milestone.submitDeliverables &&
+                                          "description" in milestone.submitDeliverables &&
+                                          typeof milestone.submitDeliverables.description === "string") {
+                                        return milestone.submitDeliverables.description;
+                                      }
+                                      return String(milestone.submitDeliverables ?? "");
+                                    })()}
                                   </p>
                                 </div>
                               )}
@@ -1426,28 +1469,29 @@ export default function ProviderProjectDetailsPage() {
                                   const latestRequest =
                                     milestone.submissionHistory[
                                       milestone.submissionHistory.length - 1
-                                    ];
-                                  if (latestRequest?.requestedChangesReason) {
+                                    ] as Record<string, unknown>;
+                                  if (latestRequest && typeof latestRequest === "object" && "requestedChangesReason" in latestRequest && typeof latestRequest.requestedChangesReason === "string") {
                                     return (
                                       <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                                         <p className="text-sm font-medium text-orange-900 mb-1">
                                           🔄 Latest Request for Changes
                                           (Revision #
-                                          {latestRequest.revisionNumber ||
-                                            milestone.submissionHistory.length}
+                                          {(typeof latestRequest.revisionNumber === "number" ? latestRequest.revisionNumber : milestone.submissionHistory.length)}
                                           ):
                                         </p>
                                         <p className="text-sm text-orange-800 whitespace-pre-wrap">
-                                          {latestRequest.requestedChangesReason}
+                                          {typeof latestRequest.requestedChangesReason === "string" 
+                                            ? latestRequest.requestedChangesReason 
+                                            : ""}
                                         </p>
-                                        {latestRequest.requestedChangesAt && (
+                                        {(latestRequest.requestedChangesAt && typeof latestRequest.requestedChangesAt === "string") ? (
                                           <p className="text-xs text-orange-600 mt-2">
                                             Requested on:{" "}
                                             {new Date(
-                                              latestRequest.requestedChangesAt
+                                              latestRequest.requestedChangesAt as string
                                             ).toLocaleString()}
                                           </p>
-                                        )}
+                                        ) : null}
                                       </div>
                                     );
                                   }
@@ -1475,10 +1519,10 @@ export default function ProviderProjectDetailsPage() {
                                         download={fileName}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        onClick={isR2Key ? async (e) => {
+                                        onClick={isR2Key && milestone.submissionAttachmentUrl ? async (e) => {
                                           e.preventDefault();
                                           try {
-                                            const downloadUrl = await getR2DownloadUrl(milestone.submissionAttachmentUrl); // Use original URL/key
+                                            const downloadUrl = await getR2DownloadUrl(milestone.submissionAttachmentUrl as string); // Use original URL/key
                                             window.open(downloadUrl.downloadUrl, "_blank");
                                           } catch (error) {
                                             console.error("Failed to get download URL:", error);
@@ -1520,8 +1564,8 @@ export default function ProviderProjectDetailsPage() {
                                       📚 Previous Submission History:
                                     </p>
                                     <div className="space-y-3">
-                                      {milestone.submissionHistory.map(
-                                        (history: any, idx: number) => {
+                                      {(milestone.submissionHistory as Array<Record<string, unknown>>).map(
+                                        (history: Record<string, unknown>, idx: number) => {
                                           // Calculate revision number: first submission is revision 1, then 2, 3, etc.
                                           // The revision number in history is the one BEFORE it was rejected
                                           const revisionNumber =
@@ -1550,15 +1594,13 @@ export default function ProviderProjectDetailsPage() {
                                                 )}
                                               </div>
 
-                                              {history.requestedChangesReason && (
+                                              {history.requestedChangesReason && typeof history.requestedChangesReason === "string" && (
                                                 <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
                                                   <p className="text-xs font-medium text-red-900 mb-1">
                                                     Reason for Changes:
                                                   </p>
                                                   <p className="text-xs text-red-800">
-                                                    {
-                                                      history.requestedChangesReason
-                                                    }
+                                                    {history.requestedChangesReason}
                                                   </p>
                                                 </div>
                                               )}
@@ -1571,14 +1613,12 @@ export default function ProviderProjectDetailsPage() {
                                                   <p className="text-xs text-gray-600 whitespace-pre-wrap">
                                                     {typeof history.submitDeliverables ===
                                                       "object" &&
-                                                    history.submitDeliverables
-                                                      .description
-                                                      ? history
-                                                          .submitDeliverables
-                                                          .description
-                                                      : JSON.stringify(
-                                                          history.submitDeliverables
-                                                        )}
+                                                    history.submitDeliverables &&
+                                                    "description" in history.submitDeliverables &&
+                                                    typeof history.submitDeliverables.description === "string"
+                                                      ? history.submitDeliverables.description
+                                                      : String(history.submitDeliverables || "")
+                                                  }
                                                   </p>
                                                 </div>
                                               )}
@@ -1633,14 +1673,14 @@ export default function ProviderProjectDetailsPage() {
                                                 </div>
                                               )}
 
-                                              {history.submittedAt && (
-                                                <p className="text-xs text-gray-500 mt-2">
-                                                  Submitted:{" "}
-                                                  {new Date(
-                                                    history.submittedAt
-                                                  ).toLocaleString()}
-                                                </p>
-                                              )}
+                                                {history.submittedAt && typeof history.submittedAt === "string" && (
+                                                  <p className="text-xs text-gray-500 mt-2">
+                                                    Submitted:{" "}
+                                                    {new Date(
+                                                      history.submittedAt
+                                                    ).toLocaleString()}
+                                                  </p>
+                                                )}
                                             </div>
                                           );
                                         }
@@ -1802,8 +1842,8 @@ export default function ProviderProjectDetailsPage() {
                           milestone.id
                         ) {
                           const milestoneId = milestone.id; // Store in const for type narrowing
-                          milestone.submissionHistory.forEach(
-                            (history: any) => {
+                          (milestone.submissionHistory as Array<Record<string, unknown>>).forEach(
+                            (history: Record<string, unknown>) => {
                               if (history.submissionAttachmentUrl) {
                                 milestoneAttachments.push({
                                   url: history.submissionAttachmentUrl,
@@ -1851,7 +1891,7 @@ export default function ProviderProjectDetailsPage() {
                                 onClick={isR2Key ? async (e) => {
                                   e.preventDefault();
                                   try {
-                                    const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
+                                    const downloadUrl = await getR2DownloadUrl(attachment.url); // Use original URL/key
                                     window.open(downloadUrl.downloadUrl, "_blank");
                                   } catch (error) {
                                     console.error("Failed to get download URL:", error);
@@ -1922,7 +1962,7 @@ export default function ProviderProjectDetailsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {msgsToRender.map((message: any) => {
+                      {msgsToRender.map((message: MessageData) => {
                         const isCurrentUser =
                           String(message.senderId || message.sender?.id) ===
                           String(currentUserId);
@@ -2520,8 +2560,8 @@ export default function ProviderProjectDetailsPage() {
                       <SelectValue placeholder="Select a milestone (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      {projectMilestones.map((m: any) => (
-                        <SelectItem key={m.id} value={m.id}>
+                      {projectMilestones.map((m: Milestone) => (
+                        <SelectItem key={m.id || ""} value={m.id || ""}>
                           {m.title} - RM{m.amount?.toLocaleString() || 0}
                         </SelectItem>
                       ))}
@@ -2790,7 +2830,7 @@ export default function ProviderProjectDetailsPage() {
                               {updates.map((update: string, idx: number) => {
                                 // Parse update format: [Update by Name on Date]: content
                                 // Also handle old format: [Update by userId]: content
-                                let match = update.match(
+                                const match = update.match(
                                   /^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/
                                 );
                                 let userName = "";
@@ -2947,7 +2987,7 @@ export default function ProviderProjectDetailsPage() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {currentDispute.resolutionNotes.map(
-                          (note: any, index: number) => {
+                          (note: { note?: string; adminName?: string; createdAt: string }, index: number) => {
                             // Check if note contains "--- Admin Note ---" separator
                             const noteParts =
                               note.note?.split(/\n--- Admin Note ---\n/) || [];
@@ -3029,6 +3069,7 @@ export default function ProviderProjectDetailsPage() {
 
                 {/* Attachments */}
                 {currentDispute.attachments &&
+                  Array.isArray(currentDispute.attachments) &&
                   currentDispute.attachments.length > 0 && (
                     <Card>
                       <CardHeader>
@@ -3078,6 +3119,7 @@ export default function ProviderProjectDetailsPage() {
                               if (
                                 uploadedBy === "Unknown User" &&
                                 index === 0 &&
+                                currentDispute.attachments &&
                                 currentDispute.attachments.length === 1
                               ) {
                                 uploadedBy =
@@ -3116,7 +3158,7 @@ export default function ProviderProjectDetailsPage() {
                                         onClick={isR2Key ? async (e) => {
                                           e.preventDefault();
                                           try {
-                                            const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
+                                            const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key - url is from the map function
                                             window.open(downloadUrl.downloadUrl, "_blank");
                                           } catch (error) {
                                             console.error("Failed to get download URL:", error);

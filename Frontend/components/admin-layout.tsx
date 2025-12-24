@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,14 +65,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   // Profile state
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
   // Notifications state
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<any | null>(
+  const [selectedNotification, setSelectedNotification] = useState<Record<string, unknown> | null>(
     null
   );
 
@@ -116,8 +115,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         if (!res.ok) throw new Error("Unauthorized");
 
         const data = await res.json();
-        setProfile(data);
-      } catch (err) {
+        setProfile(data as Record<string, unknown>);
+      } catch {
         // Token invalid or expired
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -147,7 +146,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         if (!res.ok) throw new Error("Failed to fetch notifications");
         return res.json();
       })
-      .then((data) => setNotifications(data.data || []))
+      .then((data) => setNotifications((data.data || []) as Array<Record<string, unknown>>))
       .catch(() => setNotifications([]))
       .finally(() => setNotificationsLoading(false));
   }, []);
@@ -192,12 +191,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json();
-        if (refreshData.success) {
-          setNotifications(refreshData.data || []);
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          if (refreshData.success) {
+            setNotifications((refreshData.data || []) as Array<Record<string, unknown>>);
+          }
         }
-      }
     } catch (error) {
       console.error("Failed to mark notification as read", error);
       // Revert optimistic update on error
@@ -211,30 +210,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       setModalOpen(true);
     }
   };
-
-  const SidebarNav = (
-    <nav className="flex-1 space-y-1 px-3 py-4">
-      {NAV_ITEMS.map((item) => {
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.name}
-            href={item.href}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              isActive(item.href)
-                ? "bg-blue-100 text-blue-900 border-r-2 border-blue-600"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            )}
-            onClick={() => setSidebarOpen(false)}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            <span className="truncate">{item.name}</span>
-          </Link>
-        );
-      })}
-    </nav>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50">

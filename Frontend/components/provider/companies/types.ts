@@ -32,7 +32,7 @@ export type Company = {
   remotePolicy?: string | null;
   hiringFrequency?: string | null;
   averageBudgetRange?: string | null;
-  socialLinks?: any;
+  socialLinks?: string[];
   mediaGallery?: string[];
 };
 

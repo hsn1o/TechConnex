@@ -11,28 +11,43 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { User, Building, Bell, Shield, CreditCard, Trash2 } from "lucide-react";
+import { Bell, Shield, CreditCard, Trash2 } from "lucide-react";
 import { CustomerLayout } from "@/components/customer-layout";
-import Loading from "../projects/loading";
+import { Loader2 } from "lucide-react";
+
+type NotificationSettings = {
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  projectUpdates: boolean;
+  marketingEmails: boolean;
+  weeklyReports: boolean;
+};
+
+type PrivacySettings = {
+  profileVisibility: string;
+  showEmail: boolean;
+  showPhone: boolean;
+  allowMessages: boolean;
+};
+
+type Payment = {
+  id: string;
+  method: string;
+  last4?: string;
+  createdAt: string;
+  amount: number;
+  status: string;
+};
 
 export default function CustomerSettingsPage() {
   const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState<any>(null);
-  const [privacy, setPrivacy] = useState<any>(null);
-  const [payments, setPayments] = useState<any[]>([]);
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const [notifications, setNotifications] = useState<NotificationSettings | null>(null);
+  const [privacy, setPrivacy] = useState<PrivacySettings | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,8 +56,6 @@ export default function CustomerSettingsPage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [twoFactorMessage, setTwoFactorMessage] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState("");
 
@@ -85,37 +98,6 @@ export default function CustomerSettingsPage() {
       setDeleteMessage("❌ Something went wrong while deleting account.");
     } finally {
       setDeleting(false);
-    }
-  };
-
-  const handleToggle2FA = async (enabled: boolean) => {
-    try {
-      setTwoFactorMessage("");
-      setTwoFactorEnabled(enabled);
-
-      const response = await fetch(`${API_URL}/settings/${userId}/security`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ twoFactorEnabled: enabled }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setTwoFactorMessage(
-          "✅ Two-factor authentication updated successfully!"
-        );
-      } else {
-        setTwoFactorMessage(
-          data.message || "❌ Failed to update 2FA settings."
-        );
-      }
-    } catch (error) {
-      console.error("Error updating 2FA:", error);
-      setTwoFactorMessage("❌ Something went wrong.");
     }
   };
 
@@ -248,43 +230,82 @@ export default function CustomerSettingsPage() {
 
   // 🔹 Fetch settings and payment info
   useEffect(() => {
+    if (!userId || !API_URL) {
+      // If no userId or API_URL, still set loading to false so content can render
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const [settingsRes, paymentsRes] = await Promise.all([
-          fetch(`${API_URL}/settings/${userId}`),
-          fetch(`${API_URL}/settings/${userId}/payments`),
+          fetch(`${API_URL}/settings/${userId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${API_URL}/settings/${userId}/payments`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
         ]);
 
         const settingsData = await settingsRes.json();
         const paymentsData = await paymentsRes.json();
 
         setNotifications({
-          emailNotifications: settingsData.emailNotifications,
-          smsNotifications: settingsData.smsNotifications,
-          projectUpdates: settingsData.projectUpdates,
-          marketingEmails: settingsData.marketingEmails,
-          weeklyReports: settingsData.weeklyReports,
+          emailNotifications: settingsData.emailNotifications ?? false,
+          smsNotifications: settingsData.smsNotifications ?? false,
+          projectUpdates: settingsData.projectUpdates ?? false,
+          marketingEmails: settingsData.marketingEmails ?? false,
+          weeklyReports: settingsData.weeklyReports ?? false,
         });
 
         setPrivacy({
-          profileVisibility: settingsData.profileVisibility,
-          showEmail: settingsData.showEmail,
-          showPhone: settingsData.showPhone,
-          allowMessages: settingsData.allowMessages,
+          profileVisibility: settingsData.profileVisibility ?? "public",
+          showEmail: settingsData.showEmail ?? false,
+          showPhone: settingsData.showPhone ?? false,
+          allowMessages: settingsData.allowMessages ?? false,
         });
 
-        setPayments(paymentsData);
+        setPayments(Array.isArray(paymentsData) ? paymentsData : []);
       } catch (error) {
         console.error("Error fetching settings:", error);
+        // Set default values on error
+        setNotifications({
+          emailNotifications: false,
+          smsNotifications: false,
+          projectUpdates: false,
+          marketingEmails: false,
+          weeklyReports: false,
+        });
+        setPrivacy({
+          profileVisibility: "public",
+          showEmail: false,
+          showPhone: false,
+          allowMessages: false,
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [userId]);
+  }, [userId, API_URL, token]);
 
-  if (loading) return Loading();
+  if (loading) {
+    return (
+      <CustomerLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading settings...</p>
+          </div>
+        </div>
+      </CustomerLayout>
+    );
+  }
 
   return (
     <CustomerLayout>
@@ -330,12 +351,15 @@ export default function CustomerSettingsPage() {
                     </div>
                     <Switch
                       id="email-notifications"
-                      checked={notifications.emailNotifications}
+                      checked={notifications?.emailNotifications ?? false}
                       onCheckedChange={(checked) =>
-                        setNotifications({
-                          ...notifications,
+                        setNotifications((prev) => ({
                           emailNotifications: checked,
-                        })
+                          smsNotifications: prev?.smsNotifications ?? false,
+                          projectUpdates: prev?.projectUpdates ?? false,
+                          marketingEmails: prev?.marketingEmails ?? false,
+                          weeklyReports: prev?.weeklyReports ?? false,
+                        }))
                       }
                     />
                   </div>
@@ -351,12 +375,15 @@ export default function CustomerSettingsPage() {
                     </div>
                     <Switch
                       id="sms-notifications"
-                      checked={notifications.smsNotifications}
+                      checked={notifications?.smsNotifications ?? false}
                       onCheckedChange={(checked) =>
-                        setNotifications({
-                          ...notifications,
+                        setNotifications((prev) => ({
+                          emailNotifications: prev?.emailNotifications ?? false,
                           smsNotifications: checked,
-                        })
+                          projectUpdates: prev?.projectUpdates ?? false,
+                          marketingEmails: prev?.marketingEmails ?? false,
+                          weeklyReports: prev?.weeklyReports ?? false,
+                        }))
                       }
                     />
                   </div>
@@ -372,12 +399,15 @@ export default function CustomerSettingsPage() {
                     </div>
                     <Switch
                       id="project-updates"
-                      checked={notifications.projectUpdates}
+                      checked={notifications?.projectUpdates ?? false}
                       onCheckedChange={(checked) =>
-                        setNotifications({
-                          ...notifications,
+                        setNotifications((prev) => ({
+                          emailNotifications: prev?.emailNotifications ?? false,
+                          smsNotifications: prev?.smsNotifications ?? false,
                           projectUpdates: checked,
-                        })
+                          marketingEmails: prev?.marketingEmails ?? false,
+                          weeklyReports: prev?.weeklyReports ?? false,
+                        }))
                       }
                     />
                   </div>
@@ -391,12 +421,15 @@ export default function CustomerSettingsPage() {
                     </div>
                     <Switch
                       id="marketing-emails"
-                      checked={notifications.marketingEmails}
+                      checked={notifications?.marketingEmails ?? false}
                       onCheckedChange={(checked) =>
-                        setNotifications({
-                          ...notifications,
+                        setNotifications((prev) => ({
+                          emailNotifications: prev?.emailNotifications ?? false,
+                          smsNotifications: prev?.smsNotifications ?? false,
+                          projectUpdates: prev?.projectUpdates ?? false,
                           marketingEmails: checked,
-                        })
+                          weeklyReports: prev?.weeklyReports ?? false,
+                        }))
                       }
                     />
                   </div>
@@ -410,12 +443,15 @@ export default function CustomerSettingsPage() {
                     </div>
                     <Switch
                       id="weekly-reports"
-                      checked={notifications.weeklyReports}
+                      checked={notifications?.weeklyReports ?? false}
                       onCheckedChange={(checked) =>
-                        setNotifications({
-                          ...notifications,
+                        setNotifications((prev) => ({
+                          emailNotifications: prev?.emailNotifications ?? false,
+                          smsNotifications: prev?.smsNotifications ?? false,
+                          projectUpdates: prev?.projectUpdates ?? false,
+                          marketingEmails: prev?.marketingEmails ?? false,
                           weeklyReports: checked,
-                        })
+                        }))
                       }
                     />
                   </div>
@@ -447,33 +483,6 @@ export default function CustomerSettingsPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  {/* <div className="space-y-2">
-                    <Label htmlFor="profile-visibility">
-                      Profile Visibility
-                    </Label>
-                    <Select
-                      value={privacy.profileVisibility}
-                      onValueChange={(value) =>
-                        setPrivacy({ ...privacy, profileVisibility: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public">
-                          Public - Visible to all users
-                        </SelectItem>
-                        <SelectItem value="verified">
-                          Verified Users Only
-                        </SelectItem>
-                        <SelectItem value="private">
-                          Private - Hidden from search
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div> */}
-
                   <Separator />
 
                   <div className="flex items-center justify-between">
@@ -485,9 +494,14 @@ export default function CustomerSettingsPage() {
                     </div>
                     <Switch
                       id="show-email"
-                      checked={privacy.showEmail}
+                      checked={privacy?.showEmail ?? false}
                       onCheckedChange={(checked) =>
-                        setPrivacy({ ...privacy, showEmail: checked })
+                        setPrivacy((prev) => ({
+                          profileVisibility: prev?.profileVisibility ?? "public",
+                          showEmail: checked,
+                          showPhone: prev?.showPhone ?? false,
+                          allowMessages: prev?.allowMessages ?? false,
+                        }))
                       }
                     />
                   </div>
@@ -501,9 +515,14 @@ export default function CustomerSettingsPage() {
                     </div>
                     <Switch
                       id="show-phone"
-                      checked={privacy.showPhone}
+                      checked={privacy?.showPhone ?? false}
                       onCheckedChange={(checked) =>
-                        setPrivacy({ ...privacy, showPhone: checked })
+                        setPrivacy((prev) => ({
+                          profileVisibility: prev?.profileVisibility ?? "public",
+                          showEmail: prev?.showEmail ?? false,
+                          showPhone: checked,
+                          allowMessages: prev?.allowMessages ?? false,
+                        }))
                       }
                     />
                   </div>
@@ -519,9 +538,14 @@ export default function CustomerSettingsPage() {
                     </div>
                     <Switch
                       id="allow-messages"
-                      checked={privacy.allowMessages}
+                      checked={privacy?.allowMessages ?? false}
                       onCheckedChange={(checked) =>
-                        setPrivacy({ ...privacy, allowMessages: checked })
+                        setPrivacy((prev) => ({
+                          profileVisibility: prev?.profileVisibility ?? "public",
+                          showEmail: prev?.showEmail ?? false,
+                          showPhone: prev?.showPhone ?? false,
+                          allowMessages: checked,
+                        }))
                       }
                     />
                   </div>

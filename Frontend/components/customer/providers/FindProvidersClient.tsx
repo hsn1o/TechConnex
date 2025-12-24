@@ -6,9 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Select,
@@ -23,7 +20,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Heart,
-  Briefcase,
   Search,
   Sparkles,
   ChevronRight,
@@ -42,6 +38,18 @@ import {
   getProfileImageUrl,
 } from "@/lib/api";
 
+// Extended provider type for recommended providers with AI-specific fields
+type RecommendedProvider = Provider & {
+  profileId?: string | null;
+  specialty?: string;
+  matchScore?: number;
+  recommendedFor?: {
+    title: string;
+  };
+  aiExplanation?: string | null;
+  successRate?: number;
+};
+
 /** Props come from the server page */
 export default function FindProvidersClient({
   ratings,
@@ -55,7 +63,7 @@ export default function FindProvidersClient({
   const [loading, setLoading] = useState(true);
 
   // Recommended providers state
-  const [recommendedProviders, setRecommendedProviders] = useState<any[]>([]);
+  const [recommendedProviders, setRecommendedProviders] = useState<RecommendedProvider[]>([]);
   const [loadingRecommended, setLoadingRecommended] = useState(true);
   const [errorRecommended, setErrorRecommended] = useState<string | null>(null);
   const [recommendationsCacheInfo, setRecommendationsCacheInfo] = useState<{
@@ -83,28 +91,28 @@ export default function FindProvidersClient({
 
           // Apply verified filter on frontend since API might not support it
           if (verifiedFilter === "verified") {
-            filtered = filtered.filter((p: any) => p.isVerified === true);
+            filtered = filtered.filter((p: Provider & { isVerified?: boolean; profileId?: string | null }) => p.isVerified === true);
           } else if (verifiedFilter === "unverified") {
-            filtered = filtered.filter((p: any) => p.isVerified !== true);
+            filtered = filtered.filter((p: Provider & { isVerified?: boolean; profileId?: string | null }) => p.isVerified !== true);
           }
 
           // For "All" tab: Only use AI drafts, ignore any aiExplanation from search results
           const profileIds = filtered
-            .map((p: any) => p.profileId)
-            .filter(Boolean);
+            .map((p: Provider & { profileId?: string | null }) => p.profileId)
+            .filter(Boolean) as string[];
           if (profileIds.length > 0) {
             try {
               const draftRes = await getProviderAiDrafts(profileIds);
               if (draftRes?.success && Array.isArray(draftRes.drafts)) {
                 const draftMap = new Map(
-                  draftRes.drafts.map((d: any) => [d.referenceId, d.summary])
+                  draftRes.drafts.map((d: { referenceId: string; summary: string }) => [d.referenceId, d.summary])
                 );
-                filtered = filtered.map((p: any) => ({
+                filtered = filtered.map((p: Provider & { profileId?: string | null }) => ({
                   ...p,
                   // Only use draft summary for "All" tab, ignore any aiExplanation from search API
                   aiExplanation:
                     p.profileId && draftMap.has(p.profileId)
-                      ? draftMap.get(p.profileId)
+                      ? draftMap.get(p.profileId) || null
                       : null,
                 }));
               }
@@ -139,25 +147,28 @@ export default function FindProvidersClient({
         if (response.success) {
           // Map recommended providers and include profileId if present
           const raw = response.recommendations || [];
-          const mappedProviders = raw.map((provider: any) => ({
-            id: provider.id,
-            profileId: provider.profileId || null,
-            name: provider.name,
-            specialty: provider.major || "ICT Professional",
-            rating: provider.rating || 0,
-            completedJobs: provider.completedJobs || 0,
-            hourlyRate: provider.hourlyRate || 0,
-            location: provider.location || "Malaysia",
-            avatar: getProfileImageUrl(provider.avatar),
-            skills: provider.skills || [],
-            verified: provider.isVerified || false,
-            matchScore: provider.matchScore,
-            recommendedFor: provider.recommendedForServiceRequest,
+          const mappedProviders: RecommendedProvider[] = raw.map((provider: Record<string, unknown>) => ({
+            id: provider.id as string,
+            profileId: (provider.profileId as string | undefined) || null,
+            name: provider.name as string,
+            specialty: (provider.major as string | undefined) || "ICT Professional",
+            rating: (provider.rating as number | undefined) || 0,
+            completedJobs: (provider.completedJobs as number | undefined) || 0,
+            hourlyRate: (provider.hourlyRate as number | undefined) || 0,
+            location: (provider.location as string | undefined) || "Malaysia",
+            avatar: getProfileImageUrl(provider.avatar as string | undefined),
+            skills: Array.isArray(provider.skills) ? (provider.skills as string[]) : [],
+            verified: (provider.isVerified as boolean | undefined) || false,
+            matchScore: provider.matchScore as number | undefined,
+            recommendedFor: provider.recommendedForServiceRequest as { title: string } | undefined,
             // For "AI Recommended" tab: Use the aiExplanation from recommendation API, don't fetch drafts
-            aiExplanation: provider.aiExplanation || null,
-            yearsExperience: provider.yearsExperience,
-            successRate: provider.successRate,
-            responseTime: provider.responseTime,
+            aiExplanation: (provider.aiExplanation as string | undefined) || null,
+            yearsExperience: provider.yearsExperience as number | undefined,
+            successRate: provider.successRate as number | undefined,
+            responseTime: (provider.responseTime as string | undefined) || "",
+            reviewCount: (provider.reviewCount as number | undefined) || 0,
+            availability: (provider.availability as string | undefined) || "",
+            specialties: Array.isArray(provider.specialties) ? (provider.specialties as string[]) : [],
           }));
 
           // Don't fetch drafts for recommended providers - use the aiExplanation from the recommendation API
@@ -451,7 +462,7 @@ export default function FindProvidersClient({
                             <span className="text-xs sm:text-sm text-gray-500">
                               ({provider.completedJobs} jobs)
                             </span>
-                            {provider.yearsExperience > 0 && (
+                            {(provider.yearsExperience ?? 0) > 0 && (
                               <span className="text-xs text-gray-500">
                                 • {provider.yearsExperience} years exp.
                               </span>

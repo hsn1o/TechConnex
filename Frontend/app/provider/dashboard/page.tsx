@@ -16,13 +16,10 @@ import {
   Star,
   Briefcase,
   CheckCircle,
-  MessageSquare,
   Eye,
-  ThumbsUp,
   Calendar,
   Award,
   Target,
-  Users,
   Sparkles,
   ChevronRight,
 } from "lucide-react";
@@ -30,29 +27,6 @@ import Link from "next/link";
 import { ProviderLayout } from "@/components/provider-layout";
 import { getProviderProjectStats, getProviderProjects, getProviderRecommendedOpportunities, getProviderPerformanceMetrics, getProfileImageUrl } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-
-// Types for fetched opportunities
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  createdAt: string;
-}
-
-interface Opportunity {
-  id: string;
-  customerId: string;
-  title: string;
-  description: string;
-  category: string;
-  budgetMin: number;
-  budgetMax: number;
-  aiStackSuggest: string[];
-  status: string;
-  createdAt: string;
-  customer?: Customer;
-}
 
 export default function ProviderDashboard() {
   const { toast } = useToast();
@@ -81,7 +55,7 @@ export default function ProviderDashboard() {
   const [activeProjects, setActiveProjects] = useState([]);
   const [activeProjectsLoading, setActiveProjectsLoading] = useState(true);
 
-  const [recommendedOpportunities, setRecommendedOpportunities] = useState<any[]>(
+  const [recommendedOpportunities, setRecommendedOpportunities] = useState<Array<Record<string, unknown>>>(
     []
   );
   const [loadingOpportunities, setLoadingOpportunities] = useState(true);
@@ -173,35 +147,6 @@ export default function ProviderDashboard() {
     fetchDashboardData();
   }, [toast]);
 
-  const recentMessages = [
-    {
-      id: 1,
-      client: "Ahmad Rahman",
-      project: "E-commerce Platform",
-      message:
-        "Great progress on the dashboard! Can we schedule a review call?",
-      time: "10 minutes ago",
-      unread: true,
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-    {
-      id: 2,
-      client: "Sarah Tech Solutions",
-      project: "Mobile App Design",
-      message:
-        "The wireframes look perfect. Please proceed with the next phase.",
-      time: "2 hours ago",
-      unread: false,
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-  ];
-
-  const getMatchScoreColor = (score: number) => {
-    if (score >= 90) return "text-green-600 bg-green-100";
-    if (score >= 80) return "text-blue-600 bg-blue-100";
-    return "text-yellow-600 bg-yellow-100";
-  };
-
   return (
     <ProviderLayout>
       <div className="space-y-8">
@@ -210,7 +155,7 @@ export default function ProviderDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-600">
-              Welcome back! Here's your business overview.
+              Welcome back! Here&apos;s your business overview.
             </p>
           </div>
           <div className="flex gap-3">
@@ -360,7 +305,7 @@ export default function ProviderDashboard() {
                       </div>
                     ))
                   ) : activeProjects.length > 0 ? (
-                    activeProjects.map((project: any) => (
+                    activeProjects.map((project: Record<string, unknown>) => (
                       <Link
                         key={project.id}
                         href={`/provider/projects/${project.id}`}
@@ -491,7 +436,7 @@ export default function ProviderDashboard() {
                       No recommended opportunities found. Check back later!
                     </div>
                   ) : (
-                    recommendedOpportunities.map((opportunity: any) => {
+                    recommendedOpportunities.map((opportunity: Record<string, unknown>) => {
                       const isExpanded = expandedOpportunityId === opportunity.id;
                       return (
                         <div

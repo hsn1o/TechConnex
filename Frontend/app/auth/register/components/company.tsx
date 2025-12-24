@@ -26,10 +26,7 @@ import {
   Building,
   Users,
   Briefcase,
-  CheckCircle,
-  Calendar,
   DollarSign,
-  Target,
   Heart,
   Link,
   X,
@@ -168,8 +165,6 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({
   emailRef,
   kycFile,
   setKycFile,
-  selectedLanguages,
-  setSelectedLanguages,
   socialUrls,
   setSocialUrls,
   newSocialUrl,
@@ -191,7 +186,8 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({
       ? currentArray.filter((item) => item !== value)
       : [...currentArray, value];
 
-    handleInputChange(key, newArray as any);
+    // Type assertion needed due to handleInputChange signature mismatch (expects string but field is string[])
+    handleInputChange(key, newArray as unknown as string);
   };
 
   // Handler for adding custom values
@@ -207,7 +203,8 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({
         ...formData.categoriesHiringFor,
         customCategory.trim(),
       ];
-      handleInputChange("categoriesHiringFor", newCategories as any);
+      // Type assertion needed due to handleInputChange signature mismatch (expects string but field is string[])
+      handleInputChange("categoriesHiringFor", newCategories as unknown as string);
       setCustomCategory("");
     }
   };
@@ -215,7 +212,8 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({
   const handleAddCustomValue = () => {
     if (customValue.trim() && !formData.values.includes(customValue.trim())) {
       const newValues = [...formData.values, customValue.trim()];
-      handleInputChange("values", newValues as any);
+      // Type assertion needed due to handleInputChange signature mismatch (expects string but field is string[])
+      handleInputChange("values", newValues as unknown as string);
       setCustomValue("");
     }
   };
@@ -224,22 +222,25 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({
     const newCategories = formData.categoriesHiringFor.filter(
       (item) => item !== category
     );
-    handleInputChange("categoriesHiringFor", newCategories as any);
+    // Type assertion needed due to handleInputChange signature mismatch (expects string but field is string[])
+    handleInputChange("categoriesHiringFor", newCategories as unknown as string);
   };
 
   const handleRemoveValue = (value: string) => {
     const newValues = formData.values.filter((item) => item !== value);
-    handleInputChange("values", newValues as any);
+    // Type assertion needed due to handleInputChange signature mismatch (expects string but field is string[])
+    handleInputChange("values", newValues as unknown as string);
   };
 
   const handleAddSocialUrl = () => {
     const trimmedUrl = newSocialUrl.trim();
     if (trimmedUrl && !formData.socialLinks.includes(trimmedUrl)) {
       setSocialUrls((prev) => [...prev, trimmedUrl]);
+      // Type assertion needed due to handleInputChange signature mismatch (expects string but field is string[])
       handleInputChange("socialLinks", [
         ...formData.socialLinks,
         trimmedUrl,
-      ] as any);
+      ] as unknown as string);
       setNewSocialUrl("");
     }
   };
@@ -247,7 +248,8 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({
   const handleRemoveSocialUrl = (urlToRemove: string) => {
     const newLinks = formData.socialLinks.filter((url) => url !== urlToRemove);
     setSocialUrls(newLinks);
-    handleInputChange("socialLinks", newLinks as any);
+    // Type assertion needed due to handleInputChange signature mismatch (expects string but field is string[])
+    handleInputChange("socialLinks", newLinks as unknown as string);
   };
 
   switch (currentStep) {
@@ -262,7 +264,7 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Account Setup</h2>
             <p className="text-gray-600">
-              Let's start with your basic information
+              Let&apos;s start with your basic information
             </p>
           </div>
 

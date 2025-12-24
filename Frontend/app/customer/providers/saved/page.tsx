@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { CustomerLayout } from "@/components/customer-layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -44,7 +44,7 @@ export default function SavedProvidersPage() {
   };
   const token = localStorage.getItem("token") || "";
 
-  const fetchSaved = async () => {
+  const fetchSaved = useCallback(async () => {
     try {
       const userId = getUserId();
       if (!userId) {
@@ -70,11 +70,11 @@ export default function SavedProvidersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchSaved();
-  }, []);
+  }, [fetchSaved]);
 
   const unsave = async (providerId: string) => {
     try {

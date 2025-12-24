@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Globe, FileText } from "lucide-react";
 import type { PortfolioItem } from "../types";
@@ -24,10 +25,12 @@ export default function PortfolioGrid({ items }: { items: PortfolioItem[] }) {
           <div key={it.id} className="group block border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white">
             <div className="relative aspect-video bg-gray-100">
               {imageUrl && isImage ? (
-                <img
+                <Image
                   src={imageUrl}
                   alt={it.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  unoptimized
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = "none";

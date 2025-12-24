@@ -20,13 +20,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import {
   FileText,
@@ -35,19 +28,17 @@ import {
   XCircle,
   Clock,
   AlertCircle,
-  X,
   Download,
-  Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { API_BASE } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import type { UploadedDocument, DocumentType } from "../types";
+import type { UploadedDocument } from "../types";
 
 type Props = {
   documents: UploadedDocument[];
   setDocuments: (docs: UploadedDocument[]) => void;
-  documentType: String;
+  documentType: string;
   userId?: string;
 };
 
@@ -59,10 +50,8 @@ export default function VerificationSection({
 }: Props) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [docType, setDocType] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [reuploadTargetId, setReuploadTargetId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   // statuses normalized to: "approved" | "pending" | "rejected"
   const counts = {
@@ -97,7 +86,7 @@ export default function VerificationSection({
     if (!f) return;
 
     // ✅ Check if user accidentally selected a folder
-    if ((f as any).type === "" && (f as any).size === 0) {
+    if (f.type === "" && f.size === 0) {
       return toast({
         title: "Invalid selection",
         description: "You cannot upload a folder. Please select a valid file.",
@@ -147,12 +136,10 @@ export default function VerificationSection({
 
     // close dialog and reset form immediately
     setOpen(false);
-    setDocType("");
     setFile(null);
 
     // perform upload to R2 first, then backend
     try {
-      setIsUploading(true);
 
       // Upload to R2 first
       // Category will be auto-detected from file type (image, document, or video)
@@ -166,18 +153,19 @@ export default function VerificationSection({
           visibility: "private", // KYC documents should be private
           // Don't specify category - let it auto-detect from file.type
         });
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
         // Handle R2 upload errors
-        if (uploadError.message?.includes("network") || uploadError.message?.includes("fetch")) {
+        const errorMessage = uploadError instanceof Error ? uploadError.message : String(uploadError);
+        if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
           throw new Error("Network error: Unable to connect to upload service. Please check your internet connection and try again.");
         }
-        if (uploadError.message?.includes("size") || uploadError.message?.includes("limit")) {
-          throw new Error(`File size error: ${uploadError.message}`);
+        if (errorMessage.includes("size") || errorMessage.includes("limit")) {
+          throw new Error(`File size error: ${errorMessage}`);
         }
-        if (uploadError.message?.includes("type") || uploadError.message?.includes("format")) {
-          throw new Error(`File type error: ${uploadError.message}`);
+        if (errorMessage.includes("type") || errorMessage.includes("format")) {
+          throw new Error(`File type error: ${errorMessage}`);
         }
-        throw new Error(`Upload failed: ${uploadError.message || "Unknown error occurred during file upload"}`);
+        throw new Error(`Upload failed: ${errorMessage || "Unknown error occurred during file upload"}`);
       }
 
       if (!uploadResult.success) {
@@ -212,18 +200,20 @@ export default function VerificationSection({
             mimeType: file.type || "application/octet-stream",
           }),
         });
-      } catch (fetchError: any) {
+      } catch (fetchError: unknown) {
         // Handle network errors
-        if (fetchError.message?.includes("network") || fetchError.message?.includes("fetch") || fetchError.name === "TypeError") {
+        const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+        const errorName = fetchError instanceof Error ? fetchError.name : "";
+        if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorName === "TypeError") {
           throw new Error("Network error: Unable to connect to server. Please check your internet connection and try again.");
         }
-        throw new Error(`Server connection failed: ${fetchError.message || "Unknown error"}`);
+        throw new Error(`Server connection failed: ${errorMessage || "Unknown error"}`);
       }
 
       let payload;
       try {
         payload = await res.json();
-      } catch (parseError) {
+      } catch {
         throw new Error("Server response error: Invalid response from server. Please try again.");
       }
 
@@ -294,15 +284,13 @@ export default function VerificationSection({
         title: "Document Uploaded",
         description: "Pending verification.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("KYC upload failed:", err);
       toast({
         title: "Upload failed",
-        description: err?.message ?? String(err),
+        description: err instanceof Error ? err.message : String(err),
         variant: "destructive",
       });
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -334,22 +322,14 @@ export default function VerificationSection({
         link.click();
         document.body.removeChild(link);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to download document:", error);
       toast({
         title: "Download failed",
-        description: error.message || "Failed to download document",
+        description: error instanceof Error ? error.message : "Failed to download document",
         variant: "destructive",
       });
     }
-  };
-
-  const remove = (id: string) => {
-    setDocuments(documents.filter((d) => d.id !== id));
-    toast({
-      title: "Document Deleted",
-      description: "Removed from your account.",
-    });
   };
 
   return (

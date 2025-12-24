@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -42,15 +42,11 @@ export default function AdminDashboard() {
     openDisputes: 0,
     underReviewDisputes: 0,
   })
-  const [recentActivity, setRecentActivity] = useState<any[]>([])
-  const [pendingVerifications, setPendingVerifications] = useState<any[]>([])
-  const [topProviders, setTopProviders] = useState<any[]>([])
+  const [recentActivity, setRecentActivity] = useState<Array<Record<string, unknown>>>([])
+  const [pendingVerifications, setPendingVerifications] = useState<Array<Record<string, unknown>>>([])
+  const [topProviders, setTopProviders] = useState<Array<Record<string, unknown>>>([])
 
-  useEffect(() => {
-    loadDashboardData()
-  }, [])
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -77,17 +73,21 @@ export default function AdminDashboard() {
       if (providersRes.success) {
         setTopProviders(providersRes.data || [])
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading dashboard data:", error)
       toast({
         title: "Error",
-        description: error.message || "Failed to load dashboard data",
+        description: error instanceof Error ? error.message : "Failed to load dashboard data",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)

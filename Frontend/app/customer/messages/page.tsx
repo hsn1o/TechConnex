@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,6 @@ import {
   Search,
   Send,
   Paperclip,
-  Phone,
-  Video,
-  MoreVertical,
   Loader2,
   FileText,
 } from "lucide-react";
@@ -23,6 +20,7 @@ import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getProfileImageUrl } from "@/lib/api";
+import Image from "next/image";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -81,7 +79,7 @@ export default function CustomerMessagesPage() {
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [token, setToken] = useState<string>("");
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [showAttachmentPicker, setShowAttachmentPicker] = useState(false);
   const [pendingAttachmentUrl, setPendingAttachmentUrl] = useState<
@@ -107,7 +105,7 @@ export default function CustomerMessagesPage() {
     }
   }, []);
 
-  const currentUserId = user?.id;
+  const currentUserId = user?.id as string | undefined;
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -270,10 +268,10 @@ export default function CustomerMessagesPage() {
     return () => {
       newSocket.close();
     };
-  }, [token]);
+  }, [token, currentUserId]);
 
   // Fetch conversations list
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -305,10 +303,10 @@ export default function CustomerMessagesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   // Fetch messages for a specific conversation
-  const fetchMessages = async (
+  const fetchMessages = useCallback(async (
     otherUserId: string,
     skipLoadingCheck = false
   ) => {
@@ -346,7 +344,7 @@ export default function CustomerMessagesPage() {
     } finally {
       if (!skipLoadingCheck) setLoading(false);
     }
-  };
+  }, [token, loading]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -354,7 +352,7 @@ export default function CustomerMessagesPage() {
       console.log("🔄 Loading conversations...");
       fetchConversations();
     }
-  }, [token]);
+  }, [token, fetchConversations]);
 
   // Fetch open project requests for company
   useEffect(() => {
@@ -371,13 +369,13 @@ export default function CustomerMessagesPage() {
         if (data.success) {
           const projects = data.items ?? data.data;
           const availableProjects = projects.filter(
-            (proj: any) =>
+            (proj: Record<string, unknown>) =>
               proj.status === "IN_PROGRESS" ||
               (proj.status === "DISPUTED" && proj.projectId !== null)
           );
           setProjects(availableProjects);
           const openProjects = projects.filter(
-            (proj: any) => proj.status === "OPEN" && proj.projectId === null
+            (proj: Record<string, unknown>) => proj.status === "OPEN" && proj.projectId === null
           );
           setProjectRequests(openProjects);
         }
@@ -422,7 +420,7 @@ export default function CustomerMessagesPage() {
       console.log("📨 Fetching messages for user:", userIdParam);
       fetchMessages(userIdParam, true);
     }
-  }, [userIdParam, chatName, chatAvatar, token, loading]);
+  }, [userIdParam, chatName, chatAvatar, token, loading, fetchMessages]);
 
   // Handle conversation selection
   const handleSelectConversation = (conversation: Conversation) => {
@@ -473,14 +471,20 @@ export default function CustomerMessagesPage() {
   // Helper to send attachment after project selection
   const sendAttachmentMessage = (projectId?: string) => {
     if (!pendingAttachmentUrl || !socket || !selectedChat) return;
-    const messageData: any = {
+    const messageData: {
+      senderId: string | undefined;
+      receiverId: string | null;
+      projectId: string | null;
+      messageType: "file";
+      attachments: string[];
+    } = {
       senderId: currentUserId,
       receiverId: selectedChat,
       projectId: projectId || null,
       messageType: "file",
       attachments: [pendingAttachmentUrl],
     };
-    socket.emit("send_message", messageData, (response: any) => {
+    socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
       if (!response?.success) {
         alert("Failed to send file: " + response.error);
       }
@@ -524,8 +528,8 @@ export default function CustomerMessagesPage() {
         createdAt: new Date().toISOString(),
         sender: {
           id: currentUserId!,
-          name: user?.name || "You",
-          email: user?.email || "",
+          name: (user?.name as string) || "You",
+          email: (user?.email as string) || "",
         },
         receiver: {
           id: selectedChat,
@@ -539,7 +543,7 @@ export default function CustomerMessagesPage() {
       setNewMessage(""); // Clear input immediately
 
       // Send via socket with callback
-      socket.emit("send_message", messageData, (response: any) => {
+      socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
         console.log("📨 Socket callback response:", response);
         if (response?.success) {
           console.log("✅ Message sent successfully via socket");
@@ -583,8 +587,8 @@ export default function CustomerMessagesPage() {
       createdAt: new Date().toISOString(),
       sender: {
         id: currentUserId,
-        name: user?.name || "You",
-        email: user?.email || "",
+        name: (user?.name as string) || "You",
+        email: (user?.email as string) || "",
       },
       receiver: {
         id: selectedChat,
@@ -594,7 +598,7 @@ export default function CustomerMessagesPage() {
     };
     setMessages((prev) => [...prev, optimisticMessage]);
     setShowProjectPicker(false);
-    socket.emit("send_message", messageData, (response: any) => {
+    socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
       if (!response?.success) {
         setMessages((prev) =>
           prev.filter((m) => m.id !== optimisticMessage.id)
@@ -605,7 +609,7 @@ export default function CustomerMessagesPage() {
   };
 
   // Mark messages as read
-  const markMessagesAsRead = async (messageIds: string[]) => {
+  const markMessagesAsRead = useCallback(async (messageIds: string[]) => {
     if (!token) return;
 
     try {
@@ -622,7 +626,7 @@ export default function CustomerMessagesPage() {
     } catch (error) {
       console.error("Error marking messages as read:", error);
     }
-  };
+  }, [token]);
 
   // Auto-mark messages as read when they become visible
   useEffect(() => {
@@ -641,7 +645,7 @@ export default function CustomerMessagesPage() {
         });
       }
     }
-  }, [messages, selectedChat, currentUserId, socket]);
+  }, [messages, selectedChat, currentUserId, socket, markMessagesAsRead]);
 
   const selectedConversation = conversations.find(
     (c) => c.userId === selectedChat
@@ -869,10 +873,13 @@ export default function CustomerMessagesPage() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                       >
-                                        <img
+                                        <Image
                                           src={fileUrl}
                                           alt="Attachment"
-                                          className="rounded-lg max-w-[200px] border"
+                                          width={200}
+                                          height={200}
+                                          className="rounded-lg max-w-[200px] border object-contain"
+                                          unoptimized
                                         />
                                       </a>
                                     ) : isPDF ? (

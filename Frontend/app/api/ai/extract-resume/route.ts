@@ -70,10 +70,10 @@ Focus on ICT industry and Malaysian market for the hourly rate.`,
       yearsExperience: parsed.yearsExperience || "",
       suggestedHourlyRate: parsed.suggestedHourlyRate || "",
       certifications: Array.isArray(parsed.certifications)
-        ? parsed.certifications.map((cert: { name: any; issuer: any; issuedDate: any }) => ({
-            name: cert.name || "",
-            issuer: cert.issuer || "",
-            issuedDate: cert.issuedDate || "",
+        ? parsed.certifications.map((cert: { name: unknown; issuer: unknown; issuedDate: unknown }) => ({
+            name: (typeof cert.name === "string" ? cert.name : "") || "",
+            issuer: (typeof cert.issuer === "string" ? cert.issuer : "") || "",
+            issuedDate: (typeof cert.issuedDate === "string" ? cert.issuedDate : "") || "",
             verified: false,
           }))
         : [],

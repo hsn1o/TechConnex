@@ -15,7 +15,7 @@ export interface Project {
   category: string;
   milestones: number;
   completedMilestones: number;
-  proposals?: any[];
+  proposals?: Array<Record<string, unknown>>;
   timeline?: string;
   priority?: "Low" | "Medium" | "High";
   ndaSigned?: boolean;
@@ -25,8 +25,8 @@ export interface Project {
   budgetMax?: number;
   requirements?: string;
   deliverables?: string;
-  customer?: any;
-  project?: any;
+  customer?: Record<string, unknown>;
+  project?: Record<string, unknown>;
 }
 
 export interface Milestone {

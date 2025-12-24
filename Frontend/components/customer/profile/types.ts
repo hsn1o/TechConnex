@@ -54,7 +54,7 @@ export type ProfileData = {
     benefits?: string;
     mediaGallery?: string[];
   };
-  kycDocuments?: any[];
+  kycDocuments?: UploadedDocument[];
 };
 
 export type Stats = {

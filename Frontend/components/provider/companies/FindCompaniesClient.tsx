@@ -12,16 +12,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Heart, Building2, Search } from "lucide-react";
+import { Heart, Search } from "lucide-react";
 import CompanyCard from "./sections/CompanyCard";
 import type { Company, Option } from "./types";
 import { getCompanyAiDrafts, getProfileImageUrl } from "@/lib/api";
 
 /** Props come from the server page */
 export default function FindCompaniesClient({
-  industries,
   locations,
-  companySizes,
   ratings,
 }: {
   industries: Option[];
@@ -91,7 +89,7 @@ export default function FindCompaniesClient({
               const draftRes = await getCompanyAiDrafts(profileIds);
               if (draftRes?.success && Array.isArray(draftRes.drafts)) {
                 const draftMap = new Map(
-                  draftRes.drafts.map((d: any) => [d.referenceId, d.summary])
+                  draftRes.drafts.map((d: { referenceId: string; summary: string }) => [d.referenceId, d.summary])
                 );
                 transformedCompanies = transformedCompanies.map(
                   (c: Company) => ({
