@@ -213,7 +213,7 @@ export default function AdminUsersPage() {
           description: "Password copied to clipboard",
         })
         setTimeout(() => setPasswordCopied(false), 2000)
-      } catch (error) {
+      } catch {
         toast({
           title: "Error",
           description: "Failed to copy password",

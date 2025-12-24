@@ -15,7 +15,7 @@ import {
   FileText,
 } from "lucide-react";
 import io, { Socket } from "socket.io-client";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ProviderLayout } from "@/components/provider-layout";
 import Link from "next/link";
 import { getProfileImageUrl } from "@/lib/api";
@@ -130,7 +130,6 @@ export default function CustomerMessagesPage() {
   }, [token]);
 
   const currentUserId = user?.id as string | undefined;
-  const router = useRouter();
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {

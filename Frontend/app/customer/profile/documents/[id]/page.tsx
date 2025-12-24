@@ -4,11 +4,12 @@ import { CustomerLayout } from "@/components/customer-layout";
 import type { DocumentDetail } from "@/components/customer/profile/documents/types";
 import DocumentDetailClient from "@/components/customer/profile/documents/DocumentDetailClient";
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
 export default async function DocumentDetailPage({ params }: Props) {
+  const { id } = await params;
   const document: DocumentDetail = {
-    id: params.id,
+    id: id,
     name: "Business_Registration_Certificate.pdf",
     type: "Business Registration",
     size: "2.4 MB",

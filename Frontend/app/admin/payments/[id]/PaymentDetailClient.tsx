@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,19 +13,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   CheckCircle2,
-  XCircle,
-  Clock,
-  DollarSign,
   Building2,
   User,
   CreditCard,
   MessageSquare,
-  Send,
   Loader2,
   AlertCircle,
   ExternalLink,
@@ -43,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import Image from "next/image";
 
 type PaymentDetail = {
   id: string;
@@ -57,7 +53,7 @@ type PaymentDetail = {
   releasedAt?: string;
   bankTransferStatus?: string;
   bankTransferRef?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   project: {
     id: string;
     title: string;
@@ -132,8 +128,6 @@ export default function PaymentDetailClient({
   const router = useRouter();
   const [payment, setPayment] = useState<PaymentDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [transferRef, setTransferRef] = useState("");
   const [transferProofFile, setTransferProofFile] = useState<File | null>(null);
@@ -143,11 +137,7 @@ export default function PaymentDetailClient({
   const [confirming, setConfirming] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchPayment();
-  }, [paymentId]);
-
-  const fetchPayment = async () => {
+  const fetchPayment = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAdminPaymentById(paymentId);
@@ -159,24 +149,11 @@ export default function PaymentDetailClient({
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentId]);
 
-  const handleSendMessage = async () => {
-    if (!message.trim() || !payment) return;
-
-    try {
-      setSendingMessage(true);
-      // TODO: Implement messaging system
-      // For now, just show a success message
-      alert("Message sent successfully");
-      setMessage("");
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      alert("Failed to send message");
-    } finally {
-      setSendingMessage(false);
-    }
-  };
+  useEffect(() => {
+    fetchPayment();
+  }, [fetchPayment]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -274,9 +251,10 @@ export default function PaymentDetailClient({
         }
         fetchPayment(); // Refresh payment data
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to confirm transfer:", error);
-      alert(error.message || "Failed to confirm bank transfer");
+      const errorMessage = error instanceof Error ? error.message : "Failed to confirm bank transfer";
+      alert(errorMessage);
     } finally {
       setConfirming(false);
     }
@@ -326,7 +304,7 @@ export default function PaymentDetailClient({
           Payment Not Found
         </h2>
         <p className="text-gray-600 mb-4">
-          The payment you're looking for doesn't exist.
+          The payment you&apos;re looking for doesn&apos;t exist.
         </p>
         <Button onClick={() => router.push("/admin/payments")}>
           Back to Payments
@@ -1234,10 +1212,13 @@ export default function PaymentDetailClient({
                       <div className="flex items-center gap-3">
                         {transferProofPreview ? (
                           <div className="w-16 h-16 rounded border overflow-hidden">
-                            <img
+                            <Image
                               src={transferProofPreview}
                               alt="Preview"
+                              width={64}
+                              height={64}
                               className="w-full h-full object-cover"
+                              unoptimized
                             />
                           </div>
                         ) : (

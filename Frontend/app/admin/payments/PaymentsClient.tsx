@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,18 +39,14 @@ import {
   Search,
   MoreHorizontal,
   Eye,
-  Download,
   DollarSign,
   CreditCard,
-  Clock,
   XCircle,
-  AlertTriangle,
   TrendingUp,
   CheckCircle2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getAdminPayments, getAdminPaymentStats, getProfileImageUrl } from "@/lib/api";
-import Link from "next/link";
 
 type Payment = {
   id: string;
@@ -92,6 +88,14 @@ type Payment = {
   };
 };
 
+type PaymentStats = {
+  totalPayments?: number;
+  totalVolume?: number;
+  totalFees?: number;
+  readyToTransfer?: number;
+  failedPayments?: number;
+};
+
 export default function PaymentsClient() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -99,7 +103,7 @@ export default function PaymentsClient() {
   const [methodFilter, setMethodFilter] = useState("all");
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<PaymentStats | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -111,15 +115,7 @@ export default function PaymentsClient() {
     fetchStats();
   }, []);
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fetchPayments();
-    }, 300); // Debounce search
-
-    return () => clearTimeout(timeoutId);
-  }, [statusFilter, methodFilter, searchQuery, pagination.page]);
-
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAdminPayments({
@@ -134,14 +130,22 @@ export default function PaymentsClient() {
 
       if (response.success) {
         setPayments(response.data || []);
-        setPagination(response.pagination || pagination);
+        setPagination((prev) => response.pagination || prev);
       }
     } catch (error) {
       console.error("Failed to fetch payments:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, statusFilter, methodFilter, pagination.page, pagination.limit]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchPayments();
+    }, 300); // Debounce search
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchPayments]);
 
   const fetchStats = async () => {
     try {
@@ -202,16 +206,6 @@ export default function PaymentsClient() {
     });
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   return (
     <div className="space-y-8">
       {/* Stats Cards */}
@@ -241,7 +235,7 @@ export default function PaymentsClient() {
                     Total Volume
                   </p>
                   <p className="text-2xl font-bold text-green-600">
-                    RM{(stats.totalVolume / 1000).toFixed(0)}K
+                    RM{((stats.totalVolume || 0) / 1000).toFixed(0)}K
                   </p>
                 </div>
                 <DollarSign className="w-8 h-8 text-green-600" />
@@ -257,7 +251,7 @@ export default function PaymentsClient() {
                     Platform Fees
                   </p>
                   <p className="text-2xl font-bold text-purple-600">
-                    RM{stats.totalFees.toLocaleString()}
+                    RM{(stats.totalFees || 0).toLocaleString()}
                   </p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-purple-600" />

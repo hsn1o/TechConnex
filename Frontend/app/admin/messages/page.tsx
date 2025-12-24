@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,9 +15,10 @@ import {
   FileText,
 } from "lucide-react";
 import io, { Socket } from "socket.io-client";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { AdminLayout } from "@/components/admin-layout";
 import Link from "next/link";
+import Image from "next/image";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -58,10 +59,8 @@ type Message = {
 
 export default function AdminMessagesPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const userIdParam = searchParams.get("userId");
   const projectIdParam = searchParams.get("projectId");
-  const paymentIdParam = searchParams.get("paymentId");
   const chatName = searchParams.get("name");
   const chatAvatar = searchParams.get("avatar");
 
@@ -73,7 +72,7 @@ export default function AdminMessagesPage() {
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [token, setToken] = useState<string>("");
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<Record<string, unknown> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const selectedChatRef = useRef<string | null>(null);
@@ -95,7 +94,7 @@ export default function AdminMessagesPage() {
     }
   }, []);
 
-  const currentUserId = user?.id;
+  const currentUserId = user?.id as string | undefined;
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -248,7 +247,7 @@ export default function AdminMessagesPage() {
   }, [token, currentUserId]);
 
   // Fetch conversations list
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -273,10 +272,10 @@ export default function AdminMessagesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   // Fetch messages for a specific conversation
-  const fetchMessages = async (otherUserId: string, skipLoadingCheck = false) => {
+  const fetchMessages = useCallback(async (otherUserId: string, skipLoadingCheck = false) => {
     if (!token || !otherUserId) return;
     if (loading && !skipLoadingCheck) return;
 
@@ -301,7 +300,7 @@ export default function AdminMessagesPage() {
         if (projectIdParam) {
           // Note: This assumes messages have a projectId field
           // If backend doesn't return projectId, we'll show all messages
-          filteredMessages = data.data.filter((msg: any) => 
+          filteredMessages = data.data.filter((msg: Record<string, unknown>) => 
             !msg.projectId || msg.projectId === projectIdParam
           );
         }
@@ -321,14 +320,14 @@ export default function AdminMessagesPage() {
     } finally {
       if (!skipLoadingCheck) setLoading(false);
     }
-  };
+  }, [token, projectIdParam, loading]);
 
   // Load conversations on mount
   useEffect(() => {
     if (token) {
       fetchConversations();
     }
-  }, [token]);
+  }, [token, fetchConversations]);
 
   // Handle URL parameters for direct chat links
   useEffect(() => {
@@ -336,25 +335,28 @@ export default function AdminMessagesPage() {
       selectedChatRef.current = userIdParam;
       setSelectedChat(userIdParam);
 
-      const exists = conversations.some((c) => c.userId === userIdParam);
-      if (!exists) {
-        setConversations((prev) => [
-          ...prev,
-          {
-            userId: userIdParam,
-            name: chatName,
-            email: "",
-            avatar: chatAvatar || "",
-            lastMessageAt: new Date().toISOString(),
-            unreadCount: 0,
-            online: true,
-          },
-        ]);
-      }
+      setConversations((prev) => {
+        const exists = prev.some((c) => c.userId === userIdParam);
+        if (!exists) {
+          return [
+            ...prev,
+            {
+              userId: userIdParam,
+              name: chatName,
+              email: "",
+              avatar: chatAvatar || "",
+              lastMessageAt: new Date().toISOString(),
+              unreadCount: 0,
+              online: true,
+            },
+          ];
+        }
+        return prev;
+      });
 
       fetchMessages(userIdParam, true);
     }
-  }, [userIdParam, chatName, chatAvatar, token, loading, conversations.length]);
+  }, [userIdParam, chatName, chatAvatar, token, loading, fetchMessages]);
 
   // Handle conversation selection
   const handleSelectConversation = (conversation: Conversation) => {
@@ -388,14 +390,20 @@ export default function AdminMessagesPage() {
 
   const sendAttachmentMessage = (projectId?: string) => {
     if (!pendingAttachmentUrl || !socket || !selectedChat) return;
-    const messageData: any = {
-      senderId: currentUserId,
+    const messageData: {
+      senderId: string | undefined;
+      receiverId: string;
+      projectId: string | null;
+      messageType: "file";
+      attachments: string[];
+    } = {
+      senderId: currentUserId as string | undefined,
       receiverId: selectedChat,
       projectId: projectId || projectIdParam || null,
       messageType: "file",
       attachments: [pendingAttachmentUrl],
     };
-    socket.emit("send_message", messageData, (response: any) => {
+    socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
       if (!response?.success) {
         alert("Failed to send file: " + response.error);
       }
@@ -431,8 +439,8 @@ export default function AdminMessagesPage() {
         createdAt: new Date().toISOString(),
         sender: {
           id: currentUserId!,
-          name: user?.name || "Admin",
-          email: user?.email || "",
+          name: (user?.name as string | undefined) || "Admin",
+          email: (user?.email as string | undefined) || "",
         },
         receiver: {
           id: selectedChat,
@@ -444,7 +452,7 @@ export default function AdminMessagesPage() {
       setMessages((prev) => [...prev, optimisticMessage]);
       setNewMessage("");
 
-      socket.emit("send_message", messageData, (response: any) => {
+      socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
         if (response?.success) {
           console.log("✅ Message sent successfully via socket");
         } else {
@@ -461,7 +469,7 @@ export default function AdminMessagesPage() {
   };
 
   // Mark messages as read
-  const markMessagesAsRead = async (messageIds: string[]) => {
+  const markMessagesAsRead = useCallback(async (messageIds: string[]) => {
     if (!token) return;
 
     try {
@@ -478,7 +486,7 @@ export default function AdminMessagesPage() {
     } catch (error) {
       console.error("Error marking messages as read:", error);
     }
-  };
+  }, [token]);
 
   // Auto-mark messages as read when they become visible
   useEffect(() => {
@@ -496,7 +504,7 @@ export default function AdminMessagesPage() {
         });
       }
     }
-  }, [messages, selectedChat, currentUserId, socket, token]);
+  }, [messages, selectedChat, currentUserId, socket, token, markMessagesAsRead]);
 
   const selectedConversation = conversations.find(
     (c) => c.userId === selectedChat
@@ -749,10 +757,13 @@ export default function AdminMessagesPage() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                       >
-                                        <img
+                                        <Image
                                           src={fileUrl}
                                           alt="Attachment"
+                                          width={200}
+                                          height={200}
                                           className="rounded-lg max-w-[200px] border"
+                                          unoptimized
                                         />
                                       </a>
                                     ) : isPDF ? (

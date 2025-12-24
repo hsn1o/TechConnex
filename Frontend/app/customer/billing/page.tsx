@@ -120,11 +120,11 @@ export default function CustomerBillingPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedInvoice] = useState<Invoice | null>(null);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
   const [editBudgetOpen, setEditBudgetOpen] = useState(false);
-  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
+  const [selectedBudget] = useState<Budget | null>(null);
   const [selectedMilestoneForPayment, setSelectedMilestoneForPayment] =
     useState<UpcomingPayment | null>(null);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -152,9 +152,6 @@ export default function CustomerBillingPage() {
       transaction.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.provider.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      filterStatus === "all" || transaction.status === filterStatus;
-
     const matchesPeriod =
       filterPeriod === "all" ||
       (() => {
@@ -181,7 +178,7 @@ export default function CustomerBillingPage() {
         }
       })();
 
-    return matchesSearch && matchesStatus && matchesPeriod;
+    return matchesSearch && matchesPeriod;
   });
 
   // const stats = {
@@ -331,15 +328,6 @@ export default function CustomerBillingPage() {
       setPaymentDialogOpen(true);
     }
   };
-
-  const handleAddPaymentMethod = () => {
-    toast({
-      title: "Payment Method Added",
-      description: "Your new payment method has been added successfully.",
-    });
-    setAddPaymentMethodOpen(false);
-  };
-
 
   // ✅ Fetch all billing data
   useEffect(() => {
@@ -1505,50 +1493,6 @@ function AddPaymentMethodForm() {
       <DialogFooter>
         <Button variant="outline">Cancel</Button>
         {/* <Button onClick={onSubmit}>Add Payment Method</Button> */}
-      </DialogFooter>
-    </div>
-  );
-}
-
-function AddBudgetForm() {
-  return (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="category">Category</Label>
-        <Select>
-          <SelectTrigger>
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="web">Web Development</SelectItem>
-            <SelectItem value="mobile">Mobile Development</SelectItem>
-            <SelectItem value="cloud">Cloud Services</SelectItem>
-            <SelectItem value="marketing">Marketing</SelectItem>
-            <SelectItem value="design">Design</SelectItem>
-            <SelectItem value="other">Other</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label htmlFor="allocated">Allocated Amount (RM)</Label>
-        <Input id="allocated" type="number" placeholder="10000" />
-      </div>
-      <div>
-        <Label htmlFor="period">Period</Label>
-        <Select>
-          <SelectTrigger>
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="quarterly">Quarterly</SelectItem>
-            <SelectItem value="yearly">Yearly</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <DialogFooter>
-        <Button variant="outline">Cancel</Button>
-        <Button>Create Budget</Button>
       </DialogFooter>
     </div>
   );

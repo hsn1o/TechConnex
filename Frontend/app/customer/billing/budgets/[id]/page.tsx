@@ -128,7 +128,6 @@ export default function BudgetDetailPage() {
   const isOverBudget = percentage > 90
   const avgWeeklySpend = budget.spent / 4
   const projectedTotal = avgWeeklySpend * 4
-  const trend = budget.spent > projectedTotal ? "up" : "down"
 
   const getStatusColor = (status: string) => {
     switch (status) {

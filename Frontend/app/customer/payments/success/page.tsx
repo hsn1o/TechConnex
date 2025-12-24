@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 
 export default function PaymentSuccess() {
@@ -39,9 +40,9 @@ export default function PaymentSuccess() {
           <div className="text-red-600 text-6xl mb-4">✕</div>
           <h1 className="text-2xl font-bold mb-2">Payment Failed</h1>
           <p className="text-gray-600 mb-6">Something went wrong with your payment.</p>
-          <a href="/projects" className="text-blue-600 hover:underline">
+          <Link href="/customer/projects" className="text-blue-600 hover:underline">
             Return to Projects
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -63,12 +64,12 @@ export default function PaymentSuccess() {
             the funds will be released to them.
           </p>
         </div>
-        <a
+        <Link
           href="/customer/projects"
           className="inline-block bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700"
         >
           View Project
-        </a>
+        </Link>
       </div>
     </div>
   );

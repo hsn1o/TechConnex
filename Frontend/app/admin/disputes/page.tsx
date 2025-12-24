@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -48,7 +47,6 @@ import {
   DollarSign,
   FileText,
   Loader2,
-  ArrowLeft,
   RefreshCw,
   Ban,
 } from "lucide-react";
@@ -66,15 +64,70 @@ import {
 } from "@/lib/api";
 import Link from "next/link";
 
+// Types
+type Dispute = {
+  id: string;
+  reason: string;
+  description: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  contestedAmount?: number;
+  suggestedResolution?: string;
+  attachments?: string[];
+  resolutionNotes?: Array<{
+    note: string;
+    adminName?: string;
+    createdAt: string;
+  }>;
+  resolution?: string;
+  paymentId?: string;
+  milestoneId?: string;
+  projectId: string;
+  project?: {
+    title: string;
+    customer?: {
+      id: string;
+      name: string;
+    };
+    provider?: {
+      id: string;
+      name: string;
+    };
+  };
+  raisedBy?: {
+    id: string;
+    name: string;
+  };
+  payment?: {
+    id: string;
+    amount: number;
+    status: string;
+    method?: string;
+    stripeRefundId?: string;
+    bankTransferRef?: string;
+  };
+  milestone?: {
+    amount: number;
+  };
+};
+
+type DisputeStats = {
+  totalDisputes?: number;
+  openDisputes?: number;
+  inReviewDisputes?: number;
+  resolvedDisputes?: number;
+  totalAmount?: number;
+};
+
 export default function AdminDisputesPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [disputes, setDisputes] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [stats, setStats] = useState<DisputeStats | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedDispute, setSelectedDispute] = useState<any>(null);
+  const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
   const [releaseAmount, setReleaseAmount] = useState("");
@@ -82,10 +135,43 @@ export default function AdminDisputesPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
 
+  const loadDisputes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getAdminDisputes({
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        search: searchQuery || undefined,
+      });
+      if (response.success) {
+        setDisputes(response.data || []);
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load disputes";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter, searchQuery, toast]);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const response = await getAdminDisputeStats();
+      if (response.success) {
+        setStats(response.data);
+      }
+    } catch (error: unknown) {
+      console.error("Failed to load stats:", error);
+    }
+  }, []);
+
   useEffect(() => {
     loadDisputes();
     loadStats();
-  }, [statusFilter]);
+  }, [loadDisputes, loadStats]);
 
   useEffect(() => {
     // Debounce search
@@ -96,39 +182,7 @@ export default function AdminDisputesPage() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const loadDisputes = async () => {
-    try {
-      setLoading(true);
-      const response = await getAdminDisputes({
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        search: searchQuery || undefined,
-      });
-      if (response.success) {
-        setDisputes(response.data || []);
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load disputes",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const response = await getAdminDisputeStats();
-      if (response.success) {
-        setStats(response.data);
-      }
-    } catch (error: any) {
-      console.error("Failed to load stats:", error);
-    }
-  };
+  }, [searchQuery, statusFilter, loadDisputes]);
 
   const handleViewDispute = async (disputeId: string) => {
     try {
@@ -141,10 +195,11 @@ export default function AdminDisputesPage() {
         setSelectedDispute(response.data);
         setViewDialogOpen(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load dispute details";
       toast({
         title: "Error",
-        description: error.message || "Failed to load dispute details",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -300,10 +355,14 @@ export default function AdminDisputesPage() {
       setReleaseAmount("");
       await loadDisputes();
       await loadStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in handleResolve:", error);
-      const errorMessage =
-        error?.message || error?.error || "Failed to process action";
+      let errorMessage = "Failed to process action";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "object" && error !== null && "error" in error) {
+        errorMessage = String(error.error);
+      }
       toast({
         title: "Error",
         description: errorMessage,
@@ -333,7 +392,7 @@ export default function AdminDisputesPage() {
 
   const filteredDisputes = disputes; // Backend handles filtering now
 
-  const disputeAmount = (dispute: any) => {
+  const disputeAmount = (dispute: Dispute) => {
     return (
       dispute.payment?.amount ||
       dispute.contestedAmount ||
@@ -720,7 +779,7 @@ export default function AdminDisputesPage() {
                                 {updates.map((update: string, idx: number) => {
                                   // Parse update format: [Update by Name on Date]: content
                                   // Also handle old format: [Update by userId]: content
-                                  let match = update.match(
+                                  const match = update.match(
                                     /^\[Update by (.+?) on (.+?)\]:\s*([\s\S]+)$/
                                   );
                                   let userName = "";
@@ -965,7 +1024,7 @@ export default function AdminDisputesPage() {
                               if (
                                 uploadedBy === "Unknown User" &&
                                 index === 0 &&
-                                selectedDispute.attachments.length === 1
+                                selectedDispute.attachments?.length === 1
                               ) {
                                 uploadedBy =
                                   selectedDispute.raisedBy?.name ||
@@ -1050,7 +1109,7 @@ export default function AdminDisputesPage() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {selectedDispute.resolutionNotes.map(
-                          (note: any, index: number) => {
+                          (note: { note?: string; adminName?: string; createdAt: string }, index: number) => {
                             // Check if note contains "--- Admin Note ---" separator
                             const noteParts =
                               note.note?.split(/\n--- Admin Note ---\n/) || [];
@@ -1157,7 +1216,7 @@ export default function AdminDisputesPage() {
                           </span>
                           <p className="text-blue-600">
                             RM{" "}
-                            {selectedDispute.payment.amount?.toLocaleString() ||
+                            {selectedDispute.payment?.amount?.toLocaleString() ||
                               "0"}
                           </p>
                         </div>
@@ -1167,18 +1226,18 @@ export default function AdminDisputesPage() {
                           </span>
                           <Badge
                             className={`ml-2 ${
-                              selectedDispute.payment.status === "ESCROWED"
+                              selectedDispute.payment?.status === "ESCROWED"
                                 ? "bg-green-100 text-green-800"
-                                : selectedDispute.payment.status === "REFUNDED"
+                                : selectedDispute.payment?.status === "REFUNDED"
                                 ? "bg-red-100 text-red-800"
-                                : selectedDispute.payment.status === "RELEASED"
+                                : selectedDispute.payment?.status === "RELEASED"
                                 ? "bg-blue-100 text-blue-800"
-                                : selectedDispute.payment.status === "DISPUTED"
+                                : selectedDispute.payment?.status === "DISPUTED"
                                 ? "bg-yellow-100 text-yellow-800"
                                 : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            {selectedDispute.payment.status || "N/A"}
+                            {selectedDispute.payment?.status || "N/A"}
                           </Badge>
                         </div>
                         <div>
@@ -1186,27 +1245,27 @@ export default function AdminDisputesPage() {
                             Payment Method:
                           </span>
                           <p className="text-blue-600">
-                            {selectedDispute.payment.method || "N/A"}
+                            {selectedDispute.payment?.method || "N/A"}
                           </p>
                         </div>
                       </div>
-                      {selectedDispute.payment.stripeRefundId && (
+                      {selectedDispute.payment?.stripeRefundId && (
                         <div className="mt-2 pt-2 border-t border-blue-200">
                           <span className="font-medium text-blue-800">
                             Refund Transaction ID:
                           </span>
                           <p className="text-blue-600 font-mono text-xs break-all">
-                            {selectedDispute.payment.stripeRefundId}
+                            {selectedDispute.payment?.stripeRefundId}
                           </p>
                         </div>
                       )}
-                      {selectedDispute.payment.bankTransferRef && (
+                      {selectedDispute.payment?.bankTransferRef && (
                         <div className="mt-2 pt-2 border-t border-blue-200">
                           <span className="font-medium text-blue-800">
                             Transfer Reference:
                           </span>
                           <p className="text-blue-600 font-mono text-xs break-all">
-                            {selectedDispute.payment.bankTransferRef.startsWith(
+                            {selectedDispute.payment?.bankTransferRef?.startsWith(
                               "http"
                             ) ? (
                               <a
@@ -1218,7 +1277,7 @@ export default function AdminDisputesPage() {
                                 View File
                               </a>
                             ) : (
-                              selectedDispute.payment.bankTransferRef
+                              selectedDispute.payment?.bankTransferRef
                             )}
                           </p>
                         </div>
@@ -1238,7 +1297,7 @@ export default function AdminDisputesPage() {
                         <CardDescription>
                           {selectedDispute.payment
                             ? `Payment Amount: RM ${
-                                selectedDispute.payment.amount?.toLocaleString() ||
+                                selectedDispute.payment?.amount?.toLocaleString() ||
                                 selectedDispute.contestedAmount ||
                                 0
                               }`
@@ -1430,11 +1489,12 @@ export default function AdminDisputesPage() {
                     setRefundAmount(val);
                     // Auto-calculate remaining for release if total is set
                     if (selectedDispute?.payment?.amount) {
-                      const refund = parseFloat(val) || 0;
-                      const remaining = Math.max(
-                        0,
-                        selectedDispute.payment.amount - refund
-                      );
+                      // Remaining amount available for release (not used currently)
+                      // const refund = parseFloat(val) || 0;
+                      // const remaining = Math.max(
+                      //   0,
+                      //   selectedDispute.payment.amount - refund
+                      // );
                       if (!releaseAmount || parseFloat(releaseAmount) === 0) {
                         // Only auto-fill if release is empty
                       }
