@@ -1,24 +1,15 @@
-import fs from "fs";
-import path from "path";
 import PDFDocument from "pdfkit";
 
 export const createAnalyticsPDF = async (data) => {
-  const fileName = `Billing_Report_${Date.now()}.pdf`;
-  const exportDir = path.join(process.cwd(), "exports");
-
-  if (!fs.existsSync(exportDir)) {
-    fs.mkdirSync(exportDir, { recursive: true });
-  }
-
-  const filePath = path.join(exportDir, fileName);
   const doc = new PDFDocument({ 
     margin: 50,
     size: 'A4',
     bufferPages: true
   });
 
-  const stream = fs.createWriteStream(filePath);
-  doc.pipe(stream);
+  // Collect PDF chunks in memory instead of writing to disk
+  const chunks = [];
+  doc.on('data', (chunk) => chunks.push(chunk));
 
   // Colors
   const colors = {
@@ -337,10 +328,11 @@ export const createAnalyticsPDF = async (data) => {
 
   doc.end();
 
-  await new Promise((resolve, reject) => {
-    stream.on("finish", resolve);
-    stream.on("error", reject);
+  return new Promise((resolve, reject) => {
+    doc.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      resolve(buffer);
+    });
+    doc.on('error', reject);
   });
-
-  return filePath;
 };

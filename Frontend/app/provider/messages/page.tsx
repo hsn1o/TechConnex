@@ -18,7 +18,7 @@ import io, { Socket } from "socket.io-client";
 import { useSearchParams } from "next/navigation";
 import { ProviderLayout } from "@/components/provider-layout";
 import Link from "next/link";
-import { getProfileImageUrl } from "@/lib/api";
+import { getMessageAttachmentUrl, getProfileImageUrl } from "@/lib/api";
 import Image from "next/image";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -794,18 +794,19 @@ export default function CustomerMessagesPage() {
                           >
                             {message.messageType === "file" ? (
                               message.attachments.map((fileUrl, index) => {
+                                const attachmentUrl = getMessageAttachmentUrl(fileUrl);
                                 const isImage =
                                   /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(
                                     fileUrl
                                   );
                                 const isPDF = /\.pdf$/i.test(fileUrl);
-                                const fileName = fileUrl.split("/").pop();
+                                const fileName = fileUrl.split("/").pop() || fileUrl.split("\\").pop() || "attachment";
 
                                 return (
                                   <div key={index} className="mt-2">
                                     {isImage ? (
                                       <a
-                                        href={fileUrl}
+                                        href={attachmentUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                       >
@@ -820,7 +821,7 @@ export default function CustomerMessagesPage() {
                                       </a>
                                     ) : isPDF ? (
                                       <a
-                                        href={fileUrl}
+                                        href={attachmentUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className={`block mt-1 underline ${
@@ -833,7 +834,7 @@ export default function CustomerMessagesPage() {
                                       </a>
                                     ) : (
                                       <a
-                                        href={fileUrl}
+                                        href={attachmentUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className={`block mt-1 underline ${

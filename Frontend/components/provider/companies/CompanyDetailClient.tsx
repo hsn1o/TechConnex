@@ -54,7 +54,12 @@ import {
 } from "lucide-react";
 import type { Company, Review } from "./types";
 import { useRouter } from "next/navigation";
-import { getCompanyOpportunities, sendProposal, getProfileImageUrl } from "@/lib/api";
+import {
+  getCompanyOpportunities,
+  sendProposal,
+  getProfileImageUrl,
+} from "@/lib/api";
+import { MediaImage } from "@/components/ui/media-image";
 import {
   formatTimeline,
   buildTimelineData,
@@ -116,9 +121,12 @@ export default function CompanyDetailClient({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Opportunities state
-  const [opportunities, setOpportunities] = useState<TransformedOpportunity[]>([]);
+  const [opportunities, setOpportunities] = useState<TransformedOpportunity[]>(
+    []
+  );
   const [loadingOpportunities, setLoadingOpportunities] = useState(true);
-  const [selectedOpportunity, setSelectedOpportunity] = useState<TransformedOpportunity | null>(null);
+  const [selectedOpportunity, setSelectedOpportunity] =
+    useState<TransformedOpportunity | null>(null);
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
   const [submittingProposal, setSubmittingProposal] = useState(false);
   const [proposalData, setProposalData] = useState<ProposalFormData>({
@@ -209,43 +217,50 @@ export default function CompanyDetailClient({
         const response = await getCompanyOpportunities(company.id);
         if (response.success && response.data) {
           // Transform opportunities to match the format expected by the UI
-          const transformed = response.data.map((opp: Record<string, unknown>) => ({
-            id: String(opp.id || ""),
-            title: String(opp.title || ""),
-            description: String(opp.description || ""),
-            fullDescription: String(opp.description || ""),
-            budget: `RM ${(opp.budgetMin as number)?.toLocaleString() || 0} - RM ${(opp.budgetMax as number)?.toLocaleString() || 0}`,
-            budgetMin: (opp.budgetMin as number) || 0,
-            budgetMax: (opp.budgetMax as number) || 0,
-            timeline: formatTimeline(opp.timeline as string) || "Not specified",
-            originalTimeline: (opp.timeline as string) || null,
-            originalTimelineInDays: (() => {
-              if (!opp.timeline) return 0;
-              const timelineStr = String(opp.timeline).toLowerCase().trim();
-              const match = timelineStr.match(
-                /^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/
-              );
-              if (match) {
-                const amount = Number(match[1]);
-                const unit = match[2].replace(/s$/, "");
-                return timelineToDays(amount, unit);
-              }
-              return 0;
-            })(),
-            skills: Array.isArray(opp.skills) ? (opp.skills as string[]) : [],
-            category: String(opp.category || ""),
-            priority: String(opp.priority || ""),
-            requirements: Array.isArray(opp.requirements)
-              ? (opp.requirements as string[])
-              : [],
-            deliverables: Array.isArray(opp.deliverables)
-              ? (opp.deliverables as string[])
-              : [],
-            proposals: (opp.proposalCount as number) || 0,
-            hasSubmitted: Boolean(opp.hasProposed),
-            postedTime: new Date(String(opp.createdAt || "")).toLocaleDateString(),
-            originalData: opp,
-          }));
+          const transformed = response.data.map(
+            (opp: Record<string, unknown>) => ({
+              id: String(opp.id || ""),
+              title: String(opp.title || ""),
+              description: String(opp.description || ""),
+              fullDescription: String(opp.description || ""),
+              budget: `RM ${
+                (opp.budgetMin as number)?.toLocaleString() || 0
+              } - RM ${(opp.budgetMax as number)?.toLocaleString() || 0}`,
+              budgetMin: (opp.budgetMin as number) || 0,
+              budgetMax: (opp.budgetMax as number) || 0,
+              timeline:
+                formatTimeline(opp.timeline as string) || "Not specified",
+              originalTimeline: (opp.timeline as string) || null,
+              originalTimelineInDays: (() => {
+                if (!opp.timeline) return 0;
+                const timelineStr = String(opp.timeline).toLowerCase().trim();
+                const match = timelineStr.match(
+                  /^(\d+(?:\.\d+)?)\s*(day|days|week|weeks|month|months)$/
+                );
+                if (match) {
+                  const amount = Number(match[1]);
+                  const unit = match[2].replace(/s$/, "");
+                  return timelineToDays(amount, unit);
+                }
+                return 0;
+              })(),
+              skills: Array.isArray(opp.skills) ? (opp.skills as string[]) : [],
+              category: String(opp.category || ""),
+              priority: String(opp.priority || ""),
+              requirements: Array.isArray(opp.requirements)
+                ? (opp.requirements as string[])
+                : [],
+              deliverables: Array.isArray(opp.deliverables)
+                ? (opp.deliverables as string[])
+                : [],
+              proposals: (opp.proposalCount as number) || 0,
+              hasSubmitted: Boolean(opp.hasProposed),
+              postedTime: new Date(
+                String(opp.createdAt || "")
+              ).toLocaleDateString(),
+              originalData: opp,
+            })
+          );
           setOpportunities(transformed);
         }
       } catch (error) {
@@ -341,9 +356,7 @@ export default function CompanyDetailClient({
         <CardContent className="p-6">
           <div className="flex items-start gap-5">
             <Avatar className="w-20 h-20">
-              <AvatarImage
-                src={getProfileImageUrl(company.avatar)}
-              />
+              <AvatarImage src={getProfileImageUrl(company.avatar)} />
               <AvatarFallback>
                 <Building2 className="w-10 h-10" />
               </AvatarFallback>
@@ -503,35 +516,16 @@ export default function CompanyDetailClient({
                   {company.mediaGallery.map((url, index) => (
                     <div
                       key={index}
-                      className="relative group border rounded-lg overflow-hidden bg-gray-50 hover:shadow-lg transition-shadow cursor-pointer"
+                      className="relative group border rounded-lg overflow-hidden bg-white hover:shadow-lg transition-shadow cursor-pointer"
                       onClick={() => isImageUrl(url) && openLightbox(index)}
                     >
-                      <div className="w-full h-48 bg-gray-100 relative overflow-hidden">
+                      <div className="w-full h-48 bg-gray-50 relative overflow-hidden">
                         {isImageUrl(url) ? (
-                          <Image
-                            src={getMediaUrl(url)}
+                          <MediaImage
+                            src={url}
                             alt={`Company media ${index + 1}`}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                            onError={(e) => {
-                              // Show placeholder if image fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = "none";
-                              const parent = target.parentElement;
-                              if (
-                                parent &&
-                                !parent.querySelector(".image-placeholder")
-                              ) {
-                                const placeholder =
-                                  document.createElement("div");
-                                placeholder.className =
-                                  "image-placeholder w-full h-full flex items-center justify-center bg-gray-200";
-                                placeholder.innerHTML =
-                                  '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
-                                parent.appendChild(placeholder);
-                              }
-                            }}
+                            className="w-full h-full"
+                            onClick={() => openLightbox(index)}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -1425,7 +1419,10 @@ export default function CompanyDetailClient({
                   }
                 } catch (error: unknown) {
                   console.error("Error submitting proposal:", error);
-                  const errorMessage = error instanceof Error ? error.message : "Failed to submit proposal";
+                  const errorMessage =
+                    error instanceof Error
+                      ? error.message
+                      : "Failed to submit proposal";
                   toast.error(errorMessage);
                 } finally {
                   setSubmittingProposal(false);
@@ -1491,31 +1488,28 @@ export default function CompanyDetailClient({
               {/* Image Display */}
               <div className="w-full h-full flex items-center justify-center p-4 md:p-8 relative">
                 {isImageUrl(company.mediaGallery[currentImageIndex]) ? (
-                  <div className="relative w-full h-full max-h-[70vh]">
-                    <Image
-                      src={getMediaUrl(company.mediaGallery[currentImageIndex])}
-                      alt={`Company media ${currentImageIndex + 1}`}
-                      fill
-                      className="object-contain rounded-lg"
-                      unoptimized
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = "none";
-                        const parent = target.parentElement;
-                        if (
-                          parent &&
-                          !parent.querySelector(".image-placeholder")
-                        ) {
-                          const placeholder = document.createElement("div");
-                          placeholder.className =
-                            "image-placeholder w-full h-full flex items-center justify-center text-white";
-                          placeholder.innerHTML =
-                            '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
-                          parent.appendChild(placeholder);
-                        }
-                      }}
-                    />
-                  </div>
+                  <img
+                    src={getMediaUrl(company.mediaGallery[currentImageIndex])}
+                    alt={`Company media ${currentImageIndex + 1}`}
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg bg-white"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      const parent = target.parentElement;
+                      if (
+                        parent &&
+                        !parent.querySelector(".image-placeholder")
+                      ) {
+                        const placeholder = document.createElement("div");
+                        placeholder.className =
+                          "image-placeholder w-full h-full flex items-center justify-center text-white";
+                        placeholder.innerHTML =
+                          '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                        parent.appendChild(placeholder);
+                      }
+                    }}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-white">
                     <ImageIcon className="w-24 h-24 text-gray-400" />

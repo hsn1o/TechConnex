@@ -1,5 +1,7 @@
 // controller.js
 import { generateReceiptPDF } from "../../../utils/receiptPdf.js";
+import { createProviderEarningsPDF } from "../../../utils/providerEarningsReportPdf.js";
+import { uploadFileToR2, generateFileKey, getPublicUrl, generatePresignedDownloadUrl } from "../../../utils/r2.js";
 import {
   createPayoutMethod,
   deletePayoutMethod,
@@ -71,15 +73,39 @@ export const getPaymentDetails = async (req, res, next) => {
 export const downloadReceipt = async (req, res, next) => {
   try {
     const { paymentId } = req.params;
+    const userId = req.user?.id;
 
-    // Get full payment data (the JSON you showed)
+    // Get full payment data
     const payment = await getPaymentDetailsService(paymentId);
 
-    // Generate PDF file
-    const filePath = await generateReceiptPDF(payment);
+    // Generate PDF buffer
+    const pdfBuffer = await generateReceiptPDF(payment);
 
-    return res.download(filePath);
+    // Generate R2 key for the receipt
+    const fileName = `receipt-${paymentId}.pdf`;
+    const r2Key = generateFileKey("receipts", fileName, userId);
+
+    // Upload PDF buffer to R2
+    await uploadFileToR2(pdfBuffer, r2Key, "application/pdf");
+
+    // Get public URL or generate presigned URL
+    let downloadUrl;
+    try {
+      downloadUrl = getPublicUrl(r2Key);
+    } catch (error) {
+      // If public URL is not configured, use presigned URL
+      console.warn("R2 public URL not configured, using presigned URL:", r2Key);
+      downloadUrl = await generatePresignedDownloadUrl(r2Key, 3600); // 1 hour expiry
+    }
+
+    // Redirect to R2 URL or return the URL
+    return res.json({
+      success: true,
+      downloadUrl,
+      message: "Receipt generated and uploaded to R2 storage",
+    });
   } catch (err) {
+    console.error("Error generating receipt:", err);
     if (!err.status) err.status = 500;
     next(err);
   }
@@ -167,3 +193,60 @@ export async function getMethod(req, res) {
     res.status(500).json({ error: "Failed to fetch payout method." });
   }
 }
+
+// Export earnings analytics report
+export const exportEarningsReport = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const timeFilter = req.query.timeFilter || "this-month";
+
+    // Fetch earnings overview data
+    const earningsData = await getEarningsOverview(userId, timeFilter);
+
+    // Generate PDF buffer
+    const pdfBuffer = await createProviderEarningsPDF({
+      earningsData: earningsData.earningsData,
+      recentPayments: earningsData.recentPayments || [],
+      monthlyEarnings: earningsData.monthlyEarnings || [],
+      topClients: earningsData.topClients || [],
+      quickStats: earningsData.quickStats || {},
+      generatedFor: userId,
+      generatedAt: new Date().toLocaleString(),
+    });
+
+    // Generate R2 key for the report
+    const fileName = `earnings-report-${Date.now()}.pdf`;
+    const r2Key = generateFileKey("earnings-reports", fileName, userId);
+
+    // Upload PDF buffer to R2
+    await uploadFileToR2(pdfBuffer, r2Key, "application/pdf");
+
+    // Get public URL or generate presigned URL
+    let downloadUrl;
+    try {
+      downloadUrl = getPublicUrl(r2Key);
+    } catch (error) {
+      // If public URL is not configured, use presigned URL
+      console.warn("R2 public URL not configured, using presigned URL:", r2Key);
+      downloadUrl = await generatePresignedDownloadUrl(r2Key, 3600); // 1 hour expiry
+    }
+
+    // Return the download URL
+    return res.json({
+      success: true,
+      downloadUrl,
+      message: "Earnings report generated and uploaded to R2 storage",
+    });
+  } catch (err) {
+    console.error("Export earnings report failed:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to export earnings report",
+      error: err.message,
+    });
+  }
+};

@@ -141,7 +141,9 @@ export default function CustomerBillingPage() {
   });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([]);
+  const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
 
   const filteredTransactions = transactions.filter((transaction) => {
@@ -236,7 +238,6 @@ export default function CustomerBillingPage() {
     }
   };
 
-
   const handleViewTransactionDetails = (transactionId: string) => {
     router.push(`/customer/billing/transactions/${transactionId}`);
   };
@@ -258,7 +259,8 @@ export default function CustomerBillingPage() {
       window.URL.revokeObjectURL(url);
     } catch (e: unknown) {
       console.error(e);
-      const errorMessage = e instanceof Error ? e.message : "Failed to download receipt";
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to download receipt";
       toast({
         title: "Error downloading receipt",
         description: errorMessage,
@@ -273,29 +275,33 @@ export default function CustomerBillingPage() {
       const res = await fetch(`${API_BASE}/company/billing/export/report`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`, // if you use token auth
+          Authorization: `Bearer ${token}`,
         },
       });
 
-      if (!res.ok) throw new Error("Failed to export report");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to export report");
+      }
 
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "billing_report.pdf";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      const data = await res.json();
 
-      toast({
-        title: "Report Downloaded",
-        description: "Your billing report has been downloaded.",
-      });
+      if (data.success && data.downloadUrl) {
+        // Open the download URL in a new tab/window
+        window.open(data.downloadUrl, "_blank");
+
+        toast({
+          title: "Report Generated",
+          description:
+            "Your billing report has been generated and is ready to download.",
+        });
+      } else {
+        throw new Error(data.message || "Failed to get download URL");
+      }
     } catch (e: unknown) {
       console.error(e);
-      const errorMessage = e instanceof Error ? e.message : "Failed to export report";
+      const errorMessage =
+        e instanceof Error ? e.message : "Failed to export report";
       toast({
         title: "Error exporting report",
         description: errorMessage,
@@ -303,7 +309,6 @@ export default function CustomerBillingPage() {
       });
     }
   };
-
 
   const handleSaveBudgetEdit = () => {
     toast({
@@ -351,10 +356,17 @@ export default function CustomerBillingPage() {
         setTransactions(
           (txnRes.transactions || []).map((txn: Record<string, unknown>) => ({
             id: (txn.id as string) || "",
-            description: ((txn.metadata as Record<string, unknown>)?.milestoneTitle as string) || "",
-            project: ((txn.project as Record<string, unknown>)?.title as string) || "",
-            provider: ((txn.metadata as Record<string, unknown>)?.providerEmail as string) || "",
-            milestone: ((txn.milestone as Record<string, unknown>)?.title as string) || "",
+            description:
+              ((txn.metadata as Record<string, unknown>)
+                ?.milestoneTitle as string) || "",
+            project:
+              ((txn.project as Record<string, unknown>)?.title as string) || "",
+            provider:
+              ((txn.metadata as Record<string, unknown>)
+                ?.providerEmail as string) || "",
+            milestone:
+              ((txn.milestone as Record<string, unknown>)?.title as string) ||
+              "",
             method: (txn.method as string) || "",
             reference: (txn.stripePaymentIntentId as string) || "",
             status: ((txn.status as string) || "").toLowerCase(),
@@ -365,16 +377,18 @@ export default function CustomerBillingPage() {
         );
         setUpcomingPayments(
           (upcomingRes.data || []).flatMap((project: Record<string, unknown>) =>
-            ((project.milestones as Array<Record<string, unknown>>) || []).map((milestone: Record<string, unknown>, index: number) => ({
-              id: (milestone.id as string) || "",
-              projectId: (project.id as string) || "",
-              project: (project.title as string) || "",
-              milestone: (milestone.title as string) || "",
-              status: (milestone.status as string) || "",
-              amount: (milestone.amount as number) || 0,
-              dueDate: (milestone.dueDate as string) || "",
-              sequence: index,
-            }))
+            ((project.milestones as Array<Record<string, unknown>>) || []).map(
+              (milestone: Record<string, unknown>, index: number) => ({
+                id: (milestone.id as string) || "",
+                projectId: (project.id as string) || "",
+                project: (project.title as string) || "",
+                milestone: (milestone.title as string) || "",
+                status: (milestone.status as string) || "",
+                amount: (milestone.amount as number) || 0,
+                dueDate: (milestone.dueDate as string) || "",
+                sequence: index,
+              })
+            )
           )
         );
       } catch (error) {
@@ -634,9 +648,7 @@ export default function CustomerBillingPage() {
                           <Button
                             size="sm"
                             className="mt-2"
-                            onClick={() =>
-                              handlePayMilestone(payment.id)
-                            }
+                            onClick={() => handlePayMilestone(payment.id)}
                           >
                             <Send className="w-3 h-3 mr-1" />
                             Pay Now
@@ -1292,7 +1304,15 @@ export default function CustomerBillingPage() {
                       </TableHeader>
                       <TableBody>
                         {selectedInvoice.items.map(
-                          (item: { description: string; quantity: number; rate: number; amount: number }, index: number) => (
+                          (
+                            item: {
+                              description: string;
+                              quantity: number;
+                              rate: number;
+                              amount: number;
+                            },
+                            index: number
+                          ) => (
                             <TableRow key={index}>
                               <TableCell>{item.description}</TableCell>
                               <TableCell>{item.quantity}</TableCell>
@@ -1402,7 +1422,11 @@ export default function CustomerBillingPage() {
                 </div>
                 <div>
                   <Label htmlFor="edit-period">Period</Label>
-                  <Select defaultValue={selectedBudget.period?.toLowerCase() || "monthly"}>
+                  <Select
+                    defaultValue={
+                      selectedBudget.period?.toLowerCase() || "monthly"
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

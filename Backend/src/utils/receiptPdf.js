@@ -1,24 +1,15 @@
 import PDFDocument from "pdfkit";
-import fs from "fs";
-import path from "path";
 
 export const generateReceiptPDF = (payment) => {
-  const receiptId = payment.id;
-  const filePath = path.join("uploads", `receipt-${receiptId}.pdf`);
-
-  // Ensure uploads folder exists
-  if (!fs.existsSync("uploads")) {
-    fs.mkdirSync("uploads", { recursive: true });
-  }
-
   const doc = new PDFDocument({ 
     margin: 40,
     size: 'A4',
     bufferPages: true
   });
 
-  const stream = fs.createWriteStream(filePath);
-  doc.pipe(stream);
+  // Collect PDF chunks in memory instead of writing to disk
+  const chunks = [];
+  doc.on('data', (chunk) => chunks.push(chunk));
 
   // Colors
   const colors = {
@@ -368,7 +359,10 @@ export const generateReceiptPDF = (payment) => {
   doc.end();
 
   return new Promise((resolve, reject) => {
-    stream.on("finish", () => resolve(filePath));
-    stream.on("error", reject);
+    doc.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      resolve(buffer);
+    });
+    doc.on('error', reject);
   });
 };

@@ -75,8 +75,17 @@ export const disputeController = {
   async simulatePayout(req, res) {
     try {
       const { id } = req.params;
-      const { refundAmount, releaseAmount, resolution } = req.body;
+      // Handle both JSON and FormData - FormData values come as strings
+      const refundAmount = req.body.refundAmount ? parseFloat(req.body.refundAmount) : 0;
+      const releaseAmount = req.body.releaseAmount ? parseFloat(req.body.releaseAmount) : 0;
+      const resolution = req.body.resolution || null;
       const adminId = req.user?.userId || null;
+      
+      // Get R2 URL if file was uploaded
+      let bankTransferRefImageUrl = null;
+      if (req.file && req.file.r2Url) {
+        bankTransferRefImageUrl = req.file.r2Url;
+      }
       
       // Get admin name from database
       let adminName = "Admin";
@@ -94,11 +103,12 @@ export const disputeController = {
       
       const result = await disputeService.simulateDisputePayout(
         id,
-        refundAmount || 0,
-        releaseAmount || 0,
+        refundAmount,
+        releaseAmount,
         resolution,
         adminId,
-        adminName
+        adminName,
+        bankTransferRefImageUrl
       );
       
       res.json({

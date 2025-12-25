@@ -1,6 +1,6 @@
 // index.js
 import express from "express";
-import { createMethod, deleteMethod, downloadReceipt, getAllPayoutMethods, getEarningsOverviewController, getMethod, getPaymentDetails, getProviderBillingController, updateMethod } from "./controller.js";
+import { createMethod, deleteMethod, downloadReceipt, exportEarningsReport, getAllPayoutMethods, getEarningsOverviewController, getMethod, getPaymentDetails, getProviderBillingController, updateMethod } from "./controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 
 const router = express.Router();
@@ -8,6 +8,7 @@ const router = express.Router();
 // ✅ Protected route
 router.get("/", authenticateToken, getProviderBillingController);
 router.get("/overview", authenticateToken, getEarningsOverviewController);
+router.get("/export/report", authenticateToken, exportEarningsReport);
 
 // ⚠️ IMPORTANT: Place specific routes BEFORE parameterized routes
 router.get("/bank", authenticateToken, getAllPayoutMethods);       // fetch all

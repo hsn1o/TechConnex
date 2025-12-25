@@ -18,13 +18,101 @@ export function getProfileImageUrl(imageUrl: string | null | undefined): string 
     return imageUrl;
   }
 
-  // If it's a local path (old format), prepend API base URL
+  // If it's a local path (old format starting with /), prepend API base URL
   if (imageUrl.startsWith("/")) {
     return `${API_BASE_URL}${imageUrl}`;
   }
 
+  // Handle old uploads paths (uploads/... or uploads/media-company/...)
+  if (imageUrl.startsWith("uploads/")) {
+    // Normalize the path (remove leading slash if present, ensure it starts with /)
+    const normalizedPath = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
+    return `${API_BASE_URL}${normalizedPath}`;
+  }
+
+  // Check if it's an R2 key for media gallery or profile images (public files)
+  const r2PublicPrefixes = ["media-gallery/", "profile-images/"];
+  const isR2PublicKey = r2PublicPrefixes.some(prefix => imageUrl.startsWith(prefix)) ||
+                        (!imageUrl.includes("://") && !imageUrl.startsWith("/") && !imageUrl.includes(API_BASE_URL));
+
+  if (isR2PublicKey) {
+    // Construct R2 public URL
+    const r2PublicDomain = process.env.NEXT_PUBLIC_R2_PUBLIC_DOMAIN;
+    if (r2PublicDomain) {
+      // Use custom domain if configured
+      return `https://${r2PublicDomain}/${imageUrl}`;
+    }
+    
+    // Fallback: try to construct R2 public URL using account ID and bucket name
+    const r2AccountId = process.env.NEXT_PUBLIC_R2_ACCOUNT_ID;
+    const r2BucketName = process.env.NEXT_PUBLIC_R2_BUCKET_NAME;
+    if (r2AccountId && r2BucketName) {
+      return `https://${r2BucketName}.${r2AccountId}.r2.cloudflarestorage.com/${imageUrl}`;
+    }
+    
+    // If no R2 config, return the key as-is (might be handled by backend proxy)
+    // But for now, let's try the API base URL as fallback
+    console.warn("R2 public domain not configured, using API base URL fallback for:", imageUrl);
+  }
+
   // Otherwise, treat as relative path
   return `${API_BASE_URL}/${imageUrl}`;
+}
+
+/**
+ * Get the URL for a message attachment
+ * Handles both old local paths and new R2 URLs/keys
+ * @param attachmentUrl - Attachment URL or key from database
+ * @returns Full URL to the attachment
+ */
+export function getMessageAttachmentUrl(attachmentUrl: string | null | undefined): string {
+  if (!attachmentUrl) {
+    return "";
+  }
+
+  // If it's already a full URL (R2 public URL or http/https), return as is
+  if (attachmentUrl.startsWith("http://") || attachmentUrl.startsWith("https://")) {
+    return attachmentUrl;
+  }
+
+  // If it's a local path (old format like /uploads/messages/...), prepend API base URL
+  if (attachmentUrl.startsWith("/uploads/") || attachmentUrl.startsWith("uploads/")) {
+    const normalized = attachmentUrl.replace(/\\/g, "/");
+    const cleanPath = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `${API_BASE_URL}${cleanPath}`;
+  }
+
+  // If it starts with /, treat as local path
+  if (attachmentUrl.startsWith("/")) {
+    return `${API_BASE_URL}${attachmentUrl}`;
+  }
+
+  // Check if it's an R2 key for message attachments
+  const r2KeyPrefixes = ["message-attachments/"];
+  const isR2Key = r2KeyPrefixes.some(prefix => attachmentUrl.startsWith(prefix)) || 
+                  (!attachmentUrl.includes("://") && !attachmentUrl.startsWith("/") && !attachmentUrl.includes(API_BASE_URL));
+  
+  if (isR2Key) {
+    // Construct R2 public URL for message attachments
+    const r2PublicDomain = process.env.NEXT_PUBLIC_R2_PUBLIC_DOMAIN;
+    if (r2PublicDomain) {
+      return `https://${r2PublicDomain}/${attachmentUrl}`;
+    }
+    
+    // Fallback: try to construct R2 public URL using account ID and bucket name
+    const r2AccountId = process.env.NEXT_PUBLIC_R2_ACCOUNT_ID;
+    const r2BucketName = process.env.NEXT_PUBLIC_R2_BUCKET_NAME;
+    if (r2AccountId && r2BucketName) {
+      return `https://${r2BucketName}.${r2AccountId}.r2.cloudflarestorage.com/${attachmentUrl}`;
+    }
+    
+    // If no R2 config, use API base URL as fallback
+    console.warn("R2 public domain not configured, using API base URL fallback for:", attachmentUrl);
+    return `${API_BASE_URL}/${attachmentUrl}`;
+  }
+
+  // Otherwise, treat as relative path
+  return `${API_BASE_URL}/${attachmentUrl}`;
 }
 
 /**
@@ -2351,17 +2439,36 @@ export async function resolveDispute(disputeId: string, status: string, resoluti
   return data;
 }
 
-export async function simulateDisputePayout(disputeId: string, refundAmount: number, releaseAmount: number, resolution?: string) {
+export async function simulateDisputePayout(disputeId: string, refundAmount: number, releaseAmount: number, resolution?: string, bankTransferRefImage?: File) {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
+  // Use FormData if there's an image, otherwise use JSON
+  const useFormData = bankTransferRefImage !== undefined;
+
+  let body: FormData | string;
+  let headers: HeadersInit = {
+    "Authorization": `Bearer ${token}`,
+  };
+
+  if (useFormData) {
+    body = new FormData();
+    body.append("refundAmount", refundAmount.toString());
+    body.append("releaseAmount", releaseAmount.toString());
+    body.append("resolution", resolution || "");
+    if (bankTransferRefImage) {
+      body.append("bankTransferRefImage", bankTransferRefImage);
+    }
+    // Don't set Content-Type for FormData - browser will set it with boundary
+  } else {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify({ refundAmount, releaseAmount, resolution: resolution || "" });
+  }
+
   const res = await fetch(`${API_BASE}/admin/disputes/${disputeId}/payout`, {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ refundAmount, releaseAmount, resolution: resolution || "" }),
+    headers,
+    body,
   });
   
   const data = await res.json();

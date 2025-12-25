@@ -119,19 +119,18 @@ export const paymentController = {
       const { id } = req.params;
       const { transferRef } = req.body;
       const adminId = req.user.id;
-      
-      // Get file path if uploaded
-      let filePath = null;
-      if (req.file) {
-        // Convert file path to URL format
-        filePath = `${req.protocol}://${req.get("host")}/${req.file.path.replace(/\\/g, "/")}`;
+
+      // Get R2 URL if file was uploaded
+      let r2Url = null;
+      if (req.file && req.file.r2Url) {
+        r2Url = req.file.r2Url;
       }
 
       const result = await paymentService.confirmBankTransfer(
         id,
         adminId,
         transferRef,
-        filePath
+        r2Url
       );
 
       res.json({
@@ -148,4 +147,3 @@ export const paymentController = {
     }
   },
 };
-

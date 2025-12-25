@@ -234,7 +234,8 @@ export default function ProviderEarningsPage() {
       await fetchPayoutMethods();
     } catch (err: unknown) {
       console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to save payout method";
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to save payout method";
       toast({
         title: "Error",
         description: errorMessage,
@@ -263,7 +264,8 @@ export default function ProviderEarningsPage() {
       await fetchPayoutMethods();
     } catch (err: unknown) {
       console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to delete payout method";
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete payout method";
       toast({
         title: "Error",
         description: errorMessage,
@@ -297,6 +299,60 @@ export default function ProviderEarningsPage() {
       accountEmail: "",
       walletId: "",
     });
+  };
+
+  // Export earnings report
+  const handleExportReport = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Please login to export reports",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/provider/earnings/export/report?timeFilter=${timeFilter}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to export report");
+      }
+
+      const data = await res.json();
+
+      if (data.success && data.downloadUrl) {
+        // Open the download URL in a new tab/window
+        window.open(data.downloadUrl, "_blank");
+
+        toast({
+          title: "Report Generated",
+          description:
+            "Your earnings report has been generated and is ready to download.",
+        });
+      } else {
+        throw new Error(data.message || "Failed to get download URL");
+      }
+    } catch (err: unknown) {
+      console.error("Export report error:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to export report";
+      toast({
+        title: "Error exporting report",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   const getPayoutIcon = (type: PayoutMethodType) => {
@@ -436,7 +492,6 @@ export default function ProviderEarningsPage() {
     }
   };
 
-
   return (
     <ProviderLayout>
       <div className="space-y-8">
@@ -460,7 +515,7 @@ export default function ProviderEarningsPage() {
                 <SelectItem value="this-year">This Year</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportReport}>
               <Download className="w-4 h-4 mr-2" />
               Export Report
             </Button>
@@ -683,7 +738,8 @@ export default function ProviderEarningsPage() {
                         Repeat Clients
                       </span>
                       <span className="font-semibold">
-                        {quickStats?.repeatClientsPercent.toLocaleString() ?? 0}%
+                        {quickStats?.repeatClientsPercent.toLocaleString() ?? 0}
+                        %
                       </span>
                     </div>
                   </CardContent>

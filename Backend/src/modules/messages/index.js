@@ -10,50 +10,28 @@ import {
 } from "./controller.js";
 
 import { authenticateToken } from "../../middlewares/auth.js";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import { uploadMessageAttachment } from "../../middlewares/uploadMessageAttachment.js";
 
-const uploadDir = "uploads/messages";
-
-// Ensure folder exists
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
-const upload = multer({ storage });
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateToken);
 
-// ✅ File upload route
-router.post("/upload", upload.single("file"), (req, res) => {
+// ✅ File upload route - now using R2
+router.post("/upload", uploadMessageAttachment, (req, res) => {
   if (!req.file) {
     return res
       .status(400)
       .json({ success: false, message: "No file uploaded" });
   }
 
-  const fileUrl = `${req.protocol}://${req.get("host")}/${req.file.path.replace(
-    /\\/g,
-    "/"
-  )}`;
+  // Use R2 URL from middleware
+  const fileUrl = req.file.r2Url || req.file.r2Key;
 
   res.json({
     success: true,
     fileUrl,
-    filename: req.file.filename,
+    filename: req.file.originalname,
     mimetype: req.file.mimetype,
   });
 });

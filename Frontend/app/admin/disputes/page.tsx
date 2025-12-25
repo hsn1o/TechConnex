@@ -49,6 +49,14 @@ import {
   Loader2,
   RefreshCw,
   Ban,
+  Upload,
+  X,
+  MessageSquare,
+  Building2,
+  Wallet,
+  CreditCard,
+  TrendingUp,
+  AlertCircle,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -134,6 +142,14 @@ export default function AdminDisputesPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
+  const [bankTransferRefImage, setBankTransferRefImage] = useState<File | null>(
+    null
+  );
+  const [bankTransferRefImagePreview, setBankTransferRefImagePreview] =
+    useState<string | null>(null);
+  const [selectedAction, setSelectedAction] = useState<
+    "refund" | "release" | "partial" | null
+  >(null);
 
   const loadDisputes = useCallback(async () => {
     try {
@@ -242,6 +258,7 @@ export default function AdminDisputesPage() {
           amount,
           0,
           resolutionNotes || undefined
+          // No image needed for refunds - processed directly via Stripe
         );
         console.log("Refund response:", response);
         toast({
@@ -264,18 +281,23 @@ export default function AdminDisputesPage() {
         console.log("Processing release:", {
           disputeId: selectedDispute.id,
           amount,
+          hasImage: !!bankTransferRefImage,
         });
         const response = await simulateDisputePayout(
           selectedDispute.id,
           0,
           amount,
-          resolutionNotes || undefined
+          resolutionNotes || undefined,
+          bankTransferRefImage || undefined
         );
         console.log("Release response:", response);
         toast({
           title: "Success",
           description: `Release of RM${amount} processed successfully. Payment status updated to RELEASED. Please transfer funds to provider.`,
         });
+        // Reset image after successful release
+        setBankTransferRefImage(null);
+        setBankTransferRefImagePreview(null);
       } else if (action === "partial") {
         const refund = parseFloat(refundAmount) || 0;
         const release = parseFloat(releaseAmount) || 0;
@@ -301,22 +323,40 @@ export default function AdminDisputesPage() {
           });
           return;
         }
+        // Require bank transfer reference image if release amount > 0
+        if (release > 0 && !bankTransferRefImage) {
+          toast({
+            title: "Image Required",
+            description:
+              "Bank transfer reference image is required when releasing funds to provider",
+            variant: "destructive",
+          });
+          return;
+        }
         console.log("Processing partial payout:", {
           disputeId: selectedDispute.id,
           refund,
           release,
+          hasImage: !!bankTransferRefImage,
         });
         const response = await simulateDisputePayout(
           selectedDispute.id,
           refund,
           release,
-          resolutionNotes || undefined
+          resolutionNotes || undefined,
+          release > 0 ? bankTransferRefImage || undefined : undefined
         );
         console.log("Partial payout response:", response);
         toast({
           title: "Success",
           description: `Partial payout processed: Refund RM${refund}, Release RM${release}. Payment status updated.`,
         });
+        // Reset state after successful partial payout
+        setRefundAmount("");
+        setReleaseAmount("");
+        setBankTransferRefImage(null);
+        setBankTransferRefImagePreview(null);
+        setSelectedAction(null);
       } else if (action === "redo") {
         console.log("Processing redo milestone:", {
           disputeId: selectedDispute.id,
@@ -353,6 +393,9 @@ export default function AdminDisputesPage() {
       setResolutionNotes("");
       setRefundAmount("");
       setReleaseAmount("");
+      setBankTransferRefImage(null);
+      setBankTransferRefImagePreview(null);
+      setSelectedAction(null);
       await loadDisputes();
       await loadStats();
     } catch (error: unknown) {
@@ -1324,7 +1367,10 @@ export default function AdminDisputesPage() {
                                 });
                                 return;
                               }
-                              handleResolve("refund");
+                              setSelectedAction("refund");
+                              // Reset image when switching actions
+                              setBankTransferRefImage(null);
+                              setBankTransferRefImagePreview(null);
                             }}
                             disabled={
                               actionLoading ||
@@ -1332,7 +1378,11 @@ export default function AdminDisputesPage() {
                                 !selectedDispute.paymentId &&
                                 !selectedDispute.milestoneId)
                             }
-                            className="text-green-600 hover:text-green-700 border-green-300"
+                            className={`${
+                              selectedAction === "refund"
+                                ? "bg-green-50 border-green-500 text-green-700"
+                                : "text-green-600 hover:text-green-700 border-green-300"
+                            }`}
                           >
                             <DollarSign className="w-4 h-4 mr-2" />
                             Refund (Company Wins)
@@ -1353,7 +1403,10 @@ export default function AdminDisputesPage() {
                                 });
                                 return;
                               }
-                              handleResolve("release");
+                              setSelectedAction("release");
+                              // Reset image when switching actions
+                              setBankTransferRefImage(null);
+                              setBankTransferRefImagePreview(null);
                             }}
                             disabled={
                               actionLoading ||
@@ -1361,12 +1414,16 @@ export default function AdminDisputesPage() {
                                 !selectedDispute.paymentId &&
                                 !selectedDispute.milestoneId)
                             }
-                            className="text-blue-600 hover:text-blue-700 border-blue-300"
+                            className={`${
+                              selectedAction === "release"
+                                ? "bg-blue-50 border-blue-500 text-blue-700"
+                                : "text-blue-600 hover:text-blue-700 border-blue-300"
+                            }`}
                           >
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Release (Provider Wins)
                           </Button>
-                          <Button
+                          {/* <Button
                             variant="outline"
                             onClick={() => {
                               if (
@@ -1382,7 +1439,12 @@ export default function AdminDisputesPage() {
                                 });
                                 return;
                               }
-                              setPayoutDialogOpen(true);
+                              setSelectedAction("partial");
+                              // Reset amounts and image when switching actions
+                              setRefundAmount("");
+                              setReleaseAmount("");
+                              setBankTransferRefImage(null);
+                              setBankTransferRefImagePreview(null);
                             }}
                             disabled={
                               actionLoading ||
@@ -1390,11 +1452,15 @@ export default function AdminDisputesPage() {
                                 !selectedDispute.paymentId &&
                                 !selectedDispute.milestoneId)
                             }
-                            className="border-purple-300 text-purple-600 hover:text-purple-700"
+                            className={`${
+                              selectedAction === "partial"
+                                ? "bg-purple-50 border-purple-500 text-purple-700"
+                                : "border-purple-300 text-purple-600 hover:text-purple-700"
+                            }`}
                           >
                             <DollarSign className="w-4 h-4 mr-2" />
                             Partial Split
-                          </Button>
+                          </Button> */}
                           <Button
                             variant="outline"
                             onClick={() => handleResolve("redo")}
@@ -1405,6 +1471,857 @@ export default function AdminDisputesPage() {
                             Redo Milestone
                           </Button>
                         </div>
+
+                        {/* Submit Button for Refund - No image needed */}
+                        {selectedAction === "refund" && (
+                          <div className="p-4 border rounded-lg bg-green-50 border-green-200">
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <h4 className="font-semibold text-green-900">
+                                  Process Refund
+                                </h4>
+                                <p className="text-sm text-green-700 mt-1">
+                                  Refund will be processed directly via Stripe.
+                                  No bank transfer reference needed.
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedAction(null);
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <Button
+                              onClick={() => handleResolve("refund")}
+                              disabled={actionLoading}
+                              className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              {actionLoading ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <DollarSign className="w-4 h-4 mr-2" />
+                                  Submit Refund
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Bank Transfer Reference Image Upload Section - Only for Release */}
+                        {selectedAction === "release" && (
+                          <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label
+                                  htmlFor="bank-transfer-ref-image"
+                                  className="text-base font-semibold"
+                                >
+                                  Bank Transfer Reference Image
+                                </Label>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Required for release processing
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedAction(null);
+                                  setBankTransferRefImage(null);
+                                  setBankTransferRefImagePreview(null);
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+
+                            {/* Provider Payout Method Info */}
+                            <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-blue-900">
+                                  Provider Payout Method
+                                </h4>
+                                {selectedDispute.project?.provider?.id && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const provider =
+                                        selectedDispute.project?.provider;
+                                      if (provider?.id) {
+                                        router.push(
+                                          `/admin/messages?userId=${
+                                            provider.id
+                                          }&name=${encodeURIComponent(
+                                            provider.name || ""
+                                          )}`
+                                        );
+                                      }
+                                    }}
+                                    className="text-xs"
+                                  >
+                                    <MessageSquare className="w-3 h-3 mr-1" />
+                                    Message Provider
+                                  </Button>
+                                )}
+                              </div>
+                              {selectedDispute.project?.provider
+                                ?.providerProfile?.payoutMethods &&
+                              selectedDispute.project.provider.providerProfile
+                                .payoutMethods.length > 0 ? (
+                                <div className="space-y-2">
+                                  {selectedDispute.project.provider.providerProfile.payoutMethods.map(
+                                    (method: any, index: number) => {
+                                      const getPayoutIcon = (type: string) => {
+                                        switch (type) {
+                                          case "BANK":
+                                            return (
+                                              <Building2 className="w-4 h-4" />
+                                            );
+                                          case "PAYPAL":
+                                            return (
+                                              <Wallet className="w-4 h-4" />
+                                            );
+                                          case "PAYONEER":
+                                            return (
+                                              <CreditCard className="w-4 h-4" />
+                                            );
+                                          case "WISE":
+                                            return (
+                                              <TrendingUp className="w-4 h-4" />
+                                            );
+                                          case "EWALLET":
+                                            return (
+                                              <Wallet className="w-4 h-4" />
+                                            );
+                                          default:
+                                            return (
+                                              <CreditCard className="w-4 h-4" />
+                                            );
+                                        }
+                                      };
+
+                                      const getPayoutDisplay = (
+                                        method: any
+                                      ) => {
+                                        if (method.type === "BANK") {
+                                          return {
+                                            title:
+                                              method.label ||
+                                              method.bankName ||
+                                              "Bank Account",
+                                            subtitle: method.accountNumber
+                                              ? `Account: •••• ${method.accountNumber.slice(
+                                                  -4
+                                                )}`
+                                              : "No account number",
+                                            details: method.accountHolder
+                                              ? `Holder: ${method.accountHolder}`
+                                              : "",
+                                          };
+                                        } else {
+                                          return {
+                                            title: method.label || method.type,
+                                            subtitle: method.accountEmail || "",
+                                            details: method.walletId || "",
+                                          };
+                                        }
+                                      };
+
+                                      const display = getPayoutDisplay(method);
+
+                                      return (
+                                        <div
+                                          key={method.id || index}
+                                          className="p-3 bg-white rounded border border-blue-200"
+                                        >
+                                          <div className="flex items-start gap-3">
+                                            <div className="mt-0.5 text-blue-600">
+                                              {getPayoutIcon(method.type)}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-sm text-gray-900">
+                                                {display.title}
+                                              </p>
+                                              {display.subtitle && (
+                                                <p className="text-xs text-gray-600 mt-1">
+                                                  {display.subtitle}
+                                                </p>
+                                              )}
+                                              {display.details && (
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                  {display.details}
+                                                </p>
+                                              )}
+                                              <Badge
+                                                variant="outline"
+                                                className="mt-2 text-xs"
+                                              >
+                                                {method.type}
+                                              </Badge>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                  <div className="flex items-start gap-2">
+                                    <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-yellow-900">
+                                        No payout method provided
+                                      </p>
+                                      <p className="text-xs text-yellow-700 mt-1">
+                                        The provider has not set up any payout
+                                        methods. Please contact them to add
+                                        their bank details or payment
+                                        information.
+                                      </p>
+                                      {selectedDispute.project?.provider
+                                        ?.id && (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            const provider =
+                                              selectedDispute.project?.provider;
+                                            if (provider?.id) {
+                                              router.push(
+                                                `/admin/messages?userId=${
+                                                  provider.id
+                                                }&name=${encodeURIComponent(
+                                                  provider.name || ""
+                                                )}`
+                                              );
+                                            }
+                                          }}
+                                          className="mt-2 text-xs"
+                                        >
+                                          <MessageSquare className="w-3 h-3 mr-1" />
+                                          Message Provider to Add Payout Method
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              {bankTransferRefImagePreview ? (
+                                <div className="relative">
+                                  <img
+                                    src={bankTransferRefImagePreview}
+                                    alt="Bank transfer reference"
+                                    className="w-full h-48 object-contain border rounded-lg"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    className="absolute top-2 right-2"
+                                    onClick={() => {
+                                      setBankTransferRefImage(null);
+                                      setBankTransferRefImagePreview(null);
+                                    }}
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                                  <input
+                                    type="file"
+                                    id="bank-transfer-ref-image"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        // Validate file type
+                                        if (!file.type.startsWith("image/")) {
+                                          toast({
+                                            title: "Invalid file type",
+                                            description:
+                                              "Please select an image file",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+                                        // Validate file size (5MB)
+                                        if (file.size > 5 * 1024 * 1024) {
+                                          toast({
+                                            title: "File too large",
+                                            description:
+                                              "Please select an image smaller than 5MB",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+                                        setBankTransferRefImage(file);
+                                        const reader = new FileReader();
+                                        reader.onloadend = () => {
+                                          setBankTransferRefImagePreview(
+                                            reader.result as string
+                                          );
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor="bank-transfer-ref-image"
+                                    className="cursor-pointer flex flex-col items-center"
+                                  >
+                                    <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                                    <span className="text-sm text-gray-600">
+                                      Click to upload bank transfer reference
+                                      image
+                                    </span>
+                                    <span className="text-xs text-gray-500 mt-1">
+                                      PNG, JPG, GIF up to 5MB
+                                    </span>
+                                  </label>
+                                </div>
+                              )}
+                            </div>
+                            {/* Submit Button - Only shows when image is uploaded for Release */}
+                            {bankTransferRefImage && (
+                              <Button
+                                onClick={() => {
+                                  if (!bankTransferRefImage) {
+                                    toast({
+                                      title: "Image Required",
+                                      description:
+                                        "Please upload a bank transfer reference image",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+                                  handleResolve("release");
+                                }}
+                                disabled={actionLoading}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                {actionLoading ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    Submit Release
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Partial Split Section - Shows when partial is selected */}
+                        {selectedAction === "partial" && (
+                          <div className="space-y-4 p-4 border rounded-lg bg-purple-50 border-purple-200">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-semibold text-purple-900">
+                                  Partial Split
+                                </h4>
+                                <p className="text-sm text-purple-700 mt-1">
+                                  Split the payment between refund (customer)
+                                  and release (provider)
+                                </p>
+                                <p className="text-xs text-purple-600 mt-1">
+                                  Total Available: RM{" "}
+                                  {(
+                                    selectedDispute?.payment?.amount ||
+                                    selectedDispute?.contestedAmount ||
+                                    0
+                                  ).toLocaleString()}
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedAction(null);
+                                  setRefundAmount("");
+                                  setReleaseAmount("");
+                                  setBankTransferRefImage(null);
+                                  setBankTransferRefImagePreview(null);
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+
+                            <div className="space-y-4">
+                              {/* Refund Amount Input */}
+                              <div className="space-y-2">
+                                <Label htmlFor="partial-refund-amount">
+                                  Refund Amount (RM) - To Customer
+                                </Label>
+                                <Input
+                                  id="partial-refund-amount"
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max={
+                                    selectedDispute?.payment?.amount ||
+                                    selectedDispute?.contestedAmount ||
+                                    0
+                                  }
+                                  value={refundAmount}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setRefundAmount(val);
+                                  }}
+                                  placeholder="0.00"
+                                  className="bg-white"
+                                />
+                                <p className="text-xs text-gray-600">
+                                  Amount to refund to customer via Stripe (no
+                                  image needed)
+                                </p>
+                              </div>
+
+                              {/* Release Amount Input */}
+                              <div className="space-y-2">
+                                <Label htmlFor="partial-release-amount">
+                                  Release Amount (RM) - To Provider
+                                </Label>
+                                <Input
+                                  id="partial-release-amount"
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max={
+                                    selectedDispute?.payment?.amount ||
+                                    selectedDispute?.contestedAmount ||
+                                    0
+                                  }
+                                  value={releaseAmount}
+                                  onChange={(e) =>
+                                    setReleaseAmount(e.target.value)
+                                  }
+                                  placeholder="0.00"
+                                  className="bg-white"
+                                />
+                                <p className="text-xs text-gray-600">
+                                  Amount to release to provider (requires bank
+                                  transfer reference)
+                                </p>
+                              </div>
+
+                              {/* Total Validation Warning */}
+                              {(parseFloat(refundAmount) || 0) +
+                                (parseFloat(releaseAmount) || 0) >
+                                (selectedDispute?.payment?.amount ||
+                                  selectedDispute?.contestedAmount ||
+                                  0) && (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                                  <AlertCircle className="w-4 h-4 inline mr-2" />
+                                  Warning: Total exceeds available payment
+                                  amount
+                                </div>
+                              )}
+
+                              {/* Provider Payout Method Info - Only shows if release amount > 0 */}
+                              {parseFloat(releaseAmount) > 0 && (
+                                <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <h4 className="font-semibold text-blue-900 text-sm">
+                                      Provider Payout Method
+                                    </h4>
+                                    {selectedDispute.project?.provider?.id && (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const provider =
+                                            selectedDispute.project?.provider;
+                                          if (provider?.id) {
+                                            router.push(
+                                              `/admin/messages?userId=${
+                                                provider.id
+                                              }&name=${encodeURIComponent(
+                                                provider.name || ""
+                                              )}`
+                                            );
+                                          }
+                                        }}
+                                        className="text-xs"
+                                      >
+                                        <MessageSquare className="w-3 h-3 mr-1" />
+                                        Message Provider
+                                      </Button>
+                                    )}
+                                  </div>
+                                  {selectedDispute.project?.provider
+                                    ?.providerProfile?.payoutMethods &&
+                                  selectedDispute.project.provider
+                                    .providerProfile.payoutMethods.length >
+                                    0 ? (
+                                    <div className="space-y-2">
+                                      {selectedDispute.project.provider.providerProfile.payoutMethods.map(
+                                        (method: any, index: number) => {
+                                          const getPayoutIcon = (
+                                            type: string
+                                          ) => {
+                                            switch (type) {
+                                              case "BANK":
+                                                return (
+                                                  <Building2 className="w-4 h-4" />
+                                                );
+                                              case "PAYPAL":
+                                                return (
+                                                  <Wallet className="w-4 h-4" />
+                                                );
+                                              case "PAYONEER":
+                                                return (
+                                                  <CreditCard className="w-4 h-4" />
+                                                );
+                                              case "WISE":
+                                                return (
+                                                  <TrendingUp className="w-4 h-4" />
+                                                );
+                                              case "EWALLET":
+                                                return (
+                                                  <Wallet className="w-4 h-4" />
+                                                );
+                                              default:
+                                                return (
+                                                  <CreditCard className="w-4 h-4" />
+                                                );
+                                            }
+                                          };
+
+                                          const getPayoutDisplay = (
+                                            method: any
+                                          ) => {
+                                            if (method.type === "BANK") {
+                                              return {
+                                                title:
+                                                  method.label ||
+                                                  method.bankName ||
+                                                  "Bank Account",
+                                                subtitle: method.accountNumber
+                                                  ? `Account: •••• ${method.accountNumber.slice(
+                                                      -4
+                                                    )}`
+                                                  : "No account number",
+                                                details: method.accountHolder
+                                                  ? `Holder: ${method.accountHolder}`
+                                                  : "",
+                                              };
+                                            } else {
+                                              return {
+                                                title:
+                                                  method.label || method.type,
+                                                subtitle:
+                                                  method.accountEmail || "",
+                                                details: method.walletId || "",
+                                              };
+                                            }
+                                          };
+
+                                          const display =
+                                            getPayoutDisplay(method);
+
+                                          return (
+                                            <div
+                                              key={method.id || index}
+                                              className="p-3 bg-white rounded border border-blue-200"
+                                            >
+                                              <div className="flex items-start gap-3">
+                                                <div className="mt-0.5 text-blue-600">
+                                                  {getPayoutIcon(method.type)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <p className="font-medium text-sm text-gray-900">
+                                                    {display.title}
+                                                  </p>
+                                                  {display.subtitle && (
+                                                    <p className="text-xs text-gray-600 mt-1">
+                                                      {display.subtitle}
+                                                    </p>
+                                                  )}
+                                                  {display.details && (
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                      {display.details}
+                                                    </p>
+                                                  )}
+                                                  <Badge
+                                                    variant="outline"
+                                                    className="mt-2 text-xs"
+                                                  >
+                                                    {method.type}
+                                                  </Badge>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                      <div className="flex items-start gap-2">
+                                        <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1">
+                                          <p className="text-sm font-medium text-yellow-900">
+                                            No payout method provided
+                                          </p>
+                                          <p className="text-xs text-yellow-700 mt-1">
+                                            The provider has not set up any
+                                            payout methods. Please contact them
+                                            to add their bank details or payment
+                                            information.
+                                          </p>
+                                          {selectedDispute.project?.provider
+                                            ?.id && (
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => {
+                                                const provider =
+                                                  selectedDispute.project
+                                                    ?.provider;
+                                                if (provider?.id) {
+                                                  router.push(
+                                                    `/admin/messages?userId=${
+                                                      provider.id
+                                                    }&name=${encodeURIComponent(
+                                                      provider.name || ""
+                                                    )}`
+                                                  );
+                                                }
+                                              }}
+                                              className="mt-2 text-xs"
+                                            >
+                                              <MessageSquare className="w-3 h-3 mr-1" />
+                                              Message Provider to Add Payout
+                                              Method
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Bank Transfer Reference Image Upload - Only required if release amount > 0 */}
+                              {parseFloat(releaseAmount) > 0 && (
+                                <div className="space-y-2">
+                                  <Label htmlFor="partial-bank-transfer-ref-image">
+                                    Bank Transfer Reference Image (Required for
+                                    Release)
+                                  </Label>
+                                  <div className="space-y-2">
+                                    {bankTransferRefImagePreview ? (
+                                      <div className="relative">
+                                        <img
+                                          src={bankTransferRefImagePreview}
+                                          alt="Bank transfer reference"
+                                          className="w-full h-48 object-contain border rounded-lg"
+                                        />
+                                        <Button
+                                          type="button"
+                                          variant="destructive"
+                                          size="sm"
+                                          className="absolute top-2 right-2"
+                                          onClick={() => {
+                                            setBankTransferRefImage(null);
+                                            setBankTransferRefImagePreview(
+                                              null
+                                            );
+                                          }}
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center bg-white">
+                                        <input
+                                          type="file"
+                                          id="partial-bank-transfer-ref-image"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              // Validate file type
+                                              if (
+                                                !file.type.startsWith("image/")
+                                              ) {
+                                                toast({
+                                                  title: "Invalid file type",
+                                                  description:
+                                                    "Please select an image file",
+                                                  variant: "destructive",
+                                                });
+                                                return;
+                                              }
+                                              // Validate file size (5MB)
+                                              if (file.size > 5 * 1024 * 1024) {
+                                                toast({
+                                                  title: "File too large",
+                                                  description:
+                                                    "Please select an image smaller than 5MB",
+                                                  variant: "destructive",
+                                                });
+                                                return;
+                                              }
+                                              setBankTransferRefImage(file);
+                                              const reader = new FileReader();
+                                              reader.onloadend = () => {
+                                                setBankTransferRefImagePreview(
+                                                  reader.result as string
+                                                );
+                                              };
+                                              reader.readAsDataURL(file);
+                                            }
+                                          }}
+                                        />
+                                        <label
+                                          htmlFor="partial-bank-transfer-ref-image"
+                                          className="cursor-pointer flex flex-col items-center"
+                                        >
+                                          <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                                          <span className="text-sm text-gray-600">
+                                            Click to upload bank transfer
+                                            reference image
+                                          </span>
+                                          <span className="text-xs text-gray-500 mt-1">
+                                            PNG, JPG, GIF up to 5MB
+                                          </span>
+                                        </label>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Resolution Notes */}
+                              <div className="space-y-2">
+                                <Label htmlFor="partial-resolution-notes">
+                                  Resolution Notes (Optional)
+                                </Label>
+                                <Textarea
+                                  id="partial-resolution-notes"
+                                  placeholder="Enter resolution notes..."
+                                  value={resolutionNotes}
+                                  onChange={(e) =>
+                                    setResolutionNotes(e.target.value)
+                                  }
+                                  className="min-h-[80px] bg-white"
+                                />
+                              </div>
+
+                              {/* Submit Button */}
+                              {(() => {
+                                const hasPayment =
+                                  selectedDispute?.payment?.id ||
+                                  selectedDispute?.paymentId ||
+                                  selectedDispute?.milestoneId;
+                                const refund = parseFloat(refundAmount) || 0;
+                                const release = parseFloat(releaseAmount) || 0;
+                                const hasAmount = refund > 0 || release > 0;
+                                const needsImage =
+                                  release > 0 && !bankTransferRefImage;
+                                const totalAmount =
+                                  selectedDispute?.payment?.amount ||
+                                  selectedDispute?.contestedAmount ||
+                                  0;
+                                const exceedsTotal =
+                                  refund + release > totalAmount;
+                                const isDisabled =
+                                  actionLoading ||
+                                  !hasPayment ||
+                                  !hasAmount ||
+                                  needsImage ||
+                                  exceedsTotal;
+
+                                return (
+                                  <div className="space-y-2">
+                                    {isDisabled && !actionLoading && (
+                                      <div className="text-xs text-red-600 space-y-1">
+                                        {!hasPayment && (
+                                          <p className="flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" />
+                                            No payment found for this dispute
+                                          </p>
+                                        )}
+                                        {hasPayment && !hasAmount && (
+                                          <p className="flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" />
+                                            Please enter at least one amount
+                                            (refund or release)
+                                          </p>
+                                        )}
+                                        {hasPayment &&
+                                          hasAmount &&
+                                          needsImage && (
+                                            <p className="flex items-center gap-1">
+                                              <AlertCircle className="w-3 h-3" />
+                                              Bank transfer reference image is
+                                              required for release
+                                            </p>
+                                          )}
+                                        {hasPayment &&
+                                          hasAmount &&
+                                          !needsImage &&
+                                          exceedsTotal && (
+                                            <p className="flex items-center gap-1">
+                                              <AlertCircle className="w-3 h-3" />
+                                              Total amount exceeds available
+                                              payment
+                                            </p>
+                                          )}
+                                      </div>
+                                    )}
+                                    <Button
+                                      onClick={() => handleResolve("partial")}
+                                      disabled={isDisabled}
+                                      className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {actionLoading ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                          Processing...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <DollarSign className="w-4 h-4 mr-2" />
+                                          Submit Partial Split
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <Label htmlFor="resolution-notes">
                             Resolution Notes (Optional)
@@ -1434,7 +2351,12 @@ export default function AdminDisputesPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setViewDialogOpen(false)}
+                onClick={() => {
+                  setViewDialogOpen(false);
+                  setSelectedAction(null);
+                  setBankTransferRefImage(null);
+                  setBankTransferRefImagePreview(null);
+                }}
               >
                 Close
               </Button>

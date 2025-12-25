@@ -97,6 +97,15 @@ export const disputeModel = {
                 id: true,
                 name: true,
                 email: true,
+                providerProfile: {
+                  include: {
+                    payoutMethods: {
+                      orderBy: {
+                        createdAt: "desc",
+                      },
+                    },
+                  },
+                },
               },
             },
             milestones: {
@@ -150,6 +159,15 @@ export const disputeModel = {
                         id: true,
                         name: true,
                         email: true,
+                        providerProfile: {
+                          include: {
+                            payoutMethods: {
+                              orderBy: {
+                                createdAt: "desc",
+                              },
+                            },
+                          },
+                        },
                       },
                     },
                   },
@@ -172,6 +190,15 @@ export const disputeModel = {
                 id: true,
                 name: true,
                 email: true,
+                providerProfile: {
+                  include: {
+                    payoutMethods: {
+                      orderBy: {
+                        createdAt: "desc",
+                      },
+                    },
+                  },
+                },
               },
             },
             milestones: {

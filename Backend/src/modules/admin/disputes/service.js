@@ -97,12 +97,11 @@ export const disputeService = {
             where: { id: dispute.paymentId },
           });
 
-          if (payment && (payment.status === "DISPUTED" || payment.status === "ESCROWED")) {
-            // Reset payment status to ESCROWED if it was DISPUTED
+          if (payment && payment.status === "ESCROWED") {
+            // Update payment metadata to track dispute rejection
             await prisma.payment.update({
               where: { id: dispute.paymentId },
               data: {
-                status: "ESCROWED",
                 metadata: {
                   ...payment.metadata,
                   disputeRejectedAt: new Date().toISOString(),
@@ -130,7 +129,7 @@ export const disputeService = {
     }
   },
 
-  async simulateDisputePayout(disputeId, refundAmount, releaseAmount, resolution = null, adminId = null, adminName = null) {
+  async simulateDisputePayout(disputeId, refundAmount, releaseAmount, resolution = null, adminId = null, adminName = null, bankTransferRefImageUrl = null) {
     try {
       const dispute = await disputeModel.getDisputeById(disputeId);
       if (!dispute) {
@@ -149,7 +148,7 @@ export const disputeService = {
           where: {
             milestoneId: dispute.milestoneId,
             status: {
-              in: ["ESCROWED", "DISPUTED", "RELEASED"],
+              in: ["ESCROWED", "RELEASED"],
             },
           },
           orderBy: {
@@ -180,8 +179,8 @@ export const disputeService = {
       }
 
       // Validate payment status
-      if (payment.status !== "ESCROWED" && payment.status !== "DISPUTED") {
-        throw new Error(`Cannot process payout for payment in ${payment.status} status. Payment must be ESCROWED or DISPUTED.`);
+      if (payment.status !== "ESCROWED") {
+        throw new Error(`Cannot process payout for payment in ${payment.status} status. Payment must be ESCROWED.`);
       }
 
       const refundAmt = refundAmount || 0;
@@ -218,6 +217,7 @@ export const disputeService = {
           );
           payoutResult.refundId = refundResult.refund.id;
           payoutResult.refundStatus = "completed";
+          // Note: No bank transfer reference needed for refunds - processed directly via Stripe
         } catch (refundError) {
           console.error("Refund error:", refundError);
           throw new Error(`Failed to process refund: ${refundError.message}`);
@@ -239,7 +239,7 @@ export const disputeService = {
           // If partial refund was done, we need to handle the release differently
           // For now, we'll release the specified amount
           // Note: In a real scenario with partial refunds, you might need to adjust the release amount
-          if (updatedPayment.status === "ESCROWED" || updatedPayment.status === "DISPUTED") {
+          if (updatedPayment.status === "ESCROWED") {
             // Calculate the actual amount to release
             // If we did a partial refund, the payment amount was reduced
             // So we need to release based on the remaining amount
@@ -250,6 +250,22 @@ export const disputeService = {
             if (actualReleaseAmount > 0) {
               await releasePaymentForDispute(paymentId, adminId || "admin");
               payoutResult.releaseStatus = "completed";
+              
+              // Save bank transfer reference image URL to payment if provided (for release actions)
+              if (bankTransferRefImageUrl) {
+                await prisma.payment.update({
+                  where: { id: paymentId },
+                  data: {
+                    bankTransferRef: bankTransferRefImageUrl,
+                    metadata: {
+                      ...updatedPayment.metadata,
+                      bankTransferRefImageUploadedAt: new Date().toISOString(),
+                      bankTransferRefImageUploadedBy: adminId || "admin",
+                      bankTransferRefForRelease: true,
+                    },
+                  },
+                });
+              }
             }
           } else if (updatedPayment.status === "RELEASED") {
             // Payment already released (might have been released before)
@@ -351,12 +367,11 @@ export const disputeService = {
           where: { id: dispute.paymentId },
         });
 
-        if (payment && (payment.status === "DISPUTED" || payment.status === "ESCROWED")) {
-          // Reset payment status to ESCROWED if it was DISPUTED
+        if (payment && payment.status === "ESCROWED") {
+          // Update payment metadata to track dispute redo
           await prisma.payment.update({
             where: { id: dispute.paymentId },
             data: {
-              status: "ESCROWED",
               metadata: {
                 ...payment.metadata,
                 disputeRedoAt: new Date().toISOString(),

@@ -534,8 +534,8 @@ export async function refundPayment(paymentId, reason, refundedBy, refundAmount 
     throw new Error("Payment not found");
   }
 
-  if (payment.status !== "ESCROWED" && payment.status !== "DISPUTED") {
-    throw new Error("Can only refund escrowed or disputed payments");
+  if (payment.status !== "ESCROWED") {
+    throw new Error("Can only refund escrowed payments");
   }
 
   if (!payment.stripeChargeId) {
@@ -709,8 +709,8 @@ export async function releasePaymentForDispute(paymentId, adminId) {
     throw new Error("Payment not found");
   }
 
-  if (payment.status !== "ESCROWED" && payment.status !== "DISPUTED") {
-    throw new Error("Can only release escrowed or disputed payments");
+  if (payment.status !== "ESCROWED") {
+    throw new Error("Can only release escrowed payments");
   }
 
   // Verify provider has bank details

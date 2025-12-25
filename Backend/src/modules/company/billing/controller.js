@@ -2,13 +2,18 @@
 import { createAnalyticsPDF } from "../../../utils/billingReportPdf.js";
 import { generateReceiptPDF } from "../../../utils/receiptPdf.js";
 import {
+  uploadFileToR2,
+  generateFileKey,
+  getPublicUrl,
+  generatePresignedDownloadUrl,
+} from "../../../utils/r2.js";
+import {
   getBillingOverview,
   getTransactionsList,
   getInvoicesList,
   getUpcomingPayments,
   getPaymentDetailsService,
 } from "./service.js";
-import fs from "fs";
 
 async function getOverview(req, res) {
   try {
@@ -88,15 +93,39 @@ export const getPaymentDetails = async (req, res, next) => {
 export const downloadReceipt = async (req, res, next) => {
   try {
     const { paymentId } = req.params;
+    const userId = req.user?.userId;
 
-    // Get full payment data (the JSON you showed)
+    // Get full payment data
     const payment = await getPaymentDetailsService(paymentId);
 
-    // Generate PDF file
-    const filePath = await generateReceiptPDF(payment);
+    // Generate PDF buffer
+    const pdfBuffer = await generateReceiptPDF(payment);
 
-    return res.download(filePath);
+    // Generate R2 key for the receipt
+    const fileName = `receipt-${paymentId}.pdf`;
+    const r2Key = generateFileKey("receipts", fileName, userId);
+
+    // Upload PDF buffer to R2
+    await uploadFileToR2(pdfBuffer, r2Key, "application/pdf");
+
+    // Get public URL or generate presigned URL
+    let downloadUrl;
+    try {
+      downloadUrl = getPublicUrl(r2Key);
+    } catch (error) {
+      // If public URL is not configured, use presigned URL
+      console.warn("R2 public URL not configured, using presigned URL:", r2Key);
+      downloadUrl = await generatePresignedDownloadUrl(r2Key, 3600); // 1 hour expiry
+    }
+
+    // Redirect to R2 URL or return the URL
+    return res.json({
+      success: true,
+      downloadUrl,
+      message: "Receipt generated and uploaded to R2 storage",
+    });
   } catch (err) {
+    console.error("Error generating receipt:", err);
     if (!err.status) err.status = 500;
     next(err);
   }
@@ -114,8 +143,8 @@ export const exportAnalyticsReport = async (req, res) => {
       getUpcomingPayments(userId),
     ]);
 
-    // Create and save PDF file
-    const filePath = await createAnalyticsPDF({
+    // Generate PDF buffer
+    const pdfBuffer = await createAnalyticsPDF({
       overview,
       transactions,
       invoices,
@@ -124,21 +153,28 @@ export const exportAnalyticsReport = async (req, res) => {
       generatedAt: new Date(),
     });
 
-    // Download
-    if (!fs.existsSync(filePath)) {
-      return res.status(500).json({
-        success: false,
-        message: "File was not created.",
-      });
+    // Generate R2 key for the report
+    const fileName = `billing-report-${Date.now()}.pdf`;
+    const r2Key = generateFileKey("billing-reports", fileName, userId);
+
+    // Upload PDF buffer to R2
+    await uploadFileToR2(pdfBuffer, r2Key, "application/pdf");
+
+    // Get public URL or generate presigned URL
+    let downloadUrl;
+    try {
+      downloadUrl = getPublicUrl(r2Key);
+    } catch (error) {
+      // If public URL is not configured, use presigned URL
+      console.warn("R2 public URL not configured, using presigned URL:", r2Key);
+      downloadUrl = await generatePresignedDownloadUrl(r2Key, 3600); // 1 hour expiry
     }
 
-    return res.download(filePath, (err) => {
-      if (err) {
-        console.error("Download report failed:", err);
-        res
-          .status(500)
-          .json({ success: false, message: "Failed to download report" });
-      }
+    // Return the download URL
+    return res.json({
+      success: true,
+      downloadUrl,
+      message: "Analytics report generated and uploaded to R2 storage",
     });
   } catch (err) {
     console.error("Export report failed:", err);
