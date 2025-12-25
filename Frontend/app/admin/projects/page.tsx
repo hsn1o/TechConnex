@@ -132,15 +132,25 @@ export default function AdminProjectsPage() {
   }
 
   const filteredProjects = projects.filter((project) => {
+    const searchLower = searchQuery.toLowerCase()
+    const title = typeof project.title === "string" ? project.title.toLowerCase() : ""
+    const customerName = typeof project.customer === "object" && project.customer !== null && typeof (project.customer as Record<string, unknown>).name === "string"
+      ? ((project.customer as Record<string, unknown>).name as string).toLowerCase()
+      : ""
+    const providerName = typeof project.provider === "object" && project.provider !== null && typeof (project.provider as Record<string, unknown>).name === "string"
+      ? ((project.provider as Record<string, unknown>).name as string).toLowerCase()
+      : ""
+    const category = typeof project.category === "string" ? project.category.toLowerCase() : ""
+    
     const matchesSearch =
-      project.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (project.provider?.name?.toLowerCase().includes(searchQuery.toLowerCase()) && project.type !== "serviceRequest")
+      title.includes(searchLower) ||
+      customerName.includes(searchLower) ||
+      (providerName.includes(searchLower) && project.type !== "serviceRequest")
     const matchesStatus = statusFilter === "all" || 
       (statusFilter === "OPEN" && project.type === "serviceRequest") ||
       (statusFilter !== "OPEN" && project.status === statusFilter && project.type === "project")
     const matchesCategory =
-      categoryFilter === "all" || project.category?.toLowerCase().includes(categoryFilter.toLowerCase())
+      categoryFilter === "all" || category.includes(categoryFilter.toLowerCase())
     return matchesSearch && matchesStatus && matchesCategory
   })
 
@@ -163,8 +173,8 @@ export default function AdminProjectsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Projects</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalProjects || 0}</p>
-                    {stats.openOpportunities > 0 && (
+                    <p className="text-2xl font-bold text-gray-900">{typeof stats.totalProjects === "number" ? stats.totalProjects : 0}</p>
+                    {typeof stats.openOpportunities === "number" && stats.openOpportunities > 0 && (
                       <p className="text-xs text-gray-500 mt-1">
                         {stats.openOpportunities} open opportunities
                       </p>
@@ -180,7 +190,7 @@ export default function AdminProjectsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Active</p>
-                    <p className="text-2xl font-bold text-blue-600">{stats.activeProjects || 0}</p>
+                    <p className="text-2xl font-bold text-blue-600">{typeof stats.activeProjects === "number" ? stats.activeProjects : 0}</p>
                 </div>
                 <Clock className="w-8 h-8 text-blue-600" />
               </div>
@@ -192,7 +202,7 @@ export default function AdminProjectsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Completed</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.completedProjects || 0}</p>
+                    <p className="text-2xl font-bold text-green-600">{typeof stats.completedProjects === "number" ? stats.completedProjects : 0}</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
@@ -204,7 +214,7 @@ export default function AdminProjectsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Disputed</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.disputedProjects || 0}</p>
+                    <p className="text-2xl font-bold text-red-600">{typeof stats.disputedProjects === "number" ? stats.disputedProjects : 0}</p>
                 </div>
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
@@ -217,7 +227,7 @@ export default function AdminProjectsPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Value</p>
                     <p className="text-2xl font-bold text-purple-600">
-                      RM{((stats.totalValue || 0) / 1000).toFixed(0)}K
+                      RM{((typeof stats.totalValue === "number" ? stats.totalValue : 0) / 1000).toFixed(0)}K
                     </p>
                 </div>
                 <DollarSign className="w-8 h-8 text-purple-600" />
@@ -313,29 +323,86 @@ export default function AdminProjectsPage() {
                     </TableRow>
                   ) : (
                     filteredProjects.map((project) => {
+                      const projectId = typeof project.id === "string" || typeof project.id === "number" ? String(project.id) : ""
                       const isServiceRequest = project.type === "serviceRequest"
                       const progress = calculateProgress(project)
-                      const disputesCount = project.Dispute?.length || 0
+                      
+                      // Safely get disputes count
+                      const disputesArray = Array.isArray(project.Dispute) ? project.Dispute : []
+                      const disputesCount = disputesArray.length
+                      
                       const milestonesArray = Array.isArray(project.milestones) ? project.milestones : []
                       const completedMilestones =
                         milestonesArray.filter((m: Record<string, unknown>) => m.status === "APPROVED" || m.status === "PAID")
                           .length || 0
                       const totalMilestones = milestonesArray.length || 0
-                      const proposalsCount = project.proposalsCount || project.proposals?.length || 0
+                      
+                      // Safely get proposals count
+                      const proposalsArray = Array.isArray(project.proposals) ? project.proposals : []
+                      const proposalsCount = typeof project.proposalsCount === "number" ? project.proposalsCount : proposalsArray.length
+                      
+                      // Safely get project title
+                      const projectTitle = typeof project.title === "string" ? project.title : "Untitled Project"
+                      
+                      // Safely get category
+                      const projectCategory = typeof project.category === "string" ? project.category : ""
+                      
+                      // Safely get customer name
+                      const customerObj = project.customer && typeof project.customer === "object" && project.customer !== null
+                        ? project.customer as Record<string, unknown>
+                        : null
+                      const customerName = customerObj && typeof customerObj.name === "string" ? customerObj.name : "N/A"
+                      const customerInitial = customerName !== "N/A" ? customerName.charAt(0).toUpperCase() : "C"
+                      
+                      // Safely get provider name
+                      const providerObj = project.provider && typeof project.provider === "object" && project.provider !== null
+                        ? project.provider as Record<string, unknown>
+                        : null
+                      const providerName = providerObj && typeof providerObj.name === "string" ? providerObj.name : "N/A"
+                      const providerInitial = providerName !== "N/A" ? providerName.charAt(0).toUpperCase() : "P"
+                      
+                      // Safely get status and type
+                      const projectStatus = typeof project.status === "string" ? project.status : ""
+                      const projectType = typeof project.type === "string" ? project.type : ""
+                      
+                      // Safely get budget
+                      const budgetMin = typeof project.budgetMin === "number" ? project.budgetMin : 0
+                      const budgetMax = typeof project.budgetMax === "number" ? project.budgetMax : 0
+                      
+                      // Safely get timeline
+                      const projectTimeline = typeof project.timeline === "string" ? project.timeline : "—"
+                      
+                      // Safely get created date
+                      let createdDateStr = "—"
+                      if (project.createdAt) {
+                        if (typeof project.createdAt === "string") {
+                          const date = new Date(project.createdAt)
+                          if (!isNaN(date.getTime())) {
+                            createdDateStr = date.toLocaleDateString()
+                          }
+                        } else if (typeof project.createdAt === "number") {
+                          const date = new Date(project.createdAt)
+                          if (!isNaN(date.getTime())) {
+                            createdDateStr = date.toLocaleDateString()
+                          }
+                        }
+                      }
 
                       return (
-                  <TableRow key={project.id}>
+                  <TableRow key={projectId}>
                     <TableCell>
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{project.title}</p>
+                          <p className="font-medium">{projectTitle}</p>
                           {isServiceRequest && (
                             <Badge className="bg-yellow-100 text-yellow-800 text-xs">
                               Opportunity
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">{project.category}</p>
+                        {projectCategory && (
+                          <p className="text-sm text-gray-500">{projectCategory}</p>
+                        )}
                               {disputesCount > 0 && !isServiceRequest && (
                           <Badge className="bg-red-100 text-red-800 mt-1">
                             <AlertTriangle className="w-3 h-3 mr-1" />
@@ -354,19 +421,19 @@ export default function AdminProjectsPage() {
                         <div className="flex items-center space-x-2">
                           <Avatar className="w-6 h-6">
                                   <AvatarFallback>
-                                    {project.customer?.name?.charAt(0) || "C"}
+                                    {customerInitial}
                                   </AvatarFallback>
                           </Avatar>
-                                <span className="text-sm">{project.customer?.name || "N/A"}</span>
+                                <span className="text-sm">{customerName}</span>
                         </div>
                         {!isServiceRequest && (
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-6 h-6">
                                     <AvatarFallback>
-                                      {project.provider?.name?.charAt(0) || "P"}
+                                      {providerInitial}
                                     </AvatarFallback>
                             </Avatar>
-                                  <span className="text-sm">{project.provider?.name || "N/A"}</span>
+                                  <span className="text-sm">{providerName}</span>
                           </div>
                         )}
                         {isServiceRequest && (
@@ -377,8 +444,8 @@ export default function AdminProjectsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                            <Badge className={getStatusColor(project.status, project.type)}>
-                              {getStatusText(project.status, project.type)}
+                            <Badge className={getStatusColor(projectStatus, projectType)}>
+                              {getStatusText(projectStatus, projectType)}
                             </Badge>
                     </TableCell>
                     <TableCell>
@@ -401,18 +468,17 @@ export default function AdminProjectsPage() {
                     <TableCell>
                       <div>
                               <p className="font-medium">
-                                RM{project.budgetMin?.toLocaleString() || 0} - RM
-                                {project.budgetMax?.toLocaleString() || 0}
+                                RM{budgetMin.toLocaleString()} - RM{budgetMax.toLocaleString()}
                               </p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div>
                               <p className="text-sm">
-                                {project.timeline || "—"}
+                                {projectTimeline}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {new Date(project.createdAt).toLocaleDateString()}
+                                {createdDateStr}
                               </p>
                       </div>
                     </TableCell>
@@ -426,7 +492,7 @@ export default function AdminProjectsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/admin/projects/${project.id}`}>
+                                  <Link href={`/admin/projects/${projectId}`}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                                   </Link>

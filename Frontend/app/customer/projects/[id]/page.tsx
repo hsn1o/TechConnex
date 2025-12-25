@@ -87,7 +87,7 @@ import MilestonePayment from "@/components/MilestonePayment";
 export default function ProjectDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const { toast: toastHook } = useToast();
   const router = useRouter();
@@ -327,7 +327,7 @@ export default function ProjectDetailsPage({
       if (data?.success) {
         const filtered = Array.isArray(data.data)
           ? data.data.filter(
-              (msg: Record<string, unknown>) => String(msg.projectId) === String(params.id)
+              (msg: Record<string, unknown>) => String(msg.projectId) === String(resolvedId)
             )
           : [];
 

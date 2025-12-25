@@ -298,22 +298,22 @@ export default function AdminDashboard() {
                   {recentActivity.length === 0 ? (
                     <div className="text-center text-gray-500 py-8">No recent activity</div>
                   ) : (
-                    recentActivity.map((activity) => (
+                    recentActivity.map((activity, index) => (
                     <div
-                      key={activity.id}
+                      key={activity.id ? String(activity.id) : `activity-${index}`}
                       className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors"
                     >
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${getActivityColor(activity.status)}`}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${getActivityColor(String(activity.status || ""))}`}
                       >
-                        {getActivityIcon(activity.type)}
+                        {getActivityIcon(String(activity.type || ""))}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900">{activity.user}</p>
-                        <p className="text-sm text-gray-600">{activity.action}</p>
-                          <p className="text-xs text-gray-500">{formatTimeAgo(activity.time)}</p>
+                        <p className="font-medium text-gray-900">{String(activity.user || "")}</p>
+                        <p className="text-sm text-gray-600">{String(activity.action || "")}</p>
+                          <p className="text-xs text-gray-500">{formatTimeAgo(String(activity.time || ""))}</p>
                       </div>
-                      <Badge className={getActivityColor(activity.status)}>{activity.status}</Badge>
+                      <Badge className={getActivityColor(String(activity.status || ""))}>{String(activity.status || "")}</Badge>
                     </div>
                     ))
                   )}
@@ -341,29 +341,34 @@ export default function AdminDashboard() {
                   {pendingVerifications.length === 0 ? (
                     <div className="text-center text-gray-500 py-8">No pending verifications</div>
                   ) : (
-                    pendingVerifications.map((verification) => {
+                    pendingVerifications.map((verification, index) => {
                       const avatarUrl = verification.avatar
-                        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${verification.avatar.startsWith("/") ? "" : "/"}${verification.avatar}`
+                        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${String(verification.avatar).startsWith("/") ? "" : "/"}${String(verification.avatar)}`
                         : "/placeholder.svg"
                       
+                      const verificationName = String(verification.name || "")
                       return (
-                        <Link key={verification.id} href={`/admin/verifications`}>
+                        <Link key={verification.id ? String(verification.id) : `verification-${index}`} href={`/admin/verifications`}>
                           <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                       <Avatar>
                               <AvatarImage src={avatarUrl} />
-                        <AvatarFallback>{verification.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{verificationName.charAt(0) || "?"}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{verification.name}</p>
-                        <p className="text-sm text-gray-600">{verification.type}</p>
+                        <p className="font-medium text-gray-900 truncate">{verificationName}</p>
+                        <p className="text-sm text-gray-600">{String(verification.type || "")}</p>
                               <p className="text-xs text-gray-500">
-                                Submitted: {new Date(verification.submitted).toLocaleDateString()}
+                                Submitted: {new Date(String(verification.submitted || "")).toLocaleDateString()}
                               </p>
-                              {verification.documents && verification.documents.length > 0 && (
-                                <p className="text-xs text-gray-400 mt-1">
-                                  {verification.documents.length} {verification.documents.length === 1 ? "document" : "documents"}
-                                </p>
-                              )}
+                              {(() => {
+                                const docs = verification.documents
+                                const docCount = Array.isArray(docs) ? docs.length : 0
+                                return docCount > 0 ? (
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    {docCount} {docCount === 1 ? "document" : "documents"}
+                                  </p>
+                                ) : null
+                              })()}
                       </div>
                       <div className="flex flex-col gap-1">
                         <Button size="sm" className="text-xs">
@@ -390,26 +395,32 @@ export default function AdminDashboard() {
                   {topProviders.length === 0 ? (
                     <div className="text-center text-gray-500 py-8">No providers found</div>
                   ) : (
-                    topProviders.map((provider) => {
+                    topProviders.map((provider, index) => {
                       const avatarUrl = provider.avatar
-                        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${provider.avatar.startsWith("/") ? "" : "/"}${provider.avatar}`
+                        ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${String(provider.avatar).startsWith("/") ? "" : "/"}${String(provider.avatar)}`
                         : "/placeholder.svg"
                       
+                      const providerId = provider.id ? String(provider.id) : `provider-${index}`
+                      const providerName = String(provider.name || "")
+                      const providerRating = typeof provider.rating === "number" ? provider.rating : 0
+                      const providerCompletedJobs = typeof provider.completedJobs === "number" ? provider.completedJobs : 0
+                      const providerEarnings = typeof provider.earnings === "number" ? provider.earnings : 0
+                      
                       return (
-                        <Link key={provider.id} href={`/admin/users/${provider.id}`}>
+                        <Link key={providerId} href={`/admin/users/${providerId}`}>
                           <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                       <Avatar>
                               <AvatarImage src={avatarUrl} />
-                        <AvatarFallback>{provider.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{providerName.charAt(0) || "?"}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{provider.name}</p>
+                        <p className="font-medium text-gray-900 truncate">{providerName}</p>
                         <div className="flex items-center gap-1">
                           <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                <span className="text-sm">{provider.rating.toFixed(1)}</span>
-                                <span className="text-xs text-gray-500">({provider.completedJobs} {provider.completedJobs === 1 ? "job" : "jobs"})</span>
+                                <span className="text-sm">{providerRating.toFixed(1)}</span>
+                                <span className="text-xs text-gray-500">({providerCompletedJobs} {providerCompletedJobs === 1 ? "job" : "jobs"})</span>
                         </div>
-                        <p className="text-xs text-gray-600">RM{provider.earnings.toLocaleString()} earned</p>
+                        <p className="text-xs text-gray-600">RM{providerEarnings.toLocaleString()} earned</p>
                       </div>
                     </div>
                         </Link>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,16 +29,125 @@ import {
   Loader2,
   AlertTriangle,
   Calendar,
-  Users,
   CheckCircle,
   Clock,
   Paperclip,
   Download,
+  Globe,
+  MapPin,
+  Star,
 } from "lucide-react"
 import Link from "next/link"
 import { formatTimeline } from "@/lib/timeline-utils"
 import { MarkdownViewer } from "@/components/markdown/MarkdownViewer"
-import { Globe, MapPin, Star } from "lucide-react"
+
+// Type definitions
+interface CustomerProfile {
+  profileImageUrl?: string
+  location?: string
+  website?: string
+  industry?: string
+  companySize?: string
+}
+
+interface Customer {
+  id?: string
+  name?: string
+  email?: string
+  customerProfile?: CustomerProfile
+}
+
+interface ProviderProfile {
+  profileImageUrl?: string
+  location?: string
+  website?: string
+  rating?: number
+  totalProjects?: number
+}
+
+interface Provider {
+  id?: string
+  name?: string
+  email?: string
+  providerProfile?: ProviderProfile
+}
+
+interface Milestone {
+  id?: string
+  title?: string
+  description?: string
+  amount?: number
+  status?: string
+  dueDate?: string
+  submittedAt?: string
+  submissionAttachmentUrl?: string
+  submissionHistory?: Array<{
+    submissionAttachmentUrl?: string
+    revisionNumber?: number
+    submittedAt?: string
+  }>
+}
+
+interface Proposal {
+  id?: string
+  provider?: Provider
+  proposedBudget?: number
+  proposedTimeline?: string
+  message?: string
+  status?: string
+  createdAt?: string
+  attachments?: string[]
+  attachmentUrls?: string[]
+}
+
+interface Dispute {
+  id?: string
+  reason?: string
+  description?: string
+  status?: string
+  raisedBy?: {
+    name?: string
+  }
+}
+
+interface Project {
+  id?: string
+  title?: string
+  description?: string
+  category?: string
+  status?: string
+  type?: string
+  budgetMin?: number
+  budgetMax?: number
+  timeline?: string
+  originalTimeline?: string
+  providerProposedTimeline?: string
+  priority?: string
+  skills?: string[]
+  requirements?: string | string[]
+  deliverables?: string | string[]
+  customer?: Customer
+  provider?: Provider
+  milestones?: Milestone[]
+  proposals?: Proposal[]
+  proposalsCount?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+interface FormData {
+  title: string
+  description: string
+  category: string
+  budgetMin: number
+  budgetMax: number
+  timeline: string
+  priority: string
+  status: string
+  requirements: string
+  deliverables: string
+  skills: string
+}
 
 export default function AdminProjectDetailPage() {
   const params = useParams()
@@ -46,19 +155,20 @@ export default function AdminProjectDetailPage() {
   const { toast: toastHook } = useToast()
 
   const [loading, setLoading] = useState(true)
-  const [project, setProject] = useState<Record<string, unknown> | null>(null)
-  const [disputes, setDisputes] = useState<Array<Record<string, unknown>>>([])
+  const [project, setProject] = useState<Project | null>(null)
+  const [disputes, setDisputes] = useState<Dispute[]>([])
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState<Record<string, unknown> | null>(null)
+  const [formData, setFormData] = useState<FormData | null>(null)
 
   const loadProject = useCallback(async () => {
     try {
       setLoading(true)
       const response = await getAdminProjectById(projectId)
       if (response.success) {
-        setProject(response.data as Record<string, unknown>)
-        initializeFormData(response.data as Record<string, unknown>)
+        const projectData = response.data as Project
+        setProject(projectData)
+        initializeFormData(projectData)
       }
     } catch (error: unknown) {
       toastHook({
@@ -75,7 +185,7 @@ export default function AdminProjectDetailPage() {
     try {
       const response = await getDisputesByProject(projectId)
       if (response.success) {
-        setDisputes((response.data || []) as Array<Record<string, unknown>>)
+        setDisputes((response.data || []) as Dispute[])
       }
     } catch (error: unknown) {
       console.error("Failed to load disputes:", error)
@@ -87,36 +197,35 @@ export default function AdminProjectDetailPage() {
     loadDisputes()
   }, [loadProject, loadDisputes])
 
-  const initializeFormData = (projectData: Record<string, unknown>) => {
-    // Handle requirements and deliverables (can be string or array)
+  const initializeFormData = (projectData: Project) => {
     const requirements = typeof projectData.requirements === "string"
       ? projectData.requirements
       : Array.isArray(projectData.requirements)
-      ? projectData.requirements.map((r: unknown) => `- ${String(r)}`).join("\n")
+      ? projectData.requirements.map((r) => `- ${String(r)}`).join("\n")
       : ""
     
     const deliverables = typeof projectData.deliverables === "string"
       ? projectData.deliverables
       : Array.isArray(projectData.deliverables)
-      ? projectData.deliverables.map((d: unknown) => `- ${String(d)}`).join("\n")
+      ? projectData.deliverables.map((d) => `- ${String(d)}`).join("\n")
       : ""
 
     setFormData({
-      title: (projectData.title as string) || "",
-      description: (projectData.description as string) || "",
-      category: (projectData.category as string) || "",
-      budgetMin: (projectData.budgetMin as number) || 0,
-      budgetMax: (projectData.budgetMax as number) || 0,
-      timeline: (projectData.timeline as string) || (projectData.originalTimeline as string) || "",
-      priority: (projectData.priority as string) || "medium",
-      status: (projectData.status as string) || "IN_PROGRESS",
+      title: projectData.title || "",
+      description: projectData.description || "",
+      category: projectData.category || "",
+      budgetMin: projectData.budgetMin || 0,
+      budgetMax: projectData.budgetMax || 0,
+      timeline: projectData.timeline || projectData.originalTimeline || "",
+      priority: projectData.priority || "medium",
+      status: projectData.status || "IN_PROGRESS",
       requirements: requirements,
       deliverables: deliverables,
-      skills: Array.isArray(projectData.skills) ? (projectData.skills as string[]).join(", ") : "",
+      skills: Array.isArray(projectData.skills) ? projectData.skills.join(", ") : "",
     })
   }
 
-  const handleFieldChange = (field: string, value: unknown) => {
+  const handleFieldChange = (field: keyof FormData, value: string | number) => {
     setFormData((prev) => {
       if (!prev) return prev
       return {
@@ -134,7 +243,6 @@ export default function AdminProjectDetailPage() {
       
       const isServiceRequest = project.type === "serviceRequest"
       
-      // Prepare update data
       const updateData: Record<string, unknown> = {
         title: formData.title,
         description: formData.description,
@@ -145,28 +253,25 @@ export default function AdminProjectDetailPage() {
         priority: formData.priority,
       }
 
-      // Only include status for Projects (not ServiceRequests)
       if (!isServiceRequest && formData.status) {
         updateData.status = formData.status
       }
 
-      // Convert skills from comma-separated string to array
-      if (formData.skills && typeof formData.skills === "string") {
+      if (formData.skills) {
         const skillsArray = formData.skills
           .split(",")
-          .map((s: string) => s.trim())
-          .filter((s: string) => s.length > 0)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
         if (skillsArray.length > 0) {
           updateData.skills = skillsArray
         }
       }
 
-      // Include requirements and deliverables as markdown strings
       if (formData.requirements !== undefined && formData.requirements !== null) {
-        updateData.requirements = (typeof formData.requirements === "string" ? formData.requirements.trim() : String(formData.requirements)) || null
+        updateData.requirements = formData.requirements.trim() || null
       }
       if (formData.deliverables !== undefined && formData.deliverables !== null) {
-        updateData.deliverables = (typeof formData.deliverables === "string" ? formData.deliverables.trim() : String(formData.deliverables)) || null
+        updateData.deliverables = formData.deliverables.trim() || null
       }
 
       const response = await updateAdminProject(projectId, updateData)
@@ -197,7 +302,6 @@ export default function AdminProjectDetailPage() {
   }
 
   const getStatusColor = (status: string, type?: string) => {
-    // ServiceRequests (unmatched opportunities)
     if (type === "serviceRequest") {
       return "bg-yellow-100 text-yellow-800"
     }
@@ -288,6 +392,10 @@ export default function AdminProjectDetailPage() {
     }
   }
 
+  const formatCurrency = (amount: number) => {
+    return `RM${amount.toLocaleString()}`
+  }
+
   if (loading) {
     return (
       <AdminLayout>
@@ -312,36 +420,27 @@ export default function AdminProjectDetailPage() {
   }
 
   const isServiceRequest = project.type === "serviceRequest"
-  const milestonesArray = Array.isArray(project.milestones) ? project.milestones : []
+  const milestonesArray = project.milestones || []
   const completedMilestones = milestonesArray.filter(
-    (m: Record<string, unknown>) => m.status === "APPROVED" || m.status === "PAID"
-  ).length || 0
-  const totalMilestones = milestonesArray.length || 0
+    (m) => m.status === "APPROVED" || m.status === "PAID"
+  ).length
+  const totalMilestones = milestonesArray.length
   const progress = isServiceRequest ? 0 : (totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0)
+  const approvedPrice = milestonesArray.reduce((sum, m) => sum + (m.amount || 0), 0)
   
-  // Calculate approved price (sum of all milestone amounts)
-  const approvedPrice = milestonesArray.reduce((sum: number, m: Record<string, unknown>) => sum + ((m.amount as number) || 0), 0) || 0
-  
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return `RM${amount.toLocaleString()}`
-  }
-  
-  // Get skills array
-  const skills = Array.isArray(project.skills) ? project.skills : []
-  
-  // Get requirements and deliverables (handle both string and array formats)
-  const requirements = typeof project.requirements === "string" 
-    ? project.requirements 
+  const requirements = typeof project.requirements === "string"
+    ? project.requirements
     : Array.isArray(project.requirements)
-    ? project.requirements.map((r: unknown) => `- ${String(r)}`).join("\n")
+    ? project.requirements.map((r) => `- ${String(r)}`).join("\n")
     : ""
   
   const deliverables = typeof project.deliverables === "string"
     ? project.deliverables
     : Array.isArray(project.deliverables)
-    ? project.deliverables.map((d: unknown) => `- ${String(d)}`).join("\n")
+    ? project.deliverables.map((d) => `- ${String(d)}`).join("\n")
     : ""
+
+  const proposalsCount = project.proposalsCount || (project.proposals?.length || 0)
 
   return (
     <AdminLayout>
@@ -355,8 +454,8 @@ export default function AdminProjectDetailPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{project.title}</h1>
-              <p className="text-gray-600">{project.category}</p>
+              <h1 className="text-3xl font-bold text-gray-900">{project.title || ""}</h1>
+              <p className="text-gray-600">{project.category || ""}</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -394,8 +493,8 @@ export default function AdminProjectDetailPage() {
 
         {/* Status Badge */}
         <div className="flex gap-4">
-          <Badge className={getStatusColor(project.status, project.type)}>
-            {getStatusText(project.status, project.type)}
+          <Badge className={getStatusColor(project.status || "", project.type)}>
+            {getStatusText(project.status || "", project.type)}
           </Badge>
           {isServiceRequest && (
             <Badge className="bg-yellow-100 text-yellow-800">
@@ -408,9 +507,9 @@ export default function AdminProjectDetailPage() {
               {disputes.length} Dispute(s)
             </Badge>
           )}
-          {isServiceRequest && project.proposalsCount > 0 && (
+          {isServiceRequest && proposalsCount > 0 && (
             <Badge className="bg-blue-100 text-blue-800">
-              {project.proposalsCount} {project.proposalsCount === 1 ? "proposal" : "proposals"}
+              {proposalsCount} {proposalsCount === 1 ? "proposal" : "proposals"}
             </Badge>
           )}
         </div>
@@ -420,11 +519,11 @@ export default function AdminProjectDetailPage() {
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             {isServiceRequest ? (
-              <TabsTrigger value="proposals">Proposals ({project.proposalsCount || project.proposals?.length || 0})</TabsTrigger>
+              <TabsTrigger value="proposals">Proposals ({proposalsCount})</TabsTrigger>
             ) : (
               <>
                 <TabsTrigger value="milestones">Milestones</TabsTrigger>
-                <TabsTrigger value="proposals">Proposals ({project.proposalsCount || project.proposals?.length || 0})</TabsTrigger>
+                <TabsTrigger value="proposals">Proposals ({proposalsCount})</TabsTrigger>
               </>
             )}
             <TabsTrigger value="files">Files</TabsTrigger>
@@ -440,9 +539,7 @@ export default function AdminProjectDetailPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Category
-                    </Label>
+                    <Label className="text-sm font-medium text-gray-500">Category</Label>
                     {isEditing ? (
                       <Input
                         value={formData?.category || ""}
@@ -450,13 +547,11 @@ export default function AdminProjectDetailPage() {
                         className="mt-1"
                       />
                     ) : (
-                      <p className="text-lg mt-1">{project.category}</p>
+                      <p className="text-lg mt-1">{project.category || ""}</p>
                     )}
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Status
-                    </Label>
+                    <Label className="text-sm font-medium text-gray-500">Status</Label>
                     <div className="mt-1">
                       {isEditing && !isServiceRequest ? (
                         <Select
@@ -473,16 +568,14 @@ export default function AdminProjectDetailPage() {
                           </SelectContent>
                         </Select>
                       ) : (
-                        <Badge className={getStatusColor(project.status, project.type)}>
-                          {getStatusText(project.status, project.type)}
+                        <Badge className={getStatusColor(project.status || "", project.type)}>
+                          {getStatusText(project.status || "", project.type)}
                         </Badge>
                       )}
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Budget Range
-                    </Label>
+                    <Label className="text-sm font-medium text-gray-500">Budget Range</Label>
                     {isEditing ? (
                       <div className="grid grid-cols-2 gap-2 mt-1">
                         <Input
@@ -506,24 +599,18 @@ export default function AdminProjectDetailPage() {
                   </div>
                   {!isServiceRequest && approvedPrice > 0 && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-500">
-                        Approved Price
-                      </Label>
+                      <Label className="text-sm font-medium text-gray-500">Approved Price</Label>
                       <p className="text-lg font-semibold text-green-600 mt-1">
                         {formatCurrency(approvedPrice)}
                       </p>
                     </div>
                   )}
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Timeline
-                    </Label>
+                    <Label className="text-sm font-medium text-gray-500">Timeline</Label>
                     <div className="space-y-2 mt-1">
-                      {project.originalTimeline && (
+                      {project.originalTimeline && typeof project.originalTimeline === "string" && project.originalTimeline.trim() ? (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">
-                            Original Timeline (Company):
-                          </p>
+                          <p className="text-xs text-gray-500 mb-1">Original Timeline (Company):</p>
                           {isEditing ? (
                             <Input
                               value={formData?.timeline || ""}
@@ -535,138 +622,40 @@ export default function AdminProjectDetailPage() {
                             </p>
                           )}
                         </div>
-                      )}
-                      {project.providerProposedTimeline && !isServiceRequest && (
+                      ) : null}
+                      {project.providerProposedTimeline && typeof project.providerProposedTimeline === "string" && project.providerProposedTimeline.trim() ? (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">
-                            Provider Proposed Timeline:
-                          </p>
-                          <p className="text-sm text-gray-900 font-medium">
-                            {formatTimeline(project.providerProposedTimeline, "day")}
+                          <p className="text-xs text-gray-500 mb-1">Provider Proposed Timeline:</p>
+                          <p className="text-sm text-gray-700">
+                            {formatTimeline(project.providerProposedTimeline)}
                           </p>
                         </div>
-                      )}
-                      {!project.originalTimeline && !project.providerProposedTimeline && (
-                        <p className="text-sm text-gray-600">
-                          {isEditing ? (
-                            <Input
-                              value={formData?.timeline || ""}
-                              onChange={(e) => handleFieldChange("timeline", e.target.value)}
-                              placeholder="Enter timeline"
-                            />
-                          ) : (
-                            "Not specified"
-                          )}
-                        </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Priority
-                    </Label>
-                    <div className="mt-1">
-                      {isEditing ? (
-                        <Select
-                          value={formData?.priority || "medium"}
-                          onValueChange={(value) => handleFieldChange("priority", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge>{project.priority || "medium"}</Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Required Skills
-                  </Label>
-                  {isEditing ? (
-                    <Input
-                      value={formData?.skills || skills.join(", ")}
-                      onChange={(e) => handleFieldChange("skills", e.target.value)}
-                      placeholder="Enter skills separated by commas"
-                      className="mt-1"
-                    />
-                  ) : skills.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {skills.map((skill: string, index: number) => (
-                        <Badge key={index} variant="secondary">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 mt-1">No skills specified</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Requirements
-                  </Label>
-                  <div className="mt-2">
+                    <Label className="text-sm font-medium text-gray-500">Priority</Label>
                     {isEditing ? (
-                      <Textarea
-                        value={formData?.requirements || requirements}
-                        onChange={(e) => handleFieldChange("requirements", e.target.value)}
-                        rows={6}
-                        placeholder="Enter requirements (Markdown supported)"
-                      />
-                    ) : requirements ? (
-                      <div className="prose max-w-none text-gray-700">
-                        <MarkdownViewer
-                          content={requirements}
-                          className="prose max-w-none text-gray-700"
-                          emptyMessage="No requirements specified"
-                        />
-                      </div>
+                      <Select
+                        value={formData?.priority || "medium"}
+                        onValueChange={(value) => handleFieldChange("priority", value)}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                        </SelectContent>
+                      </Select>
                     ) : (
-                      <p className="text-sm text-gray-500">No requirements specified</p>
+                      <p className="text-lg mt-1 capitalize">{project.priority || ""}</p>
                     )}
                   </div>
                 </div>
-
                 <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Deliverables
-                  </Label>
-                  <div className="mt-2">
-                    {isEditing ? (
-                      <Textarea
-                        value={formData?.deliverables || deliverables}
-                        onChange={(e) => handleFieldChange("deliverables", e.target.value)}
-                        rows={6}
-                        placeholder="Enter deliverables (Markdown supported)"
-                      />
-                    ) : deliverables ? (
-                      <div className="prose max-w-none text-gray-700">
-                        <MarkdownViewer
-                          content={deliverables}
-                          className="prose max-w-none text-gray-700"
-                          emptyMessage="No deliverables specified"
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">No deliverables specified</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Description
-                  </Label>
+                  <Label className="text-sm font-medium text-gray-500">Description</Label>
                   {isEditing ? (
                     <Textarea
                       value={formData?.description || ""}
@@ -674,73 +663,128 @@ export default function AdminProjectDetailPage() {
                       rows={6}
                       className="mt-1"
                     />
+                  ) : project.description ? (
+                    <MarkdownViewer content={project.description} />
                   ) : (
-                    <p className="text-sm text-gray-700 mt-1">{project.description}</p>
+                    <p className="text-sm text-gray-700 mt-1">{project.description || ""}</p>
                   )}
                 </div>
+                {requirements && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Requirements</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={formData?.requirements || ""}
+                        onChange={(e) => handleFieldChange("requirements", e.target.value)}
+                        rows={4}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <MarkdownViewer content={requirements} />
+                    )}
+                  </div>
+                )}
+                {deliverables && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Deliverables</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={formData?.deliverables || ""}
+                        onChange={(e) => handleFieldChange("deliverables", e.target.value)}
+                        rows={4}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <MarkdownViewer content={deliverables} />
+                    )}
+                  </div>
+                )}
+                {project.skills && project.skills.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Skills Required</Label>
+                    {isEditing ? (
+                      <Input
+                        value={formData?.skills || ""}
+                        onChange={(e) => handleFieldChange("skills", e.target.value)}
+                        placeholder="Comma-separated skills"
+                        className="mt-1"
+                      />
+                    ) : (
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {project.skills.map((skill, idx) => (
+                          <Badge key={idx} variant="outline">{skill}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Client Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Client Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-start gap-4">
-                  <Avatar className="w-16 h-16">
-                    <AvatarImage
-                      src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
-                    />
-                    <AvatarFallback>{project.customer?.name?.charAt(0) || "C"}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 space-y-2">
-                    <div>
-                      <p className="font-semibold text-lg">{project.customer?.name || "N/A"}</p>
-                      <p className="text-sm text-gray-600">{project.customer?.email || ""}</p>
+            {project.customer && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Client Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-start gap-4">
+                    <Avatar className="w-16 h-16">
+                      <AvatarImage
+                        src={getProfileImageUrl(project.customer.customerProfile?.profileImageUrl)}
+                      />
+                      <AvatarFallback>{(project.customer.name || "C").charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="font-semibold text-lg">{project.customer.name || "N/A"}</p>
+                        <p className="text-sm text-gray-600">{project.customer.email || ""}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {project.customer.customerProfile?.location && project.customer.customerProfile.location.trim() ? (
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-600">{project.customer.customerProfile.location}</span>
+                          </div>
+                        ) : null}
+                        {project.customer.customerProfile?.website && project.customer.customerProfile.website.trim() ? (
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-gray-400" />
+                            <a
+                              href={project.customer.customerProfile.website.startsWith("http") ? project.customer.customerProfile.website : `https://${project.customer.customerProfile.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {project.customer.customerProfile.website}
+                            </a>
+                          </div>
+                        ) : null}
+                        {project.customer.customerProfile?.industry && project.customer.customerProfile.industry.trim() ? (
+                          <div>
+                            <span className="text-gray-500">Industry: </span>
+                            <span className="text-gray-700">{project.customer.customerProfile.industry}</span>
+                          </div>
+                        ) : null}
+                        {project.customer.customerProfile?.companySize && project.customer.customerProfile.companySize.trim() ? (
+                          <div>
+                            <span className="text-gray-500">Company Size: </span>
+                            <span className="text-gray-700">{project.customer.customerProfile.companySize}</span>
+                          </div>
+                        ) : null}
+                      </div>
+                      {project.customer.id && (
+                        <Link href={`/admin/users/${project.customer.id}`}>
+                          <Button variant="outline" size="sm">
+                            View Full Profile
+                          </Button>
+                        </Link>
+                      )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      {project.customer?.customerProfile?.location && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-600">{project.customer.customerProfile.location}</span>
-                        </div>
-                      )}
-                      {project.customer?.customerProfile?.website && (
-                        <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-gray-400" />
-                          <a
-                            href={project.customer.customerProfile.website.startsWith("http") ? project.customer.customerProfile.website : `https://${project.customer.customerProfile.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            {project.customer.customerProfile.website}
-                          </a>
-                        </div>
-                      )}
-                      {project.customer?.customerProfile?.industry && (
-                        <div>
-                          <span className="text-gray-500">Industry: </span>
-                          <span className="text-gray-700">{project.customer.customerProfile.industry}</span>
-                        </div>
-                      )}
-                      {project.customer?.customerProfile?.companySize && (
-                        <div>
-                          <span className="text-gray-500">Company Size: </span>
-                          <span className="text-gray-700">{project.customer.customerProfile.companySize}</span>
-                        </div>
-                      )}
-                    </div>
-                    <Link href={`/admin/users/${project.customer?.id}`}>
-                      <Button variant="outline" size="sm">
-                        View Full Profile
-                      </Button>
-                    </Link>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Provider Information */}
             {!isServiceRequest && project.provider && (
@@ -752,23 +796,23 @@ export default function AdminProjectDetailPage() {
                   <div className="flex items-start gap-4">
                     <Avatar className="w-16 h-16">
                       <AvatarImage
-                        src={getProfileImageUrl(project.provider?.providerProfile?.profileImageUrl)}
+                        src={getProfileImageUrl(project.provider.providerProfile?.profileImageUrl)}
                       />
-                      <AvatarFallback>{project.provider?.name?.charAt(0) || "P"}</AvatarFallback>
+                      <AvatarFallback>{(project.provider.name || "P").charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 space-y-2">
                       <div>
-                        <p className="font-semibold text-lg">{project.provider?.name || "N/A"}</p>
-                        <p className="text-sm text-gray-600">{project.provider?.email || ""}</p>
+                        <p className="font-semibold text-lg">{project.provider.name || "N/A"}</p>
+                        <p className="text-sm text-gray-600">{project.provider.email || ""}</p>
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
-                        {project.provider?.providerProfile?.location && (
+                        {project.provider.providerProfile?.location && (
                           <div className="flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-gray-400" />
                             <span className="text-gray-600">{project.provider.providerProfile.location}</span>
                           </div>
                         )}
-                        {project.provider?.providerProfile?.website && (
+                        {project.provider.providerProfile?.website && (
                           <div className="flex items-center gap-2">
                             <Globe className="w-4 h-4 text-gray-400" />
                             <a
@@ -781,531 +825,198 @@ export default function AdminProjectDetailPage() {
                             </a>
                           </div>
                         )}
-                        {project.provider?.providerProfile?.rating !== undefined && project.provider.providerProfile.rating !== null && (
-                          <div className="flex items-center gap-2">
-                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span className="text-gray-700">
-                              {Number(project.provider.providerProfile.rating).toFixed(1)} Rating
-                            </span>
+                        {project.provider.providerProfile?.rating && typeof project.provider.providerProfile.rating === "number" && (
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                            <span className="text-gray-700">{project.provider.providerProfile.rating.toFixed(1)}</span>
                           </div>
                         )}
-                        {project.provider?.providerProfile?.totalProjects !== undefined && (
+                        {project.provider.providerProfile?.totalProjects !== undefined && (
                           <div>
                             <span className="text-gray-500">Projects: </span>
                             <span className="text-gray-700">{project.provider.providerProfile.totalProjects}</span>
                           </div>
                         )}
                       </div>
-                      <Link href={`/admin/users/${project.provider?.id}`}>
-                        <Button variant="outline" size="sm">
-                          View Full Profile
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {isServiceRequest && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Provider Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                      <Users className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Awaiting Provider Match</p>
-                      {project.proposalsCount > 0 && (
-                        <p className="text-sm text-blue-600 mt-1">
-                          {project.proposalsCount} {project.proposalsCount === 1 ? "proposal" : "proposals"} received
-                        </p>
+                      {project.provider.id && (
+                        <Link href={`/admin/users/${project.provider.id}`}>
+                          <Button variant="outline" size="sm">
+                            View Full Profile
+                          </Button>
+                        </Link>
                       )}
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
-
-            {/* Progress */}
-            {!isServiceRequest && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Project Progress</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-sm">
-                      <span>Progress</span>
-                      <span>{progress}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-600 transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>
-                        {completedMilestones} of {totalMilestones} milestones completed
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </TabsContent>
 
-          <TabsContent value="milestones" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Milestones</CardTitle>
-                <CardDescription>
-                  Detailed milestone information and submission history
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {milestonesArray.length > 0 ? (
-                    milestonesArray.map((milestone: Record<string, unknown>, index: number) => (
-                      <div key={milestone.id} className="flex gap-4">
-                        <div className="flex flex-col items-center">
-                          {getMilestoneStatusIcon(milestone.status)}
-                          {index < project.milestones.length - 1 && (
-                            <div className="w-px h-16 bg-gray-200 mt-2" />
-                          )}
-                        </div>
-                        <div className="flex-1 pb-8">
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-semibold">{milestone.title}</h3>
-                            <div className="flex items-center gap-2">
-                              <Badge className={getMilestoneStatusColor(milestone.status)}>
-                                {getMilestoneStatusText(milestone.status)}
-                              </Badge>
-                              <span className="text-sm font-medium">
-                                RM{milestone.amount?.toLocaleString() || 0}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-gray-600 mb-2">{milestone.description}</p>
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              Due: {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString() : "—"}
-                            </div>
-                            {milestone.completedAt && (
-                              <div className="flex items-center gap-1">
-                                <CheckCircle className="w-4 h-4" />
-                                Completed: {new Date(milestone.completedAt).toLocaleDateString()}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Show start deliverables if available */}
-                          {milestone.startDeliverables && (
-                            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                              <p className="text-sm font-medium text-green-900 mb-1">
-                                📋 Plan / Deliverables (When Starting Work):
-                              </p>
-                              <p className="text-sm text-green-800 whitespace-pre-wrap">
-                                {typeof milestone.startDeliverables === "object" &&
-                                milestone.startDeliverables.description
-                                  ? milestone.startDeliverables.description
-                                  : JSON.stringify(milestone.startDeliverables)}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Show submit deliverables if available */}
-                          {milestone.submitDeliverables && (
-                            <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                              <p className="text-sm font-medium text-purple-900 mb-1">
-                                ✅ Deliverables / Completion Notes (When Submitting):
-                              </p>
-                              <p className="text-sm text-purple-800 whitespace-pre-wrap">
-                                {typeof milestone.submitDeliverables === "object" &&
-                                milestone.submitDeliverables.description
-                                  ? milestone.submitDeliverables.description
-                                  : JSON.stringify(milestone.submitDeliverables)}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Show submission note if available */}
-                          {milestone.submissionNote && (
-                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                              <p className="text-sm font-medium text-blue-900 mb-1">
-                                📝 Submission Note:
-                              </p>
-                              <p className="text-sm text-blue-800 whitespace-pre-wrap">
-                                {milestone.submissionNote}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Show latest requested changes reason if available */}
-                          {milestone.submissionHistory &&
-                            Array.isArray(milestone.submissionHistory) &&
-                            milestone.submissionHistory.length > 0 &&
-                            (() => {
-                              const latestRequest =
-                                milestone.submissionHistory[milestone.submissionHistory.length - 1]
-                              if (latestRequest?.requestedChangesReason) {
-                                return (
-                                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                    <p className="text-sm font-medium text-orange-900 mb-1">
-                                      🔄 Latest Request for Changes (Revision #
-                                      {latestRequest.revisionNumber || milestone.submissionHistory.length}):
-                                    </p>
-                                    <p className="text-sm text-orange-800 whitespace-pre-wrap">
-                                      {latestRequest.requestedChangesReason}
-                                    </p>
-                                    {latestRequest.requestedChangesAt && (
-                                      <p className="text-xs text-orange-600 mt-2">
-                                        Requested on:{" "}
-                                        {new Date(latestRequest.requestedChangesAt).toLocaleString()}
-                                      </p>
-                                    )}
-                                  </div>
-                                )
-                              }
-                              return null
-                            })()}
-
-                          {/* Show attachment if available */}
-                          {milestone.submissionAttachmentUrl && (
-                            <div className="mt-3">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Paperclip className="w-4 h-4 text-gray-600" />
-                                <span className="text-sm font-medium text-gray-900">
-                                  📎 Submission Attachment
-                                </span>
-                              </div>
-                              <a
-                                href={`${
-                                  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-                                }/${milestone.submissionAttachmentUrl
-                                  .replace(/\\/g, "/")
-                                  .replace(/^\//, "")}`}
-                                download={(() => {
-                                  const normalized = milestone.submissionAttachmentUrl.replace(/\\/g, "/")
-                                  return normalized.split("/").pop() || "attachment"
-                                })()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
-                              >
-                                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
-                                  PDF
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-sm font-medium text-gray-900 break-all leading-snug">
-                                    {(() => {
-                                      const normalized = milestone.submissionAttachmentUrl.replace(/\\/g, "/")
-                                      return normalized.split("/").pop() || "attachment"
-                                    })()}
-                                  </span>
-                                  <span className="text-xs text-gray-500 leading-snug">
-                                    Click to preview / download
-                                  </span>
-                                </div>
-                                <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
-                                  <Download className="w-4 h-4" />
-                                </div>
-                              </a>
-                            </div>
-                          )}
-
-                          {/* Show submission history if available */}
-                          {milestone.submissionHistory &&
-                            Array.isArray(milestone.submissionHistory) &&
-                            milestone.submissionHistory.length > 0 && (
-                              <div className="mt-4 border-t pt-4">
-                                <p className="text-sm font-semibold text-gray-900 mb-3">
-                                  📚 Previous Submission History:
-                                </p>
-                                <div className="space-y-3">
-                                  {Array.isArray(milestone.submissionHistory) && (milestone.submissionHistory as Array<Record<string, unknown>>).map((history: Record<string, unknown>, idx: number) => {
-                                    const revisionNumber =
-                                      history.revisionNumber !== undefined &&
-                                      history.revisionNumber !== null
-                                        ? history.revisionNumber
-                                        : idx + 1
-
-                                    return (
-                                      <div
-                                        key={idx}
-                                        className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
-                                      >
-                                        <div className="flex items-center justify-between mb-2">
-                                          <p className="text-sm font-medium text-gray-900">
-                                            Revision #{revisionNumber}
-                                          </p>
-                                          {history.requestedChangesAt && (
-                                            <span className="text-xs text-gray-500">
-                                              Changes requested:{" "}
-                                              {new Date(history.requestedChangesAt).toLocaleDateString()}
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        {history.requestedChangesReason && (
-                                          <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
-                                            <p className="text-xs font-medium text-red-900 mb-1">
-                                              Reason for Changes:
-                                            </p>
-                                            <p className="text-xs text-red-800">
-                                              {history.requestedChangesReason}
-                                            </p>
-                                          </div>
-                                        )}
-
-                                        {history.submitDeliverables && (
-                                          <div className="mb-2">
-                                            <p className="text-xs font-medium text-gray-700 mb-1">
-                                              Deliverables:
-                                            </p>
-                                            <p className="text-xs text-gray-600 whitespace-pre-wrap">
-                                              {typeof history.submitDeliverables === "object" &&
-                                              history.submitDeliverables.description
-                                                ? history.submitDeliverables.description
-                                                : JSON.stringify(history.submitDeliverables)}
-                                            </p>
-                                          </div>
-                                        )}
-
-                                        {history.submissionNote && (
-                                          <div className="mb-2">
-                                            <p className="text-xs font-medium text-gray-700 mb-1">Note:</p>
-                                            <p className="text-xs text-gray-600 whitespace-pre-wrap">
-                                              {history.submissionNote}
-                                            </p>
-                                          </div>
-                                        )}
-
-                                        {history.submissionAttachmentUrl && (
-                                          <div>
-                                            <p className="text-xs font-medium text-gray-700 mb-1">
-                                              Attachment:
-                                            </p>
-                                            <a
-                                              href={`${
-                                                process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-                                              }/${history.submissionAttachmentUrl
-                                                .replace(/\\/g, "/")
-                                                .replace(/^\//, "")}`}
-                                              download
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                            >
-                                              {(() => {
-                                                const normalized = history.submissionAttachmentUrl.replace(
-                                                  /\\/g,
-                                                  "/"
-                                                )
-                                                return normalized.split("/").pop() || "attachment"
-                                              })()}
-                                            </a>
-                                          </div>
-                                        )}
-
-                                        {history.submittedAt && (
-                                          <p className="text-xs text-gray-500 mt-2">
-                                            Submitted: {new Date(history.submittedAt).toLocaleString()}
-                                          </p>
-                                        )}
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">No milestones found</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Proposals Tab (for both Projects and ServiceRequests) */}
-          <TabsContent value="proposals" className="space-y-6">
+          {!isServiceRequest && (
+            <TabsContent value="milestones" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Proposals</CardTitle>
+                  <CardTitle>Milestones</CardTitle>
                   <CardDescription>
-                    {isServiceRequest
-                      ? "Proposals submitted by providers for this opportunity"
-                      : "All proposals submitted for this project (including accepted, rejected, and pending)"}
+                    {totalMilestones > 0 && (
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600">{progress}%</span>
+                        </div>
+                        <span className="text-sm text-gray-600">
+                          {completedMilestones} of {totalMilestones} completed
+                        </span>
+                      </div>
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {Array.isArray(project.proposals) && project.proposals.length > 0 ? (
+                  {milestonesArray.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-8">No milestones found</p>
+                  ) : (
                     <div className="space-y-4">
-                      {(project.proposals as Array<Record<string, unknown>>).map((proposal: Record<string, unknown>) => (
-                        <div key={proposal.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start mb-3">
+                      {milestonesArray.map((milestone, idx) => (
+                        <div key={milestone.id || idx} className="border rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarFallback>
-                                  {proposal.provider?.name?.charAt(0) || "P"}
-                                </AvatarFallback>
-                              </Avatar>
+                              {getMilestoneStatusIcon(milestone.status || "")}
                               <div>
-                                <p className="font-medium">{proposal.provider?.name || "N/A"}</p>
-                                <p className="text-sm text-gray-600">{proposal.provider?.email || ""}</p>
-                                {proposal.provider?.providerProfile?.location && (
-                                  <p className="text-xs text-gray-500">
-                                    {proposal.provider.providerProfile.location}
-                                  </p>
+                                <h4 className="font-semibold">{milestone.title || `Milestone ${idx + 1}`}</h4>
+                                {milestone.description && (
+                                  <p className="text-sm text-gray-600 mt-1">{milestone.description}</p>
                                 )}
                               </div>
                             </div>
-                            <Badge
-                              className={
-                                proposal.status === "ACCEPTED"
-                                  ? "bg-green-100 text-green-800"
-                                  : proposal.status === "REJECTED"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              }
-                            >
-                              {proposal.status}
-                            </Badge>
-                          </div>
-                          <div className="grid md:grid-cols-2 gap-4 mt-4">
-                            <div>
-                              <p className="text-sm font-medium text-gray-700">Bid Amount</p>
-                              <p className="text-lg font-semibold">
-                                RM{proposal.bidAmount?.toLocaleString() || "N/A"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-700">Delivery Time</p>
-                              <p className="text-lg font-semibold">
-                                {proposal.deliveryTime ? `${proposal.deliveryTime} days` : "N/A"}
-                              </p>
+                            <div className="flex items-center gap-3">
+                              <Badge className={getMilestoneStatusColor(milestone.status || "")}>
+                                {getMilestoneStatusText(milestone.status || "")}
+                              </Badge>
+                              {milestone.amount && (
+                                <span className="font-semibold text-green-600">
+                                  {formatCurrency(milestone.amount)}
+                                </span>
+                              )}
                             </div>
                           </div>
-                          {proposal.coverLetter && (
-                            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                              <p className="text-sm font-medium text-gray-700 mb-2">Cover Letter</p>
-                              <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                                {proposal.coverLetter}
-                              </p>
+                          {milestone.dueDate && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
+                              <Calendar className="w-4 h-4" />
+                              <span>Due: {new Date(milestone.dueDate).toLocaleDateString()}</span>
                             </div>
                           )}
-                          {proposal.milestones && proposal.milestones.length > 0 && (
-                            <div className="mt-4">
-                              <p className="text-sm font-medium text-gray-700 mb-2">
-                                Proposed Milestones ({proposal.milestones.length})
-                              </p>
-                              <div className="space-y-2">
-                                {Array.isArray(proposal.milestones) && (proposal.milestones as Array<Record<string, unknown>>).map((milestone: Record<string, unknown>, idx: number) => (
-                                  <div key={milestone.id || idx} className="p-2 bg-gray-50 rounded text-sm">
-                                    <p className="font-medium">{milestone.title}</p>
-                                    <p className="text-gray-600">
-                                      RM{milestone.amount?.toLocaleString() || 0}
-                                      {milestone.dueDate &&
-                                        ` • Due: ${new Date(milestone.dueDate).toLocaleDateString()}`}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
+                          {milestone.submittedAt && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
+                              <Clock className="w-4 h-4" />
+                              <span>Submitted: {new Date(milestone.submittedAt).toLocaleDateString()}</span>
                             </div>
                           )}
-                          {proposal.attachmentUrls && proposal.attachmentUrls.length > 0 && (
-                            <div className="mt-4">
-                              <p className="text-sm font-medium text-gray-700 mb-2">Attachments</p>
-                              <div className="space-y-2">
-                                {proposal.attachmentUrls.map((url: string, idx: number) => {
-                                  const normalized = url.replace(/\\/g, "/")
-                                  const fileName = normalized.split("/").pop() || `file-${idx + 1}`
-                                  const attachmentUrl = getAttachmentUrl(url)
-                                  const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"))
-                                  
-                                  return (
-                                    <a
-                                      key={idx}
-                                      href={attachmentUrl === "#" ? undefined : attachmentUrl}
-                                      download={fileName}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={isR2Key ? async (e) => {
-                                        e.preventDefault()
-                                        try {
-                                          const downloadUrl = await getR2DownloadUrl(url) // Use original URL/key
-                                          window.open(downloadUrl.downloadUrl, "_blank")
-                                        } catch (error) {
-                                          console.error("Failed to get download URL:", error)
-                                          toastHook({
-                                            title: "Error",
-                                            description: "Failed to download attachment",
-                                            variant: "destructive",
-                                          })
-                                        }
-                                      } : undefined}
-                                      className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
-                                    >
-                                      <Paperclip className="w-4 h-4" />
-                                      {fileName}
-                                    </a>
-                                  )
-                                })}
-                              </div>
+                          {milestone.submissionAttachmentUrl && (
+                            <div className="mt-3">
+                              <a
+                                href={getAttachmentUrl(milestone.submissionAttachmentUrl)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                              >
+                                <Paperclip className="w-4 h-4" />
+                                View Submission
+                              </a>
                             </div>
                           )}
-                          <div className="mt-4 pt-4 border-t">
-                            <p className="text-xs text-gray-500">
-                              Submitted: {new Date(proposal.createdAt).toLocaleString()}
-                            </p>
-                          </div>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">No proposals received yet</p>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
+          )}
+
+          <TabsContent value="proposals" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Proposals</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!project.proposals || project.proposals.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-8">No proposals found</p>
+                ) : (
+                  <div className="space-y-4">
+                    {project.proposals.map((proposal, idx) => (
+                      <div key={proposal.id || idx} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="font-semibold">
+                              {proposal.provider?.name || "Unknown Provider"}
+                            </h4>
+                            <p className="text-sm text-gray-600">{proposal.provider?.email || ""}</p>
+                          </div>
+                          <Badge className={getStatusColor(proposal.status || "", "")}>
+                            {getStatusText(proposal.status || "", "")}
+                          </Badge>
+                        </div>
+                        {proposal.proposedBudget && (
+                          <p className="text-sm text-gray-700 mt-2">
+                            <span className="font-medium">Budget: </span>
+                            {formatCurrency(proposal.proposedBudget)}
+                          </p>
+                        )}
+                        {proposal.proposedTimeline && (
+                          <p className="text-sm text-gray-700 mt-1">
+                            <span className="font-medium">Timeline: </span>
+                            {formatTimeline(proposal.proposedTimeline)}
+                          </p>
+                        )}
+                        {proposal.message && (
+                          <p className="text-sm text-gray-600 mt-2">{proposal.message}</p>
+                        )}
+                        {proposal.createdAt && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            Submitted: {new Date(proposal.createdAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="files" className="space-y-6">
             {/* Proposal Attachments Section */}
             <Card>
               <CardHeader>
                 <CardTitle>Proposal Attachments</CardTitle>
-                <CardDescription>
-                  {isServiceRequest
-                    ? "Files attached to all proposals"
-                    : "Files attached to accepted proposals"}
-                </CardDescription>
+                <CardDescription>Files attached to proposals</CardDescription>
               </CardHeader>
               <CardContent>
                 {(() => {
-                  const proposalAttachments: string[] = []
-                  
-                  // For ServiceRequests, collect attachments from all proposals
-                  if (isServiceRequest && Array.isArray(project.proposals)) {
-                    (project.proposals as Array<Record<string, unknown>>).forEach((proposal: Record<string, unknown>) => {
-                      if (proposal.attachmentUrls && Array.isArray(proposal.attachmentUrls)) {
-                        proposalAttachments.push(...proposal.attachmentUrls)
+                  const proposalAttachments: Array<{
+                    url: string
+                    proposalName: string
+                    proposalId?: string
+                  }> = []
+
+                  if (project.proposals && Array.isArray(project.proposals)) {
+                    project.proposals.forEach((proposal) => {
+                      const attachments = proposal.attachments || proposal.attachmentUrls || []
+                      if (Array.isArray(attachments) && attachments.length > 0) {
+                        attachments.forEach((url: string) => {
+                          proposalAttachments.push({
+                            url,
+                            proposalName: proposal.provider?.name || "Provider",
+                            proposalId: proposal.id,
+                          })
+                        })
                       }
                     })
-                  }
-                  // For Projects, use accepted proposal attachments
-                  else if (
-                    project?.proposal?.attachmentUrls &&
-                    Array.isArray(project.proposal.attachmentUrls)
-                  ) {
-                    proposalAttachments.push(...project.proposal.attachmentUrls)
                   }
 
                   if (proposalAttachments.length === 0) {
@@ -1318,20 +1029,33 @@ export default function AdminProjectDetailPage() {
 
                   return (
                     <div className="space-y-2">
-                      {proposalAttachments.map((url, idx) => {
-                        const normalized = url.replace(/\\/g, "/")
+                      {proposalAttachments.map((attachment, idx) => {
+                        const normalized = attachment.url.replace(/\\/g, "/")
                         const fileName = normalized.split("/").pop() || `file-${idx + 1}`
-                        const fullUrl = `${
-                          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-                        }/${normalized.replace(/^\//, "")}`
+                        const attachmentUrl = getAttachmentUrl(attachment.url)
+                        const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"))
 
                         return (
                           <a
                             key={idx}
-                            href={fullUrl}
+                            href={attachmentUrl === "#" ? undefined : attachmentUrl}
                             download={fileName}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={isR2Key ? async (e) => {
+                              e.preventDefault()
+                              try {
+                                const downloadUrl = await getR2DownloadUrl(attachment.url)
+                                window.open(downloadUrl.downloadUrl, "_blank")
+                              } catch (error) {
+                                console.error("Failed to get download URL:", error)
+                                toastHook({
+                                  title: "Error",
+                                  description: "Failed to download attachment",
+                                  variant: "destructive",
+                                })
+                              }
+                            } : undefined}
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -1342,10 +1066,7 @@ export default function AdminProjectDetailPage() {
                                 {fileName}
                               </span>
                               <span className="text-xs text-gray-500 leading-snug">
-                                From accepted proposal
-                                {project?.proposal?.createdAt &&
-                                  ` • Submitted: ${new Date(project.proposal.createdAt).toLocaleDateString()}`}
-                                <span className="block mt-0.5">Click to preview / download</span>
+                                From: {attachment.proposalName} • Click to preview / download
                               </span>
                             </div>
                             <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
@@ -1361,42 +1082,36 @@ export default function AdminProjectDetailPage() {
             </Card>
 
             {/* Milestone Attachments Section */}
-            {!isServiceRequest && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Milestone Attachments</CardTitle>
-                  <CardDescription>Files attached to milestone submissions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const milestoneAttachments: Array<{
-                      url: string
-                      milestoneTitle: string
-                      milestoneId: string
-                      submittedAt?: string
-                    }> = []
+            <Card>
+              <CardHeader>
+                <CardTitle>Milestone Attachments</CardTitle>
+                <CardDescription>Files submitted with milestone completions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const milestoneAttachments: Array<{
+                    url: string
+                    milestoneTitle: string
+                    milestoneId?: string
+                    submittedAt?: string
+                  }> = []
 
-                    milestonesArray.forEach((milestone: Record<string, unknown>) => {
+                  milestonesArray.forEach((milestone) => {
                     if (milestone.submissionAttachmentUrl) {
                       milestoneAttachments.push({
                         url: milestone.submissionAttachmentUrl,
-                        milestoneTitle: milestone.title,
+                        milestoneTitle: milestone.title || "Untitled Milestone",
                         milestoneId: milestone.id,
                         submittedAt: milestone.submittedAt,
                       })
                     }
 
-                    if (
-                      milestone.submissionHistory &&
-                      Array.isArray(milestone.submissionHistory)
-                    ) {
-                      (milestone.submissionHistory as Array<Record<string, unknown>>).forEach((history: Record<string, unknown>) => {
+                    if (milestone.submissionHistory && Array.isArray(milestone.submissionHistory)) {
+                      milestone.submissionHistory.forEach((history) => {
                         if (history.submissionAttachmentUrl) {
                           milestoneAttachments.push({
                             url: history.submissionAttachmentUrl,
-                            milestoneTitle: `${milestone.title} (Revision ${
-                              history.revisionNumber || "N/A"
-                            })`,
+                            milestoneTitle: `${milestone.title || "Untitled Milestone"} (Revision ${history.revisionNumber || "N/A"})`,
                             milestoneId: milestone.id,
                             submittedAt: history.submittedAt,
                           })
@@ -1418,17 +1133,30 @@ export default function AdminProjectDetailPage() {
                       {milestoneAttachments.map((attachment, idx) => {
                         const normalized = attachment.url.replace(/\\/g, "/")
                         const fileName = normalized.split("/").pop() || `file-${idx + 1}`
-                        const fullUrl = `${
-                          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-                        }/${normalized.replace(/^\//, "")}`
+                        const attachmentUrl = getAttachmentUrl(attachment.url)
+                        const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"))
 
                         return (
                           <a
                             key={idx}
-                            href={fullUrl}
+                            href={attachmentUrl === "#" ? undefined : attachmentUrl}
                             download={fileName}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={isR2Key ? async (e) => {
+                              e.preventDefault()
+                              try {
+                                const downloadUrl = await getR2DownloadUrl(attachment.url)
+                                window.open(downloadUrl.downloadUrl, "_blank")
+                              } catch (error) {
+                                console.error("Failed to get download URL:", error)
+                                toastHook({
+                                  title: "Error",
+                                  description: "Failed to download attachment",
+                                  variant: "destructive",
+                                })
+                              }
+                            } : undefined}
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -1456,9 +1184,7 @@ export default function AdminProjectDetailPage() {
                 })()}
               </CardContent>
             </Card>
-            )}
 
-            {/* Message Attachments Section */}
             <Card>
               <CardHeader>
                 <CardTitle>Message Attachments</CardTitle>
@@ -1480,15 +1206,15 @@ export default function AdminProjectDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {disputes.map((dispute: Record<string, unknown>) => (
+                    {disputes.map((dispute) => (
                       <div key={dispute.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <p className="font-medium">{dispute.reason}</p>
-                            <p className="text-sm text-gray-600">{dispute.description}</p>
+                            <p className="font-medium">{dispute.reason || "N/A"}</p>
+                            <p className="text-sm text-gray-600">{dispute.description || ""}</p>
                           </div>
-                          <Badge className={getStatusColor(dispute.status)}>
-                            {dispute.status?.replace("_", " ")}
+                          <Badge className={getStatusColor(dispute.status || "")}>
+                            {(dispute.status || "").replace("_", " ")}
                           </Badge>
                         </div>
                         <div className="flex justify-between items-center mt-2">

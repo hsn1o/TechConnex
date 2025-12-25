@@ -80,17 +80,10 @@ import { useRef } from "react";
 import Image from "next/image";
 import VerificationSection from "@/components/customer/profile/sections/VerificationSection";
 import {
-  ProfileData,
-  Stats,
   UploadedDocument,
 } from "@/components/customer/profile/types";
 
-type Props = {
-  profileData?: ProfileData;
-  uploadedDocuments?: UploadedDocument[];
-  documentTypes?: DocumentType[];
-  stats?: Stats;
-};
+type Props = Record<string, never>;
 
 type PortfolioProject = {
   id: string;
@@ -130,11 +123,9 @@ type Reviewer = {
   email?: string;
 };
 
-export default function ProviderProfilePage(props: Props = {}) {
-  const {
-    profileData: initialProfileData,
-    uploadedDocuments: initialUploadedDocuments,
-  } = props;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function ProviderProfilePage(_props: Props) {
+  // Props are required by Next.js but not used in this client component
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -249,9 +240,7 @@ export default function ProviderProfilePage(props: Props = {}) {
     serialNumber?: string;
     sourceUrl?: string;
   }>({});
-  const [docs, setDocs] = useState<UploadedDocument[]>(
-    initialUploadedDocuments ?? []
-  );
+  const [docs, setDocs] = useState<UploadedDocument[]>([]);
   const [resume, setResume] = useState<{ fileUrl: string; uploadedAt: string } | null>(null);
   const [uploadingResume, setUploadingResume] = useState(false);
   const [deletingResume, setDeletingResume] = useState(false);
@@ -404,10 +393,8 @@ export default function ProviderProfilePage(props: Props = {}) {
 
 
 
-  // Fetch profile and kyc documents client-side when not provided via props
+  // Fetch profile and kyc documents client-side
   useEffect(() => {
-    if (initialProfileData) return; // server provided
-
     setLoading(true);
     (async () => {      
         try {
@@ -472,7 +459,7 @@ export default function ProviderProfilePage(props: Props = {}) {
         setLoading(false);
       }
     })();
-  }, [initialProfileData]);
+  }, []);
 
   // Save profile data
   const handleSaveProfile = async () => {

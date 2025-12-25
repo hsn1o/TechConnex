@@ -158,7 +158,12 @@ export default function AdminReportsPage() {
     setCategoryDetails(null);
 
     try {
-      const params: Record<string, unknown> = {
+      const params: {
+        category: string;
+        dateRange?: string;
+        startDate?: string;
+        endDate?: string;
+      } = {
         category,
         dateRange: dateRange === "custom" ? undefined : dateRange,
       };
@@ -187,7 +192,13 @@ export default function AdminReportsPage() {
 
   const handleExportReport = async () => {
     try {
-      const params: Record<string, unknown> = {
+      const params: {
+        reportType?: string;
+        dateRange?: string;
+        startDate?: string;
+        endDate?: string;
+        format?: string;
+      } = {
         reportType,
         dateRange: dateRange === "custom" ? undefined : dateRange,
         format: "pdf",
@@ -226,7 +237,13 @@ export default function AdminReportsPage() {
 
   const handleQuickReport = async (type: string) => {
     try {
-      const params: Record<string, unknown> = {
+      const params: {
+        reportType?: string;
+        dateRange?: string;
+        startDate?: string;
+        endDate?: string;
+        format?: string;
+      } = {
         reportType: type,
         dateRange: dateRange === "custom" ? undefined : dateRange,
         format: "pdf",
@@ -244,12 +261,16 @@ export default function AdminReportsPage() {
       if (!token) throw new Error("Not authenticated");
 
       const searchParams = new URLSearchParams();
-      if (params.reportType)
+      if (params.reportType && typeof params.reportType === "string")
         searchParams.append("reportType", params.reportType);
-      if (params.dateRange) searchParams.append("dateRange", params.dateRange);
-      if (params.startDate) searchParams.append("startDate", params.startDate);
-      if (params.endDate) searchParams.append("endDate", params.endDate);
-      if (params.format) searchParams.append("format", params.format);
+      if (params.dateRange && typeof params.dateRange === "string")
+        searchParams.append("dateRange", params.dateRange);
+      if (params.startDate && typeof params.startDate === "string")
+        searchParams.append("startDate", params.startDate);
+      if (params.endDate && typeof params.endDate === "string")
+        searchParams.append("endDate", params.endDate);
+      if (params.format && typeof params.format === "string")
+        searchParams.append("format", params.format);
 
       const API_BASE =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -308,7 +329,10 @@ export default function AdminReportsPage() {
   // Calculate max revenue for progress bars
   const maxMonthlyRevenue =
     monthlyData.length > 0
-      ? Math.max(...monthlyData.map((m) => m.revenue || 0))
+      ? Math.max(...monthlyData.map((m) => {
+          const revenue = typeof m.revenue === "number" ? m.revenue : 0;
+          return revenue;
+        }))
       : 1;
 
   return (
@@ -534,33 +558,41 @@ export default function AdminReportsPage() {
                   <CardContent>
                     {monthlyData.length > 0 ? (
                       <div className="space-y-6">
-                        {monthlyData.map((month, index) => (
-                          <div
-                            key={`${month.month}-${month.year}-${index}`}
-                            className="space-y-2"
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium">
-                                {month.month} {month.year}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                RM{(month.revenue / 1000).toFixed(0)}K
-                              </span>
+                        {monthlyData.map((month, index) => {
+                          const monthName = typeof month.month === "string" ? month.month : "Unknown";
+                          const year = typeof month.year === "string" || typeof month.year === "number" ? String(month.year) : "Unknown";
+                          const revenue = typeof month.revenue === "number" ? month.revenue : 0;
+                          const projects = typeof month.projects === "number" ? month.projects : 0;
+                          const users = typeof month.users === "number" ? month.users : 0;
+                          
+                          return (
+                            <div
+                              key={`${monthName}-${year}-${index}`}
+                              className="space-y-2"
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium">
+                                  {monthName} {year}
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  RM{(revenue / 1000).toFixed(0)}K
+                                </span>
+                              </div>
+                              <Progress
+                                value={
+                                  maxMonthlyRevenue > 0
+                                    ? (revenue / maxMonthlyRevenue) * 100
+                                    : 0
+                                }
+                                className="h-2"
+                              />
+                              <div className="flex justify-between text-sm text-gray-500">
+                                <span>{projects} projects</span>
+                                <span>{users} new users</span>
+                              </div>
                             </div>
-                            <Progress
-                              value={
-                                maxMonthlyRevenue > 0
-                                  ? (month.revenue / maxMonthlyRevenue) * 100
-                                  : 0
-                              }
-                              className="h-2"
-                            />
-                            <div className="flex justify-between text-sm text-gray-500">
-                              <span>{month.projects} projects</span>
-                              <span>{month.users} new users</span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-center text-gray-500 py-8">
@@ -583,34 +615,41 @@ export default function AdminReportsPage() {
                   <CardContent>
                     {categoryBreakdown.length > 0 ? (
                       <div className="space-y-4">
-                        {categoryBreakdown.map((category) => (
-                          <div
-                            key={category.category}
-                            onClick={() =>
-                              handleCategoryClick(category.category)
-                            }
-                            className="space-y-2 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 hover:border-blue-300 transition-colors"
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium hover:text-blue-600 transition-colors">
-                                {category.category}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                {category.percentage.toFixed(1)}%
-                              </span>
+                        {categoryBreakdown.map((category) => {
+                          const categoryName = typeof category.category === "string" ? category.category : "Unknown";
+                          const percentage = typeof category.percentage === "number" ? category.percentage : 0;
+                          const projects = typeof category.projects === "number" ? category.projects : 0;
+                          const revenue = typeof category.revenue === "number" ? category.revenue : 0;
+                          
+                          return (
+                            <div
+                              key={categoryName}
+                              onClick={() =>
+                                handleCategoryClick(categoryName)
+                              }
+                              className="space-y-2 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium hover:text-blue-600 transition-colors">
+                                  {categoryName}
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  {percentage.toFixed(1)}%
+                                </span>
+                              </div>
+                              <Progress
+                                value={percentage}
+                                className="h-2"
+                              />
+                              <div className="flex justify-between text-xs text-gray-500">
+                                <span>{projects} projects</span>
+                                <span>
+                                  RM{(revenue / 1000).toFixed(0)}K
+                                </span>
+                              </div>
                             </div>
-                            <Progress
-                              value={category.percentage}
-                              className="h-2"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500">
-                              <span>{category.projects} projects</span>
-                              <span>
-                                RM{(category.revenue / 1000).toFixed(0)}K
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-center text-gray-500 py-8">
@@ -634,40 +673,48 @@ export default function AdminReportsPage() {
                 <CardContent>
                   {topProviders.length > 0 ? (
                     <div className="space-y-4">
-                      {topProviders.map((provider, index) => (
-                        <Link
-                          key={provider.id || provider.name || index}
-                          href={`/admin/users/${provider.id}`}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-bold text-blue-600">
-                                #{index + 1}
-                              </span>
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium hover:text-blue-600 transition-colors">
-                                {provider.name}
-                              </p>
-                              <div className="flex items-center gap-2 text-sm text-gray-500">
-                                <span>{provider.projects} projects</span>
-                                {provider.rating > 0 && (
-                                  <div className="flex items-center">
-                                    <Star className="w-3 h-3 text-yellow-400 fill-current mr-1" />
-                                    <span>{provider.rating.toFixed(1)}</span>
-                                  </div>
-                                )}
+                      {topProviders.map((provider, index) => {
+                        const providerId = typeof provider.id === "string" || typeof provider.id === "number" ? String(provider.id) : "";
+                        const providerName = typeof provider.name === "string" ? provider.name : "Unknown Provider";
+                        const providerProjects = typeof provider.projects === "number" ? provider.projects : 0;
+                        const providerRating = typeof provider.rating === "number" ? provider.rating : 0;
+                        const providerRevenue = typeof provider.revenue === "number" ? provider.revenue : 0;
+                        
+                        return (
+                          <Link
+                            key={providerId || providerName || index}
+                            href={`/admin/users/${providerId}`}
+                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-bold text-blue-600">
+                                  #{index + 1}
+                                </span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium hover:text-blue-600 transition-colors">
+                                  {providerName}
+                                </p>
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                  <span>{providerProjects} projects</span>
+                                  {providerRating > 0 && (
+                                    <div className="flex items-center">
+                                      <Star className="w-3 h-3 text-yellow-400 fill-current mr-1" />
+                                      <span>{providerRating.toFixed(1)}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium">
-                              RM{(provider.revenue / 1000).toFixed(0)}K
-                            </p>
-                          </div>
-                        </Link>
-                      ))}
+                            <div className="text-right">
+                              <p className="font-medium">
+                                RM{(providerRevenue / 1000).toFixed(0)}K
+                              </p>
+                            </div>
+                          </Link>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-center text-gray-500 py-8">
@@ -686,34 +733,41 @@ export default function AdminReportsPage() {
                 <CardContent>
                   {topCustomers.length > 0 ? (
                     <div className="space-y-4">
-                      {topCustomers.map((customer, index) => (
-                        <Link
-                          key={customer.id || customer.name || index}
-                          href={`/admin/users/${customer.id}`}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 hover:border-purple-300 transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-bold text-purple-600">
-                                #{index + 1}
-                              </span>
+                      {topCustomers.map((customer, index) => {
+                        const customerId = typeof customer.id === "string" || typeof customer.id === "number" ? String(customer.id) : "";
+                        const customerName = typeof customer.name === "string" ? customer.name : "Unknown Customer";
+                        const customerProjects = typeof customer.projects === "number" ? customer.projects : 0;
+                        const customerSpent = typeof customer.spent === "number" ? customer.spent : 0;
+                        
+                        return (
+                          <Link
+                            key={customerId || customerName || index}
+                            href={`/admin/users/${customerId}`}
+                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 hover:border-purple-300 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                <span className="text-sm font-bold text-purple-600">
+                                  #{index + 1}
+                                </span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium hover:text-purple-600 transition-colors">
+                                  {customerName}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                  {customerProjects} projects
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <p className="font-medium hover:text-purple-600 transition-colors">
-                                {customer.name}
-                              </p>
-                              <p className="text-sm text-gray-500">
-                                {customer.projects} projects
+                            <div className="text-right">
+                              <p className="font-medium">
+                                RM{(customerSpent / 1000).toFixed(0)}K
                               </p>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium">
-                              RM{(customer.spent / 1000).toFixed(0)}K
-                            </p>
-                          </div>
-                        </Link>
-                      ))}
+                          </Link>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-center text-gray-500 py-8">
@@ -810,7 +864,7 @@ export default function AdminReportsPage() {
                             Total Revenue
                           </p>
                           <p className="text-2xl font-bold mt-1">
-                            RM{(categoryDetails.totalRevenue / 1000).toFixed(0)}
+                            RM{((typeof categoryDetails.totalRevenue === "number" ? categoryDetails.totalRevenue : 0) / 1000).toFixed(0)}
                             K
                           </p>
                         </div>
@@ -827,7 +881,7 @@ export default function AdminReportsPage() {
                             Projects
                           </p>
                           <p className="text-2xl font-bold mt-1">
-                            {categoryDetails.projectCount}
+                            {typeof categoryDetails.projectCount === "number" ? categoryDetails.projectCount : 0}
                           </p>
                         </div>
                         <Briefcase className="w-8 h-8 text-blue-600" />
@@ -845,7 +899,7 @@ export default function AdminReportsPage() {
                           <p className="text-2xl font-bold mt-1">
                             RM
                             {(
-                              categoryDetails.averageProjectValue / 1000
+                              (typeof categoryDetails.averageProjectValue === "number" ? categoryDetails.averageProjectValue : 0) / 1000
                             ).toFixed(0)}
                             K
                           </p>
@@ -863,7 +917,7 @@ export default function AdminReportsPage() {
                             Providers
                           </p>
                           <p className="text-2xl font-bold mt-1">
-                            {categoryDetails.providers?.length || 0}
+                            {Array.isArray(categoryDetails.providers) ? categoryDetails.providers.length : 0}
                           </p>
                         </div>
                         <Users className="w-8 h-8 text-orange-600" />
@@ -873,7 +927,7 @@ export default function AdminReportsPage() {
                 </div>
 
                 {/* Monthly Trends */}
-                {categoryDetails.monthlyTrends &&
+                {Array.isArray(categoryDetails.monthlyTrends) &&
                   categoryDetails.monthlyTrends.length > 0 && (
                     <Card>
                       <CardHeader>
@@ -884,37 +938,44 @@ export default function AdminReportsPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {categoryDetails.monthlyTrends.map(
-                            (month: Record<string, unknown>, index: number) => (
-                              <div key={index} className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-sm font-medium">
-                                    {month.month} {month.year}
-                                  </span>
-                                  <span className="text-sm text-gray-500">
-                                    RM{((month.revenue as number) / 1000).toFixed(0)}K
-                                  </span>
+                          {(() => {
+                            const trends = categoryDetails.monthlyTrends as Array<Record<string, unknown>>;
+                            const maxRevenue = Math.max(...trends.map((m) => {
+                              const rev = typeof m.revenue === "number" ? m.revenue : 0;
+                              return rev;
+                            }));
+                            
+                            return trends.map((month: Record<string, unknown>, index: number) => {
+                              const monthName = typeof month.month === "string" ? month.month : "Unknown";
+                              const year = typeof month.year === "string" || typeof month.year === "number" ? String(month.year) : "Unknown";
+                              const revenue = typeof month.revenue === "number" ? month.revenue : 0;
+                              const projects = typeof month.projects === "number" ? month.projects : 0;
+                              
+                              return (
+                                <div key={index} className="space-y-2">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium">
+                                      {monthName} {year}
+                                    </span>
+                                    <span className="text-sm text-gray-500">
+                                      RM{(revenue / 1000).toFixed(0)}K
+                                    </span>
+                                  </div>
+                                  <Progress
+                                    value={
+                                      maxRevenue > 0
+                                        ? (revenue / maxRevenue) * 100
+                                        : 0
+                                    }
+                                    className="h-2"
+                                  />
+                                  <div className="flex justify-between text-xs text-gray-500">
+                                    <span>{projects} projects</span>
+                                  </div>
                                 </div>
-                                <Progress
-                                  value={
-                                    categoryDetails.monthlyTrends.length > 0
-                                      ? (((month.revenue as number) /
-                                          Math.max(
-                                            ...categoryDetails.monthlyTrends.map(
-                                              (m: Record<string, unknown>) => m.revenue as number
-                                            )
-                                          )) *
-                                        100)
-                                      : 0
-                                  }
-                                  className="h-2"
-                                />
-                                <div className="flex justify-between text-xs text-gray-500">
-                                  <span>{month.projects} projects</span>
-                                </div>
-                              </div>
-                            )
-                          )}
+                              );
+                            });
+                          })()}
                         </div>
                       </CardContent>
                     </Card>
@@ -925,61 +986,89 @@ export default function AdminReportsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>
-                      All Projects ({categoryDetails.projects?.length || 0})
+                      All Projects ({Array.isArray(categoryDetails.projects) ? categoryDetails.projects.length : 0})
                     </CardTitle>
                     <CardDescription>Projects in this category</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {categoryDetails.projects &&
+                    {Array.isArray(categoryDetails.projects) &&
                     categoryDetails.projects.length > 0 ? (
                       <div className="space-y-3">
-                        {categoryDetails.projects.map((project: Record<string, unknown>) => (
-                          <Link
-                            key={project.id}
-                            href={`/admin/projects/${project.id}`}
-                            className="block p-4 border rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <p className="font-medium">{project.title}</p>
-                                <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                                  {project.provider && (
-                                    <span>
-                                      Provider: {project.provider.name}
-                                    </span>
-                                  )}
-                                  {project.customer && (
-                                    <span>
-                                      Customer: {project.customer.name}
-                                    </span>
-                                  )}
-                                  <span>
-                                    {new Date(
-                                      project.createdAt
-                                    ).toLocaleDateString()}
-                                  </span>
+                        {(categoryDetails.projects as Array<Record<string, unknown>>).map((project: Record<string, unknown>) => {
+                          const projectId = typeof project.id === "string" || typeof project.id === "number" ? String(project.id) : "";
+                          const projectTitle = typeof project.title === "string" ? project.title : "Untitled Project";
+                          const projectStatus = typeof project.status === "string" ? project.status : "UNKNOWN";
+                          const projectRevenue = typeof project.revenue === "number" ? project.revenue : 0;
+                          
+                          const providerObj = project.provider && typeof project.provider === "object" && project.provider !== null
+                            ? project.provider as Record<string, unknown>
+                            : null;
+                          const providerName = providerObj && typeof providerObj.name === "string" ? providerObj.name : null;
+                          
+                          const customerObj = project.customer && typeof project.customer === "object" && project.customer !== null
+                            ? project.customer as Record<string, unknown>
+                            : null;
+                          const customerName = customerObj && typeof customerObj.name === "string" ? customerObj.name : null;
+                          
+                          let createdDateStr = "—";
+                          if (project.createdAt) {
+                            if (typeof project.createdAt === "string") {
+                              const date = new Date(project.createdAt);
+                              if (!isNaN(date.getTime())) {
+                                createdDateStr = date.toLocaleDateString();
+                              }
+                            } else if (typeof project.createdAt === "number") {
+                              const date = new Date(project.createdAt);
+                              if (!isNaN(date.getTime())) {
+                                createdDateStr = date.toLocaleDateString();
+                              }
+                            }
+                          }
+                          
+                          return (
+                            <Link
+                              key={projectId}
+                              href={`/admin/projects/${projectId}`}
+                              className="block p-4 border rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="font-medium">{projectTitle}</p>
+                                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                                    {providerName && (
+                                      <span>
+                                        Provider: {providerName}
+                                      </span>
+                                    )}
+                                    {customerName && (
+                                      <span>
+                                        Customer: {customerName}
+                                      </span>
+                                    )}
+                                    <span>{createdDateStr}</span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <Badge
+                                    variant={
+                                      projectStatus === "COMPLETED"
+                                        ? "default"
+                                        : projectStatus === "IN_PROGRESS"
+                                        ? "secondary"
+                                        : "outline"
+                                    }
+                                    className="mb-2"
+                                  >
+                                    {projectStatus}
+                                  </Badge>
+                                  <p className="font-medium">
+                                    RM{(projectRevenue / 1000).toFixed(0)}K
+                                  </p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <Badge
-                                  variant={
-                                    project.status === "COMPLETED"
-                                      ? "default"
-                                      : project.status === "IN_PROGRESS"
-                                      ? "secondary"
-                                      : "outline"
-                                  }
-                                  className="mb-2"
-                                >
-                                  {project.status}
-                                </Badge>
-                                <p className="font-medium">
-                                  RM{(project.revenue / 1000).toFixed(0)}K
-                                </p>
-                              </div>
-                            </div>
-                          </Link>
-                        ))}
+                            </Link>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-center text-gray-500 py-8">
@@ -994,51 +1083,58 @@ export default function AdminReportsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>
-                      Providers ({categoryDetails.providers?.length || 0})
+                      Providers ({Array.isArray(categoryDetails.providers) ? categoryDetails.providers.length : 0})
                     </CardTitle>
                     <CardDescription>
                       Service providers working in this category
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {categoryDetails.providers &&
+                    {Array.isArray(categoryDetails.providers) &&
                     categoryDetails.providers.length > 0 ? (
                       <div className="space-y-3">
-                        {categoryDetails.providers.map((provider: Record<string, unknown>) => (
-                          <Link
-                            key={provider.id}
-                            href={`/admin/users/${provider.id}`}
-                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <Users className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{provider.name}</p>
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                  {provider.rating &&
-                                    Number(provider.rating) > 0 && (
+                        {(categoryDetails.providers as Array<Record<string, unknown>>).map((provider: Record<string, unknown>) => {
+                          const providerId = typeof provider.id === "string" || typeof provider.id === "number" ? String(provider.id) : "";
+                          const providerName = typeof provider.name === "string" ? provider.name : "Unknown Provider";
+                          const providerEmail = typeof provider.email === "string" ? provider.email : "";
+                          const providerLocation = typeof provider.location === "string" ? provider.location : null;
+                          const providerRating = typeof provider.rating === "number" ? provider.rating : (typeof provider.rating === "string" ? Number(provider.rating) : 0);
+                          
+                          return (
+                            <Link
+                              key={providerId}
+                              href={`/admin/users/${providerId}`}
+                              className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <Users className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{providerName}</p>
+                                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    {providerRating > 0 && (
                                       <div className="flex items-center">
                                         <Star className="w-3 h-3 text-yellow-400 fill-current mr-1" />
                                         <span>
-                                          {Number(provider.rating).toFixed(1)}
+                                          {providerRating.toFixed(1)}
                                         </span>
                                       </div>
                                     )}
-                                  {provider.location && (
-                                    <span>• {provider.location}</span>
-                                  )}
+                                    {providerLocation && (
+                                      <span>• {providerLocation}</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-500">
-                                {provider.email}
-                              </p>
-                            </div>
-                          </Link>
-                        ))}
+                              <div className="text-right">
+                                <p className="text-sm text-gray-500">
+                                  {providerEmail}
+                                </p>
+                              </div>
+                            </Link>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-center text-gray-500 py-8">
@@ -1053,45 +1149,53 @@ export default function AdminReportsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>
-                      Customers ({categoryDetails.customers?.length || 0})
+                      Customers ({Array.isArray(categoryDetails.customers) ? categoryDetails.customers.length : 0})
                     </CardTitle>
                     <CardDescription>
                       Companies using this category
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {categoryDetails.customers &&
+                    {Array.isArray(categoryDetails.customers) &&
                     categoryDetails.customers.length > 0 ? (
                       <div className="space-y-3">
-                        {categoryDetails.customers.map((customer: Record<string, unknown>) => (
-                          <Link
-                            key={customer.id}
-                            href={`/admin/users/${customer.id}`}
-                            className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 hover:border-purple-300 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                <Users className="w-5 h-5 text-purple-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{customer.name}</p>
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                  {customer.industry && (
-                                    <span>{customer.industry}</span>
-                                  )}
-                                  {customer.companySize && (
-                                    <span>• {customer.companySize}</span>
-                                  )}
+                        {(categoryDetails.customers as Array<Record<string, unknown>>).map((customer: Record<string, unknown>) => {
+                          const customerId = typeof customer.id === "string" || typeof customer.id === "number" ? String(customer.id) : "";
+                          const customerName = typeof customer.name === "string" ? customer.name : "Unknown Customer";
+                          const customerEmail = typeof customer.email === "string" ? customer.email : "";
+                          const customerIndustry = typeof customer.industry === "string" ? customer.industry : null;
+                          const customerCompanySize = typeof customer.companySize === "string" ? customer.companySize : null;
+                          
+                          return (
+                            <Link
+                              key={customerId}
+                              href={`/admin/users/${customerId}`}
+                              className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 hover:border-purple-300 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                  <Users className="w-5 h-5 text-purple-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{customerName}</p>
+                                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    {customerIndustry && (
+                                      <span>{customerIndustry}</span>
+                                    )}
+                                    {customerCompanySize && (
+                                      <span>• {customerCompanySize}</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-500">
-                                {customer.email}
-                              </p>
-                            </div>
-                          </Link>
-                        ))}
+                              <div className="text-right">
+                                <p className="text-sm text-gray-500">
+                                  {customerEmail}
+                                </p>
+                              </div>
+                            </Link>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-center text-gray-500 py-8">

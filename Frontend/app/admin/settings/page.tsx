@@ -54,6 +54,30 @@ export default function AdminSettingsPage() {
     fetchSettings();
   }, []);
 
+  // ✅ Helper functions to safely get typed values
+  const getStringValue = (key: string): string => {
+    if (!settings) return "";
+    const value = settings[key];
+    return typeof value === "string" ? value : "";
+  };
+
+  const getNumberValue = (key: string): number => {
+    if (!settings) return 0;
+    const value = settings[key];
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+      const parsed = Number.parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  const getBooleanValue = (key: string): boolean => {
+    if (!settings) return false;
+    const value = settings[key];
+    return typeof value === "boolean" ? value : false;
+  };
+
   // ✅ Handle input updates
   const handleInputChange = (key: string, value: unknown) => {
     setSettings((prev: Record<string, unknown> | null) => ({
@@ -175,7 +199,7 @@ export default function AdminSettingsPage() {
                     <Label htmlFor="platformName">Platform Name</Label>
                     <Input
                       id="platformName"
-                      value={settings.platformName}
+                      value={getStringValue("platformName")}
                       onChange={(e) =>
                         handleInputChange("platformName", e.target.value)
                       }
@@ -185,7 +209,7 @@ export default function AdminSettingsPage() {
                     <Label htmlFor="platformUrl">Platform URL</Label>
                     <Input
                       id="platformUrl"
-                      value={settings.platformUrl}
+                      value={getStringValue("platformUrl")}
                       onChange={(e) =>
                         handleInputChange("platformUrl", e.target.value)
                       }
@@ -198,7 +222,7 @@ export default function AdminSettingsPage() {
                   </Label>
                   <Textarea
                     id="platformDescription"
-                    value={settings.platformDescription}
+                    value={getStringValue("platformDescription")}
                     onChange={(e) =>
                       handleInputChange("platformDescription", e.target.value)
                     }
@@ -210,7 +234,7 @@ export default function AdminSettingsPage() {
                     <Input
                       id="supportEmail"
                       type="email"
-                      value={settings.supportEmail}
+                      value={getStringValue("supportEmail")}
                       onChange={(e) =>
                         handleInputChange("supportEmail", e.target.value)
                       }
@@ -220,7 +244,7 @@ export default function AdminSettingsPage() {
                     <Label htmlFor="contactPhone">Contact Phone</Label>
                     <Input
                       id="contactPhone"
-                      value={settings.contactPhone}
+                      value={getStringValue("contactPhone")}
                       onChange={(e) =>
                         handleInputChange("contactPhone", e.target.value)
                       }
@@ -253,7 +277,7 @@ export default function AdminSettingsPage() {
                       min="0"
                       max="20"
                       step="0.1"
-                      value={settings.platformCommission}
+                      value={getNumberValue("platformCommission")}
                       onChange={(e) =>
                         handleInputChange(
                           "platformCommission",
@@ -270,7 +294,7 @@ export default function AdminSettingsPage() {
                       min="0"
                       max="5"
                       step="0.1"
-                      value={settings.withdrawalFee}
+                      value={getNumberValue("withdrawalFee")}
                       onChange={(e) =>
                         handleInputChange(
                           "withdrawalFee",
@@ -289,7 +313,7 @@ export default function AdminSettingsPage() {
                       id="minimumWithdrawal"
                       type="number"
                       min="50"
-                      value={settings.minimumWithdrawal}
+                      value={getNumberValue("minimumWithdrawal")}
                       onChange={(e) =>
                         handleInputChange(
                           "minimumWithdrawal",
@@ -307,7 +331,7 @@ export default function AdminSettingsPage() {
                       type="number"
                       min="1"
                       max="14"
-                      value={settings.paymentProcessingTime}
+                      value={getNumberValue("paymentProcessingTime")}
                       onChange={(e) =>
                         handleInputChange(
                           "paymentProcessingTime",
@@ -337,7 +361,7 @@ export default function AdminSettingsPage() {
                     <Label htmlFor="smtpHost">SMTP Host</Label>
                     <Input
                       id="smtpHost"
-                      value={settings.smtpHost}
+                      value={getStringValue("smtpHost")}
                       onChange={(e) =>
                         handleInputChange("smtpHost", e.target.value)
                       }
@@ -348,7 +372,7 @@ export default function AdminSettingsPage() {
                     <Input
                       id="smtpPort"
                       type="number"
-                      value={settings.smtpPort}
+                      value={getNumberValue("smtpPort")}
                       onChange={(e) =>
                         handleInputChange(
                           "smtpPort",
@@ -362,7 +386,7 @@ export default function AdminSettingsPage() {
                   <Label htmlFor="smtpUsername">SMTP Username</Label>
                   <Input
                     id="smtpUsername"
-                    value={settings.smtpUsername}
+                    value={getStringValue("smtpUsername")}
                     onChange={(e) =>
                       handleInputChange("smtpUsername", e.target.value)
                     }
@@ -373,7 +397,7 @@ export default function AdminSettingsPage() {
                   <Input
                     id="smtpPassword"
                     type="password"
-                    value={settings.smtpPassword}
+                    value={getStringValue("smtpPassword")}
                     onChange={(e) =>
                       handleInputChange("smtpPassword", e.target.value)
                     }
@@ -403,7 +427,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.emailNotifications}
+                    checked={getBooleanValue("emailNotifications")}
                     onCheckedChange={(checked) =>
                       handleInputChange("emailNotifications", checked)
                     }
@@ -418,7 +442,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.smsNotifications}
+                    checked={getBooleanValue("smsNotifications")}
                     onCheckedChange={(checked) =>
                       handleInputChange("smsNotifications", checked)
                     }
@@ -433,7 +457,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.pushNotifications}
+                    checked={getBooleanValue("pushNotifications")}
                     onCheckedChange={(checked) =>
                       handleInputChange("pushNotifications", checked)
                     }
@@ -448,7 +472,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.marketingEmails}
+                    checked={getBooleanValue("marketingEmails")}
                     onCheckedChange={(checked) =>
                       handleInputChange("marketingEmails", checked)
                     }
@@ -477,7 +501,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.twoFactorRequired}
+                    checked={getBooleanValue("twoFactorRequired")}
                     onCheckedChange={(checked) =>
                       handleInputChange("twoFactorRequired", checked)
                     }
@@ -494,7 +518,7 @@ export default function AdminSettingsPage() {
                       type="number"
                       min="5"
                       max="480"
-                      value={settings.sessionTimeout}
+                      value={getNumberValue("sessionTimeout")}
                       onChange={(e) =>
                         handleInputChange(
                           "sessionTimeout",
@@ -512,7 +536,7 @@ export default function AdminSettingsPage() {
                       type="number"
                       min="6"
                       max="20"
-                      value={settings.passwordMinLength}
+                      value={getNumberValue("passwordMinLength")}
                       onChange={(e) =>
                         handleInputChange(
                           "passwordMinLength",
@@ -529,7 +553,7 @@ export default function AdminSettingsPage() {
                     type="number"
                     min="3"
                     max="10"
-                    value={settings.maxLoginAttempts}
+                    value={getNumberValue("maxLoginAttempts")}
                     onChange={(e) =>
                       handleInputChange(
                         "maxLoginAttempts",
@@ -564,7 +588,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.maintenanceMode}
+                    checked={getBooleanValue("maintenanceMode")}
                     onCheckedChange={(checked) =>
                       handleInputChange("maintenanceMode", checked)
                     }
@@ -579,7 +603,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.newRegistrations}
+                    checked={getBooleanValue("newRegistrations")}
                     onCheckedChange={(checked) =>
                       handleInputChange("newRegistrations", checked)
                     }
@@ -594,7 +618,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.projectCreation}
+                    checked={getBooleanValue("projectCreation")}
                     onCheckedChange={(checked) =>
                       handleInputChange("projectCreation", checked)
                     }
@@ -609,7 +633,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                   <Switch
-                    checked={settings.paymentProcessing}
+                    checked={getBooleanValue("paymentProcessing")}
                     onCheckedChange={(checked) =>
                       handleInputChange("paymentProcessing", checked)
                     }
