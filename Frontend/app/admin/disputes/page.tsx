@@ -71,6 +71,8 @@ import {
   getR2DownloadUrl,
 } from "@/lib/api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 // Types
 type Dispute = {
@@ -101,6 +103,9 @@ type Dispute = {
     provider?: {
       id: string;
       name: string;
+      providerProfile?: {
+        payoutMethods?: PayoutMethod[];
+      };
     };
   };
   raisedBy?: {
@@ -128,8 +133,20 @@ type DisputeStats = {
   totalAmount?: number;
 };
 
+type PayoutMethod = {
+  id?: string;
+  type: string;
+  label?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountHolder?: string;
+  accountEmail?: string;
+  walletId?: string;
+};
+
 export default function AdminDisputesPage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [stats, setStats] = useState<DisputeStats | null>(null);
@@ -162,7 +179,8 @@ export default function AdminDisputesPage() {
         setDisputes(response.data || []);
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load disputes";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load disputes";
       toast({
         title: "Error",
         description: errorMessage,
@@ -212,7 +230,10 @@ export default function AdminDisputesPage() {
         setViewDialogOpen(true);
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load dispute details";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to load dispute details";
       toast({
         title: "Error",
         description: errorMessage,
@@ -403,7 +424,11 @@ export default function AdminDisputesPage() {
       let errorMessage = "Failed to process action";
       if (error instanceof Error) {
         errorMessage = error.message;
-      } else if (typeof error === "object" && error !== null && "error" in error) {
+      } else if (
+        typeof error === "object" &&
+        error !== null &&
+        "error" in error
+      ) {
         errorMessage = String(error.error);
       }
       toast({
@@ -1098,27 +1123,52 @@ export default function AdminDisputesPage() {
                                   </div>
                                   {(() => {
                                     const attachmentUrl = getAttachmentUrl(url);
-                                    const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                                    const isR2Key =
+                                      attachmentUrl === "#" ||
+                                      (!attachmentUrl.startsWith("http") &&
+                                        !attachmentUrl.startsWith(
+                                          "/uploads/"
+                                        ) &&
+                                        !attachmentUrl.includes(
+                                          process.env.NEXT_PUBLIC_API_URL ||
+                                            "localhost"
+                                        ));
 
                                     return (
                                       <a
-                                        href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                                        href={
+                                          attachmentUrl === "#"
+                                            ? undefined
+                                            : attachmentUrl
+                                        }
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        onClick={isR2Key ? async (e) => {
-                                          e.preventDefault();
-                                          try {
-                                            const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
-                                            window.open(downloadUrl.downloadUrl, "_blank");
-                                          } catch (error) {
-                                            console.error("Failed to get download URL:", error);
-                                            toast({
-                                              title: "Error",
-                                              description: "Failed to download attachment",
-                                              variant: "destructive",
-                                            });
-                                          }
-                                        } : undefined}
+                                        onClick={
+                                          isR2Key
+                                            ? async (e) => {
+                                                e.preventDefault();
+                                                try {
+                                                  const downloadUrl =
+                                                    await getR2DownloadUrl(url); // Use original URL/key
+                                                  window.open(
+                                                    downloadUrl.downloadUrl,
+                                                    "_blank"
+                                                  );
+                                                } catch (error) {
+                                                  console.error(
+                                                    "Failed to get download URL:",
+                                                    error
+                                                  );
+                                                  toast({
+                                                    title: "Error",
+                                                    description:
+                                                      "Failed to download attachment",
+                                                    variant: "destructive",
+                                                  });
+                                                }
+                                              }
+                                            : undefined
+                                        }
                                       >
                                         <Button
                                           variant="outline"
@@ -1152,7 +1202,14 @@ export default function AdminDisputesPage() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {selectedDispute.resolutionNotes.map(
-                          (note: { note?: string; adminName?: string; createdAt: string }, index: number) => {
+                          (
+                            note: {
+                              note?: string;
+                              adminName?: string;
+                              createdAt: string;
+                            },
+                            index: number
+                          ) => {
                             // Check if note contains "--- Admin Note ---" separator
                             const noteParts =
                               note.note?.split(/\n--- Admin Note ---\n/) || [];
@@ -1582,7 +1639,7 @@ export default function AdminDisputesPage() {
                                 .payoutMethods.length > 0 ? (
                                 <div className="space-y-2">
                                   {selectedDispute.project.provider.providerProfile.payoutMethods.map(
-                                    (method: any, index: number) => {
+                                    (method: PayoutMethod, index: number) => {
                                       const getPayoutIcon = (type: string) => {
                                         switch (type) {
                                           case "BANK":
@@ -1613,7 +1670,7 @@ export default function AdminDisputesPage() {
                                       };
 
                                       const getPayoutDisplay = (
-                                        method: any
+                                        method: PayoutMethod
                                       ) => {
                                         if (method.type === "BANK") {
                                           return {
@@ -1724,11 +1781,13 @@ export default function AdminDisputesPage() {
 
                             <div className="space-y-2">
                               {bankTransferRefImagePreview ? (
-                                <div className="relative">
-                                  <img
+                                <div className="relative w-full h-48 border rounded-lg overflow-hidden">
+                                  <Image
                                     src={bankTransferRefImagePreview}
                                     alt="Bank transfer reference"
-                                    className="w-full h-48 object-contain border rounded-lg"
+                                    fill
+                                    className="object-contain"
+                                    unoptimized
                                   />
                                   <Button
                                     type="button"
@@ -1981,7 +2040,10 @@ export default function AdminDisputesPage() {
                                     0 ? (
                                     <div className="space-y-2">
                                       {selectedDispute.project.provider.providerProfile.payoutMethods.map(
-                                        (method: any, index: number) => {
+                                        (
+                                          method: PayoutMethod,
+                                          index: number
+                                        ) => {
                                           const getPayoutIcon = (
                                             type: string
                                           ) => {
@@ -2014,7 +2076,7 @@ export default function AdminDisputesPage() {
                                           };
 
                                           const getPayoutDisplay = (
-                                            method: any
+                                            method: PayoutMethod
                                           ) => {
                                             if (method.type === "BANK") {
                                               return {
@@ -2138,11 +2200,13 @@ export default function AdminDisputesPage() {
                                   </Label>
                                   <div className="space-y-2">
                                     {bankTransferRefImagePreview ? (
-                                      <div className="relative">
-                                        <img
+                                      <div className="relative w-full h-48 border rounded-lg overflow-hidden">
+                                        <Image
                                           src={bankTransferRefImagePreview}
                                           alt="Bank transfer reference"
-                                          className="w-full h-48 object-contain border rounded-lg"
+                                          fill
+                                          className="object-contain"
+                                          unoptimized
                                         />
                                         <Button
                                           type="button"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { ImageIcon } from "lucide-react";
 import { getProfileImageUrl } from "@/lib/api";
 
@@ -69,18 +70,19 @@ export function MediaImage({
           <ImageIcon className="w-8 h-8 text-gray-300" />
         </div>
       )}
-      <img
+      <Image
         src={imageUrl}
         alt={alt}
-        className={`absolute inset-0 w-full h-full ${imageLoaded ? "opacity-100 z-10" : "opacity-0 z-0"} transition-opacity duration-300`}
-        onLoad={handleLoad}
-        onError={handleError}
-        onClick={onClick}
-        loading="lazy"
+        fill
+        className={`${imageLoaded ? "opacity-100 z-10" : "opacity-0 z-0"} transition-opacity duration-300`}
         style={{
           objectFit: "cover",
           cursor: onClick ? "pointer" : "default",
         }}
+        onLoad={handleLoad}
+        onError={handleError}
+        onClick={onClick}
+        unoptimized
       />
     </div>
   );

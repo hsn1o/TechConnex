@@ -118,21 +118,24 @@ export default function CustomerDashboard() {
         });
         if (projectsResponse.success && projectsResponse.items) {
           // Map projects to expected structure
-          const mappedProjects = projectsResponse.items.map((project: Record<string, unknown>) => ({
-            id: project.id,
-            title: project.title,
-            provider: project.provider?.name,
-            providerName: project.provider?.name,
-            status: project.status?.toLowerCase() || "pending",
-            progress: project.progress || 0,
-            budget: project.budgetMax,
-            deadline: project.timeline,
-            avatar: getProfileImageUrl(project.provider?.providerProfile?.profileImageUrl),
-            createdAt: project.createdAt,
-            category: project.category,
-            description: project.description,
-            type: project.type, // ServiceRequest or Project
-          }));
+          const mappedProjects = projectsResponse.items.map((project: Record<string, unknown>) => {
+            const provider = project.provider as Record<string, unknown> | undefined;
+            return {
+              id: project.id,
+              title: project.title,
+              provider: provider?.name as string | undefined,
+              providerName: provider?.name as string | undefined,
+              status: (project.status as string)?.toLowerCase() || "pending",
+              progress: project.progress || 0,
+              budget: project.budgetMax,
+              deadline: project.timeline,
+              avatar: getProfileImageUrl((provider?.providerProfile as Record<string, unknown> | undefined)?.profileImageUrl as string | undefined),
+              createdAt: project.createdAt,
+              category: project.category,
+              description: project.description,
+              type: project.type, // ServiceRequest or Project
+            };
+          });
           setRecentProjects(mappedProjects);
         } else {
           // Set empty projects if API call fails or returns no data
@@ -160,8 +163,8 @@ export default function CustomerDashboard() {
                   ? `${
                       process.env.NEXT_PUBLIC_API_BASE_URL ||
                       "http://localhost:4000"
-                    }${provider.avatar.startsWith("/") ? "" : "/"}${
-                      provider.avatar
+                    }${(provider.avatar as string)?.startsWith("/") ? "" : "/"}${
+                      provider.avatar as string
                     }`
                   : "/placeholder.svg?height=60&width=60",
               skills: provider.skills || [],
@@ -424,7 +427,7 @@ export default function CustomerDashboard() {
                                 src={project.avatar || "/placeholder.svg"}
                               />
                               <AvatarFallback>
-                                {project.provider?.charAt(0) ||
+                                {(project.provider as string | undefined)?.charAt(0) ||
                                   project.title?.charAt(0) ||
                                   "P"}
                               </AvatarFallback>
@@ -442,16 +445,16 @@ export default function CustomerDashboard() {
                                 <Badge
                                   className={`${getStatusColor(
                                     project.status,
-                                    project.type
+                                    project.type as string | undefined
                                   )} text-xs`}
                                 >
-                                  {getStatusText(project.status, project.type)}
+                                  {getStatusText(project.status, project.type as string | undefined)}
                                 </Badge>
-                                {project.type && (
+                                {project.type ? (
                                   <Badge variant="outline" className="text-xs">
-                                    {project.type}
+                                    {String(project.type)}
                                   </Badge>
-                                )}
+                                ) : null}
                                 <span className="text-xs text-gray-500 whitespace-nowrap">
                                   Timeline:{" "}
                                   {project.deadline || "Not specified"}
@@ -557,11 +560,11 @@ export default function CustomerDashboard() {
                   ) : (
                     recommendedProviders.map((provider) => (
                       <div
-                        key={provider.id}
+                        key={String(provider.id || Math.random())}
                         className="group relative p-4 sm:p-5 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all duration-300 bg-white"
                       >
                         {/* AI Badge Indicator */}
-                        {provider.aiExplanation && (
+                        {Boolean(provider.aiExplanation) && (
                           <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full text-xs font-medium shadow-md">
                               <Sparkles className="w-3 h-3" />
@@ -573,18 +576,18 @@ export default function CustomerDashboard() {
                         <div className="flex items-start space-x-2 sm:space-x-3 pr-20">
                           <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                             <AvatarImage
-                              src={provider.avatar || "/placeholder.svg"}
+                              src={(typeof provider.avatar === "string" ? provider.avatar : "/placeholder.svg")}
                             />
                             <AvatarFallback>
-                              {provider.name.charAt(0)}
+                              {(provider.name as string)?.charAt(0) || "?"}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h4 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors text-sm sm:text-base">
-                                {provider.name}
+                                {provider.name as string}
                               </h4>
-                              {provider.matchScore !== undefined && (
+                              {typeof provider.matchScore === "number" && provider.matchScore !== undefined && (
                                 <Badge
                                   className={`text-xs font-semibold ${
                                     provider.matchScore >= 80
@@ -605,19 +608,19 @@ export default function CustomerDashboard() {
                               )}
                             </div>
                             <p className="text-xs sm:text-sm text-gray-600 truncate">
-                              {provider.specialty}
+                              {provider.specialty as string}
                             </p>
-                            {provider.recommendedFor && (
+                            {Boolean(provider.recommendedFor) && (
                               <p className="text-xs text-blue-600 mt-1 font-medium">
-                                Recommended for: {provider.recommendedFor.title}
+                                Recommended for: {(provider.recommendedFor as { title?: string })?.title}
                               </p>
                             )}
                             <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                               <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
                               <span className="text-xs sm:text-sm font-medium">
-                                {provider.rating.toFixed(1)}
+                                {typeof provider.rating === "number" ? provider.rating.toFixed(1) : "0.0"}
                               </span>
-                              {provider.reviewCount > 0 && (
+                              {typeof provider.reviewCount === "number" && provider.reviewCount > 0 && (
                                 <span className="text-xs sm:text-sm text-gray-500">
                                   ({provider.reviewCount}{" "}
                                   {provider.reviewCount === 1
@@ -627,9 +630,9 @@ export default function CustomerDashboard() {
                                 </span>
                               )}
                               <span className="text-xs sm:text-sm text-gray-500">
-                                • {provider.completedJobs} jobs
+                                • {typeof provider.completedJobs === "number" ? provider.completedJobs : 0} jobs
                               </span>
-                              {provider.yearsExperience > 0 && (
+                              {typeof provider.yearsExperience === "number" && provider.yearsExperience > 0 && (
                                 <span className="text-xs text-gray-500">
                                   • {provider.yearsExperience} years exp.
                                 </span>
@@ -638,11 +641,11 @@ export default function CustomerDashboard() {
                             <div className="flex items-center gap-1 mt-1">
                               <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
                               <span className="text-xs text-gray-500 truncate">
-                                {provider.location}
+                                {provider.location as string}
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
-                              {provider.skills
+                              {Array.isArray(provider.skills) && (provider.skills as string[])
                                 .slice(0, 2)
                                 .map((skill: string) => (
                                   <Badge
@@ -653,20 +656,20 @@ export default function CustomerDashboard() {
                                     {skill}
                                   </Badge>
                                 ))}
-                              {provider.skills.length > 2 && (
+                              {Array.isArray(provider.skills) && provider.skills.length > 2 && (
                                 <Badge variant="secondary" className="text-xs">
                                   +{provider.skills.length - 2}
                                 </Badge>
                               )}
                             </div>
                             <p className="text-xs sm:text-sm font-medium text-blue-600 mt-1.5 sm:mt-2">
-                              RM{provider.hourlyRate}/hour
+                              RM{typeof provider.hourlyRate === "number" ? provider.hourlyRate : 0}/hour
                             </p>
                           </div>
                         </div>
 
                         {/* AI Explanation - Expandable on Hover */}
-                        {provider.aiExplanation && (
+                        {Boolean(provider.aiExplanation) && typeof provider.aiExplanation === "string" && (
                           <div className="mt-4 overflow-hidden">
                             {/* Collapsed State - Always Visible */}
                             <div className="group-hover:hidden transition-all duration-300">
@@ -689,7 +692,7 @@ export default function CustomerDashboard() {
                                   </p>
                                 </div>
                                 <div className="text-sm text-blue-800 space-y-2">
-                                  {provider.aiExplanation
+                                  {(provider.aiExplanation as string)
                                     .split("\n")
                                     .filter((line: string) => line.trim())
                                     .map((line: string, index: number) => {

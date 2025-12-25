@@ -34,12 +34,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast, useToast } from "@/components/ui/use-toast";
-import { 
-  MessageSquare, 
-  DollarSign, 
-  User, 
-  MapPin, 
-  Globe, 
+import {
+  MessageSquare,
+  DollarSign,
+  User,
+  MapPin,
+  Globe,
   CheckCircle,
   AlertCircle,
   Loader2,
@@ -165,7 +165,9 @@ export default function ProviderProjectDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMilestoneDialogOpen, setIsMilestoneDialogOpen] = useState(false);
-  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
+  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(
+    null
+  );
   const [milestoneDeliverables, setMilestoneDeliverables] = useState("");
   const [submitDeliverables, setSubmitDeliverables] = useState("");
   const [submissionNote, setSubmissionNote] = useState("");
@@ -173,7 +175,7 @@ export default function ProviderProjectDetailsPage() {
     null
   );
   const [updating, setUpdating] = useState(false);
-  
+
   // Project milestone management
   const [milestoneEditorOpen, setMilestoneEditorOpen] = useState(false);
   const [projectMilestones, setProjectMilestones] = useState<Milestone[]>([]);
@@ -184,18 +186,27 @@ export default function ProviderProjectDetailsPage() {
     providerApproved: false,
     milestonesApprovedAt: null as string | null,
   });
-  const [milestoneErrors, setMilestoneErrors] = useState<Record<number, {
-    title?: string;
-    description?: string;
-    dueDate?: string;
-  }>>({});
-  const [originalProjectMilestones, setOriginalProjectMilestones] = useState<Milestone[]>([]);
+  const [milestoneErrors, setMilestoneErrors] = useState<
+    Record<
+      number,
+      {
+        title?: string;
+        description?: string;
+        dueDate?: string;
+      }
+    >
+  >({});
+  const [originalProjectMilestones, setOriginalProjectMilestones] = useState<
+    Milestone[]
+  >([]);
   const [milestoneFinalizeOpen, setMilestoneFinalizeOpen] = useState(false);
 
   // Dispute creation state
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [viewDisputeDialogOpen, setViewDisputeDialogOpen] = useState(false);
-  const [currentDispute, setCurrentDispute] = useState<DisputeData | null>(null);
+  const [currentDispute, setCurrentDispute] = useState<DisputeData | null>(
+    null
+  );
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeDescription, setDisputeDescription] = useState("");
   const [disputeContestedAmount, setDisputeContestedAmount] = useState("");
@@ -234,7 +245,7 @@ export default function ProviderProjectDetailsPage() {
         setLoading(true);
         setError(null);
         const response = await getProviderProjectById(params.id as string);
-        
+
         if (response.success) {
           setProject(response.project);
 
@@ -273,19 +284,26 @@ export default function ProviderProjectDetailsPage() {
       try {
         const milestoneData = await getProviderProjectMilestones(project.id);
         setProjectMilestones(
-          Array.isArray(milestoneData.milestones) 
-            ? milestoneData.milestones.map((m) => ({
-                ...m,
-                sequence: (m as Milestone & { order?: number }).order ?? (m as Milestone).sequence ?? 0,
-                // Ensure all milestone fields are included
-                submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl,
-                submissionNote: (m as Milestone).submissionNote,
-                submittedAt: (m as Milestone).submittedAt,
-                startDeliverables: (m as Milestone).startDeliverables,
-                submitDeliverables: (m as Milestone).submitDeliverables,
-                revisionNumber: (m as Milestone).revisionNumber,
-                submissionHistory: (m as Milestone).submissionHistory,
-              } as Milestone))
+          Array.isArray(milestoneData.milestones)
+            ? milestoneData.milestones.map(
+                (m) =>
+                  ({
+                    ...m,
+                    sequence:
+                      (m as Milestone & { order?: number }).order ??
+                      (m as Milestone).sequence ??
+                      0,
+                    // Ensure all milestone fields are included
+                    submissionAttachmentUrl: (m as Milestone)
+                      .submissionAttachmentUrl,
+                    submissionNote: (m as Milestone).submissionNote,
+                    submittedAt: (m as Milestone).submittedAt,
+                    startDeliverables: (m as Milestone).startDeliverables,
+                    submitDeliverables: (m as Milestone).submitDeliverables,
+                    revisionNumber: (m as Milestone).revisionNumber,
+                    submissionHistory: (m as Milestone).submissionHistory,
+                  } as Milestone)
+              )
             : []
         );
         setMilestoneApprovalState({
@@ -358,7 +376,6 @@ export default function ProviderProjectDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, token, project]);
 
-
   const updateProjectMilestone = (i: number, patch: Partial<Milestone>) => {
     setProjectMilestones((prev) =>
       normalizeMilestoneSequences(
@@ -378,24 +395,31 @@ export default function ProviderProjectDetailsPage() {
     if (!project?.id) return;
 
     // Validate milestones
-    const errors: Record<number, { title?: string; description?: string; dueDate?: string }> = {};
+    const errors: Record<
+      number,
+      { title?: string; description?: string; dueDate?: string }
+    > = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let hasErrors = false;
 
     projectMilestones.forEach((m, idx) => {
-      const milestoneErrors: { title?: string; description?: string; dueDate?: string } = {};
-      
+      const milestoneErrors: {
+        title?: string;
+        description?: string;
+        dueDate?: string;
+      } = {};
+
       if (!m.title || !m.title.trim()) {
         milestoneErrors.title = "Title is required.";
         hasErrors = true;
       }
-      
+
       if (!m.description || !m.description.trim()) {
         milestoneErrors.description = "Description is required.";
         hasErrors = true;
       }
-      
+
       if (!m.dueDate) {
         milestoneErrors.dueDate = "Due date is required.";
         hasErrors = true;
@@ -403,11 +427,12 @@ export default function ProviderProjectDetailsPage() {
         const dueDate = new Date(m.dueDate);
         dueDate.setHours(0, 0, 0, 0);
         if (dueDate < today) {
-          milestoneErrors.dueDate = "Due date cannot be in the past. Please select today or a future date.";
+          milestoneErrors.dueDate =
+            "Due date cannot be in the past. Please select today or a future date.";
           hasErrors = true;
         }
       }
-      
+
       if (Object.keys(milestoneErrors).length > 0) {
         errors[idx] = milestoneErrors;
       }
@@ -436,7 +461,8 @@ export default function ProviderProjectDetailsPage() {
       setMilestoneErrors(errors);
       toast({
         title: "Validation Error",
-        description: "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
+        description:
+          "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
         variant: "destructive",
       });
       return;
@@ -448,9 +474,9 @@ export default function ProviderProjectDetailsPage() {
       setSavingMilestones(true);
       const payload = normalizeMilestoneSequences(projectMilestones).map(
         (m) => ({
-        ...m,
-        amount: Number(m.amount),
-        dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
+          ...m,
+          amount: Number(m.amount),
+          dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
         })
       );
       const res = await updateProviderProjectMilestones(project.id, payload);
@@ -464,22 +490,31 @@ export default function ProviderProjectDetailsPage() {
       // Refresh milestones from API
       const milestoneData = await getProviderProjectMilestones(project.id);
       const refreshedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m) => ({
-            ...m,
-            sequence: (m as Milestone & { order?: number }).order ?? (m as Milestone).sequence ?? 0,
-            submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl,
-            submissionNote: (m as Milestone).submissionNote,
-            submittedAt: (m as Milestone).submittedAt,
-            startDeliverables: (m as Milestone).startDeliverables,
-            submitDeliverables: (m as Milestone).submitDeliverables,
-            revisionNumber: (m as Milestone).revisionNumber,
-            submissionHistory: (m as Milestone).submissionHistory,
-          } as Milestone))
+        ? milestoneData.milestones.map(
+            (m) =>
+              ({
+                ...m,
+                sequence:
+                  (m as Milestone & { order?: number }).order ??
+                  (m as Milestone).sequence ??
+                  0,
+                submissionAttachmentUrl: (m as Milestone)
+                  .submissionAttachmentUrl,
+                submissionNote: (m as Milestone).submissionNote,
+                submittedAt: (m as Milestone).submittedAt,
+                startDeliverables: (m as Milestone).startDeliverables,
+                submitDeliverables: (m as Milestone).submitDeliverables,
+                revisionNumber: (m as Milestone).revisionNumber,
+                submissionHistory: (m as Milestone).submissionHistory,
+              } as Milestone)
+          )
         : [];
-      
+
       // Update both current and original milestones with fresh data
       setProjectMilestones(refreshedMilestones);
-      setOriginalProjectMilestones(JSON.parse(JSON.stringify(refreshedMilestones)));
+      setOriginalProjectMilestones(
+        JSON.parse(JSON.stringify(refreshedMilestones))
+      );
 
       // Refresh project data to get updated milestones
       await refreshProjectData();
@@ -511,15 +546,15 @@ export default function ProviderProjectDetailsPage() {
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
-      
+
       // Refresh project data to get updated milestones
       await refreshProjectData();
 
       // Always close the milestone editor dialog
-        setMilestoneEditorOpen(false);
+      setMilestoneEditorOpen(false);
 
       // Toast feedback
-        toast({
+      toast({
         title: "Milestones approved",
         description: res.milestonesLocked
           ? "Milestones are now locked. Work can start."
@@ -538,7 +573,6 @@ export default function ProviderProjectDetailsPage() {
     }
   };
 
-
   // Function to refresh all project data
   const refreshProjectData = async () => {
     if (!params.id) return;
@@ -555,20 +589,29 @@ export default function ProviderProjectDetailsPage() {
       );
       if (milestoneData.milestones) {
         const loadedMilestones = Array.isArray(milestoneData.milestones)
-          ? milestoneData.milestones.map((m) => ({
-              ...m,
-              sequence: (m as Milestone & { order?: number }).order ?? (m as Milestone).sequence ?? 0,
-              submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl,
-              submissionNote: (m as Milestone).submissionNote,
-              submittedAt: (m as Milestone).submittedAt,
-              startDeliverables: (m as Milestone).startDeliverables,
-              submitDeliverables: (m as Milestone).submitDeliverables,
-              revisionNumber: (m as Milestone).revisionNumber,
-              submissionHistory: (m as Milestone).submissionHistory,
-            } as Milestone))
+          ? milestoneData.milestones.map(
+              (m) =>
+                ({
+                  ...m,
+                  sequence:
+                    (m as Milestone & { order?: number }).order ??
+                    (m as Milestone).sequence ??
+                    0,
+                  submissionAttachmentUrl: (m as Milestone)
+                    .submissionAttachmentUrl,
+                  submissionNote: (m as Milestone).submissionNote,
+                  submittedAt: (m as Milestone).submittedAt,
+                  startDeliverables: (m as Milestone).startDeliverables,
+                  submitDeliverables: (m as Milestone).submitDeliverables,
+                  revisionNumber: (m as Milestone).revisionNumber,
+                  submissionHistory: (m as Milestone).submissionHistory,
+                } as Milestone)
+            )
           : [];
         setProjectMilestones(loadedMilestones);
-        setOriginalProjectMilestones(JSON.parse(JSON.stringify(loadedMilestones))); // Deep copy
+        setOriginalProjectMilestones(
+          JSON.parse(JSON.stringify(loadedMilestones))
+        ); // Deep copy
         setMilestoneApprovalState({
           milestonesLocked: milestoneData.milestonesLocked,
           companyApproved: milestoneData.companyApproved,
@@ -628,13 +671,13 @@ export default function ProviderProjectDetailsPage() {
       }
 
       const response = await updateProviderMilestoneStatus(
-        selectedMilestone.id, 
-        status, 
+        selectedMilestone.id,
+        status,
         deliverables,
         submissionNote || undefined,
         submissionAttachment || undefined
       );
-      
+
       if (response.success) {
         // Refresh all project data including milestones
         await refreshProjectData();
@@ -716,7 +759,10 @@ export default function ProviderProjectDetailsPage() {
       setDisputeAttachments([]);
       setSelectedMilestoneForDispute(null);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create/update dispute";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to create/update dispute";
       toast({
         title: "Error",
         description: errorMessage,
@@ -736,7 +782,8 @@ export default function ProviderProjectDetailsPage() {
         setViewDisputeDialogOpen(true);
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load dispute";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load dispute";
       toast({
         title: "Error",
         description: errorMessage,
@@ -782,7 +829,8 @@ export default function ProviderProjectDetailsPage() {
       setDisputeAdditionalNotes("");
       setDisputeUpdateAttachments([]);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update dispute";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update dispute";
       toast({
         title: "Error",
         description: errorMessage,
@@ -909,6 +957,16 @@ export default function ProviderProjectDetailsPage() {
     }
   };
 
+  // Check if any milestone is not locked (to show dispute button)
+  const hasUnlockedMilestone = () => {
+    if (!projectMilestones || projectMilestones.length === 0) {
+      return true; // Show button if no milestones (edge case)
+    }
+    return projectMilestones.some(
+      (milestone: Milestone) => milestone.status !== "LOCKED"
+    );
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-MY", {
       style: "currency",
@@ -1020,14 +1078,17 @@ export default function ProviderProjectDetailsPage() {
                 View Dispute
               </Button>
             ) : (
-              project.status !== "COMPLETED" && (
+              project.status !== "COMPLETED" &&
+              hasUnlockedMilestone() && (
                 <Button
                   onClick={() => setDisputeDialogOpen(true)}
                   disabled={
                     creatingDispute ||
-                    Boolean(project?.status === "DISPUTED" &&
-                      currentDispute &&
-                      (currentDispute as DisputeData).status === "CLOSED")
+                    Boolean(
+                      project?.status === "DISPUTED" &&
+                        currentDispute &&
+                        (currentDispute as DisputeData).status === "CLOSED"
+                    )
                   }
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
@@ -1091,7 +1152,7 @@ export default function ProviderProjectDetailsPage() {
                         </p>
                       </div>
                       {project.approvedPrice && (
-                      <div>
+                        <div>
                           <Label className="text-sm font-medium text-gray-500">
                             Approved Price
                           </Label>
@@ -1277,14 +1338,16 @@ export default function ProviderProjectDetailsPage() {
                             size="sm"
                             onClick={() => {
                               // Store original milestones when opening editor
-                              setOriginalProjectMilestones(JSON.parse(JSON.stringify(projectMilestones)));
+                              setOriginalProjectMilestones(
+                                JSON.parse(JSON.stringify(projectMilestones))
+                              );
                               setMilestoneEditorOpen(true);
                             }}
                           >
                             Edit Milestones
                           </Button>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             onClick={handleApproveProjectMilestones}
                           >
                             Approve
@@ -1297,399 +1360,545 @@ export default function ProviderProjectDetailsPage() {
                     <div className="space-y-4">
                       {projectMilestones && projectMilestones.length > 0 ? (
                         projectMilestones.map(
-                          (milestone: Milestone, index: number) => (
-                            <div
-                              key={milestone.id}
-                              className="border rounded-lg p-4"
-                            >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
-                                  {milestone.order}
-                                </div>
-                                <div>
-                                    <h4 className="font-medium">
-                                      {milestone.title}
-                                    </h4>
-                                    <p className="text-sm text-gray-600">
-                                      {milestone.description}
-                                    </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                  <Badge
-                                    className={getMilestoneStatusColor(
-                                      milestone.status || ""
-                                    )}
-                                  >
-                                  {getMilestoneStatusText(milestone.status || "")}
-                                </Badge>
-                                <span className="text-sm font-medium">
-                                  {formatCurrency(milestone.amount)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between text-sm text-gray-600">
-                                <span>
-                                  Due: {formatDate(milestone.dueDate)}
-                                </span>
-                              <div className="flex items-center gap-2">
-                                {milestone.status === "PAID" && (
-                                  <div className="flex items-center gap-1 text-green-600">
-                                    <DollarSign className="w-4 h-4" />
-                                      <span className="text-sm font-medium">
-                                        Paid
-                                      </span>
+                          (milestone: Milestone, index: number) => {
+                            return (
+                              <div
+                                key={milestone.id}
+                                className="border rounded-lg p-4"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-medium">
+                                      {milestone.order}
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium">
+                                        {milestone.title}
+                                      </h4>
+                                      <p className="text-sm text-gray-600">
+                                        {milestone.description}
+                                      </p>
+                                    </div>
                                   </div>
-                                )}
-                                  {milestone.status === "LOCKED" &&
-                                    project.status === "IN_PROGRESS" && (
-                                      <div>
-                                        <Button size="sm" disabled={true}>
-                                          Start Work
-                                        </Button>
+                                  <div className="flex items-center gap-3">
+                                    <Badge
+                                      className={getMilestoneStatusColor(
+                                        milestone.status || ""
+                                      )}
+                                    >
+                                      {getMilestoneStatusText(
+                                        milestone.status || ""
+                                      )}
+                                    </Badge>
+                                    <span className="text-sm font-medium">
+                                      {formatCurrency(milestone.amount)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between text-sm text-gray-600">
+                                  <span>
+                                    Due: {formatDate(milestone.dueDate)}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    {milestone.status === "PAID" && (
+                                      <div className="flex items-center gap-1 text-green-600">
+                                        <DollarSign className="w-4 h-4" />
+                                        <span className="text-sm font-medium">
+                                          Paid
+                                        </span>
                                       </div>
                                     )}
-                                  {milestone.status === "LOCKED" &&
-                                    project?.status === "IN_PROGRESS" &&
-                                    projectMilestones.findIndex(
-                                      (m: Milestone) =>
-                                        m.status === "LOCKED" &&
-                                        project?.status === "IN_PROGRESS"
-                                    ) === index && (
-                                      <AlertCircle className="w-4 h-4 text-amber-600" />
-                                    )}
-                                  {milestone.status === "IN_PROGRESS" &&
-                                    project.status === "ESCROWED" && (
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => {
+                                    {milestone.status === "LOCKED" &&
+                                      project.status === "IN_PROGRESS" && (
+                                        <div>
+                                          <Button size="sm" disabled={true}>
+                                            Start Work
+                                          </Button>
+                                        </div>
+                                      )}
+                                    {milestone.status === "LOCKED" &&
+                                      project?.status === "IN_PROGRESS" &&
+                                      projectMilestones.findIndex(
+                                        (m: Milestone) =>
+                                          m.status === "LOCKED" &&
+                                          project?.status === "IN_PROGRESS"
+                                      ) === index && (
+                                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                                      )}
+                                    {milestone.status === "IN_PROGRESS" &&
+                                      project.status === "ESCROWED" && (
+                                        <Button
+                                          size="sm"
+                                          onClick={() => {
+                                            setSelectedMilestone(milestone);
+                                            setIsMilestoneDialogOpen(true);
+                                          }}
+                                        >
+                                          Start Work
+                                        </Button>
+                                      )}
+                                    {milestone.status === "IN_PROGRESS" && (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => {
                                           setSelectedMilestone(milestone);
                                           setIsMilestoneDialogOpen(true);
-                                    }}
-                                  >
-                                    Start Work
-                                  </Button>
-                                )}
-                                {milestone.status === "IN_PROGRESS" && (
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => {
-                                        setSelectedMilestone(milestone);
-                                        setIsMilestoneDialogOpen(true);
-                                    }}
-                                  >
-                                    Submit
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
+                                        }}
+                                      >
+                                        Submit
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
 
-                              {/* Show warning for first locked milestone that complies */}
-                              {(milestone.status === "LOCKED" &&
+                                {/* Show warning for first locked milestone that complies */}
+                                {milestone.status === "LOCKED" &&
                                 project?.status === "IN_PROGRESS" &&
                                 projectMilestones.findIndex(
                                   (m: Milestone) =>
                                     m.status === "LOCKED" &&
                                     project?.status === "IN_PROGRESS"
-                                ) === index) ? (
+                                ) === index ? (
                                   <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
                                     <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                                     <p className="text-sm text-amber-800">
-                                      {
-                                        // 🟡 CHECK PREVIOUS MILESTONE (if exists)
-                                        index > 0 &&
-                                        projectMilestones[index - 1].status !==
-                                          "APPROVED"
-                                          ? "You can't start this milestone until the previous milestone is approved by the client."
-                                          : "You can't start work until the client has paid."
-                                      }
+                                      {index > 0 &&
+                                      projectMilestones[index - 1].status !==
+                                        "APPROVED"
+                                        ? "You can't start this milestone until the previous milestone is approved by the client."
+                                        : "You can't start work until the client has paid."}
                                     </p>
                                   </div>
                                 ) : null}
 
-                              {/* Show start deliverables if available (persists even after status changes) */}
-                              {(() => {
-                                if (!milestone.startDeliverables) return null as React.ReactNode;
-                                return (
-                                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                    <p className="text-sm font-medium text-green-900 mb-1">
-                                      📋 Plan / Deliverables (When Starting Work):
-                                    </p>
-                                    <p className="text-sm text-green-800 whitespace-pre-wrap">
-                                      {typeof milestone.startDeliverables === "object" &&
-                                      milestone.startDeliverables &&
-                                      "description" in milestone.startDeliverables &&
-                                      typeof milestone.startDeliverables.description === "string"
-                                        ? milestone.startDeliverables.description
-                                        : String(milestone.startDeliverables ?? "")}
-                                    </p>
-                                  </div>
-                                ) as React.ReactNode;
-                              })() as React.ReactNode}
+                                {(() => {
+                                  if (!milestone.startDeliverables) return null;
 
-                              {/* Show submit deliverables if available (persists even after status changes) */}
-                              {milestone.submitDeliverables && (
-                                <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                                  <p className="text-sm font-medium text-purple-900 mb-1">
-                                    ✅ Deliverables / Completion Notes (When
-                                    Submitting):
-                                  </p>
-                                  <p className="text-sm text-purple-800 whitespace-pre-wrap">
-                                    {(() => {
-                                      if (typeof milestone.submitDeliverables === "object" &&
-                                          milestone.submitDeliverables &&
-                                          "description" in milestone.submitDeliverables &&
-                                          typeof milestone.submitDeliverables.description === "string") {
-                                        return milestone.submitDeliverables.description;
-                                      }
-                                      return String(milestone.submitDeliverables ?? "");
-                                    })()}
-                                  </p>
-                                </div>
-                              )}
+                                  const sd = milestone.startDeliverables;
+                                  let displayText = "";
 
-                              {/* Show submission note if available (persists even after status changes) */}
-                              {milestone.submissionNote && (
-                                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                  <p className="text-sm font-medium text-blue-900 mb-1">
-                                    📝 Submission Note:
-                                  </p>
-                                  <p className="text-sm text-blue-800 whitespace-pre-wrap">
-                                    {milestone.submissionNote}
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Show latest requested changes reason if available (persists even after status changes) */}
-                              {milestone.submissionHistory &&
-                                Array.isArray(milestone.submissionHistory) &&
-                                milestone.submissionHistory.length > 0 &&
-                                (() => {
-                                  const latestRequest =
-                                    milestone.submissionHistory[
-                                      milestone.submissionHistory.length - 1
-                                    ] as Record<string, unknown>;
-                                  if (latestRequest && typeof latestRequest === "object" && "requestedChangesReason" in latestRequest && typeof latestRequest.requestedChangesReason === "string") {
-                                    return (
-                                      <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                        <p className="text-sm font-medium text-orange-900 mb-1">
-                                          🔄 Latest Request for Changes
-                                          (Revision #
-                                          {(typeof latestRequest.revisionNumber === "number" ? latestRequest.revisionNumber : milestone.submissionHistory.length)}
-                                          ):
-                                        </p>
-                                        <p className="text-sm text-orange-800 whitespace-pre-wrap">
-                                          {typeof latestRequest.requestedChangesReason === "string" 
-                                            ? latestRequest.requestedChangesReason 
-                                            : ""}
-                                        </p>
-                                        {(latestRequest.requestedChangesAt && typeof latestRequest.requestedChangesAt === "string") ? (
-                                          <p className="text-xs text-orange-600 mt-2">
-                                            Requested on:{" "}
-                                            {new Date(
-                                              latestRequest.requestedChangesAt as string
-                                            ).toLocaleString()}
-                                          </p>
-                                        ) : null}
-                                      </div>
-                                    );
+                                  if (typeof sd === "string") {
+                                    displayText = sd;
+                                  } else if (
+                                    typeof sd === "object" &&
+                                    sd !== null &&
+                                    "description" in sd
+                                  ) {
+                                    const desc = (sd as Record<string, unknown>)
+                                      .description;
+                                    displayText =
+                                      typeof desc === "string"
+                                        ? desc
+                                        : String(desc || "");
+                                  } else {
+                                    displayText = String(sd);
                                   }
-                                  return null;
+
+                                  if (!displayText) return null;
+
+                                  return (
+                                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                      <p className="text-sm font-medium text-green-900 mb-1">
+                                        📋 Plan / Deliverables (When Starting
+                                        Work):
+                                      </p>
+                                      <p className="text-sm text-green-800 whitespace-pre-wrap">
+                                        {displayText}
+                                      </p>
+                                    </div>
+                                  );
                                 })()}
 
-                              {/* Show attachment if available (persists even after status changes) */}
-                              {milestone.submissionAttachmentUrl && (
-                                <div className="mt-3">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Paperclip className="w-4 h-4 text-gray-600" />
-                                    <span className="text-sm font-medium text-gray-900">
-                                      📎 Submission Attachment
-                                    </span>
-                                  </div>
-                                  {(() => {
-                                    const normalized = milestone.submissionAttachmentUrl.replace(/\\/g, "/");
-                                    const fileName = normalized.split("/").pop() || "attachment";
-                                    const attachmentUrl = getAttachmentUrl(milestone.submissionAttachmentUrl);
-                                    const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
-                                    
-                                    return (
-                                      <a
-                                        href={attachmentUrl}
-                                        download={fileName}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={isR2Key && milestone.submissionAttachmentUrl ? async (e) => {
-                                          e.preventDefault();
-                                          try {
-                                            const downloadUrl = await getR2DownloadUrl(milestone.submissionAttachmentUrl as string); // Use original URL/key
-                                            window.open(downloadUrl.downloadUrl, "_blank");
-                                          } catch (error) {
-                                            console.error("Failed to get download URL:", error);
-                                            toastHook({
-                                              title: "Error",
-                                              description: "Failed to download attachment",
-                                              variant: "destructive",
-                                            });
-                                          }
-                                        } : undefined}
-                                        className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
-                                      >
-                                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
-                                          PDF
-                                        </div>
-                                        <div className="flex flex-col min-w-0">
-                                          <span className="text-sm font-medium text-gray-900 break-all leading-snug">
-                                            {fileName}
-                                          </span>
-                                          <span className="text-xs text-gray-500 leading-snug">
-                                            Click to preview / download
-                                          </span>
-                                        </div>
-                                        <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
-                                          <Download className="w-4 h-4" />
-                                        </div>
-                                      </a>
-                                    );
-                                  })()}
-                                </div>
-                              )}
-
-                              {/* Show submission history if available (persists even after status changes) */}
-                              {milestone.submissionHistory &&
-                                Array.isArray(milestone.submissionHistory) &&
-                                milestone.submissionHistory.length > 0 && (
-                                  <div className="mt-4 border-t pt-4">
-                                    <p className="text-sm font-semibold text-gray-900 mb-3">
-                                      📚 Previous Submission History:
+                                {/* Show submit deliverables if available (persists even after status changes) */}
+                                {milestone.submitDeliverables && (
+                                  <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                                    <p className="text-sm font-medium text-purple-900 mb-1">
+                                      ✅ Deliverables / Completion Notes (When
+                                      Submitting):
                                     </p>
-                                    <div className="space-y-3">
-                                      {(milestone.submissionHistory as Array<Record<string, unknown>>).map(
-                                        (history: Record<string, unknown>, idx: number) => {
-                                          // Calculate revision number: first submission is revision 1, then 2, 3, etc.
-                                          // The revision number in history is the one BEFORE it was rejected
-                                          const revisionNumber =
-                                            history.revisionNumber !==
-                                              undefined &&
-                                            history.revisionNumber !== null
-                                              ? history.revisionNumber
-                                              : idx + 1;
+                                    <p className="text-sm text-purple-800 whitespace-pre-wrap">
+                                      {(() => {
+                                        if (
+                                          typeof milestone.submitDeliverables ===
+                                            "object" &&
+                                          milestone.submitDeliverables &&
+                                          "description" in
+                                            milestone.submitDeliverables &&
+                                          typeof milestone.submitDeliverables
+                                            .description === "string"
+                                        ) {
+                                          return milestone.submitDeliverables
+                                            .description;
+                                        }
+                                        return String(
+                                          milestone.submitDeliverables ?? ""
+                                        );
+                                      })()}
+                                    </p>
+                                  </div>
+                                )}
 
-                                          return (
-                                            <div
-                                              key={idx}
-                                              className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
-                                            >
-                                              <div className="flex items-center justify-between mb-2">
-                                                <p className="text-sm font-medium text-gray-900">
-                                                  Revision #{revisionNumber}
-                                                </p>
-                                                {history.requestedChangesAt && (
-                                                  <span className="text-xs text-gray-500">
-                                                    Changes requested:{" "}
-                                                    {new Date(
-                                                      history.requestedChangesAt
-                                                    ).toLocaleDateString()}
-                                                  </span>
-                                                )}
-                                              </div>
+                                {/* Show submission note if available (persists even after status changes) */}
+                                {milestone.submissionNote && (
+                                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-sm font-medium text-blue-900 mb-1">
+                                      📝 Submission Note:
+                                    </p>
+                                    <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                                      {milestone.submissionNote}
+                                    </p>
+                                  </div>
+                                )}
 
-                                              {history.requestedChangesReason && typeof history.requestedChangesReason === "string" && (
-                                                <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
-                                                  <p className="text-xs font-medium text-red-900 mb-1">
-                                                    Reason for Changes:
-                                                  </p>
-                                                  <p className="text-xs text-red-800">
-                                                    {history.requestedChangesReason}
-                                                  </p>
-                                                </div>
-                                              )}
+                                {/* Show latest requested changes reason if available (persists even after status changes) */}
+                                {milestone.submissionHistory &&
+                                  Array.isArray(milestone.submissionHistory) &&
+                                  milestone.submissionHistory.length > 0 &&
+                                  (() => {
+                                    const latestRequest = milestone
+                                      .submissionHistory[
+                                      milestone.submissionHistory.length - 1
+                                    ] as Record<string, unknown>;
+                                    if (
+                                      latestRequest &&
+                                      typeof latestRequest === "object" &&
+                                      "requestedChangesReason" in
+                                        latestRequest &&
+                                      typeof latestRequest.requestedChangesReason ===
+                                        "string"
+                                    ) {
+                                      return (
+                                        <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                          <p className="text-sm font-medium text-orange-900 mb-1">
+                                            🔄 Latest Request for Changes
+                                            (Revision #
+                                            {typeof latestRequest.revisionNumber ===
+                                            "number"
+                                              ? latestRequest.revisionNumber
+                                              : milestone.submissionHistory
+                                                  .length}
+                                            ):
+                                          </p>
+                                          <p className="text-sm text-orange-800 whitespace-pre-wrap">
+                                            {typeof latestRequest.requestedChangesReason ===
+                                            "string"
+                                              ? latestRequest.requestedChangesReason
+                                              : ""}
+                                          </p>
+                                          {latestRequest.requestedChangesAt &&
+                                          typeof latestRequest.requestedChangesAt ===
+                                            "string" ? (
+                                            <p className="text-xs text-orange-600 mt-2">
+                                              Requested on:{" "}
+                                              {new Date(
+                                                latestRequest.requestedChangesAt as string
+                                              ).toLocaleString()}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
 
-                                              {history.submitDeliverables && (
-                                                <div className="mb-2">
-                                                  <p className="text-xs font-medium text-gray-700 mb-1">
-                                                    Deliverables:
-                                                  </p>
-                                                  <p className="text-xs text-gray-600 whitespace-pre-wrap">
-                                                    {typeof history.submitDeliverables ===
-                                                      "object" &&
-                                                    history.submitDeliverables &&
-                                                    "description" in history.submitDeliverables &&
-                                                    typeof history.submitDeliverables.description === "string"
-                                                      ? history.submitDeliverables.description
-                                                      : String(history.submitDeliverables || "")
-                                                  }
-                                                  </p>
-                                                </div>
-                                              )}
+                                {/* Show attachment if available (persists even after status changes) */}
+                                {milestone.submissionAttachmentUrl && (
+                                  <div className="mt-3">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Paperclip className="w-4 h-4 text-gray-600" />
+                                      <span className="text-sm font-medium text-gray-900">
+                                        📎 Submission Attachment
+                                      </span>
+                                    </div>
+                                    {(() => {
+                                      const normalized =
+                                        milestone.submissionAttachmentUrl.replace(
+                                          /\\/g,
+                                          "/"
+                                        );
+                                      const fileName =
+                                        normalized.split("/").pop() ||
+                                        "attachment";
+                                      const attachmentUrl = getAttachmentUrl(
+                                        milestone.submissionAttachmentUrl
+                                      );
+                                      const isR2Key =
+                                        attachmentUrl === "#" ||
+                                        (!attachmentUrl.startsWith("http") &&
+                                          !attachmentUrl.startsWith(
+                                            "/uploads/"
+                                          ) &&
+                                          !attachmentUrl.includes(
+                                            process.env.NEXT_PUBLIC_API_URL ||
+                                              "localhost"
+                                          ));
 
-                                              {history.submissionNote && (
-                                                <div className="mb-2">
-                                                  <p className="text-xs font-medium text-gray-700 mb-1">
-                                                    Note:
-                                                  </p>
-                                                  <p className="text-xs text-gray-600 whitespace-pre-wrap">
-                                                    {history.submissionNote}
-                                                  </p>
-                                                </div>
-                                              )}
-
-                                              {history.submissionAttachmentUrl && (
-                                                <div>
-                                                  <p className="text-xs font-medium text-gray-700 mb-1">
-                                                    Attachment:
-                                                  </p>
-                                                  {(() => {
-                                                    const attachmentUrl = getAttachmentUrl(history.submissionAttachmentUrl);
-                                                    const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
-                                                    const fileName = history.submissionAttachmentUrl.replace(/\\/g, "/").split("/").pop() || "attachment";
-                                                    
-                                                    return (
-                                                      <a
-                                                        href={attachmentUrl}
-                                                        download={fileName}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        onClick={isR2Key ? async (e) => {
-                                                          e.preventDefault();
-                                                          try {
-                                                            const downloadUrl = await getR2DownloadUrl(history.submissionAttachmentUrl); // Use original URL/key
-                                                            window.open(downloadUrl.downloadUrl, "_blank");
-                                                          } catch (error) {
-                                                            console.error("Failed to get download URL:", error);
-                                                            toastHook({
-                                                              title: "Error",
-                                                              description: "Failed to download attachment",
-                                                              variant: "destructive",
-                                                            });
-                                                          }
-                                                        } : undefined}
-                                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                                      >
-                                                        {fileName}
-                                                      </a>
+                                      return (
+                                        <a
+                                          href={attachmentUrl}
+                                          download={fileName}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={
+                                            isR2Key &&
+                                            milestone.submissionAttachmentUrl
+                                              ? async (e) => {
+                                                  e.preventDefault();
+                                                  try {
+                                                    const downloadUrl =
+                                                      await getR2DownloadUrl(
+                                                        milestone.submissionAttachmentUrl as string
+                                                      ); // Use original URL/key
+                                                    window.open(
+                                                      downloadUrl.downloadUrl,
+                                                      "_blank"
                                                     );
-                                                  })()}
-                                                </div>
-                                              )}
+                                                  } catch (error) {
+                                                    console.error(
+                                                      "Failed to get download URL:",
+                                                      error
+                                                    );
+                                                    toastHook({
+                                                      title: "Error",
+                                                      description:
+                                                        "Failed to download attachment",
+                                                      variant: "destructive",
+                                                    });
+                                                  }
+                                                }
+                                              : undefined
+                                          }
+                                          className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
+                                        >
+                                          <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
+                                            PDF
+                                          </div>
+                                          <div className="flex flex-col min-w-0">
+                                            <span className="text-sm font-medium text-gray-900 break-all leading-snug">
+                                              {fileName}
+                                            </span>
+                                            <span className="text-xs text-gray-500 leading-snug">
+                                              Click to preview / download
+                                            </span>
+                                          </div>
+                                          <div className="ml-auto flex items-center text-gray-500 hover:text-gray-700">
+                                            <Download className="w-4 h-4" />
+                                          </div>
+                                        </a>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
 
-                                                {history.submittedAt && typeof history.submittedAt === "string" && (
+                                {/* Show submission history if available (persists even after status changes) */}
+                                {milestone.submissionHistory &&
+                                  Array.isArray(milestone.submissionHistory) &&
+                                  milestone.submissionHistory.length > 0 && (
+                                    <div className="mt-4 border-t pt-4">
+                                      <p className="text-sm font-semibold text-gray-900 mb-3">
+                                        📚 Previous Submission History:
+                                      </p>
+                                      <div className="space-y-3">
+                                        {(
+                                          milestone.submissionHistory as Array<
+                                            Record<string, unknown>
+                                          >
+                                        ).map(
+                                          (
+                                            history: Record<string, unknown>,
+                                            idx: number
+                                          ) => {
+                                            // Calculate revision number: first submission is revision 1, then 2, 3, etc.
+                                            // The revision number in history is the one BEFORE it was rejected
+                                            const revisionNumberValue =
+                                              history.revisionNumber;
+                                            const revisionNumber: number =
+                                              typeof revisionNumberValue ===
+                                                "number" &&
+                                              revisionNumberValue !== null &&
+                                              revisionNumberValue !== undefined
+                                                ? revisionNumberValue
+                                                : idx + 1;
+
+                                            const requestedChangesAt =
+                                              history.requestedChangesAt;
+                                            const requestedChangesReason =
+                                              history.requestedChangesReason;
+                                            const submitDeliverables =
+                                              history.submitDeliverables;
+                                            const submissionNote =
+                                              history.submissionNote;
+                                            const submissionAttachmentUrl =
+                                              history.submissionAttachmentUrl;
+                                            const submittedAt =
+                                              history.submittedAt;
+
+                                            return (
+                                              <div
+                                                key={idx}
+                                                className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                                              >
+                                                <div className="flex items-center justify-between mb-2">
+                                                  <p className="text-sm font-medium text-gray-900">
+                                                    Revision #{revisionNumber}
+                                                  </p>
+                                                  {requestedChangesAt &&
+                                                  typeof requestedChangesAt ===
+                                                    "string" ? (
+                                                    <span className="text-xs text-gray-500">
+                                                      Changes requested:{" "}
+                                                      {new Date(
+                                                        requestedChangesAt
+                                                      ).toLocaleDateString()}
+                                                    </span>
+                                                  ) : null}
+                                                </div>
+
+                                                {requestedChangesReason &&
+                                                typeof requestedChangesReason ===
+                                                  "string" ? (
+                                                  <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
+                                                    <p className="text-xs font-medium text-red-900 mb-1">
+                                                      Reason for Changes:
+                                                    </p>
+                                                    <p className="text-xs text-red-800">
+                                                      {requestedChangesReason}
+                                                    </p>
+                                                  </div>
+                                                ) : null}
+
+                                                {submitDeliverables ? (
+                                                  <div className="mb-2">
+                                                    <p className="text-xs font-medium text-gray-700 mb-1">
+                                                      Deliverables:
+                                                    </p>
+                                                    <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                                      {typeof submitDeliverables ===
+                                                        "object" &&
+                                                      submitDeliverables &&
+                                                      "description" in
+                                                        submitDeliverables &&
+                                                      typeof submitDeliverables.description ===
+                                                        "string"
+                                                        ? submitDeliverables.description
+                                                        : String(
+                                                            submitDeliverables ||
+                                                              ""
+                                                          )}
+                                                    </p>
+                                                  </div>
+                                                ) : null}
+
+                                                {submissionNote &&
+                                                typeof submissionNote ===
+                                                  "string" ? (
+                                                  <div className="mb-2">
+                                                    <p className="text-xs font-medium text-gray-700 mb-1">
+                                                      Note:
+                                                    </p>
+                                                    <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                                      {submissionNote}
+                                                    </p>
+                                                  </div>
+                                                ) : null}
+
+                                                {submissionAttachmentUrl &&
+                                                typeof submissionAttachmentUrl ===
+                                                  "string" ? (
+                                                  <div>
+                                                    <p className="text-xs font-medium text-gray-700 mb-1">
+                                                      Attachment:
+                                                    </p>
+                                                    {(() => {
+                                                      const attachmentUrl =
+                                                        getAttachmentUrl(
+                                                          submissionAttachmentUrl
+                                                        );
+                                                      const isR2Key =
+                                                        attachmentUrl === "#" ||
+                                                        (!attachmentUrl.startsWith(
+                                                          "http"
+                                                        ) &&
+                                                          !attachmentUrl.startsWith(
+                                                            "/uploads/"
+                                                          ) &&
+                                                          !attachmentUrl.includes(
+                                                            process.env
+                                                              .NEXT_PUBLIC_API_URL ||
+                                                              "localhost"
+                                                          ));
+                                                      const fileName =
+                                                        submissionAttachmentUrl
+                                                          .replace(/\\/g, "/")
+                                                          .split("/")
+                                                          .pop() ||
+                                                        "attachment";
+
+                                                      return (
+                                                        <a
+                                                          href={attachmentUrl}
+                                                          download={fileName}
+                                                          target="_blank"
+                                                          rel="noopener noreferrer"
+                                                          onClick={
+                                                            isR2Key
+                                                              ? async (e) => {
+                                                                  e.preventDefault();
+                                                                  try {
+                                                                    const downloadUrl =
+                                                                      await getR2DownloadUrl(
+                                                                        submissionAttachmentUrl
+                                                                      ); // Use original URL/key
+                                                                    window.open(
+                                                                      downloadUrl.downloadUrl,
+                                                                      "_blank"
+                                                                    );
+                                                                  } catch (error) {
+                                                                    console.error(
+                                                                      "Failed to get download URL:",
+                                                                      error
+                                                                    );
+                                                                    toastHook({
+                                                                      title:
+                                                                        "Error",
+                                                                      description:
+                                                                        "Failed to download attachment",
+                                                                      variant:
+                                                                        "destructive",
+                                                                    });
+                                                                  }
+                                                                }
+                                                              : undefined
+                                                          }
+                                                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                        >
+                                                          {fileName}
+                                                        </a>
+                                                      );
+                                                    })()}
+                                                  </div>
+                                                ) : null}
+
+                                                {submittedAt &&
+                                                typeof submittedAt ===
+                                                  "string" ? (
                                                   <p className="text-xs text-gray-500 mt-2">
                                                     Submitted:{" "}
                                                     {new Date(
-                                                      history.submittedAt
+                                                      submittedAt
                                                     ).toLocaleString()}
                                                   </p>
-                                                )}
-                                            </div>
-                                          );
-                                        }
-                                      )}
+                                                ) : null}
+                                              </div>
+                                            );
+                                          }
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                            </div>
-                          )
+                                  )}
+                              </div>
+                            );
+                          }
                         )
                       ) : (
                         <p className="text-gray-600 text-center py-8">
@@ -1747,29 +1956,51 @@ export default function ProviderProjectDetailsPage() {
                             const fileName =
                               normalized.split("/").pop() || `file-${idx + 1}`;
                             const attachmentUrl = getAttachmentUrl(url);
-                            const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                            const isR2Key =
+                              attachmentUrl === "#" ||
+                              (!attachmentUrl.startsWith("http") &&
+                                !attachmentUrl.startsWith("/uploads/") &&
+                                !attachmentUrl.includes(
+                                  process.env.NEXT_PUBLIC_API_URL || "localhost"
+                                ));
 
                             return (
                               <a
                                 key={idx}
-                                href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                                href={
+                                  attachmentUrl === "#"
+                                    ? undefined
+                                    : attachmentUrl
+                                }
                                 download={fileName}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={isR2Key ? async (e) => {
-                                  e.preventDefault();
-                                  try {
-                                    const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
-                                    window.open(downloadUrl.downloadUrl, "_blank");
-                                  } catch (error) {
-                                    console.error("Failed to get download URL:", error);
-                                    toastHook({
-                                      title: "Error",
-                                      description: "Failed to download attachment",
-                                      variant: "destructive",
-                                    });
-                                  }
-                                } : undefined}
+                                onClick={
+                                  isR2Key
+                                    ? async (e) => {
+                                        e.preventDefault();
+                                        try {
+                                          const downloadUrl =
+                                            await getR2DownloadUrl(url); // Use original URL/key
+                                          window.open(
+                                            downloadUrl.downloadUrl,
+                                            "_blank"
+                                          );
+                                        } catch (error) {
+                                          console.error(
+                                            "Failed to get download URL:",
+                                            error
+                                          );
+                                          toastHook({
+                                            title: "Error",
+                                            description:
+                                              "Failed to download attachment",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }
+                                    : undefined
+                                }
                                 className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                               >
                                 <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -1842,22 +2073,37 @@ export default function ProviderProjectDetailsPage() {
                           milestone.id
                         ) {
                           const milestoneId = milestone.id; // Store in const for type narrowing
-                          (milestone.submissionHistory as Array<Record<string, unknown>>).forEach(
-                            (history: Record<string, unknown>) => {
-                              if (history.submissionAttachmentUrl) {
-                                milestoneAttachments.push({
-                                  url: history.submissionAttachmentUrl,
-                                  milestoneTitle: `${
-                                    milestone.title
-                                  } (Revision ${
-                                    history.revisionNumber || "N/A"
-                                  })`,
-                                  milestoneId: milestoneId,
-                                  submittedAt: history.submittedAt,
-                                });
-                              }
+                          (
+                            milestone.submissionHistory as Array<
+                              Record<string, unknown>
+                            >
+                          ).forEach((history: Record<string, unknown>) => {
+                            const submissionAttachmentUrl =
+                              history.submissionAttachmentUrl;
+                            if (
+                              submissionAttachmentUrl &&
+                              typeof submissionAttachmentUrl === "string"
+                            ) {
+                              const revisionNumber = history.revisionNumber;
+                              const submittedAt = history.submittedAt;
+                              milestoneAttachments.push({
+                                url: submissionAttachmentUrl,
+                                milestoneTitle: `${milestone.title} (Revision ${
+                                  typeof revisionNumber === "number"
+                                    ? revisionNumber
+                                    : revisionNumber !== undefined &&
+                                      revisionNumber !== null
+                                    ? String(revisionNumber)
+                                    : "N/A"
+                                })`,
+                                milestoneId: milestoneId,
+                                submittedAt:
+                                  typeof submittedAt === "string"
+                                    ? submittedAt
+                                    : undefined,
+                              });
                             }
-                          );
+                          });
                         }
                       });
 
@@ -1878,30 +2124,56 @@ export default function ProviderProjectDetailsPage() {
                             );
                             const fileName =
                               normalized.split("/").pop() || `file-${idx + 1}`;
-                            const attachmentUrl = getAttachmentUrl(attachment.url);
-                            const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                            const attachmentUrl = getAttachmentUrl(
+                              attachment.url
+                            );
+                            const isR2Key =
+                              attachmentUrl === "#" ||
+                              (!attachmentUrl.startsWith("http") &&
+                                !attachmentUrl.startsWith("/uploads/") &&
+                                !attachmentUrl.includes(
+                                  process.env.NEXT_PUBLIC_API_URL || "localhost"
+                                ));
 
                             return (
                               <a
                                 key={idx}
-                                href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                                href={
+                                  attachmentUrl === "#"
+                                    ? undefined
+                                    : attachmentUrl
+                                }
                                 download={fileName}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                onClick={isR2Key ? async (e) => {
-                                  e.preventDefault();
-                                  try {
-                                    const downloadUrl = await getR2DownloadUrl(attachment.url); // Use original URL/key
-                                    window.open(downloadUrl.downloadUrl, "_blank");
-                                  } catch (error) {
-                                    console.error("Failed to get download URL:", error);
-                                    toastHook({
-                                      title: "Error",
-                                      description: "Failed to download attachment",
-                                      variant: "destructive",
-                                    });
-                                  }
-                                } : undefined}
+                                onClick={
+                                  isR2Key
+                                    ? async (e) => {
+                                        e.preventDefault();
+                                        try {
+                                          const downloadUrl =
+                                            await getR2DownloadUrl(
+                                              attachment.url
+                                            ); // Use original URL/key
+                                          window.open(
+                                            downloadUrl.downloadUrl,
+                                            "_blank"
+                                          );
+                                        } catch (error) {
+                                          console.error(
+                                            "Failed to get download URL:",
+                                            error
+                                          );
+                                          toastHook({
+                                            title: "Error",
+                                            description:
+                                              "Failed to download attachment",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      }
+                                    : undefined
+                                }
                                 className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                               >
                                 <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -2008,14 +2280,14 @@ export default function ProviderProjectDetailsPage() {
                                             className="text-xs opacity-75"
                                           >
                                             📎 {attachment}
-                              </div>
+                                          </div>
                                         )
                                       )}
-                            </div>
+                                    </div>
                                   )}
-                          </div>
+                              </div>
                               <p className="text-xs text-gray-500 mt-1">{ts}</p>
-                      </div>
+                            </div>
                           </div>
                         );
                       })}
@@ -2041,7 +2313,9 @@ export default function ProviderProjectDetailsPage() {
                 <div className="flex items-center gap-3">
                   <Avatar>
                     <AvatarImage
-                      src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
+                      src={getProfileImageUrl(
+                        project.customer?.customerProfile?.profileImageUrl
+                      )}
                     />
                     <AvatarFallback>
                       {project.customer?.name?.charAt(0) || "C"}
@@ -2056,14 +2330,14 @@ export default function ProviderProjectDetailsPage() {
                         {project.customer?.name}
                       </Link>
                     ) : (
-                    <p className="font-medium">{project.customer?.name}</p>
+                      <p className="font-medium">{project.customer?.name}</p>
                     )}
                     <p className="text-sm text-gray-600">
                       {project.customer?.email}
                     </p>
                   </div>
                 </div>
-                
+
                 {project.customer?.customerProfile && (
                   <div className="space-y-2 text-sm">
                     {project.customer.customerProfile.industry && (
@@ -2081,9 +2355,9 @@ export default function ProviderProjectDetailsPage() {
                     {project.customer.customerProfile.website && (
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4 text-gray-400" />
-                        <a 
-                          href={project.customer.customerProfile.website} 
-                          target="_blank" 
+                        <a
+                          href={project.customer.customerProfile.website}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline"
                         >
@@ -2144,25 +2418,25 @@ export default function ProviderProjectDetailsPage() {
                   : "Submit Milestone"}
               </DialogTitle>
               <DialogDescription>
-                {selectedMilestone?.status === "LOCKED" 
-                  ? "Start working on this milestone" 
+                {selectedMilestone?.status === "LOCKED"
+                  ? "Start working on this milestone"
                   : "Submit your work for this milestone"}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {selectedMilestone?.status === "LOCKED" && (
-              <div>
+                <div>
                   <Label htmlFor="startDeliverables">
                     Deliverables / Plan (When Starting Work)
                   </Label>
-                <Textarea
+                  <Textarea
                     id="startDeliverables"
                     placeholder="Describe your plan and deliverables when starting this milestone..."
-                  value={milestoneDeliverables}
-                  onChange={(e) => setMilestoneDeliverables(e.target.value)}
-                  rows={4}
-                />
-              </div>
+                    value={milestoneDeliverables}
+                    onChange={(e) => setMilestoneDeliverables(e.target.value)}
+                    rows={4}
+                  />
+                </div>
               )}
 
               {selectedMilestone?.status === "IN_PROGRESS" && (
@@ -2227,7 +2501,7 @@ export default function ProviderProjectDetailsPage() {
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() =>
                   handleMilestoneUpdate(
                     selectedMilestone?.status === "LOCKED"
@@ -2259,7 +2533,7 @@ export default function ProviderProjectDetailsPage() {
             <DialogHeader>
               <DialogTitle>Edit Milestones</DialogTitle>
               <DialogDescription>
-                Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} · 
+                Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
                 Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
                 {milestoneApprovalState.milestonesLocked && " · LOCKED"}
               </DialogDescription>
@@ -2288,9 +2562,11 @@ export default function ProviderProjectDetailsPage() {
                         <Input
                           value={m.title}
                           onChange={(e) => {
-                            updateProjectMilestone(i, { title: e.target.value });
+                            updateProjectMilestone(i, {
+                              title: e.target.value,
+                            });
                             if (milestoneErrors[i]?.title) {
-                              setMilestoneErrors(prev => ({
+                              setMilestoneErrors((prev) => ({
                                 ...prev,
                                 [i]: { ...prev[i], title: undefined },
                               }));
@@ -2319,7 +2595,7 @@ export default function ProviderProjectDetailsPage() {
                             });
                             // Clear sum error when amount changes
                             if (milestoneErrors[-1]) {
-                              setMilestoneErrors(prev => {
+                              setMilestoneErrors((prev) => {
                                 const newErrors = { ...prev };
                                 delete newErrors[-1];
                                 return newErrors;
@@ -2354,7 +2630,7 @@ export default function ProviderProjectDetailsPage() {
                               dueDate: selectedDate,
                             });
                             if (milestoneErrors[i]?.dueDate) {
-                              setMilestoneErrors(prev => ({
+                              setMilestoneErrors((prev) => ({
                                 ...prev,
                                 [i]: { ...prev[i], dueDate: undefined },
                               }));
@@ -2386,7 +2662,7 @@ export default function ProviderProjectDetailsPage() {
                             description: e.target.value,
                           });
                           if (milestoneErrors[i]?.description) {
-                            setMilestoneErrors(prev => ({
+                            setMilestoneErrors((prev) => ({
                               ...prev,
                               [i]: { ...prev[i], description: undefined },
                             }));
@@ -2429,11 +2705,15 @@ export default function ProviderProjectDetailsPage() {
                   >
                     {savingMilestones ? "Saving..." : "Save Changes"}
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleApproveProjectMilestones}
                     disabled={
-                      JSON.stringify(normalizeMilestoneSequences(projectMilestones)) !== 
-                      JSON.stringify(normalizeMilestoneSequences(originalProjectMilestones))
+                      JSON.stringify(
+                        normalizeMilestoneSequences(projectMilestones)
+                      ) !==
+                      JSON.stringify(
+                        normalizeMilestoneSequences(originalProjectMilestones)
+                      )
                     }
                   >
                     Approve
@@ -2453,10 +2733,12 @@ export default function ProviderProjectDetailsPage() {
         >
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-xl">Milestones Submitted</DialogTitle>
+              <DialogTitle className="text-xl">
+                Milestones Submitted
+              </DialogTitle>
               <DialogDescription>
-                These milestones are now awaiting final confirmation, or have been
-                locked if both sides approved.
+                These milestones are now awaiting final confirmation, or have
+                been locked if both sides approved.
               </DialogDescription>
             </DialogHeader>
 
@@ -2472,7 +2754,7 @@ export default function ProviderProjectDetailsPage() {
                 <div>
                   <div className="font-semibold text-gray-900">
                     Company Approved
-      </div>
+                  </div>
                   <div>
                     {milestoneApprovalState.companyApproved
                       ? "The company approved the milestone plan."
@@ -2571,7 +2853,7 @@ export default function ProviderProjectDetailsPage() {
                     If selected, this milestone will be frozen until the dispute
                     is resolved.
                   </p>
-      </div>
+                </div>
               )}
 
               {/* Reason */}
@@ -2987,7 +3269,14 @@ export default function ProviderProjectDetailsPage() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {currentDispute.resolutionNotes.map(
-                          (note: { note?: string; adminName?: string; createdAt: string }, index: number) => {
+                          (
+                            note: {
+                              note?: string;
+                              adminName?: string;
+                              createdAt: string;
+                            },
+                            index: number
+                          ) => {
                             // Check if note contains "--- Admin Note ---" separator
                             const noteParts =
                               note.note?.split(/\n--- Admin Note ---\n/) || [];
@@ -3148,27 +3437,52 @@ export default function ProviderProjectDetailsPage() {
                                   </div>
                                   {(() => {
                                     const attachmentUrl = getAttachmentUrl(url);
-                                    const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                                    const isR2Key =
+                                      attachmentUrl === "#" ||
+                                      (!attachmentUrl.startsWith("http") &&
+                                        !attachmentUrl.startsWith(
+                                          "/uploads/"
+                                        ) &&
+                                        !attachmentUrl.includes(
+                                          process.env.NEXT_PUBLIC_API_URL ||
+                                            "localhost"
+                                        ));
 
                                     return (
                                       <a
-                                        href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                                        href={
+                                          attachmentUrl === "#"
+                                            ? undefined
+                                            : attachmentUrl
+                                        }
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        onClick={isR2Key ? async (e) => {
-                                          e.preventDefault();
-                                          try {
-                                            const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key - url is from the map function
-                                            window.open(downloadUrl.downloadUrl, "_blank");
-                                          } catch (error) {
-                                            console.error("Failed to get download URL:", error);
-                                            toast({
-                                              title: "Error",
-                                              description: "Failed to download attachment",
-                                              variant: "destructive",
-                                            });
-                                          }
-                                        } : undefined}
+                                        onClick={
+                                          isR2Key
+                                            ? async (e) => {
+                                                e.preventDefault();
+                                                try {
+                                                  const downloadUrl =
+                                                    await getR2DownloadUrl(url); // Use original URL/key - url is from the map function
+                                                  window.open(
+                                                    downloadUrl.downloadUrl,
+                                                    "_blank"
+                                                  );
+                                                } catch (error) {
+                                                  console.error(
+                                                    "Failed to get download URL:",
+                                                    error
+                                                  );
+                                                  toast({
+                                                    title: "Error",
+                                                    description:
+                                                      "Failed to download attachment",
+                                                    variant: "destructive",
+                                                  });
+                                                }
+                                              }
+                                            : undefined
+                                        }
                                       >
                                         <Button variant="outline" size="sm">
                                           <Download className="w-4 h-4 mr-2" />

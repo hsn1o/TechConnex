@@ -2447,7 +2447,7 @@ export async function simulateDisputePayout(disputeId: string, refundAmount: num
   const useFormData = bankTransferRefImage !== undefined;
 
   let body: FormData | string;
-  let headers: HeadersInit = {
+  const headers: HeadersInit = {
     "Authorization": `Bearer ${token}`,
   };
 
@@ -2461,7 +2461,7 @@ export async function simulateDisputePayout(disputeId: string, refundAmount: num
     }
     // Don't set Content-Type for FormData - browser will set it with boundary
   } else {
-    headers["Content-Type"] = "application/json";
+    (headers as Record<string, string>)["Content-Type"] = "application/json";
     body = JSON.stringify({ refundAmount, releaseAmount, resolution: resolution || "" });
   }
 

@@ -7,19 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Search,
-  Send,
-  Paperclip,
-  Loader2,
-  FileText,
-} from "lucide-react";
+import { Search, Send, Paperclip, Loader2, FileText } from "lucide-react";
 import { CustomerLayout } from "@/components/customer-layout";
 import io, { Socket } from "socket.io-client";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getMessageAttachmentUrl, getProfileImageUrl } from "@/lib/api";
+import Image from "next/image";
+import { getProfileImageUrl, getMessageAttachmentUrl } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -305,45 +300,45 @@ export default function CustomerMessagesPage() {
   }, [token]);
 
   // Fetch messages for a specific conversation
-  const fetchMessages = useCallback(async (
-    otherUserId: string,
-    skipLoadingCheck = false
-  ) => {
-    if (!token || !otherUserId) return;
-    if (loading && !skipLoadingCheck) return; // prevents re-fetching while still loading
+  const fetchMessages = useCallback(
+    async (otherUserId: string, skipLoadingCheck = false) => {
+      if (!token || !otherUserId) return;
+      if (loading && !skipLoadingCheck) return; // prevents re-fetching while still loading
 
-    try {
-      if (!skipLoadingCheck) setLoading(true);
-      const response = await fetch(
-        `${API_URL}/messages?otherUserId=${otherUserId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        setMessages(data.data);
-
-        // Mark conversation as read in the list
-        setConversations((prev) =>
-          prev.map((conv) =>
-            conv.userId === otherUserId ? { ...conv, unreadCount: 0 } : conv
-          )
+      try {
+        if (!skipLoadingCheck) setLoading(true);
+        const response = await fetch(
+          `${API_URL}/messages?otherUserId=${otherUserId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
-      } else {
-        console.error("Failed to fetch messages:", data.message);
+
+        const data = await response.json();
+
+        if (data.success) {
+          setMessages(data.data);
+
+          // Mark conversation as read in the list
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv.userId === otherUserId ? { ...conv, unreadCount: 0 } : conv
+            )
+          );
+        } else {
+          console.error("Failed to fetch messages:", data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      } finally {
+        if (!skipLoadingCheck) setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-    } finally {
-      if (!skipLoadingCheck) setLoading(false);
-    }
-  }, [token, loading]);
+    },
+    [token, loading]
+  );
 
   // Load conversations on mount
   useEffect(() => {
@@ -374,7 +369,8 @@ export default function CustomerMessagesPage() {
           );
           setProjects(availableProjects);
           const openProjects = projects.filter(
-            (proj: Record<string, unknown>) => proj.status === "OPEN" && proj.projectId === null
+            (proj: Record<string, unknown>) =>
+              proj.status === "OPEN" && proj.projectId === null
           );
           setProjectRequests(openProjects);
         }
@@ -483,11 +479,15 @@ export default function CustomerMessagesPage() {
       messageType: "file",
       attachments: [pendingAttachmentUrl],
     };
-    socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
-      if (!response?.success) {
-        alert("Failed to send file: " + response.error);
+    socket.emit(
+      "send_message",
+      messageData,
+      (response: { success?: boolean; error?: string }) => {
+        if (!response?.success) {
+          alert("Failed to send file: " + response.error);
+        }
       }
-    });
+    );
     setPendingAttachmentUrl(null);
     setShowAttachmentPicker(false);
   };
@@ -542,24 +542,28 @@ export default function CustomerMessagesPage() {
       setNewMessage(""); // Clear input immediately
 
       // Send via socket with callback
-      socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
-        console.log("📨 Socket callback response:", response);
-        if (response?.success) {
-          console.log("✅ Message sent successfully via socket");
-          // The message_sent event will handle replacing the temp message
-        } else {
-          console.error(
-            "❌ Failed to send message via socket:",
-            response?.error
-          );
-          // Remove the optimistic message on error
-          setMessages((prev) =>
-            prev.filter((msg) => msg.id !== optimisticMessage.id)
-          );
-          // Optionally show error to user
-          alert("Failed to send message: " + response?.error);
+      socket.emit(
+        "send_message",
+        messageData,
+        (response: { success?: boolean; error?: string }) => {
+          console.log("📨 Socket callback response:", response);
+          if (response?.success) {
+            console.log("✅ Message sent successfully via socket");
+            // The message_sent event will handle replacing the temp message
+          } else {
+            console.error(
+              "❌ Failed to send message via socket:",
+              response?.error
+            );
+            // Remove the optimistic message on error
+            setMessages((prev) =>
+              prev.filter((msg) => msg.id !== optimisticMessage.id)
+            );
+            // Optionally show error to user
+            alert("Failed to send message: " + response?.error);
+          }
         }
-      });
+      );
     } catch (error) {
       console.error("❌ Error in send message:", error);
     }
@@ -597,35 +601,42 @@ export default function CustomerMessagesPage() {
     };
     setMessages((prev) => [...prev, optimisticMessage]);
     setShowProjectPicker(false);
-    socket.emit("send_message", messageData, (response: { success?: boolean; error?: string }) => {
-      if (!response?.success) {
-        setMessages((prev) =>
-          prev.filter((m) => m.id !== optimisticMessage.id)
-        );
-        alert("Failed to send project request: " + response?.error);
+    socket.emit(
+      "send_message",
+      messageData,
+      (response: { success?: boolean; error?: string }) => {
+        if (!response?.success) {
+          setMessages((prev) =>
+            prev.filter((m) => m.id !== optimisticMessage.id)
+          );
+          alert("Failed to send project request: " + response?.error);
+        }
       }
-    });
+    );
   };
 
   // Mark messages as read
-  const markMessagesAsRead = useCallback(async (messageIds: string[]) => {
-    if (!token) return;
+  const markMessagesAsRead = useCallback(
+    async (messageIds: string[]) => {
+      if (!token) return;
 
-    try {
-      await Promise.all(
-        messageIds.map((id) =>
-          fetch(`${API_URL}/messages/${id}/read`, {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          })
-        )
-      );
-    } catch (error) {
-      console.error("Error marking messages as read:", error);
-    }
-  }, [token]);
+      try {
+        await Promise.all(
+          messageIds.map((id) =>
+            fetch(`${API_URL}/messages/${id}/read`, {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            })
+          )
+        );
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
+      }
+    },
+    [token]
+  );
 
   // Auto-mark messages as read when they become visible
   useEffect(() => {
@@ -766,7 +777,9 @@ export default function CustomerMessagesPage() {
                       <div className="relative">
                         <Avatar>
                           <AvatarImage
-                            src={getProfileImageUrl(selectedConversation.avatar)}
+                            src={getProfileImageUrl(
+                              selectedConversation.avatar
+                            )}
                           />
                           <AvatarFallback>
                             {selectedConversation.name.charAt(0)}
@@ -857,13 +870,17 @@ export default function CustomerMessagesPage() {
                           >
                             {message.messageType === "file" ? (
                               message.attachments.map((fileUrl, index) => {
-                                const attachmentUrl = getMessageAttachmentUrl(fileUrl);
+                                const attachmentUrl =
+                                  getMessageAttachmentUrl(fileUrl);
                                 const isImage =
                                   /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(
                                     fileUrl
                                   );
                                 const isPDF = /\.pdf$/i.test(fileUrl);
-                                const fileName = fileUrl.split("/").pop() || fileUrl.split("\\").pop() || "attachment";
+                                const fileName =
+                                  fileUrl.split("/").pop() ||
+                                  fileUrl.split("\\").pop() ||
+                                  "attachment";
 
                                 return (
                                   <div key={index} className="mt-2">
@@ -873,12 +890,13 @@ export default function CustomerMessagesPage() {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                       >
-                                        <img
-                                          src={fileUrl}
+                                        <Image
+                                          src={attachmentUrl}
                                           alt="Attachment"
                                           width={200}
                                           height={200}
                                           className="rounded-lg max-w-[200px] border object-contain"
+                                          unoptimized
                                           // unoptimized
                                         />
                                       </a>

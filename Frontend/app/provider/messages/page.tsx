@@ -18,8 +18,8 @@ import io, { Socket } from "socket.io-client";
 import { useSearchParams } from "next/navigation";
 import { ProviderLayout } from "@/components/provider-layout";
 import Link from "next/link";
-import { getMessageAttachmentUrl, getProfileImageUrl } from "@/lib/api";
 import Image from "next/image";
+import { getProfileImageUrl, getMessageAttachmentUrl } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 

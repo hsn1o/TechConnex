@@ -84,6 +84,74 @@ import { MarkdownViewer } from "@/components/markdown/MarkdownViewer";
 import { RichEditor } from "@/components/markdown/RichTextEditor";
 import MilestonePayment from "@/components/MilestonePayment";
 
+// Project type definition
+interface Project {
+  id?: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  priority?: string;
+  timeline?: string;
+  originalTimeline?: string | number;
+  providerProposedTimeline?: string | number;
+  budgetMin?: number | string;
+  budgetMax?: number | string;
+  progress?: number | string;
+  status?: string;
+  createdAt?: string | number | Date;
+  startDate?: string | Date;
+  endDate?: string | Date;
+  isFeatured?: boolean;
+  currency?: string;
+  customer?: {
+    id?: string;
+    name?: string;
+  };
+  provider?: {
+    id?: string;
+    name?: string;
+  };
+  assignedProvider?: {
+    id?: string;
+    name?: string;
+    avatar?: string;
+    providerProfile?: {
+      profileImageUrl?: string;
+      rating?: number;
+      completedJobs?: number;
+    };
+  };
+  [key: string]: unknown; // Allow additional properties
+}
+
+// Dispute type definition
+interface Dispute {
+  id?: string;
+  status?: string;
+  reason?: string;
+  description?: string;
+  createdAt?: string | number | Date;
+  updatedAt?: string | number | Date;
+  contestedAmount?: number;
+  suggestedResolution?: string;
+  resolution?: string;
+  milestone?: {
+    title?: string;
+    amount?: number;
+  };
+  raisedBy?: {
+    id?: string;
+    name?: string;
+  };
+  resolutionNotes?: Array<{
+    note?: string;
+    adminName?: string;
+    createdAt?: string | number | Date;
+  }>;
+  attachments?: string[];
+  [key: string]: unknown; // Allow additional properties
+}
+
 export default function ProjectDetailsPage({
   params,
 }: {
@@ -120,19 +188,33 @@ export default function ProjectDetailsPage({
       providerApproved: false,
       milestonesApprovedAt: null as string | null,
     });
-  const [milestoneDraftErrors, setMilestoneDraftErrors] = useState<Record<number, {
-    title?: string;
-    description?: string;
-    dueDate?: string;
-  }>>({});
-  const [originalMilestonesDraft, setOriginalMilestonesDraft] = useState<Milestone[]>([]);
+  const [milestoneDraftErrors, setMilestoneDraftErrors] = useState<
+    Record<
+      number,
+      {
+        title?: string;
+        description?: string;
+        dueDate?: string;
+      }
+    >
+  >({});
+  const [originalMilestonesDraft, setOriginalMilestonesDraft] = useState<
+    Milestone[]
+  >([]);
 
   const [activeTab, setActiveTab] = useState("overview");
-  const [project, setProject] = useState<Record<string, unknown> | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [token, setToken] = useState<string>("");
-  const [currentUser, setCurrentUser] = useState<Record<string, unknown> | null>(null);
-  const [projectMessages, setProjectMessages] = useState<Record<string, unknown>[]>([]);
-  const [projectFiles, setProjectFiels] = useState<Record<string, unknown>[]>([]);
+  const [currentUser, setCurrentUser] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [projectMessages, setProjectMessages] = useState<
+    Record<string, unknown>[]
+  >([]);
+  const [projectFiles, setProjectFiels] = useState<Record<string, unknown>[]>(
+    []
+  );
 
   // Extract id from params which may be a Promise in newer Next.js versions
   const [resolvedId, setResolvedId] = useState<string | null>(null);
@@ -161,12 +243,19 @@ export default function ProjectDetailsPage({
     providerApproved: false,
     milestonesApprovedAt: null as string | null,
   });
-  const [milestoneErrors, setMilestoneErrors] = useState<Record<number, {
-    title?: string;
-    description?: string;
-    dueDate?: string;
-  }>>({});
-  const [originalProjectMilestones, setOriginalProjectMilestones] = useState<Milestone[]>([]);
+  const [milestoneErrors, setMilestoneErrors] = useState<
+    Record<
+      number,
+      {
+        title?: string;
+        description?: string;
+        dueDate?: string;
+      }
+    >
+  >({});
+  const [originalProjectMilestones, setOriginalProjectMilestones] = useState<
+    Milestone[]
+  >([]);
 
   // Payment dialog state
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -184,7 +273,7 @@ export default function ProjectDetailsPage({
   // Dispute creation state
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [viewDisputeDialogOpen, setViewDisputeDialogOpen] = useState(false);
-  const [currentDispute, setCurrentDispute] = useState<Record<string, unknown> | null>(null);
+  const [currentDispute, setCurrentDispute] = useState<Dispute | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeDescription, setDisputeDescription] = useState("");
   const [disputeContestedAmount, setDisputeContestedAmount] = useState("");
@@ -207,17 +296,20 @@ export default function ProjectDetailsPage({
     providerRating: number;
     providerLocation: string;
     providerResponseTime: string;
-    projectId: string;
+    projectId: string | undefined;
     projectTitle: string;
     bidAmount: number;
     proposedTimeline: string;
+    deliveryTime?: string;
     coverLetter: string;
     status: "pending" | "accepted" | "rejected";
     submittedAt: string;
+    createdAt?: string;
     skills: string[];
     portfolio: string[];
     experience: string;
     attachments: string[];
+    attachmentUrls?: string[];
     milestones: Array<{
       title: string;
       description?: string;
@@ -225,6 +317,17 @@ export default function ProjectDetailsPage({
       dueDate: string;
       order: number;
     }>;
+    provider?: {
+      id: string;
+      name: string;
+      avatar?: string;
+      rating?: number;
+      location?: string;
+      responseTime?: string;
+      providerProfile?: {
+        profileImageUrl?: string;
+      };
+    };
   }
   const isImage = (file: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(file);
 
@@ -260,13 +363,28 @@ export default function ProjectDetailsPage({
     };
 
     setEdit({
-      title: project.title ?? "",
-      description: project.description ?? "",
-      category: project.category ?? "",
-      priority: project.priority ?? "",
-      timeline: project.timeline ?? "",
-      budgetMin: project.budgetMin?.toString?.() ?? "",
-      budgetMax: project.budgetMax?.toString?.() ?? "",
+      title: (typeof project.title === "string" ? project.title : "") ?? "",
+      description:
+        (typeof project.description === "string" ? project.description : "") ??
+        "",
+      category:
+        (typeof project.category === "string" ? project.category : "") ?? "",
+      priority:
+        (typeof project.priority === "string" ? project.priority : "") ?? "",
+      timeline:
+        (typeof project.timeline === "string" ? project.timeline : "") ?? "",
+      budgetMin:
+        (typeof project.budgetMin === "number"
+          ? project.budgetMin.toString()
+          : typeof project.budgetMin === "string"
+          ? project.budgetMin
+          : "") ?? "",
+      budgetMax:
+        (typeof project.budgetMax === "number"
+          ? project.budgetMax.toString()
+          : typeof project.budgetMax === "string"
+          ? project.budgetMax
+          : "") ?? "",
       skills: (Array.isArray(project.skills) ? project.skills : []).join(", "),
       requirements: convertToMarkdown(project.requirements),
       deliverables: convertToMarkdown(project.deliverables),
@@ -310,9 +428,15 @@ export default function ProjectDetailsPage({
   const fetchProjectMessages = async () => {
     if (!token || !project) return;
     try {
-      const currentUserId = currentUser?.id;
-      const providerId = project.providerId || project.provider?.id;
-      const customerId = project.customerId || project.customer?.id;
+      const currentUserId = (currentUser as { id?: string } | null)?.id;
+      const providerId =
+        (typeof project.providerId === "string"
+          ? project.providerId
+          : undefined) || (project.provider as { id?: string } | undefined)?.id;
+      const customerId =
+        (typeof project.customerId === "string"
+          ? project.customerId
+          : undefined) || (project.customer as { id?: string } | undefined)?.id;
       const otherUserId =
         String(currentUserId) === String(providerId) ? customerId : providerId;
       if (!otherUserId) return;
@@ -327,7 +451,8 @@ export default function ProjectDetailsPage({
       if (data?.success) {
         const filtered = Array.isArray(data.data)
           ? data.data.filter(
-              (msg: Record<string, unknown>) => String(msg.projectId) === String(resolvedId)
+              (msg: Record<string, unknown>) =>
+                String(msg.projectId) === String(resolvedId)
             )
           : [];
 
@@ -351,7 +476,7 @@ export default function ProjectDetailsPage({
   }, [activeTab, token, project]);
 
   // Safe formatter for numbers - prevents calling toLocaleString on undefined
-  const fmt = (v: unknown, fallback = "0") => {
+  const fmt = (v: unknown, fallback = "0"): string => {
     if (v === null || v === undefined) return fallback;
     const n = Number(v);
     return Number.isFinite(n) ? n.toLocaleString() : fallback;
@@ -361,63 +486,93 @@ export default function ProjectDetailsPage({
   const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? v : []);
 
   // Helper function to map API proposals to ProviderRequest format
-  const mapProposalsToProviderRequests = useCallback((
-    rawProposals: Record<string, unknown>[]
-  ): ProviderRequest[] => {
-    return rawProposals.map((p: Record<string, unknown>): ProviderRequest => {
-      const provider = (p.provider as Record<string, unknown>) || {};
-      const profile = (provider.providerProfile as Record<string, unknown>) || {};
+  const mapProposalsToProviderRequests = useCallback(
+    (rawProposals: Record<string, unknown>[]): ProviderRequest[] => {
+      return rawProposals.map((p: Record<string, unknown>): ProviderRequest => {
+        const provider = (p.provider as Record<string, unknown>) || {};
+        const profile =
+          (provider.providerProfile as Record<string, unknown>) || {};
 
-      return {
-        id: p.id as string,
-        providerId: provider.id as string,
-        providerName: provider.name as string,
-        providerAvatar: getProfileImageUrl(profile.profileImageUrl as string | undefined),
-        providerRating: (profile.rating as number | undefined) ?? (provider.rating as number | undefined) ?? 0,
-        providerLocation: (profile.location as string | undefined) ?? (provider.location as string | undefined) ?? "",
-        providerResponseTime:
-          (profile.responseTime as string | undefined) ?? (provider.responseTime as string | undefined) ?? "",
-        projectId: (p.serviceRequest as Record<string, unknown> | undefined)?.id as string | undefined,
-        projectTitle: (p.serviceRequest as Record<string, unknown> | undefined)?.title as string | undefined,
-        bidAmount: p.bidAmount as number,
-        proposedTimeline: formatTimeline(p.deliveryTime as string | number | undefined, "day") || "",
-        coverLetter: p.coverLetter as string,
-        status: p.status
-          ? (String(p.status).toLowerCase() as "pending" | "accepted" | "rejected")
-          : "pending",
-        submittedAt: (p.createdAt as string | undefined) || (p.submittedAt as string | undefined) || "",
-        skills: Array.isArray(profile.skills)
-          ? profile.skills as string[]
-          : Array.isArray(provider.skills)
-          ? provider.skills as string[]
-          : [],
-        portfolio: Array.isArray(profile.portfolios)
-          ? profile.portfolios as string[]
-          : Array.isArray(provider.portfolio)
-          ? provider.portfolio as string[]
-          : [],
-        experience: (profile.experience as string | undefined) ?? (provider.experience as string | undefined) ?? "",
-        attachments: Array.isArray(p.attachmentUrls) ? p.attachmentUrls as string[] : [],
-        milestones: Array.isArray(p.milestones)
-          ? p.milestones.map(
-              (m: {
-                title: string;
-                description?: string;
-                amount: number;
-                dueDate: string;
-                order: number;
-              }) => ({
-                title: m.title,
-                description: m.description,
-                amount: m.amount,
-                dueDate: m.dueDate,
-                order: m.order,
-              })
-            )
-          : [],
-      };
-    });
-  }, []);
+        return {
+          id: p.id as string,
+          providerId: provider.id as string,
+          providerName: provider.name as string,
+          providerAvatar: getProfileImageUrl(
+            profile.profileImageUrl as string | undefined
+          ),
+          providerRating:
+            (profile.rating as number | undefined) ??
+            (provider.rating as number | undefined) ??
+            0,
+          providerLocation:
+            (profile.location as string | undefined) ??
+            (provider.location as string | undefined) ??
+            "",
+          providerResponseTime:
+            (profile.responseTime as string | undefined) ??
+            (provider.responseTime as string | undefined) ??
+            "",
+          projectId: (p.serviceRequest as Record<string, unknown> | undefined)
+            ?.id as string | undefined,
+          projectTitle:
+            ((p.serviceRequest as Record<string, unknown> | undefined)
+              ?.title as string | undefined) ?? "",
+          bidAmount: p.bidAmount as number,
+          proposedTimeline:
+            formatTimeline(
+              p.deliveryTime as string | number | undefined,
+              "day"
+            ) || "",
+          coverLetter: p.coverLetter as string,
+          status: p.status
+            ? (String(p.status).toLowerCase() as
+                | "pending"
+                | "accepted"
+                | "rejected")
+            : "pending",
+          submittedAt:
+            (p.createdAt as string | undefined) ||
+            (p.submittedAt as string | undefined) ||
+            "",
+          skills: Array.isArray(profile.skills)
+            ? (profile.skills as string[])
+            : Array.isArray(provider.skills)
+            ? (provider.skills as string[])
+            : [],
+          portfolio: Array.isArray(profile.portfolios)
+            ? (profile.portfolios as string[])
+            : Array.isArray(provider.portfolio)
+            ? (provider.portfolio as string[])
+            : [],
+          experience:
+            (profile.experience as string | undefined) ??
+            (provider.experience as string | undefined) ??
+            "",
+          attachments: Array.isArray(p.attachmentUrls)
+            ? (p.attachmentUrls as string[])
+            : [],
+          milestones: Array.isArray(p.milestones)
+            ? p.milestones.map(
+                (m: {
+                  title: string;
+                  description?: string;
+                  amount: number;
+                  dueDate: string;
+                  order: number;
+                }) => ({
+                  title: m.title,
+                  description: m.description,
+                  amount: m.amount,
+                  dueDate: m.dueDate,
+                  order: m.order,
+                })
+              )
+            : [],
+        };
+      });
+    },
+    []
+  );
 
   // Fetch project data + proposals (bids)
   useEffect(() => {
@@ -498,7 +653,8 @@ export default function ProjectDetailsPage({
       } catch (err: unknown) {
         console.error("Failed to load project/proposals:", err);
 
-        const errorMessage = err instanceof Error ? err.message : "Failed to load project";
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to load project";
         setError(errorMessage);
         setBidsError(errorMessage);
 
@@ -527,21 +683,51 @@ export default function ProjectDetailsPage({
 
       // Refresh milestones
       const milestoneData = await getCompanyProjectMilestones(loadedProject.id);
-      const loadedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
-            ...m,
-            sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
-            submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl ?? (m as Record<string, unknown>).submissionAttachmentUrl,
-            submissionNote: (m as Milestone).submissionNote ?? (m as Record<string, unknown>).submissionNote,
-            submittedAt: (m as Milestone).submittedAt ?? (m as Record<string, unknown>).submittedAt,
-            startDeliverables: (m as Milestone).startDeliverables ?? (m as Record<string, unknown>).startDeliverables,
-            submitDeliverables: (m as Milestone).submitDeliverables ?? (m as Record<string, unknown>).submitDeliverables,
-            revisionNumber: (m as Milestone).revisionNumber ?? (m as Record<string, unknown>).revisionNumber,
-            submissionHistory: (m as Milestone).submissionHistory ?? (m as Record<string, unknown>).submissionHistory,
-          }))
+      const loadedMilestones: Milestone[] = Array.isArray(
+        milestoneData.milestones
+      )
+        ? milestoneData.milestones.map(
+            (m: Milestone | Record<string, unknown>) =>
+              ({
+                ...(m as Milestone),
+                sequence: ((m as Milestone).order ??
+                  (m as Record<string, unknown>).order) as number,
+                submissionAttachmentUrl: ((m as Milestone)
+                  .submissionAttachmentUrl ??
+                  (m as Record<string, unknown>).submissionAttachmentUrl) as
+                  | string
+                  | undefined,
+                submissionNote: ((m as Milestone).submissionNote ??
+                  (m as Record<string, unknown>).submissionNote) as
+                  | string
+                  | undefined,
+                submittedAt: ((m as Milestone).submittedAt ??
+                  (m as Record<string, unknown>).submittedAt) as
+                  | string
+                  | undefined,
+                startDeliverables: ((m as Milestone).startDeliverables ??
+                  (m as Record<string, unknown>).startDeliverables) as
+                  | string
+                  | undefined,
+                submitDeliverables: ((m as Milestone).submitDeliverables ??
+                  (m as Record<string, unknown>).submitDeliverables) as
+                  | string
+                  | undefined,
+                revisionNumber: ((m as Milestone).revisionNumber ??
+                  (m as Record<string, unknown>).revisionNumber) as
+                  | number
+                  | undefined,
+                submissionHistory: ((m as Milestone).submissionHistory ??
+                  (m as Record<string, unknown>).submissionHistory) as
+                  | unknown[]
+                  | undefined,
+              } as Milestone)
+          )
         : [];
       setProjectMilestones(loadedMilestones);
-      setOriginalProjectMilestones(JSON.parse(JSON.stringify(loadedMilestones))); // Deep copy
+      setOriginalProjectMilestones(
+        JSON.parse(JSON.stringify(loadedMilestones))
+      ); // Deep copy
       setMilestoneApprovalState({
         milestonesLocked: milestoneData.milestonesLocked,
         companyApproved: milestoneData.companyApproved,
@@ -602,23 +788,51 @@ export default function ProjectDetailsPage({
     (async () => {
       if (!project?.id) return;
       try {
-        const milestoneData = await getCompanyProjectMilestones(project.id);
-        setProjectMilestones(
-          Array.isArray(milestoneData.milestones)
-            ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
-                ...m,
-                sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
-                // Ensure all milestone fields are included
-                submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl ?? (m as Record<string, unknown>).submissionAttachmentUrl,
-                submissionNote: (m as Milestone).submissionNote ?? (m as Record<string, unknown>).submissionNote,
-                submittedAt: (m as Milestone).submittedAt ?? (m as Record<string, unknown>).submittedAt,
-                startDeliverables: (m as Milestone).startDeliverables ?? (m as Record<string, unknown>).startDeliverables,
-                submitDeliverables: (m as Milestone).submitDeliverables ?? (m as Record<string, unknown>).submitDeliverables,
-                revisionNumber: (m as Milestone).revisionNumber ?? (m as Record<string, unknown>).revisionNumber,
-                submissionHistory: (m as Milestone).submissionHistory ?? (m as Record<string, unknown>).submissionHistory,
-              }))
-            : []
+        const milestoneData = await getCompanyProjectMilestones(
+          project.id as string
         );
+        const loadedMilestones: Milestone[] = Array.isArray(
+          milestoneData.milestones
+        )
+          ? milestoneData.milestones.map(
+              (m: Milestone | Record<string, unknown>) =>
+                ({
+                  ...(m as Milestone),
+                  sequence: ((m as Milestone).order ??
+                    (m as Record<string, unknown>).order) as number,
+                  submissionAttachmentUrl: ((m as Milestone)
+                    .submissionAttachmentUrl ??
+                    (m as Record<string, unknown>).submissionAttachmentUrl) as
+                    | string
+                    | undefined,
+                  submissionNote: ((m as Milestone).submissionNote ??
+                    (m as Record<string, unknown>).submissionNote) as
+                    | string
+                    | undefined,
+                  submittedAt: ((m as Milestone).submittedAt ??
+                    (m as Record<string, unknown>).submittedAt) as
+                    | string
+                    | undefined,
+                  startDeliverables: ((m as Milestone).startDeliverables ??
+                    (m as Record<string, unknown>).startDeliverables) as
+                    | string
+                    | undefined,
+                  submitDeliverables: ((m as Milestone).submitDeliverables ??
+                    (m as Record<string, unknown>).submitDeliverables) as
+                    | string
+                    | undefined,
+                  revisionNumber: ((m as Milestone).revisionNumber ??
+                    (m as Record<string, unknown>).revisionNumber) as
+                    | number
+                    | undefined,
+                  submissionHistory: ((m as Milestone).submissionHistory ??
+                    (m as Record<string, unknown>).submissionHistory) as
+                    | unknown[]
+                    | undefined,
+                } as Milestone)
+            )
+          : [];
+        setProjectMilestones(loadedMilestones);
         setMilestoneApprovalState({
           milestonesLocked: milestoneData.milestonesLocked,
           companyApproved: milestoneData.companyApproved,
@@ -652,8 +866,16 @@ export default function ProjectDetailsPage({
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
               Error loading project
             </h3>
-            <p className="text-sm sm:text-base text-gray-600 mb-4">{error || "Project not found"}</p>
-            <Button onClick={() => window.location.reload()} size="sm" className="sm:size-default">Try Again</Button>
+            <p className="text-sm sm:text-base text-gray-600 mb-4">
+              {error || "Project not found"}
+            </p>
+            <Button
+              onClick={() => window.location.reload()}
+              size="sm"
+              className="sm:size-default"
+            >
+              Try Again
+            </Button>
           </div>
         </div>
       </CustomerLayout>
@@ -741,9 +963,9 @@ export default function ProjectDetailsPage({
   };
 
   // Helpers for project milestone editor
-  const normalizeMilestoneSequences = (items: Milestone[]) =>
+  const normalizeMilestoneSequences = (items: Milestone[]): Milestone[] =>
     items
-      .map((m, i) => ({ ...m, sequence: i + 1 }))
+      .map((m, i) => ({ ...m, sequence: i + 1 } as Milestone))
       .sort((a, b) => a.sequence - b.sequence);
 
   const addProjectMilestone = () => {
@@ -783,13 +1005,17 @@ export default function ProjectDetailsPage({
     typeof safeProject.requirements === "string"
       ? safeProject.requirements
       : Array.isArray(safeProject.requirements)
-      ? safeProject.requirements.map((r: unknown) => `- ${String(r)}`).join("\n")
+      ? safeProject.requirements
+          .map((r: unknown) => `- ${String(r)}`)
+          .join("\n")
       : "";
   const deliverables =
     typeof safeProject.deliverables === "string"
       ? safeProject.deliverables
       : Array.isArray(safeProject.deliverables)
-      ? safeProject.deliverables.map((d: unknown) => `- ${String(d)}`).join("\n")
+      ? safeProject.deliverables
+          .map((d: unknown) => `- ${String(d)}`)
+          .join("\n")
       : "";
   const messages = asArray<Record<string, unknown>>(safeProject.messages);
   const currentUserId = currentUser?.id;
@@ -800,35 +1026,94 @@ export default function ProjectDetailsPage({
     project?.provider ??
     ({
       id: project?.providerId,
-      name: project?.providerName ?? project?.provider?.name,
-      avatar: project?.provider?.avatarUrl ?? project?.providerAvatar,
+      name:
+        (typeof project?.providerName === "string"
+          ? project.providerName
+          : undefined) ??
+        (project?.provider as { name?: string } | undefined)?.name,
+      avatar:
+        (project?.provider as { avatarUrl?: string } | undefined)?.avatarUrl ??
+        project?.providerAvatar,
     } as Record<string, unknown>);
 
   const handleContact = () => {
-    if (!provider || !provider.id) return;
+    const providerId = (provider as { id?: string } | undefined)?.id;
+    const providerAvatar = (provider as { avatar?: string } | undefined)
+      ?.avatar;
+    if (!provider || !providerId) return;
 
     const avatarUrl =
-      provider.avatar &&
-      provider.avatar !== "/placeholder.svg" &&
-      !provider.avatar.includes("/placeholder.svg")
+      providerAvatar &&
+      providerAvatar !== "/placeholder.svg" &&
+      !providerAvatar.includes("/placeholder.svg")
         ? `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}${
-            provider.avatar.startsWith("/") ? "" : "/"
-          }${provider.avatar}`
+            providerAvatar.startsWith("/") ? "" : "/"
+          }${providerAvatar}`
         : "";
 
+    const providerName =
+      (provider as { name?: string } | undefined)?.name || "";
     router.push(
-      `/customer/messages?userId=${provider.id}&name=${encodeURIComponent(
-        provider.name || ""
+      `/customer/messages?userId=${providerId}&name=${encodeURIComponent(
+        providerName
       )}&avatar=${encodeURIComponent(avatarUrl)}`
     );
   };
   // ⬇️ ADD THIS just after you define `project` (and `proposals` if present)
-  const currency = project?.currency ?? "RM";
+  const currency: string =
+    typeof project?.currency === "string" ? project.currency : "RM";
   const bidCount = Number(
     project?.bidCount ?? (Array.isArray(proposals) ? proposals.length : 0)
   );
-  const startDate = project?.startDate ? new Date(project.startDate as string | number | Date) : null;
-  const endDate = project?.endDate ? new Date(project.endDate as string | number | Date) : null;
+  const startDate = project?.startDate
+    ? new Date(project.startDate as string | number | Date)
+    : null;
+  const endDate = project?.endDate
+    ? new Date(project.endDate as string | number | Date)
+    : null;
+
+  // Compute project stats values with proper typing
+  const approvedPriceValue: number = project
+    ? typeof project.approvedPrice === "number"
+      ? project.approvedPrice
+      : typeof project.approvedPrice === "string"
+      ? Number(project.approvedPrice) || 0
+      : 0
+    : 0;
+
+  const totalSpentValue: number = project
+    ? typeof project.totalSpent === "number"
+      ? project.totalSpent
+      : typeof project.totalSpent === "string"
+      ? Number(project.totalSpent) || 0
+      : 0
+    : 0;
+
+  const progressValue: number = project
+    ? typeof project.progress === "number"
+      ? project.progress
+      : typeof project.progress === "string"
+      ? Number(project.progress) || 0
+      : 0
+    : 0;
+
+  const daysLeftValue: number | null = (() => {
+    if (
+      !project ||
+      project.daysLeft === null ||
+      project.daysLeft === undefined
+    ) {
+      return null;
+    }
+    if (typeof project.daysLeft === "number") {
+      return project.daysLeft;
+    }
+    if (typeof project.daysLeft === "string") {
+      const parsed = Number(project.daysLeft);
+      return isNaN(parsed) ? null : parsed;
+    }
+    return null;
+  })();
 
   const handleSave = async () => {
     try {
@@ -853,7 +1138,7 @@ export default function ProjectDetailsPage({
         payload.deliverables = edit.deliverables.trim();
 
       const { project: updated } = await updateCompanyProject(
-        project.id,
+        project.id as string,
         payload
       );
       setProject(updated);
@@ -875,24 +1160,31 @@ export default function ProjectDetailsPage({
     if (!project?.id) return;
 
     // Validate milestones
-    const errors: Record<number, { title?: string; description?: string; dueDate?: string }> = {};
+    const errors: Record<
+      number,
+      { title?: string; description?: string; dueDate?: string }
+    > = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let hasErrors = false;
 
     projectMilestones.forEach((m, idx) => {
-      const milestoneErrors: { title?: string; description?: string; dueDate?: string } = {};
-      
+      const milestoneErrors: {
+        title?: string;
+        description?: string;
+        dueDate?: string;
+      } = {};
+
       if (!m.title || !m.title.trim()) {
         milestoneErrors.title = "Title is required.";
         hasErrors = true;
       }
-      
+
       if (!m.description || !m.description.trim()) {
         milestoneErrors.description = "Description is required.";
         hasErrors = true;
       }
-      
+
       if (!m.dueDate) {
         milestoneErrors.dueDate = "Due date is required.";
         hasErrors = true;
@@ -900,18 +1192,31 @@ export default function ProjectDetailsPage({
         const dueDate = new Date(m.dueDate);
         dueDate.setHours(0, 0, 0, 0);
         if (dueDate < today) {
-          milestoneErrors.dueDate = "Due date cannot be in the past. Please select today or a future date.";
+          milestoneErrors.dueDate =
+            "Due date cannot be in the past. Please select today or a future date.";
           hasErrors = true;
         }
       }
-      
+
       if (Object.keys(milestoneErrors).length > 0) {
         errors[idx] = milestoneErrors;
       }
     });
 
     // Validate milestone sum equals bid amount
-    const bidAmount = project?.approvedPrice || project?.bidAmount || 0;
+    const approvedPrice =
+      typeof project?.approvedPrice === "number"
+        ? project.approvedPrice
+        : typeof project?.approvedPrice === "string"
+        ? Number(project.approvedPrice)
+        : 0;
+    const bidAmountValue =
+      typeof project?.bidAmount === "number"
+        ? project.bidAmount
+        : typeof project?.bidAmount === "string"
+        ? Number(project.bidAmount)
+        : 0;
+    const bidAmount = approvedPrice || bidAmountValue || 0;
     if (bidAmount > 0) {
       const sumMilestones = projectMilestones.reduce(
         (sum: number, m: Milestone) => {
@@ -933,7 +1238,8 @@ export default function ProjectDetailsPage({
       setMilestoneErrors(errors);
       toast({
         title: "Validation Error",
-        description: "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
+        description:
+          "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
         variant: "destructive",
       });
       return;
@@ -950,7 +1256,10 @@ export default function ProjectDetailsPage({
           dueDate: new Date(m.dueDate).toISOString(), // ensure ISO
         })
       );
-      const res = await updateCompanyProjectMilestones(project.id, payload);
+      const res = await updateCompanyProjectMilestones(
+        project.id as string,
+        payload
+      );
       setMilestoneApprovalState({
         milestonesLocked: res.milestonesLocked,
         companyApproved: res.companyApproved,
@@ -959,24 +1268,56 @@ export default function ProjectDetailsPage({
       });
 
       // Refresh milestones from API
-      const milestoneData = await getCompanyProjectMilestones(project.id);
-      const refreshedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
-            ...m,
-            sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
-            submissionAttachmentUrl: (m as Milestone).submissionAttachmentUrl ?? (m as Record<string, unknown>).submissionAttachmentUrl,
-            submissionNote: (m as Milestone).submissionNote ?? (m as Record<string, unknown>).submissionNote,
-            submittedAt: (m as Milestone).submittedAt ?? (m as Record<string, unknown>).submittedAt,
-            startDeliverables: (m as Milestone).startDeliverables ?? (m as Record<string, unknown>).startDeliverables,
-            submitDeliverables: (m as Milestone).submitDeliverables ?? (m as Record<string, unknown>).submitDeliverables,
-            revisionNumber: (m as Milestone).revisionNumber ?? (m as Record<string, unknown>).revisionNumber,
-            submissionHistory: (m as Milestone).submissionHistory ?? (m as Record<string, unknown>).submissionHistory,
-          }))
+      const milestoneData = await getCompanyProjectMilestones(
+        project.id as string
+      );
+      const refreshedMilestones: Milestone[] = Array.isArray(
+        milestoneData.milestones
+      )
+        ? milestoneData.milestones.map(
+            (m: Milestone | Record<string, unknown>) =>
+              ({
+                ...(m as Milestone),
+                sequence: ((m as Milestone).order ??
+                  (m as Record<string, unknown>).order) as number,
+                submissionAttachmentUrl: ((m as Milestone)
+                  .submissionAttachmentUrl ??
+                  (m as Record<string, unknown>).submissionAttachmentUrl) as
+                  | string
+                  | undefined,
+                submissionNote: ((m as Milestone).submissionNote ??
+                  (m as Record<string, unknown>).submissionNote) as
+                  | string
+                  | undefined,
+                submittedAt: ((m as Milestone).submittedAt ??
+                  (m as Record<string, unknown>).submittedAt) as
+                  | string
+                  | undefined,
+                startDeliverables: ((m as Milestone).startDeliverables ??
+                  (m as Record<string, unknown>).startDeliverables) as
+                  | string
+                  | undefined,
+                submitDeliverables: ((m as Milestone).submitDeliverables ??
+                  (m as Record<string, unknown>).submitDeliverables) as
+                  | string
+                  | undefined,
+                revisionNumber: ((m as Milestone).revisionNumber ??
+                  (m as Record<string, unknown>).revisionNumber) as
+                  | number
+                  | undefined,
+                submissionHistory: ((m as Milestone).submissionHistory ??
+                  (m as Record<string, unknown>).submissionHistory) as
+                  | unknown[]
+                  | undefined,
+              } as Milestone)
+          )
         : [];
-      
+
       // Update both current and original milestones with fresh data
       setProjectMilestones(refreshedMilestones);
-      setOriginalProjectMilestones(JSON.parse(JSON.stringify(refreshedMilestones)));
+      setOriginalProjectMilestones(
+        JSON.parse(JSON.stringify(refreshedMilestones))
+      );
 
       // Refresh project data to get updated milestones
       await refreshProjectData();
@@ -1001,7 +1342,7 @@ export default function ProjectDetailsPage({
   const handleApproveProjectMilestones = async () => {
     if (!project?.id) return;
     try {
-      const res = await approveCompanyMilestones(project.id);
+      const res = await approveCompanyMilestones(project.id as string);
 
       setMilestoneApprovalState({
         milestonesLocked: res.milestonesLocked,
@@ -1125,8 +1466,13 @@ export default function ProjectDetailsPage({
       const response = await acceptProjectRequest(proposalId, true);
 
       // Get the created project ID from the response
-      const projectId = (response as Record<string, unknown>)?.id as string | undefined || 
-                        ((response as Record<string, unknown>)?.project as Record<string, unknown> | undefined)?.id as string | undefined;
+      const projectId =
+        ((response as Record<string, unknown>)?.id as string | undefined) ||
+        ((
+          (response as Record<string, unknown>)?.project as
+            | Record<string, unknown>
+            | undefined
+        )?.id as string | undefined);
 
       // Optimistic status update
       setProposals((prev: ProviderRequest[]) =>
@@ -1138,14 +1484,22 @@ export default function ProjectDetailsPage({
       // Immediately load project milestones for edit
       if (projectId) {
         const milestoneData = await getCompanyProjectMilestones(projectId);
-        const loadedDraftMilestones = Array.isArray(milestoneData.milestones)
-          ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
-              ...m,
-              sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
-            }))
+        const loadedDraftMilestones: Milestone[] = Array.isArray(
+          milestoneData.milestones
+        )
+          ? milestoneData.milestones.map(
+              (m: Milestone | Record<string, unknown>) =>
+                ({
+                  ...(m as Milestone),
+                  sequence: ((m as Milestone).order ??
+                    (m as Record<string, unknown>).order) as number,
+                } as Milestone)
+            )
           : [];
         setMilestonesDraft(loadedDraftMilestones);
-        setOriginalMilestonesDraft(JSON.parse(JSON.stringify(loadedDraftMilestones))); // Deep copy
+        setOriginalMilestonesDraft(
+          JSON.parse(JSON.stringify(loadedDraftMilestones))
+        ); // Deep copy
         setMilestoneApprovalStateModal({
           milestonesLocked: milestoneData.milestonesLocked,
           companyApproved: milestoneData.companyApproved,
@@ -1177,24 +1531,31 @@ export default function ProjectDetailsPage({
     if (!activeProjectId) return;
 
     // Validate milestones
-    const errors: Record<number, { title?: string; description?: string; dueDate?: string }> = {};
+    const errors: Record<
+      number,
+      { title?: string; description?: string; dueDate?: string }
+    > = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let hasErrors = false;
 
     milestonesDraft.forEach((m, idx) => {
-      const milestoneErrors: { title?: string; description?: string; dueDate?: string } = {};
-      
+      const milestoneErrors: {
+        title?: string;
+        description?: string;
+        dueDate?: string;
+      } = {};
+
       if (!m.title || !m.title.trim()) {
         milestoneErrors.title = "Title is required.";
         hasErrors = true;
       }
-      
+
       if (!m.description || !m.description.trim()) {
         milestoneErrors.description = "Description is required.";
         hasErrors = true;
       }
-      
+
       if (!m.dueDate) {
         milestoneErrors.dueDate = "Due date is required.";
         hasErrors = true;
@@ -1202,11 +1563,12 @@ export default function ProjectDetailsPage({
         const dueDate = new Date(m.dueDate);
         dueDate.setHours(0, 0, 0, 0);
         if (dueDate < today) {
-          milestoneErrors.dueDate = "Due date cannot be in the past. Please select today or a future date.";
+          milestoneErrors.dueDate =
+            "Due date cannot be in the past. Please select today or a future date.";
           hasErrors = true;
         }
       }
-      
+
       if (Object.keys(milestoneErrors).length > 0) {
         errors[idx] = milestoneErrors;
       }
@@ -1216,7 +1578,19 @@ export default function ProjectDetailsPage({
     // Get bid amount from the project - we need to find it from the project data
     // For now, we'll get it from the project state if available
     const projectData = project || {};
-    const bidAmount = projectData.approvedPrice || projectData.bidAmount || 0;
+    const approvedPrice =
+      typeof projectData.approvedPrice === "number"
+        ? projectData.approvedPrice
+        : typeof projectData.approvedPrice === "string"
+        ? Number(projectData.approvedPrice)
+        : 0;
+    const bidAmountValue =
+      typeof projectData.bidAmount === "number"
+        ? projectData.bidAmount
+        : typeof projectData.bidAmount === "string"
+        ? Number(projectData.bidAmount)
+        : 0;
+    const bidAmount = approvedPrice || bidAmountValue || 0;
     if (bidAmount > 0) {
       const sumMilestones = milestonesDraft.reduce(
         (sum: number, m: Milestone) => {
@@ -1238,7 +1612,8 @@ export default function ProjectDetailsPage({
       setMilestoneDraftErrors(errors);
       toast({
         title: "Validation Error",
-        description: "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
+        description:
+          "Please fill in all required milestone fields (title, description, due date) and ensure dates are not in the past. Also ensure milestone amounts sum equals the bid amount.",
         variant: "destructive",
       });
       return;
@@ -1269,19 +1644,27 @@ export default function ProjectDetailsPage({
         providerApproved: res.providerApproved,
         milestonesApprovedAt: res.milestonesApprovedAt,
       });
-      
+
       // Refresh milestones from API
       const milestoneData = await getCompanyProjectMilestones(activeProjectId);
-      const refreshedMilestones = Array.isArray(milestoneData.milestones)
-        ? milestoneData.milestones.map((m: Milestone | Record<string, unknown>) => ({
-            ...m,
-            sequence: (m as Milestone).order ?? (m as Record<string, unknown>).order,
-          }))
+      const refreshedMilestones: Milestone[] = Array.isArray(
+        milestoneData.milestones
+      )
+        ? milestoneData.milestones.map(
+            (m: Milestone | Record<string, unknown>) =>
+              ({
+                ...(m as Milestone),
+                sequence: ((m as Milestone).order ??
+                  (m as Record<string, unknown>).order) as number,
+              } as Milestone)
+          )
         : [];
-      
+
       // Update both current and original milestones with fresh data
       setMilestonesDraft(refreshedMilestones);
-      setOriginalMilestonesDraft(JSON.parse(JSON.stringify(refreshedMilestones)));
+      setOriginalMilestonesDraft(
+        JSON.parse(JSON.stringify(refreshedMilestones))
+      );
 
       toast({
         title: "Milestones updated",
@@ -1371,7 +1754,7 @@ export default function ProjectDetailsPage({
       if (serviceRequestId) {
         try {
           const proposalsResponse = await getCompanyProjectRequests({
-            serviceRequestId,
+            serviceRequestId: serviceRequestId as string,
             sort: "newest",
           });
 
@@ -1433,7 +1816,7 @@ export default function ProjectDetailsPage({
     try {
       setCreatingDispute(true);
       await createDispute({
-        projectId: project.id,
+        projectId: project.id as string,
         milestoneId: selectedMilestoneForDispute || undefined,
         reason: disputeReason.trim(),
         description: disputeDescription.trim(),
@@ -1466,7 +1849,10 @@ export default function ProjectDetailsPage({
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create/update dispute",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to create/update dispute",
         variant: "destructive",
       });
     } finally {
@@ -1477,7 +1863,7 @@ export default function ProjectDetailsPage({
   const handleViewDispute = async () => {
     if (!project?.id) return;
     try {
-      const disputeRes = await getDisputeByProject(project.id);
+      const disputeRes = await getDisputeByProject(project.id as string);
       if (disputeRes.success && disputeRes.data) {
         setCurrentDispute(disputeRes.data);
         setViewDisputeDialogOpen(true);
@@ -1485,7 +1871,8 @@ export default function ProjectDetailsPage({
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load dispute",
+        description:
+          error instanceof Error ? error.message : "Failed to load dispute",
         variant: "destructive",
       });
     }
@@ -1507,13 +1894,13 @@ export default function ProjectDetailsPage({
 
     try {
       setUpdatingDispute(true);
-      await updateDispute(currentDispute.id, {
+      await updateDispute(currentDispute.id as string, {
         additionalNotes: disputeAdditionalNotes.trim() || undefined,
         attachments:
           disputeUpdateAttachments.length > 0
             ? disputeUpdateAttachments
             : undefined,
-        projectId: project?.id,
+        projectId: project?.id as string | undefined,
       });
 
       toast({
@@ -1530,7 +1917,8 @@ export default function ProjectDetailsPage({
     } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update dispute",
+        description:
+          error instanceof Error ? error.message : "Failed to update dispute",
         variant: "destructive",
       });
     } finally {
@@ -1583,6 +1971,16 @@ export default function ProjectDetailsPage({
     }
   };
 
+  // Check if any milestone is not locked (to show dispute button)
+  const hasUnlockedMilestone = () => {
+    if (!projectMilestones || projectMilestones.length === 0) {
+      return false; // No milestones means no unlocked milestones
+    }
+    return projectMilestones.some(
+      (milestone: Milestone) => milestone.status !== "LOCKED"
+    );
+  };
+
   return (
     <CustomerLayout>
       <div className="space-y-4 sm:space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
@@ -1591,57 +1989,76 @@ export default function ProjectDetailsPage({
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
-                {project.title}
+                {project.title as string}
               </h1>
-              <Badge className={getStatusColor(project.status)}>
-                {getStatusText(project.status)}
+              <Badge className={getStatusColor(project.status as string)}>
+                {getStatusText(project.status as string)}
               </Badge>
-              {project.priority === "high" && (
-                <Badge variant="destructive" className="text-xs sm:text-sm">High Priority</Badge>
+              {(project.priority as string) === "high" && (
+                <Badge variant="destructive" className="text-xs sm:text-sm">
+                  High Priority
+                </Badge>
               )}
-              {project.isFeatured && (
+              {Boolean(project.isFeatured) && (
                 <Badge className="bg-purple-100 text-purple-800 text-xs sm:text-sm">
                   Featured
                 </Badge>
               )}
             </div>
-            <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4 break-words">{project.description}</p>
+            <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4 break-words">
+              {project.description as string}
+            </p>
             <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500">
               <div className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span>Created: {new Date(project.createdAt).toLocaleDateString()}</span>
+                <span>
+                  Created:{" "}
+                  {new Date(
+                    project.createdAt as string | number | Date
+                  ).toLocaleDateString()}
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                 <span>{bidCount} bids</span>
               </div>
               {/* Date range only shown if startDate and endDate exist */}
-              {project.startDate &&
-                project.endDate &&
-                startDate &&
-                endDate &&
-                !isNaN(startDate.getTime()) &&
-                !isNaN(endDate.getTime()) && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                    <span className="whitespace-nowrap">{startDate.toLocaleDateString()} - {endDate.toLocaleDateString()}</span>
-                  </div>
-                )}
+              {Boolean(project.startDate) &&
+              Boolean(project.endDate) &&
+              startDate &&
+              endDate &&
+              !isNaN(startDate.getTime()) &&
+              !isNaN(endDate.getTime()) ? (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="whitespace-nowrap">
+                    {startDate.toLocaleDateString()} -{" "}
+                    {endDate.toLocaleDateString()}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full lg:w-auto">
-            <Button variant="outline" onClick={() => setIsEditOpen(true)} className="flex-1 sm:flex-initial text-xs sm:text-sm">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditOpen(true)}
+              className="flex-1 sm:flex-initial text-xs sm:text-sm"
+            >
               <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               <span className="hidden sm:inline">Edit Project</span>
               <span className="sm:hidden">Edit</span>
             </Button>
 
-            <Button variant="outline" className="flex-1 sm:flex-initial text-xs sm:text-sm">
+            <Button
+              variant="outline"
+              className="flex-1 sm:flex-initial text-xs sm:text-sm"
+            >
               <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               <span className="hidden sm:inline">Message Provider</span>
               <span className="sm:hidden">Message</span>
             </Button>
-            {currentDispute ? (
+            {Boolean(currentDispute) ? (
               <Button
                 variant="outline"
                 className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-300 flex-1 sm:flex-initial text-xs sm:text-sm"
@@ -1651,22 +2068,22 @@ export default function ProjectDetailsPage({
                 <span className="hidden sm:inline">View Dispute</span>
                 <span className="sm:hidden">Dispute</span>
               </Button>
-            ) : (
-              project?.status !== "COMPLETED" && (
-                <Button
-                  className="bg-red-600 hover:bg-red-700 text-white flex-1 sm:flex-initial text-xs sm:text-sm"
-                  onClick={() => setDisputeDialogOpen(true)}
-                  disabled={
-                    project?.status === "DISPUTED" &&
-                    currentDispute?.status === "CLOSED"
-                  }
-                >
-                  <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                  <span className="hidden sm:inline">Report Dispute</span>
-                  <span className="sm:hidden">Dispute</span>
-                </Button>
-              )
-            )}
+            ) : (project?.status as string) !== "COMPLETED" &&
+              hasUnlockedMilestone() ? (
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white flex-1 sm:flex-initial text-xs sm:text-sm"
+                onClick={() => setDisputeDialogOpen(true)}
+                disabled={
+                  (project?.status as string) === "DISPUTED" &&
+                  (currentDispute as { status?: string } | null)?.status ===
+                    "CLOSED"
+                }
+              >
+                <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                <span className="hidden sm:inline">Report Dispute</span>
+                <span className="sm:hidden">Dispute</span>
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -1676,9 +2093,11 @@ export default function ProjectDetailsPage({
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-500">Approved Price</p>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    Approved Price
+                  </p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1 break-words">
-                    {currency} {fmt(project.approvedPrice || 0)}
+                    {currency} {fmt(approvedPriceValue || 0)}
                   </p>
                 </div>
                 <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-green-600 flex-shrink-0 ml-2" />
@@ -1689,9 +2108,11 @@ export default function ProjectDetailsPage({
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-500">Total Spent</p>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    Total Spent
+                  </p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1 break-words">
-                    {currency} {fmt(project.totalSpent || 0)}
+                    {currency} {fmt(totalSpentValue || 0)}
                   </p>
                 </div>
                 <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-600 flex-shrink-0 ml-2" />
@@ -1703,7 +2124,9 @@ export default function ProjectDetailsPage({
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs sm:text-sm text-gray-500">Progress</p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1">{project.progress || 0}%</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1">
+                    {progressValue || 0}%
+                  </p>
                 </div>
                 <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 flex items-center justify-center flex-shrink-0 ml-2">
                   <div
@@ -1714,25 +2137,19 @@ export default function ProjectDetailsPage({
               </div>
             </CardContent>
           </Card>
-          {project.daysLeft !== null && project.daysLeft !== undefined ? (
+          {daysLeftValue == null ? (
             <Card>
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs sm:text-sm text-gray-500">
-                      {project.daysLeft < 0 ? "Late" : "Days Left"}
+                      Days Left
                     </p>
-                    <p className={`text-lg sm:text-xl lg:text-2xl font-bold mt-1 ${
-                      project.daysLeft < 0 ? "text-red-600" : ""
-                    }`}>
-                      {project.daysLeft < 0 
-                        ? `Late ${Math.abs(project.daysLeft)} day${Math.abs(project.daysLeft) !== 1 ? 's' : ''}`
-                        : project.daysLeft}
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1">
+                      —
                     </p>
                   </div>
-                  <Calendar className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 flex-shrink-0 ml-2 ${
-                    project.daysLeft < 0 ? "text-red-600" : "text-orange-600"
-                  }`} />
+                  <Calendar className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-gray-400 flex-shrink-0 ml-2" />
                 </div>
               </CardContent>
             </Card>
@@ -1741,10 +2158,26 @@ export default function ProjectDetailsPage({
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-500">Days Left</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold mt-1">—</p>
+                    <p className="text-xs sm:text-sm text-gray-500">
+                      {daysLeftValue < 0 ? "Late" : "Days Left"}
+                    </p>
+                    <p
+                      className={`text-lg sm:text-xl lg:text-2xl font-bold mt-1 ${
+                        daysLeftValue < 0 ? "text-red-600" : ""
+                      }`}
+                    >
+                      {daysLeftValue < 0
+                        ? `Late ${Math.abs(daysLeftValue)} day${
+                            Math.abs(daysLeftValue) !== 1 ? "s" : ""
+                          }`
+                        : daysLeftValue}
+                    </p>
                   </div>
-                  <Calendar className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-gray-400 flex-shrink-0 ml-2" />
+                  <Calendar
+                    className={`w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 flex-shrink-0 ml-2 ${
+                      daysLeftValue < 0 ? "text-red-600" : "text-orange-600"
+                    }`}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1752,16 +2185,32 @@ export default function ProjectDetailsPage({
         </div>
 
         {/* Progress Bar */}
-        {project.status === "in_progress" && (
+        {(project.status as string) === "in_progress" && (
           <Card>
             <CardContent className="p-4 sm:p-5 lg:p-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-                <h3 className="font-semibold text-sm sm:text-base">Overall Progress</h3>
+                <h3 className="font-semibold text-sm sm:text-base">
+                  Overall Progress
+                </h3>
                 <span className="text-xs sm:text-sm text-gray-500">
-                  {project.progress}% Complete
+                  {typeof project.progress === "number"
+                    ? project.progress
+                    : typeof project.progress === "string"
+                    ? Number(project.progress) || 0
+                    : 0}
+                  % Complete
                 </span>
               </div>
-              <Progress value={project.progress} className="h-2 sm:h-3" />
+              <Progress
+                value={
+                  typeof project.progress === "number"
+                    ? project.progress
+                    : typeof project.progress === "string"
+                    ? Number(project.progress) || 0
+                    : 0
+                }
+                className="h-2 sm:h-3"
+              />
             </CardContent>
           </Card>
         )}
@@ -1770,7 +2219,9 @@ export default function ProjectDetailsPage({
         {project.assignedProvider && (
           <Card>
             <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="text-lg sm:text-xl">Assigned Provider</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">
+                Assigned Provider
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1778,36 +2229,49 @@ export default function ProjectDetailsPage({
                   <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                     <AvatarImage
                       src={getProfileImageUrl(
-                        project.assignedProvider?.providerProfile?.profileImageUrl || 
-                        project.assignedProvider?.avatar
+                        project.assignedProvider?.providerProfile
+                          ?.profileImageUrl || project.assignedProvider?.avatar
                       )}
                     />
                     <AvatarFallback>
-                      {project.assignedProvider.name.charAt(0)}
+                      {project.assignedProvider.name?.charAt(0) || "?"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-sm sm:text-base truncate">
-                      {project.assignedProvider.name}
+                      {project.assignedProvider.name || "Unknown Provider"}
                     </h3>
                     <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500">
                       <div className="flex items-center gap-1">
                         <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
-                        <span>{project.assignedProvider.rating}</span>
+                        <span>
+                          {project.assignedProvider.providerProfile?.rating ||
+                            0}
+                        </span>
                       </div>
                       <span className="hidden sm:inline">•</span>
                       <span className="truncate">
-                        {project.assignedProvider.completedJobs} jobs completed
+                        {project.assignedProvider.providerProfile
+                          ?.completedJobs || 0}{" "}
+                        jobs completed
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto text-xs sm:text-sm"
+                  >
                     <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                     Message
                   </Button>
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto text-xs sm:text-sm"
+                  >
                     View Profile
                   </Button>
                 </div>
@@ -1823,11 +2287,36 @@ export default function ProjectDetailsPage({
           className="space-y-4 sm:space-y-6"
         >
           <TabsList className="grid w-full grid-cols-5 h-auto">
-            <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-4">Overview</TabsTrigger>
-            <TabsTrigger value="milestones" className="text-xs sm:text-sm px-2 sm:px-4">Milestones</TabsTrigger>
-            <TabsTrigger value="bids" className="text-xs sm:text-sm px-2 sm:px-4">Bids</TabsTrigger>
-            <TabsTrigger value="files" className="text-xs sm:text-sm px-2 sm:px-4">Files</TabsTrigger>
-            <TabsTrigger value="messages" className="text-xs sm:text-sm px-2 sm:px-4">Messages</TabsTrigger>
+            <TabsTrigger
+              value="overview"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="milestones"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              Milestones
+            </TabsTrigger>
+            <TabsTrigger
+              value="bids"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              Bids
+            </TabsTrigger>
+            <TabsTrigger
+              value="files"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              Files
+            </TabsTrigger>
+            <TabsTrigger
+              value="messages"
+              className="text-xs sm:text-sm px-2 sm:px-4"
+            >
+              Messages
+            </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -1835,17 +2324,25 @@ export default function ProjectDetailsPage({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <Card>
                 <CardHeader className="p-4 sm:p-6">
-                  <CardTitle className="text-base sm:text-lg">Project Details</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">
+                    Project Details
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6 pt-0">
                   <div>
-                    <h4 className="font-medium mb-2 text-sm sm:text-base">Category</h4>
-                    <Badge variant="secondary" className="text-xs sm:text-sm">{project.category}</Badge>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">
+                      Category
+                    </h4>
+                    <Badge variant="secondary" className="text-xs sm:text-sm">
+                      {project.category}
+                    </Badge>
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2 text-sm sm:text-base">Timeline</h4>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">
+                      Timeline
+                    </h4>
                     <div className="space-y-2">
-                      {project.originalTimeline && (
+                      {project.originalTimeline ? (
                         <div>
                           <p className="text-xs text-gray-500 mb-1">
                             Original Timeline (Company):
@@ -1854,8 +2351,8 @@ export default function ProjectDetailsPage({
                             {formatTimeline(project.originalTimeline)}
                           </p>
                         </div>
-                      )}
-                      {project.providerProposedTimeline && (
+                      ) : null}
+                      {project.providerProposedTimeline ? (
                         <div>
                           <p className="text-xs text-gray-500 mb-1">
                             Provider&apos;s Proposed Timeline:
@@ -1867,18 +2364,26 @@ export default function ProjectDetailsPage({
                             )}
                           </p>
                         </div>
-                      )}
+                      ) : null}
                       {!project.originalTimeline &&
                         !project.providerProposedTimeline && (
-                          <p className="text-xs sm:text-sm text-gray-600">Not specified</p>
+                          <p className="text-xs sm:text-sm text-gray-600">
+                            Not specified
+                          </p>
                         )}
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2 text-sm sm:text-base">Required Skills</h4>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">
+                      Required Skills
+                    </h4>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {skills.map((skill) => (
-                        <Badge key={skill} variant="outline" className="text-xs">
+                        <Badge
+                          key={skill}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           {skill}
                         </Badge>
                       ))}
@@ -1889,7 +2394,9 @@ export default function ProjectDetailsPage({
 
               <Card>
                 <CardHeader className="p-4 sm:p-6">
-                  <CardTitle className="text-base sm:text-lg">Requirements</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">
+                    Requirements
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 pt-0">
                   <MarkdownViewer
@@ -1903,7 +2410,9 @@ export default function ProjectDetailsPage({
 
             <Card>
               <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-base sm:text-lg">Deliverables</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Deliverables
+                </CardTitle>
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0">
                 <MarkdownViewer
@@ -1919,7 +2428,9 @@ export default function ProjectDetailsPage({
           <TabsContent value="milestones" className="space-y-4 sm:space-y-6">
             <Card>
               <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-base sm:text-lg">Project Milestones</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Project Milestones
+                </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   Track progress through key project milestones
                 </CardDescription>
@@ -1938,7 +2449,9 @@ export default function ProjectDetailsPage({
                           variant="outline"
                           onClick={() => {
                             // Store original milestones when opening editor
-                            setOriginalProjectMilestones(JSON.parse(JSON.stringify(projectMilestones)));
+                            setOriginalProjectMilestones(
+                              JSON.parse(JSON.stringify(projectMilestones))
+                            );
                             setMilestoneEditorOpen(true);
                           }}
                           size="sm"
@@ -1946,7 +2459,11 @@ export default function ProjectDetailsPage({
                         >
                           Edit Milestones
                         </Button>
-                        <Button onClick={handleApproveProjectMilestones} size="sm" className="text-xs sm:text-sm">
+                        <Button
+                          onClick={handleApproveProjectMilestones}
+                          size="sm"
+                          className="text-xs sm:text-sm"
+                        >
                           Approve
                         </Button>
                       </>
@@ -1961,7 +2478,7 @@ export default function ProjectDetailsPage({
                       <div key={milestone.id} className="flex gap-2 sm:gap-4">
                         <div className="flex flex-col items-center flex-shrink-0">
                           <div className="w-5 h-5 sm:w-6 sm:h-6">
-                          {getMilestoneStatusIcon(milestone.status)}
+                            {getMilestoneStatusIcon(milestone.status || "")}
                           </div>
                           {index < projectMilestones.length - 1 && (
                             <div className="w-px h-12 sm:h-16 bg-gray-200 mt-1 sm:mt-2" />
@@ -1976,12 +2493,14 @@ export default function ProjectDetailsPage({
                               </h3>
                               <div className="flex items-center gap-2 flex-wrap">
                                 <Badge
-                                  className={`${getStatusColor(milestone.status)} text-xs`}
+                                  className={`${getStatusColor(
+                                    milestone.status || ""
+                                  )} text-xs`}
                                 >
-                                  {getStatusText(milestone.status)}
+                                  {getStatusText(milestone.status || "")}
                                 </Badge>
                                 <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
-                                  {fmt(milestone.amount)} {project.currency}
+                                  {fmt(milestone.amount)} {currency}
                                 </span>
                               </div>
                             </div>
@@ -1997,12 +2516,22 @@ export default function ProjectDetailsPage({
                           <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                              <span>Due: {new Date(milestone.dueDate).toLocaleDateString()}</span>
+                              <span>
+                                Due:{" "}
+                                {new Date(
+                                  milestone.dueDate
+                                ).toLocaleDateString()}
+                              </span>
                             </div>
                             {milestone.completedAt && (
                               <div className="flex items-center gap-1">
                                 <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                                <span>Completed: {new Date(milestone.completedAt).toLocaleDateString()}</span>
+                                <span>
+                                  Completed:{" "}
+                                  {new Date(
+                                    milestone.completedAt
+                                  ).toLocaleDateString()}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -2021,7 +2550,7 @@ export default function ProjectDetailsPage({
                             )}
 
                           {/* Show start deliverables if available (persists even after status changes) */}
-                          {milestone.startDeliverables && (
+                          {milestone.startDeliverables ? (
                             <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                               <p className="text-sm font-medium text-green-900 mb-1">
                                 📋 Plan / Deliverables (When Starting Work):
@@ -2029,15 +2558,25 @@ export default function ProjectDetailsPage({
                               <p className="text-sm text-green-800 whitespace-pre-wrap">
                                 {typeof milestone.startDeliverables ===
                                   "object" &&
-                                milestone.startDeliverables.description
-                                  ? milestone.startDeliverables.description
+                                milestone.startDeliverables !== null &&
+                                "description" in milestone.startDeliverables &&
+                                typeof (
+                                  milestone.startDeliverables as {
+                                    description?: unknown;
+                                  }
+                                ).description === "string"
+                                  ? (
+                                      milestone.startDeliverables as {
+                                        description: string;
+                                      }
+                                    ).description
                                   : JSON.stringify(milestone.startDeliverables)}
                               </p>
                             </div>
-                          )}
+                          ) : null}
 
                           {/* Show submit deliverables if available (persists even after status changes) */}
-                          {milestone.submitDeliverables && (
+                          {milestone.submitDeliverables ? (
                             <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                               <p className="text-sm font-medium text-purple-900 mb-1">
                                 ✅ Deliverables / Completion Notes (When
@@ -2046,14 +2585,24 @@ export default function ProjectDetailsPage({
                               <p className="text-sm text-purple-800 whitespace-pre-wrap">
                                 {typeof milestone.submitDeliverables ===
                                   "object" &&
-                                milestone.submitDeliverables.description
-                                  ? milestone.submitDeliverables.description
+                                milestone.submitDeliverables !== null &&
+                                "description" in milestone.submitDeliverables &&
+                                typeof (
+                                  milestone.submitDeliverables as {
+                                    description?: unknown;
+                                  }
+                                ).description === "string"
+                                  ? (
+                                      milestone.submitDeliverables as {
+                                        description: string;
+                                      }
+                                    ).description
                                   : JSON.stringify(
                                       milestone.submitDeliverables
                                     )}
                               </p>
                             </div>
-                          )}
+                          ) : null}
 
                           {/* Show submission note if available (persists even after status changes) */}
                           {milestone.submissionNote && (
@@ -2072,30 +2621,39 @@ export default function ProjectDetailsPage({
                             Array.isArray(milestone.submissionHistory) &&
                             milestone.submissionHistory.length > 0 &&
                             (() => {
-                              const latestRequest =
-                                milestone.submissionHistory[
-                                  milestone.submissionHistory.length - 1
-                                ];
-                              if (latestRequest?.requestedChangesReason) {
+                              const latestRequest = milestone.submissionHistory[
+                                milestone.submissionHistory.length - 1
+                              ] as Record<string, unknown> | undefined;
+                              if (
+                                latestRequest &&
+                                typeof latestRequest === "object" &&
+                                "requestedChangesReason" in latestRequest &&
+                                typeof latestRequest.requestedChangesReason ===
+                                  "string"
+                              ) {
                                 return (
                                   <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                                     <p className="text-sm font-medium text-orange-900 mb-1">
                                       🔄 Latest Request for Changes (Revision #
-                                      {latestRequest.revisionNumber ||
-                                        milestone.submissionHistory.length}
+                                      {typeof latestRequest.revisionNumber ===
+                                      "number"
+                                        ? latestRequest.revisionNumber
+                                        : milestone.submissionHistory.length}
                                       ):
                                     </p>
                                     <p className="text-sm text-orange-800 whitespace-pre-wrap">
                                       {latestRequest.requestedChangesReason}
                                     </p>
-                                    {latestRequest.requestedChangesAt && (
+                                    {latestRequest.requestedChangesAt &&
+                                    typeof latestRequest.requestedChangesAt ===
+                                      "string" ? (
                                       <p className="text-xs text-orange-600 mt-2">
                                         Requested on:{" "}
                                         {new Date(
                                           latestRequest.requestedChangesAt
                                         ).toLocaleString()}
                                       </p>
-                                    )}
+                                    ) : null}
                                   </div>
                                 );
                               }
@@ -2186,127 +2744,152 @@ export default function ProjectDetailsPage({
                                   📚 Previous Submission History:
                                 </p>
                                 <div className="space-y-3">
-                                  {milestone.submissionHistory.map(
-                                    (history: Record<string, unknown>, idx: number) => {
-                                      // Calculate revision number: first submission is revision 1, then 2, 3, etc.
-                                      // The revision number in history is the one BEFORE it was rejected
-                                      const revisionNumber =
-                                        history.revisionNumber !== undefined &&
-                                        history.revisionNumber !== null
-                                          ? (history.revisionNumber as number)
-                                          : idx + 1;
+                                  {(
+                                    milestone.submissionHistory as unknown[]
+                                  ).map((history: unknown, idx: number) => {
+                                    const historyRecord = history as Record<
+                                      string,
+                                      unknown
+                                    >;
+                                    // Calculate revision number: first submission is revision 1, then 2, 3, etc.
+                                    // The revision number in history is the one BEFORE it was rejected
+                                    const revisionNumber =
+                                      typeof historyRecord.revisionNumber ===
+                                      "number"
+                                        ? historyRecord.revisionNumber
+                                        : idx + 1;
 
-                                      return (
-                                        <div
-                                          key={idx}
-                                          className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
-                                        >
-                                          <div className="flex items-center justify-between mb-2">
-                                            <p className="text-sm font-medium text-gray-900">
-                                              Revision #{revisionNumber}
-                                            </p>
-                                            {history.requestedChangesAt && (
-                                              <span className="text-xs text-gray-500">
-                                                Changes requested:{" "}
-                                                {new Date(
-                                                  history.requestedChangesAt
-                                                ).toLocaleDateString()}
-                                              </span>
-                                            )}
-                                          </div>
-
-                                          {history.requestedChangesReason && (
-                                            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
-                                              <p className="text-xs font-medium text-red-900 mb-1">
-                                                Reason for Changes:
-                                              </p>
-                                              <p className="text-xs text-red-800">
-                                                {history.requestedChangesReason}
-                                              </p>
-                                            </div>
-                                          )}
-
-                                          {history.submitDeliverables && (
-                                            <div className="mb-2">
-                                              <p className="text-xs font-medium text-gray-700 mb-1">
-                                                Deliverables:
-                                              </p>
-                                              <p className="text-xs text-gray-600 whitespace-pre-wrap">
-                                                {typeof history.submitDeliverables ===
-                                                  "object" &&
-                                                history.submitDeliverables
-                                                  .description
-                                                  ? history.submitDeliverables
-                                                      .description
-                                                  : JSON.stringify(
-                                                      history.submitDeliverables
-                                                    )}
-                                              </p>
-                                            </div>
-                                          )}
-
-                                          {history.submissionNote && (
-                                            <div className="mb-2">
-                                              <p className="text-xs font-medium text-gray-700 mb-1">
-                                                Note:
-                                              </p>
-                                              <p className="text-xs text-gray-600 whitespace-pre-wrap">
-                                                {history.submissionNote}
-                                              </p>
-                                            </div>
-                                          )}
-
-                                          {history.submissionAttachmentUrl && (
-                                            <div>
-                                              <p className="text-xs font-medium text-gray-700 mb-1">
-                                                Attachment:
-                                              </p>
-                                              <a
-                                                href={`${
-                                                  process.env
-                                                    .NEXT_PUBLIC_API_URL ||
-                                                  "http://localhost:4000"
-                                                }/${history.submissionAttachmentUrl
-                                                  .replace(/\\/g, "/")
-                                                  .replace(/^\//, "")}`}
-                                                download
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                              >
-                                                {(() => {
-                                                  const normalized =
-                                                    history.submissionAttachmentUrl.replace(
-                                                      /\\/g,
-                                                      "/"
-                                                    );
-                                                  return (
-                                                    normalized
-                                                      .split("/")
-                                                      .pop() || "attachment"
-                                                  );
-                                                })()}
-                                              </a>
-                                            </div>
-                                          )}
-
-                                          {history.submittedAt &&
-                                            !isNaN(
-                                              new Date(
-                                                history.submittedAt
-                                              ).getTime()
-                                            ) && (
-                                              <p className="text-xs text-gray-500 mt-2">
-                                                Submitted:{" "}
-                                                {new Date(
-                                                  history.submittedAt
-                                                ).toLocaleString()}
-                                              </p>
-                                            )}
+                                    return (
+                                      <div
+                                        key={idx}
+                                        className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                                      >
+                                        <div className="flex items-center justify-between mb-2">
+                                          <p className="text-sm font-medium text-gray-900">
+                                            Revision #{revisionNumber}
+                                          </p>
+                                          {historyRecord.requestedChangesAt &&
+                                          typeof historyRecord.requestedChangesAt ===
+                                            "string" ? (
+                                            <span className="text-xs text-gray-500">
+                                              Changes requested:{" "}
+                                              {new Date(
+                                                historyRecord.requestedChangesAt
+                                              ).toLocaleDateString()}
+                                            </span>
+                                          ) : null}
                                         </div>
-                                      );
-                                    }
-                                  )}
+
+                                        {historyRecord.requestedChangesReason &&
+                                        typeof historyRecord.requestedChangesReason ===
+                                          "string" ? (
+                                          <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
+                                            <p className="text-xs font-medium text-red-900 mb-1">
+                                              Reason for Changes:
+                                            </p>
+                                            <p className="text-xs text-red-800">
+                                              {
+                                                historyRecord.requestedChangesReason
+                                              }
+                                            </p>
+                                          </div>
+                                        ) : null}
+
+                                        {historyRecord.submitDeliverables ? (
+                                          <div className="mb-2">
+                                            <p className="text-xs font-medium text-gray-700 mb-1">
+                                              Deliverables:
+                                            </p>
+                                            <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                              {typeof historyRecord.submitDeliverables ===
+                                                "object" &&
+                                              historyRecord.submitDeliverables !==
+                                                null &&
+                                              "description" in
+                                                historyRecord.submitDeliverables &&
+                                              typeof (
+                                                historyRecord.submitDeliverables as {
+                                                  description?: unknown;
+                                                }
+                                              ).description === "string"
+                                                ? (
+                                                    historyRecord.submitDeliverables as {
+                                                      description: string;
+                                                    }
+                                                  ).description
+                                                : JSON.stringify(
+                                                    historyRecord.submitDeliverables
+                                                  )}
+                                            </p>
+                                          </div>
+                                        ) : null}
+
+                                        {historyRecord.submissionNote &&
+                                        typeof historyRecord.submissionNote ===
+                                          "string" ? (
+                                          <div className="mb-2">
+                                            <p className="text-xs font-medium text-gray-700 mb-1">
+                                              Note:
+                                            </p>
+                                            <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                              {historyRecord.submissionNote}
+                                            </p>
+                                          </div>
+                                        ) : null}
+
+                                        {historyRecord.submissionAttachmentUrl &&
+                                        typeof historyRecord.submissionAttachmentUrl ===
+                                          "string" ? (
+                                          <div>
+                                            <p className="text-xs font-medium text-gray-700 mb-1">
+                                              Attachment:
+                                            </p>
+                                            <a
+                                              href={`${
+                                                process.env
+                                                  .NEXT_PUBLIC_API_URL ||
+                                                "http://localhost:4000"
+                                              }/${historyRecord.submissionAttachmentUrl
+                                                .replace(/\\/g, "/")
+                                                .replace(/^\//, "")}`}
+                                              download
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                            >
+                                              {(() => {
+                                                const normalized =
+                                                  historyRecord.submissionAttachmentUrl.replace(
+                                                    /\\/g,
+                                                    "/"
+                                                  );
+                                                return (
+                                                  normalized.split("/").pop() ||
+                                                  "attachment"
+                                                );
+                                              })()}
+                                            </a>
+                                          </div>
+                                        ) : null}
+
+                                        {historyRecord.submittedAt &&
+                                        typeof historyRecord.submittedAt ===
+                                          "string" &&
+                                        !isNaN(
+                                          new Date(
+                                            historyRecord.submittedAt
+                                          ).getTime()
+                                        ) ? (
+                                          <p className="text-xs text-gray-500 mt-2">
+                                            Submitted:{" "}
+                                            {new Date(
+                                              historyRecord.submittedAt
+                                            ).toLocaleString()}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -2398,10 +2981,8 @@ export default function ProjectDetailsPage({
                                         : false
                                     }
                                     onClick={() =>
-                                      handlePayMilestone(
-                                        milestone.id,
-                                        milestone.amount
-                                      )
+                                      milestone.id &&
+                                      handlePayMilestone(milestone.id)
                                     }
                                     className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm w-full sm:w-auto"
                                   >
@@ -2412,12 +2993,14 @@ export default function ProjectDetailsPage({
                               </>
                             )}
                           {/* Action buttons only shown for SUBMITTED status */}
-                          {milestone.status === "SUBMITTED" && (
+                          {milestone.status === "SUBMITTED" && milestone.id ? (
                             <div className="mt-3 flex flex-col sm:flex-row gap-2">
                               <Button
                                 size="sm"
                                 onClick={() =>
-                                  handleApproveIndividualMilestone(milestone.id)
+                                  handleApproveIndividualMilestone(
+                                    milestone.id!
+                                  )
                                 }
                                 className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm w-full sm:w-auto"
                               >
@@ -2428,7 +3011,7 @@ export default function ProjectDetailsPage({
                                 size="sm"
                                 variant="outline"
                                 onClick={() =>
-                                  handleRequestChangesClick(milestone.id)
+                                  handleRequestChangesClick(milestone.id!)
                                 }
                                 className="text-xs sm:text-sm w-full sm:w-auto"
                               >
@@ -2436,7 +3019,7 @@ export default function ProjectDetailsPage({
                                 Request Changes
                               </Button>
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     ))
@@ -2522,7 +3105,9 @@ export default function ProjectDetailsPage({
                                   {p.providerResponseTime && (
                                     <div className="flex items-center gap-1">
                                       <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                                      <span>Responds in {p.providerResponseTime}</span>
+                                      <span>
+                                        Responds in {p.providerResponseTime}
+                                      </span>
                                     </div>
                                   )}
                                 </div>
@@ -2686,7 +3271,9 @@ export default function ProjectDetailsPage({
                                       responseTime: p.providerResponseTime,
                                     },
                                     projectTitle:
-                                      p.projectTitle || project.title,
+                                      p.projectTitle ||
+                                      (project.title as string) ||
+                                      "",
                                     bidAmount: p.bidAmount,
                                     proposedTimeline: p.proposedTimeline,
                                     deliveryTime:
@@ -2718,7 +3305,12 @@ export default function ProjectDetailsPage({
                                     attachments: p.attachments || [],
                                     skills: p.skills || [],
                                     portfolio: p.portfolio || [],
-                                    experience: (p as ProviderRequest & { experience?: string }).experience || "",
+                                    experience:
+                                      (
+                                        p as ProviderRequest & {
+                                          experience?: string;
+                                        }
+                                      ).experience || "",
                                   });
                                   setProposalDetailsOpen(true);
                                 }}
@@ -2774,7 +3366,9 @@ export default function ProjectDetailsPage({
             {/* Proposal Attachments Section */}
             <Card>
               <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-base sm:text-lg">Proposal Attachments</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Proposal Attachments
+                </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   Files attached to accepted proposals
                 </CardDescription>
@@ -2821,29 +3415,49 @@ export default function ProjectDetailsPage({
                         const fileName =
                           normalized.split("/").pop() || `file-${idx + 1}`;
                         const attachmentUrl = getAttachmentUrl(attachment.url);
-                        const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                        const isR2Key =
+                          attachmentUrl === "#" ||
+                          (!attachmentUrl.startsWith("http") &&
+                            !attachmentUrl.startsWith("/uploads/") &&
+                            !attachmentUrl.includes(
+                              process.env.NEXT_PUBLIC_API_URL || "localhost"
+                            ));
 
                         return (
                           <a
                             key={idx}
-                            href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                            href={
+                              attachmentUrl === "#" ? undefined : attachmentUrl
+                            }
                             download={fileName}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={isR2Key ? async (e) => {
-                              e.preventDefault();
-                              try {
-                                const downloadUrl = await getR2DownloadUrl(attachment.url); // Use original URL/key
-                                window.open(downloadUrl.downloadUrl, "_blank");
-                              } catch (error) {
-                                console.error("Failed to get download URL:", error);
-                                toastHook({
-                                  title: "Error",
-                                  description: "Failed to download attachment",
-                                  variant: "destructive",
-                                });
-                              }
-                            } : undefined}
+                            onClick={
+                              isR2Key
+                                ? async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                      const downloadUrl =
+                                        await getR2DownloadUrl(attachment.url); // Use original URL/key
+                                      window.open(
+                                        downloadUrl.downloadUrl,
+                                        "_blank"
+                                      );
+                                    } catch (error) {
+                                      console.error(
+                                        "Failed to get download URL:",
+                                        error
+                                      );
+                                      toastHook({
+                                        title: "Error",
+                                        description:
+                                          "Failed to download attachment",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }
+                                : undefined
+                            }
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -2890,7 +3504,7 @@ export default function ProjectDetailsPage({
 
                   projectMilestones.forEach((milestone) => {
                     // Current submission attachment
-                    if (milestone.submissionAttachmentUrl) {
+                    if (milestone.submissionAttachmentUrl && milestone.id) {
                       milestoneAttachments.push({
                         url: milestone.submissionAttachmentUrl,
                         milestoneTitle: milestone.title,
@@ -2902,20 +3516,37 @@ export default function ProjectDetailsPage({
                     // History submission attachments
                     if (
                       milestone.submissionHistory &&
-                      Array.isArray(milestone.submissionHistory)
+                      Array.isArray(milestone.submissionHistory) &&
+                      milestone.id
                     ) {
-                      milestone.submissionHistory.forEach((history: Record<string, unknown>) => {
-                        if (history.submissionAttachmentUrl) {
-                          milestoneAttachments.push({
-                            url: history.submissionAttachmentUrl as string,
-                            milestoneTitle: `${milestone.title} (Revision ${
-                              (history.revisionNumber as number | undefined) || "N/A"
-                            })`,
-                            milestoneId: milestone.id,
-                            submittedAt: history.submittedAt as string | undefined,
-                          });
+                      (milestone.submissionHistory as unknown[]).forEach(
+                        (history: unknown) => {
+                          const historyRecord = history as Record<
+                            string,
+                            unknown
+                          >;
+                          if (
+                            historyRecord.submissionAttachmentUrl &&
+                            typeof historyRecord.submissionAttachmentUrl ===
+                              "string" &&
+                            milestone.id
+                          ) {
+                            milestoneAttachments.push({
+                              url: historyRecord.submissionAttachmentUrl,
+                              milestoneTitle: `${milestone.title} (Revision ${
+                                typeof historyRecord.revisionNumber === "number"
+                                  ? historyRecord.revisionNumber
+                                  : "N/A"
+                              })`,
+                              milestoneId: milestone.id,
+                              submittedAt:
+                                typeof historyRecord.submittedAt === "string"
+                                  ? historyRecord.submittedAt
+                                  : undefined,
+                            });
+                          }
                         }
-                      });
+                      );
                     }
                   });
 
@@ -2934,29 +3565,49 @@ export default function ProjectDetailsPage({
                         const fileName =
                           normalized.split("/").pop() || `file-${idx + 1}`;
                         const attachmentUrl = getAttachmentUrl(attachment.url);
-                        const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                        const isR2Key =
+                          attachmentUrl === "#" ||
+                          (!attachmentUrl.startsWith("http") &&
+                            !attachmentUrl.startsWith("/uploads/") &&
+                            !attachmentUrl.includes(
+                              process.env.NEXT_PUBLIC_API_URL || "localhost"
+                            ));
 
                         return (
                           <a
                             key={idx}
-                            href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                            href={
+                              attachmentUrl === "#" ? undefined : attachmentUrl
+                            }
                             download={fileName}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={isR2Key ? async (e) => {
-                              e.preventDefault();
-                              try {
-                                const downloadUrl = await getR2DownloadUrl(attachment.url); // Use original URL/key
-                                window.open(downloadUrl.downloadUrl, "_blank");
-                              } catch (error) {
-                                console.error("Failed to get download URL:", error);
-                                toastHook({
-                                  title: "Error",
-                                  description: "Failed to download attachment",
-                                  variant: "destructive",
-                                });
-                              }
-                            } : undefined}
+                            onClick={
+                              isR2Key
+                                ? async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                      const downloadUrl =
+                                        await getR2DownloadUrl(attachment.url); // Use original URL/key
+                                      window.open(
+                                        downloadUrl.downloadUrl,
+                                        "_blank"
+                                      );
+                                    } catch (error) {
+                                      console.error(
+                                        "Failed to get download URL:",
+                                        error
+                                      );
+                                      toastHook({
+                                        title: "Error",
+                                        description:
+                                          "Failed to download attachment",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }
+                                : undefined
+                            }
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -3008,11 +3659,14 @@ export default function ProjectDetailsPage({
                         ? message.attachments.map((url: string) => ({
                             url,
                             senderName:
-                              (message.sender as Record<string, unknown>)?.name as string ||
+                              ((message.sender as Record<string, unknown>)
+                                ?.name as string) ||
                               (message.senderName as string) ||
                               "User",
                             messageId: message.id as string,
-                            timestamp: (message.createdAt as string) || (message.timestamp as string),
+                            timestamp:
+                              (message.createdAt as string) ||
+                              (message.timestamp as string),
                           }))
                         : []
                   );
@@ -3032,29 +3686,49 @@ export default function ProjectDetailsPage({
 
                         // Use getAttachmentUrl helper for consistent URL handling
                         const attachmentUrl = getAttachmentUrl(attachment.url);
-                        const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                        const isR2Key =
+                          attachmentUrl === "#" ||
+                          (!attachmentUrl.startsWith("http") &&
+                            !attachmentUrl.startsWith("/uploads/") &&
+                            !attachmentUrl.includes(
+                              process.env.NEXT_PUBLIC_API_URL || "localhost"
+                            ));
 
                         return (
                           <a
                             key={idx}
-                            href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                            href={
+                              attachmentUrl === "#" ? undefined : attachmentUrl
+                            }
                             download={fileName}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={isR2Key ? async (e) => {
-                              e.preventDefault();
-                              try {
-                                const downloadUrl = await getR2DownloadUrl(attachment.url); // Use original URL/key
-                                window.open(downloadUrl.downloadUrl, "_blank");
-                              } catch (error) {
-                                console.error("Failed to get download URL:", error);
-                                toastHook({
-                                  title: "Error",
-                                  description: "Failed to download attachment",
-                                  variant: "destructive",
-                                });
-                              }
-                            } : undefined}
+                            onClick={
+                              isR2Key
+                                ? async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                      const downloadUrl =
+                                        await getR2DownloadUrl(attachment.url); // Use original URL/key
+                                      window.open(
+                                        downloadUrl.downloadUrl,
+                                        "_blank"
+                                      );
+                                    } catch (error) {
+                                      console.error(
+                                        "Failed to get download URL:",
+                                        error
+                                      );
+                                      toastHook({
+                                        title: "Error",
+                                        description:
+                                          "Failed to download attachment",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }
+                                : undefined
+                            }
                             className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                           >
                             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-md border border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
@@ -3083,7 +3757,9 @@ export default function ProjectDetailsPage({
           <TabsContent value="messages" className="space-y-4 sm:space-y-6">
             <Card>
               <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-base sm:text-lg">Project Messages</CardTitle>
+                <CardTitle className="text-base sm:text-lg">
+                  Project Messages
+                </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   Communication with your assigned provider
                 </CardDescription>
@@ -3091,18 +3767,34 @@ export default function ProjectDetailsPage({
               <CardContent className="p-4 sm:p-6 pt-0">
                 <div className="space-y-3 sm:space-y-4 max-h-96 overflow-y-auto">
                   {msgsToRender.map((message: Record<string, unknown>) => {
-                    const messageSender = message.sender as Record<string, unknown> | undefined;
+                    const messageSender = message.sender as
+                      | Record<string, unknown>
+                      | undefined;
                     const isCurrentUser =
                       String(message.senderId || messageSender?.id) ===
                       String(currentUserId);
-                    const text = (message.content as string) ?? (message.message as string) ?? "";
-                    const ts = (message.createdAt as string) ?? (message.timestamp as string) ?? "";
-                    const senderName = (messageSender?.name as string) || (message.senderName as string) || (isCurrentUser ? "You" : "User");
+                    const text =
+                      (message.content as string) ??
+                      (message.message as string) ??
+                      "";
+                    const ts =
+                      (message.createdAt as string) ??
+                      (message.timestamp as string) ??
+                      "";
+                    const senderName =
+                      (messageSender?.name as string) ||
+                      (message.senderName as string) ||
+                      (isCurrentUser ? "You" : "User");
                     const avatarChar = senderName?.charAt?.(0) || "U";
+                    const messageId = message.id as string | number | undefined;
+                    const messageKey =
+                      messageId !== undefined
+                        ? String(messageId)
+                        : `msg-${Math.random()}`;
 
                     return (
                       <div
-                        key={message.id}
+                        key={messageKey}
                         className={`flex gap-3 ${
                           isCurrentUser ? "flex-row-reverse" : ""
                         }`}
@@ -3124,56 +3816,62 @@ export default function ProjectDetailsPage({
                           >
                             <p className="text-sm">{text}</p>
                             {message.attachments &&
-                              message.attachments.length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-opacity-20 space-y-2">
-                                  {asArray<string>(message.attachments).map(
-                                    (attachment, index) => {
-                                      const url = getFullUrl(attachment);
-                                      const name =
-                                        url.split("/").pop() || `file-${index}`;
+                            Array.isArray(message.attachments) &&
+                            message.attachments.length > 0 ? (
+                              <div className="mt-2 pt-2 border-t border-opacity-20 space-y-2">
+                                {(message.attachments as unknown[]).map(
+                                  (attachment: unknown, index: number) => {
+                                    const attachmentStr =
+                                      typeof attachment === "string"
+                                        ? attachment
+                                        : String(attachment);
+                                    const url = getFullUrl(attachmentStr);
+                                    const name =
+                                      url.split("/").pop() || `file-${index}`;
 
-                                      return (
-                                        <div key={index} className="text-xs">
-                                          {isImage(url) ? (
-                                            <div className="relative w-32 h-auto rounded border cursor-pointer">
-                                              <Image
-                                                src={url}
-                                                alt={name}
-                                                width={128}
-                                                height={128}
-                                                className="w-32 h-auto rounded border"
-                                                unoptimized
-                                                onError={(e) => {
-                                                  const target = e.target as HTMLImageElement;
-                                                  target.style.display = "none";
-                                                }}
-                                              />
-                                            </div>
-                                          ) : isPDF(url) ? (
-                                            <a
-                                              href={url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="flex items-center gap-2 text-blue-500 underline"
-                                            >
-                                              📄 {name}
-                                            </a>
-                                          ) : (
-                                            <a
-                                              href={url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="flex items-center gap-2 text-blue-500 underline"
-                                            >
-                                              📎 {name}
-                                            </a>
-                                          )}
-                                        </div>
-                                      );
-                                    }
-                                  )}
-                                </div>
-                              )}
+                                    return (
+                                      <div key={index} className="text-xs">
+                                        {isImage(url) ? (
+                                          <div className="relative w-32 h-auto rounded border cursor-pointer">
+                                            <Image
+                                              src={url}
+                                              alt={name}
+                                              width={128}
+                                              height={128}
+                                              className="w-32 h-auto rounded border"
+                                              unoptimized
+                                              onError={(e) => {
+                                                const target =
+                                                  e.target as HTMLImageElement;
+                                                target.style.display = "none";
+                                              }}
+                                            />
+                                          </div>
+                                        ) : isPDF(url) ? (
+                                          <a
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-blue-500 underline"
+                                          >
+                                            📄 {name}
+                                          </a>
+                                        ) : (
+                                          <a
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-blue-500 underline"
+                                          >
+                                            📎 {name}
+                                          </a>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                )}
+                              </div>
+                            ) : null}
                           </div>
                           <p className="text-xs text-gray-500 mt-1">{ts}</p>
                         </div>
@@ -3196,7 +3894,9 @@ export default function ProjectDetailsPage({
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Edit Project</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              Edit Project
+            </DialogTitle>
           </DialogHeader>
 
           <div className="grid grid-cols-1 gap-3 sm:gap-4">
@@ -3282,7 +3982,9 @@ export default function ProjectDetailsPage({
             </div>
 
             <div>
-              <Label className="text-sm sm:text-base">Skills (comma / new line)</Label>
+              <Label className="text-sm sm:text-base">
+                Skills (comma / new line)
+              </Label>
               <Textarea
                 rows={2}
                 placeholder="React, Node.js, PostgreSQL"
@@ -3296,38 +3998,46 @@ export default function ProjectDetailsPage({
               <div>
                 <Label className="text-sm sm:text-base">Requirements</Label>
                 <div className="mt-1.5">
-                <RichEditor
-                  content={edit.requirements}
-                  onChange={(value) =>
-                    setEdit({ ...edit, requirements: value })
-                  }
-                  placeholder="Enter project requirements..."
-                  initialHeight={200}
-                />
+                  <RichEditor
+                    content={edit.requirements}
+                    onChange={(value) =>
+                      setEdit({ ...edit, requirements: value })
+                    }
+                    placeholder="Enter project requirements..."
+                    initialHeight={200}
+                  />
                 </div>
               </div>
               <div>
                 <Label className="text-sm sm:text-base">Deliverables</Label>
                 <div className="mt-1.5">
-                <RichEditor
-                  content={edit.deliverables}
-                  onChange={(value) =>
-                    setEdit({ ...edit, deliverables: value })
-                  }
-                  placeholder="Enter project deliverables..."
-                  initialHeight={200}
-                />
+                  <RichEditor
+                    content={edit.deliverables}
+                    onChange={(value) =>
+                      setEdit({ ...edit, deliverables: value })
+                    }
+                    placeholder="Enter project deliverables..."
+                    initialHeight={200}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
           <DialogFooter className="gap-2 flex-col sm:flex-row">
-            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="w-full sm:w-auto text-sm sm:text-base">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditOpen(false)}
+              className="w-full sm:w-auto text-sm sm:text-base"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSave} className="w-full sm:w-auto text-sm sm:text-base">
-              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Save Changes
+            <Button
+              onClick={handleSave}
+              className="w-full sm:w-auto text-sm sm:text-base"
+            >
+              <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Save
+              Changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3336,7 +4046,9 @@ export default function ProjectDetailsPage({
       <Dialog open={milestoneEditorOpen} onOpenChange={setMilestoneEditorOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Edit Milestones</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">
+              Edit Milestones
+            </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
               Company {milestoneApprovalState.companyApproved ? "✓" : "✗"} ·
               Provider {milestoneApprovalState.providerApproved ? "✓" : "✗"}
@@ -3357,8 +4069,15 @@ export default function ProjectDetailsPage({
                 <CardContent className="p-3 sm:p-4 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                     <div className="sm:col-span-1">
-                      <label className="text-xs sm:text-sm font-medium">Seq</label>
-                      <Input type="number" value={i + 1} disabled className="mt-1.5 text-sm sm:text-base" />
+                      <label className="text-xs sm:text-sm font-medium">
+                        Seq
+                      </label>
+                      <Input
+                        type="number"
+                        value={i + 1}
+                        disabled
+                        className="mt-1.5 text-sm sm:text-base"
+                      />
                     </div>
                     <div className="sm:col-span-12 md:col-span-4">
                       <label className="text-xs sm:text-sm font-medium">
@@ -3369,7 +4088,7 @@ export default function ProjectDetailsPage({
                         onChange={(e) => {
                           updateProjectMilestone(i, { title: e.target.value });
                           if (milestoneErrors[i]?.title) {
-                            setMilestoneErrors(prev => ({
+                            setMilestoneErrors((prev) => ({
                               ...prev,
                               [i]: { ...prev[i], title: undefined },
                             }));
@@ -3388,7 +4107,9 @@ export default function ProjectDetailsPage({
                       )}
                     </div>
                     <div className="sm:col-span-12 md:col-span-3">
-                      <label className="text-xs sm:text-sm font-medium">Amount</label>
+                      <label className="text-xs sm:text-sm font-medium">
+                        Amount
+                      </label>
                       <Input
                         type="number"
                         value={String(m.amount ?? 0)}
@@ -3398,7 +4119,7 @@ export default function ProjectDetailsPage({
                           });
                           // Clear sum error when amount changes
                           if (milestoneErrors[-1]) {
-                            setMilestoneErrors(prev => {
+                            setMilestoneErrors((prev) => {
                               const newErrors = { ...prev };
                               delete newErrors[-1];
                               return newErrors;
@@ -3430,7 +4151,7 @@ export default function ProjectDetailsPage({
                           }
                           updateProjectMilestone(i, { dueDate: selectedDate });
                           if (milestoneErrors[i]?.dueDate) {
-                            setMilestoneErrors(prev => ({
+                            setMilestoneErrors((prev) => ({
                               ...prev,
                               [i]: { ...prev[i], dueDate: undefined },
                             }));
@@ -3462,7 +4183,7 @@ export default function ProjectDetailsPage({
                           description: e.target.value,
                         });
                         if (milestoneErrors[i]?.description) {
-                          setMilestoneErrors(prev => ({
+                          setMilestoneErrors((prev) => ({
                             ...prev,
                             [i]: { ...prev[i], description: undefined },
                           }));
@@ -3496,7 +4217,12 @@ export default function ProjectDetailsPage({
             ))}
 
             <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-2">
-              <Button variant="outline" onClick={addProjectMilestone} size="sm" className="text-xs sm:text-sm w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={addProjectMilestone}
+                size="sm"
+                className="text-xs sm:text-sm w-full sm:w-auto"
+              >
                 + Add Milestone
               </Button>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -3509,11 +4235,15 @@ export default function ProjectDetailsPage({
                 >
                   {savingMilestones ? "Saving..." : "Save Changes"}
                 </Button>
-                <Button 
+                <Button
                   onClick={handleApproveProjectMilestones}
                   disabled={
-                    JSON.stringify(normalizeMilestoneSequences(projectMilestones)) !== 
-                    JSON.stringify(normalizeMilestoneSequences(originalProjectMilestones))
+                    JSON.stringify(
+                      normalizeMilestoneSequences(projectMilestones)
+                    ) !==
+                    JSON.stringify(
+                      normalizeMilestoneSequences(originalProjectMilestones)
+                    )
                   }
                   size="sm"
                   className="text-xs sm:text-sm w-full sm:w-auto"
@@ -3751,7 +4481,8 @@ export default function ProjectDetailsPage({
             <DialogTitle>Request Details</DialogTitle>
             <DialogDescription>
               Detailed information about{" "}
-              {selectedProposalDetails?.provider?.name || "Provider"}&apos;s request
+              {selectedProposalDetails?.provider?.name || "Provider"}&apos;s
+              request
             </DialogDescription>
           </DialogHeader>
 
@@ -3763,7 +4494,8 @@ export default function ProjectDetailsPage({
                   <AvatarImage
                     src={getProfileImageUrl(
                       selectedProposalDetails.providerAvatar ||
-                      selectedProposalDetails.provider?.providerProfile?.profileImageUrl
+                        selectedProposalDetails.provider?.providerProfile
+                          ?.profileImageUrl
                     )}
                   />
                   <AvatarFallback>
@@ -3885,10 +4617,12 @@ export default function ProjectDetailsPage({
                   <h4 className="font-semibold mb-2">Proposed Timeline</h4>
                   <p className="text-gray-900">
                     {formatTimeline(selectedProposalDetails.proposedTimeline) ||
-                      formatTimeline(
-                        selectedProposalDetails.deliveryTime,
-                        "day"
-                      ) ||
+                      (selectedProposalDetails.deliveryTime
+                        ? formatTimeline(
+                            selectedProposalDetails.deliveryTime,
+                            "day"
+                          )
+                        : null) ||
                       "—"}
                   </p>
                 </div>
@@ -3968,56 +4702,75 @@ export default function ProjectDetailsPage({
                     <div className="space-y-4">
                       {selectedProposalDetails.milestones
                         .sort(
-                          (a: { order?: number; sequence?: number }, b: { order?: number; sequence?: number }) =>
+                          (
+                            a: { order?: number; sequence?: number },
+                            b: { order?: number; sequence?: number }
+                          ) =>
                             (a.order || a.sequence || 0) -
                             (b.order || b.sequence || 0)
                         )
-                        .map((m: { title?: string; amount?: number; dueDate?: string; order?: number; sequence?: number; description?: string }, idx: number) => (
-                          <Card key={idx} className="border border-gray-200">
-                            <CardContent className="p-4 space-y-2 text-sm">
-                              {/* Top row: title + amount */}
-                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary">
-                                    #{m.order || m.sequence || idx + 1}
-                                  </Badge>
-                                  <span className="font-medium text-gray-900">
-                                    {m.title || "Untitled milestone"}
-                                  </span>
+                        .map(
+                          (
+                            m: {
+                              title?: string;
+                              amount?: number;
+                              dueDate?: string;
+                              order?: number;
+                              sequence?: number;
+                              description?: string;
+                            },
+                            idx: number
+                          ) => (
+                            <Card key={idx} className="border border-gray-200">
+                              <CardContent className="p-4 space-y-2 text-sm">
+                                {/* Top row: title + amount */}
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary">
+                                      #{m.order || m.sequence || idx + 1}
+                                    </Badge>
+                                    <span className="font-medium text-gray-900">
+                                      {m.title || "Untitled milestone"}
+                                    </span>
+                                  </div>
+
+                                  <div className="text-right">
+                                    <span className="text-sm text-gray-500 block">
+                                      Amount
+                                    </span>
+                                    <span className="text-lg font-semibold text-gray-900">
+                                      RM{" "}
+                                      {Number(m.amount || 0).toLocaleString()}
+                                    </span>
+                                  </div>
                                 </div>
 
-                                <div className="text-right">
-                                  <span className="text-sm text-gray-500 block">
-                                    Amount
-                                  </span>
-                                  <span className="text-lg font-semibold text-gray-900">
-                                    RM {Number(m.amount || 0).toLocaleString()}
-                                  </span>
-                                </div>
-                              </div>
+                                {/* Description */}
+                                {m.description &&
+                                  m.description.trim() !== "" && (
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                      {m.description}
+                                    </p>
+                                  )}
 
-                              {/* Description */}
-                              {m.description && m.description.trim() !== "" && (
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                  {m.description}
-                                </p>
-                              )}
-
-                              {/* Dates */}
-                              <div className="text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="w-4 h-4" />
-                                  <span>
-                                    Due:{" "}
-                                    {m.dueDate
-                                      ? new Date(m.dueDate).toLocaleDateString()
-                                      : "—"}
-                                  </span>
+                                {/* Dates */}
+                                <div className="text-sm text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="w-4 h-4" />
+                                    <span>
+                                      Due:{" "}
+                                      {m.dueDate
+                                        ? new Date(
+                                            m.dueDate
+                                          ).toLocaleDateString()
+                                        : "—"}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                              </CardContent>
+                            </Card>
+                          )
+                        )}
                     </div>
                   </div>
                 )}
@@ -4041,7 +4794,13 @@ export default function ProjectDetailsPage({
 
                           // Use getAttachmentUrl helper for consistent URL handling
                           const attachmentUrl = getAttachmentUrl(rawUrl);
-                          const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                          const isR2Key =
+                            attachmentUrl === "#" ||
+                            (!attachmentUrl.startsWith("http") &&
+                              !attachmentUrl.startsWith("/uploads/") &&
+                              !attachmentUrl.includes(
+                                process.env.NEXT_PUBLIC_API_URL || "localhost"
+                              ));
 
                           return (
                             <a
@@ -4050,20 +4809,32 @@ export default function ProjectDetailsPage({
                               download={fileName}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={isR2Key ? async (e) => {
-                                e.preventDefault();
-                                try {
-                                  const downloadUrl = await getR2DownloadUrl(rawUrl); // Use original URL/key
-                                  window.open(downloadUrl.downloadUrl, "_blank");
-                                } catch (error) {
-                                  console.error("Failed to get download URL:", error);
-                                  toastHook({
-                                    title: "Error",
-                                    description: "Failed to download attachment",
-                                    variant: "destructive",
-                                  });
-                                }
-                              } : undefined}
+                              onClick={
+                                isR2Key
+                                  ? async (e) => {
+                                      e.preventDefault();
+                                      try {
+                                        const downloadUrl =
+                                          await getR2DownloadUrl(rawUrl); // Use original URL/key
+                                        window.open(
+                                          downloadUrl.downloadUrl,
+                                          "_blank"
+                                        );
+                                      } catch (error) {
+                                        console.error(
+                                          "Failed to get download URL:",
+                                          error
+                                        );
+                                        toastHook({
+                                          title: "Error",
+                                          description:
+                                            "Failed to download attachment",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    }
+                                  : undefined
+                              }
                               className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 hover:bg-gray-50 hover:shadow-sm transition"
                             >
                               {/* Icon circle */}
@@ -4197,7 +4968,7 @@ export default function ProjectDetailsPage({
                           updated[i] = { ...updated[i], title: e.target.value };
                           setMilestonesDraft(updated);
                           if (milestoneDraftErrors[i]?.title) {
-                            setMilestoneDraftErrors(prev => ({
+                            setMilestoneDraftErrors((prev) => ({
                               ...prev,
                               [i]: { ...prev[i], title: undefined },
                             }));
@@ -4229,7 +5000,7 @@ export default function ProjectDetailsPage({
                           setMilestonesDraft(updated);
                           // Clear sum error when amount changes
                           if (milestoneDraftErrors[-1]) {
-                            setMilestoneDraftErrors(prev => {
+                            setMilestoneDraftErrors((prev) => {
                               const newErrors = { ...prev };
                               delete newErrors[-1];
                               return newErrors;
@@ -4265,7 +5036,7 @@ export default function ProjectDetailsPage({
                           };
                           setMilestonesDraft(updated);
                           if (milestoneDraftErrors[i]?.dueDate) {
-                            setMilestoneDraftErrors(prev => ({
+                            setMilestoneDraftErrors((prev) => ({
                               ...prev,
                               [i]: { ...prev[i], dueDate: undefined },
                             }));
@@ -4299,7 +5070,7 @@ export default function ProjectDetailsPage({
                         };
                         setMilestonesDraft(updated);
                         if (milestoneDraftErrors[i]?.description) {
-                          setMilestoneDraftErrors(prev => ({
+                          setMilestoneDraftErrors((prev) => ({
                             ...prev,
                             [i]: { ...prev[i], description: undefined },
                           }));
@@ -4359,11 +5130,15 @@ export default function ProjectDetailsPage({
                 >
                   {savingMilestonesModal ? "Saving..." : "Save Changes"}
                 </Button>
-                <Button 
+                <Button
                   onClick={handleApproveAcceptedMilestones}
                   disabled={
-                    JSON.stringify(normalizeMilestoneSequences(milestonesDraft)) !== 
-                    JSON.stringify(normalizeMilestoneSequences(originalMilestonesDraft))
+                    JSON.stringify(
+                      normalizeMilestoneSequences(milestonesDraft)
+                    ) !==
+                    JSON.stringify(
+                      normalizeMilestoneSequences(originalMilestonesDraft)
+                    )
                   }
                 >
                   Approve
@@ -4678,19 +5453,28 @@ export default function ProjectDetailsPage({
             <div className="space-y-6">
               {/* Dispute Status */}
               <div className="flex items-center justify-between">
-                <Badge className={getDisputeStatusColor(currentDispute.status)}>
-                  {currentDispute.status?.replace("_", " ")}
+                <Badge
+                  className={getDisputeStatusColor(currentDispute.status || "")}
+                >
+                  {currentDispute.status?.replace("_", " ") || "Unknown"}
                 </Badge>
                 <div className="text-sm text-gray-500">
                   Created:{" "}
-                  {new Date(currentDispute.createdAt).toLocaleDateString()}
-                  {currentDispute.updatedAt !== currentDispute.createdAt && (
-                    <>
-                      {" "}
-                      • Updated:{" "}
-                      {new Date(currentDispute.updatedAt).toLocaleDateString()}
-                    </>
-                  )}
+                  {currentDispute.createdAt
+                    ? new Date(
+                        currentDispute.createdAt as string | number | Date
+                      ).toLocaleDateString()
+                    : "Unknown"}
+                  {currentDispute.updatedAt &&
+                    currentDispute.updatedAt !== currentDispute.createdAt && (
+                      <>
+                        {" "}
+                        • Updated:{" "}
+                        {new Date(
+                          currentDispute.updatedAt as string | number | Date
+                        ).toLocaleDateString()}
+                      </>
+                    )}
                 </div>
               </div>
 
@@ -4704,7 +5488,7 @@ export default function ProjectDetailsPage({
                     <Label className="text-sm font-medium text-gray-500">
                       Reason
                     </Label>
-                    <p className="mt-1">{currentDispute.reason}</p>
+                    <p className="mt-1">{currentDispute.reason || "N/A"}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-500">
@@ -4713,7 +5497,8 @@ export default function ProjectDetailsPage({
                     <div className="mt-2 space-y-3">
                       {(() => {
                         // Parse description to show original and updates separately
-                        const description = currentDispute.description || "";
+                        const description =
+                          (currentDispute.description as string) || "";
                         const parts = description.split(/\n---\n/);
                         const originalDescription = parts[0]?.trim() || "";
                         const updates = parts.slice(1);
@@ -4736,9 +5521,14 @@ export default function ProjectDetailsPage({
                                   </p>
                                   <p className="text-xs text-gray-500">
                                     Original dispute •{" "}
-                                    {new Date(
-                                      currentDispute.createdAt
-                                    ).toLocaleString()}
+                                    {currentDispute.createdAt
+                                      ? new Date(
+                                          currentDispute.createdAt as
+                                            | string
+                                            | number
+                                            | Date
+                                        ).toLocaleString()
+                                      : "Unknown"}
                                   </p>
                                 </div>
                               </div>
@@ -4861,7 +5651,8 @@ export default function ProjectDetailsPage({
                       })()}
                     </div>
                   </div>
-                  {currentDispute.contestedAmount && (
+                  {currentDispute.contestedAmount &&
+                  typeof currentDispute.contestedAmount === "number" ? (
                     <div>
                       <Label className="text-sm font-medium text-gray-500">
                         Contested Amount
@@ -4870,8 +5661,9 @@ export default function ProjectDetailsPage({
                         RM{currentDispute.contestedAmount.toLocaleString()}
                       </p>
                     </div>
-                  )}
-                  {currentDispute.suggestedResolution && (
+                  ) : null}
+                  {currentDispute.suggestedResolution &&
+                  typeof currentDispute.suggestedResolution === "string" ? (
                     <div>
                       <Label className="text-sm font-medium text-gray-500">
                         Suggested Resolution
@@ -4880,18 +5672,32 @@ export default function ProjectDetailsPage({
                         {currentDispute.suggestedResolution}
                       </p>
                     </div>
-                  )}
-                  {currentDispute.milestone && (
+                  ) : null}
+                  {currentDispute.milestone &&
+                  typeof currentDispute.milestone === "object" &&
+                  currentDispute.milestone !== null ? (
                     <div>
                       <Label className="text-sm font-medium text-gray-500">
                         Related Milestone
                       </Label>
                       <p className="mt-1">
-                        {currentDispute.milestone.title} - RM
-                        {currentDispute.milestone.amount.toLocaleString()}
+                        {(
+                          currentDispute.milestone as {
+                            title?: string;
+                            amount?: number;
+                          }
+                        ).title || "Unknown"}{" "}
+                        - RM
+                        {typeof (
+                          currentDispute.milestone as { amount?: number }
+                        ).amount === "number"
+                          ? (
+                              currentDispute.milestone as { amount: number }
+                            ).amount.toLocaleString()
+                          : "0"}
                       </p>
                     </div>
-                  )}
+                  ) : null}
                 </CardContent>
               </Card>
 
@@ -4907,7 +5713,14 @@ export default function ProjectDetailsPage({
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {currentDispute.resolutionNotes.map(
-                        (note: Record<string, unknown>, index: number) => (
+                        (
+                          note: {
+                            note?: string;
+                            adminName?: string;
+                            createdAt?: string | number | Date;
+                          },
+                          index: number
+                        ) => (
                           <div
                             key={index}
                             className="bg-white p-4 rounded-lg border-l-4 border-purple-500"
@@ -4924,12 +5737,14 @@ export default function ProjectDetailsPage({
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   By {note.adminName || "Admin"} •{" "}
-                                  {new Date(note.createdAt).toLocaleString()}
+                                  {note.createdAt
+                                    ? new Date(note.createdAt).toLocaleString()
+                                    : "Unknown"}
                                 </p>
                               </div>
                             </div>
                             <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
-                              {note.note}
+                              {note.note || ""}
                             </p>
                           </div>
                         )
@@ -4959,6 +5774,7 @@ export default function ProjectDetailsPage({
 
               {/* Attachments */}
               {currentDispute.attachments &&
+                Array.isArray(currentDispute.attachments) &&
                 currentDispute.attachments.length > 0 && (
                   <Card>
                     <CardHeader>
@@ -4966,10 +5782,12 @@ export default function ProjectDetailsPage({
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {currentDispute.attachments.map(
-                          (url: string, index: number) => {
+                        {(currentDispute.attachments as unknown[]).map(
+                          (url: unknown, index: number) => {
+                            const urlStr =
+                              typeof url === "string" ? url : String(url);
                             // Extract filename from path
-                            const normalized = url.replace(/\\/g, "/");
+                            const normalized = urlStr.replace(/\\/g, "/");
                             const filename =
                               normalized.split("/").pop() ||
                               `Attachment ${index + 1}`;
@@ -4977,13 +5795,14 @@ export default function ProjectDetailsPage({
                             const cleanFilename = filename.replace(/^\d+_/, "");
 
                             // Try to find attachment metadata in description
-                            const attachmentMetadataMatch =
-                              currentDispute.description?.match(
-                                new RegExp(
-                                  `\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`,
-                                  "g"
-                                )
-                              );
+                            const description =
+                              (currentDispute.description as string) || "";
+                            const attachmentMetadataMatch = description.match(
+                              new RegExp(
+                                `\\[Attachment: (.+?) uploaded by (.+?) on (.+?)\\]`,
+                                "g"
+                              )
+                            );
                             let uploadedBy = "Unknown User";
                             let uploadedAt = "Unknown Date";
 
@@ -5005,13 +5824,20 @@ export default function ProjectDetailsPage({
                             if (
                               uploadedBy === "Unknown User" &&
                               index === 0 &&
+                              Array.isArray(currentDispute.attachments) &&
                               currentDispute.attachments.length === 1
                             ) {
                               uploadedBy =
-                                currentDispute.raisedBy?.name || "Unknown User";
-                              uploadedAt = new Date(
-                                currentDispute.createdAt
-                              ).toLocaleString();
+                                (currentDispute.raisedBy?.name as string) ||
+                                "Unknown User";
+                              uploadedAt = currentDispute.createdAt
+                                ? new Date(
+                                    currentDispute.createdAt as
+                                      | string
+                                      | number
+                                      | Date
+                                  ).toLocaleString()
+                                : "Unknown Date";
                             }
 
                             return (
@@ -5031,28 +5857,54 @@ export default function ProjectDetailsPage({
                                   </div>
                                 </div>
                                 {(() => {
-                                  const attachmentUrl = getAttachmentUrl(url);
-                                  const isR2Key = attachmentUrl === "#" || (!attachmentUrl.startsWith("http") && !attachmentUrl.startsWith("/uploads/") && !attachmentUrl.includes(process.env.NEXT_PUBLIC_API_URL || "localhost"));
+                                  const attachmentUrl =
+                                    getAttachmentUrl(urlStr);
+                                  const isR2Key =
+                                    attachmentUrl === "#" ||
+                                    (!attachmentUrl.startsWith("http") &&
+                                      !attachmentUrl.startsWith("/uploads/") &&
+                                      !attachmentUrl.includes(
+                                        process.env.NEXT_PUBLIC_API_URL ||
+                                          "localhost"
+                                      ));
 
                                   return (
                                     <a
-                                      href={attachmentUrl === "#" ? undefined : attachmentUrl}
+                                      href={
+                                        attachmentUrl === "#"
+                                          ? undefined
+                                          : attachmentUrl
+                                      }
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      onClick={isR2Key ? async (e) => {
-                                        e.preventDefault();
-                                        try {
-                                          const downloadUrl = await getR2DownloadUrl(url); // Use original URL/key
-                                          window.open(downloadUrl.downloadUrl, "_blank");
-                                        } catch (error) {
-                                          console.error("Failed to get download URL:", error);
-                                          toastHook({
-                                            title: "Error",
-                                            description: "Failed to download attachment",
-                                            variant: "destructive",
-                                          });
-                                        }
-                                      } : undefined}
+                                      onClick={
+                                        isR2Key
+                                          ? async (e) => {
+                                              e.preventDefault();
+                                              try {
+                                                const downloadUrl =
+                                                  await getR2DownloadUrl(
+                                                    urlStr
+                                                  ); // Use original URL/key
+                                                window.open(
+                                                  downloadUrl.downloadUrl,
+                                                  "_blank"
+                                                );
+                                              } catch (error) {
+                                                console.error(
+                                                  "Failed to get download URL:",
+                                                  error
+                                                );
+                                                toastHook({
+                                                  title: "Error",
+                                                  description:
+                                                    "Failed to download attachment",
+                                                  variant: "destructive",
+                                                });
+                                              }
+                                            }
+                                          : undefined
+                                      }
                                     >
                                       <Button variant="outline" size="sm">
                                         <Download className="w-4 h-4 mr-2" />

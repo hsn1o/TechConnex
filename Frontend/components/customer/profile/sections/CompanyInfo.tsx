@@ -1,13 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import {
-  Building,
-  Globe,
-  DollarSign,
-  Calendar,
-  Users,
-  Briefcase,
-  Target,
   Heart,
   Image as ImageIcon,
   X,
@@ -612,7 +606,7 @@ export default function CompanyInfo({
         <CardHeader>
           <CardTitle>Hiring Preferences</CardTitle>
           <CardDescription>
-            Your company's hiring and contract preferences
+            Your company&apos;s hiring and contract preferences
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1185,7 +1179,7 @@ export default function CompanyInfo({
                     <ImageIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                     <p>No media added yet</p>
                     <p className="text-sm">
-                      Upload images or add URLs to showcase your company's
+                      Upload images or add URLs to showcase your company&apos;s
                       visual content
                     </p>
                   </div>
@@ -1299,34 +1293,37 @@ export default function CompanyInfo({
                 )}
 
                 {/* Image Display */}
-                <div className="w-full h-full flex items-center justify-center p-4 md:p-8">
+                <div className="w-full h-full flex items-center justify-center p-4 md:p-8 relative">
                   {isImageUrl(
                     value.customerProfile.mediaGallery[currentImageIndex]
                   ) ? (
-                    <img
-                      src={getMediaUrl(
-                        value.customerProfile.mediaGallery[currentImageIndex]
-                      )}
-                      alt={`Media ${currentImageIndex + 1}`}
-                      className="max-w-full max-h-[70vh] object-contain rounded-lg bg-white"
-                      crossOrigin="anonymous"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = "none";
-                        const parent = target.parentElement;
-                        if (
-                          parent &&
-                          !parent.querySelector(".image-placeholder")
-                        ) {
-                          const placeholder = document.createElement("div");
-                          placeholder.className =
-                            "image-placeholder w-full h-full flex items-center justify-center text-white";
-                          placeholder.innerHTML =
-                            '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
-                          parent.appendChild(placeholder);
-                        }
-                      }}
-                    />
+                    <div className="relative w-full h-full max-w-full max-h-[70vh] flex items-center justify-center">
+                      <Image
+                        src={getMediaUrl(
+                          value.customerProfile.mediaGallery[currentImageIndex]
+                        )}
+                        alt={`Media ${currentImageIndex + 1}`}
+                        fill
+                        className="object-contain rounded-lg bg-white"
+                        unoptimized
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                          const parent = target.parentElement;
+                          if (
+                            parent &&
+                            !parent.querySelector(".image-placeholder")
+                          ) {
+                            const placeholder = document.createElement("div");
+                            placeholder.className =
+                              "image-placeholder absolute inset-0 w-full h-full flex items-center justify-center text-white";
+                            placeholder.innerHTML =
+                              '<svg class="w-24 h-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                            parent.appendChild(placeholder);
+                          }
+                        }}
+                      />
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white">
                       <ImageIcon className="w-24 h-24 text-gray-400" />
