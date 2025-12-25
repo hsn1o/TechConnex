@@ -202,20 +202,73 @@ router.get("/download", authenticateToken, async (req, res) => {
       // Check if user has access through shared resources (proposals, milestones, etc.)
       let hasAccess = false;
       
-      // Check for proposal attachments: companies should access provider's proposal attachments for their service requests
-      if (key.startsWith("proposals/")) {
-        // Extract provider ID from key (format: proposals/providerId/timestamp-random-filename)
-        const keyParts = key.split("/");
-        if (keyParts.length >= 2) {
-          const providerId = keyParts[1];
+      // Check for proposal attachments: 
+      // 1. Providers can access their own proposal attachments
+      // 2. Companies can access provider's proposal attachments for their service requests
+      // 3. Both can access proposal attachments for projects they're involved in
+      // Normalize key: handle both forward and backslashes, and both "proposals/" and "uploads/proposals/" formats
+      const normalizedKey = key.replace(/\\/g, "/");
+      const isProposalKey = normalizedKey.includes("/proposals/") || normalizedKey.startsWith("proposals/");
+      
+      if (isProposalKey) {
+        // Extract provider ID from key (format: proposals/providerId/timestamp-random-filename or uploads/proposals/providerId/...)
+        const keyParts = normalizedKey.split("/");
+        // Find the index of "proposals" in the path
+        const proposalsIndex = keyParts.findIndex(part => part === "proposals");
+        if (proposalsIndex >= 0 && keyParts.length > proposalsIndex + 1) {
+          const providerIdFromKey = keyParts[proposalsIndex + 1];
           
-          // Find proposals with this attachment URL that belong to service requests owned by this user
+          // Quick check: If providerId from key matches userId, grant access immediately
+          // This handles the common case of providers accessing their own files
+          if (String(providerIdFromKey) === String(userId)) {
+            hasAccess = true;
+          }
+          
+          // Extract filename from key for additional matching
+          const filename = normalizedKey.split("/").pop() || key.split(/[\\/]/).pop();
+          
+          // Find ANY proposal that contains this key in attachmentUrls
+          // (The key might be stored as-is or as part of a URL)
           const proposal = await prisma.proposal.findFirst({
             where: {
-              providerId: providerId,
-              attachmentUrls: {
-                has: key, // Check if the key is in the attachmentUrls array
-              },
+              OR: [
+                {
+                  attachmentUrls: {
+                    has: key, // Exact match in array (original key)
+                  },
+                },
+                {
+                  attachmentUrls: {
+                    has: normalizedKey, // Exact match with normalized key (forward slashes)
+                  },
+                },
+                {
+                  attachmentUrls: {
+                    hasSome: key.split(/[\\/]/).filter(p => p && p !== "uploads" && p !== "proposals"), // Check if any part matches
+                  },
+                },
+                {
+                  attachmentUrl: {
+                    contains: key, // Partial match for single attachmentUrl field (legacy)
+                  },
+                },
+                {
+                  attachmentUrl: {
+                    contains: normalizedKey, // Partial match with normalized key
+                  },
+                },
+                {
+                  attachmentUrl: {
+                    contains: filename, // Match by filename
+                  },
+                },
+                // Also check if any attachmentUrl in the array contains the filename
+                ...(filename ? [{
+                  attachmentUrls: {
+                    hasSome: [filename],
+                  },
+                }] : []),
+              ],
             },
             include: {
               serviceRequest: {
@@ -224,10 +277,59 @@ router.get("/download", authenticateToken, async (req, res) => {
                   projectId: true,
                 },
               },
+              Milestone: {
+                select: {
+                  project: {
+                    select: {
+                      id: true,
+                      customerId: true,
+                      providerId: true,
+                    },
+                  },
+                },
+              },
             },
           });
           
-          if (proposal && proposal.serviceRequest.customerId === userId) {
+          if (proposal) {
+            // Check if user is the provider who created this proposal
+            if (String(proposal.providerId) === String(userId)) {
+              hasAccess = true;
+            }
+            // Check if user is the customer for this service request
+            else if (String(proposal.serviceRequest.customerId) === String(userId)) {
+              hasAccess = true;
+            }
+            // Check if service request is linked to a project where user is customer or provider
+            else if (proposal.serviceRequest.projectId) {
+              const project = await prisma.project.findUnique({
+                where: { id: proposal.serviceRequest.projectId },
+                select: {
+                  customerId: true,
+                  providerId: true,
+                },
+              });
+              if (project && (String(project.customerId) === String(userId) || String(project.providerId) === String(userId))) {
+                hasAccess = true;
+              }
+            }
+            // Check if proposal is linked to a project through milestones
+            else if (proposal.Milestone && proposal.Milestone.length > 0) {
+              const projectMilestone = proposal.Milestone.find(
+                (m) => m.project
+              );
+              if (projectMilestone?.project) {
+                const project = projectMilestone.project;
+                if (String(project.customerId) === String(userId) || String(project.providerId) === String(userId)) {
+                  hasAccess = true;
+                }
+              }
+            }
+          }
+          
+          // If still no access and providerId from key matches userId, grant access
+          // (This is a fallback in case the proposal wasn't found in DB but key format matches)
+          if (!hasAccess && String(providerIdFromKey) === String(userId)) {
             hasAccess = true;
           }
         }
