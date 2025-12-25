@@ -13,22 +13,28 @@ import { getProfileImageUrl } from "@/lib/api";
 export default function SavedCompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setToken(localStorage.getItem("token") || "");
+    }
+  }, []);
 
   const getUserId = () => {
-    const userJson =
-      typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    if (typeof window === "undefined") return "";
+    const userJson = localStorage.getItem("user");
     try {
       return userJson ? JSON.parse(userJson)?.id || "" : "";
     } catch {
       return "";
     }
   };
-  const token = localStorage.getItem("token") || "";
 
   const fetchSaved = useCallback(async () => {
     try {
       const userId = getUserId();
-      if (!userId) {
+      if (!userId || !token) {
         setCompanies([]);
         setLoading(false);
         return;
@@ -63,7 +69,7 @@ export default function SavedCompaniesPage() {
   const unsave = async (companyId: string) => {
     try {
       const userId = getUserId();
-      if (!userId) return;
+      if (!userId || !token) return;
       const res = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
@@ -110,9 +116,7 @@ export default function SavedCompaniesPage() {
                 <CardHeader className="pb-4">
                   <div className="flex items-start space-x-4">
                     <Avatar className="w-16 h-16">
-                      <AvatarImage
-                        src={getProfileImageUrl(company.avatar)}
-                      />
+                      <AvatarImage src={getProfileImageUrl(company.avatar)} />
                       <AvatarFallback>
                         <Building2 className="w-8 h-8" />
                       </AvatarFallback>
@@ -121,7 +125,9 @@ export default function SavedCompaniesPage() {
                       <h3 className="font-semibold text-gray-900 truncate">
                         {company.name}
                       </h3>
-                      <p className="text-sm text-gray-600">{company.industry}</p>
+                      <p className="text-sm text-gray-600">
+                        {company.industry}
+                      </p>
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <MapPin className="w-3 h-3" /> {company.location}
                       </div>
@@ -169,4 +175,3 @@ export default function SavedCompaniesPage() {
     </ProviderLayout>
   );
 }
-

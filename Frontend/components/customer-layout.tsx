@@ -48,13 +48,36 @@ interface CustomerLayoutProps {
   children: React.ReactNode;
 }
 
+type CustomerProfile = {
+  id?: string;
+  name?: string;
+  email?: string;
+  data?: {
+    name?: string;
+    email?: string;
+    customerProfile?: {
+      profileImageUrl?: string;
+    };
+  };
+  [key: string]: unknown;
+};
+
+type Notification = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string | number | Date;
+  isRead?: boolean;
+  [key: string]: unknown;
+};
+
 export function CustomerLayout({ children }: CustomerLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
   // Profile state
-  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
   // Logout function
@@ -98,7 +121,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
               if (!res.ok) throw new Error("Failed to fetch profile");
               return res.json();
             })
-            .then((data) => setProfile(data))
+            .then((data) => setProfile(data as CustomerProfile))
             .catch(() => {
               setProfile(null);
               router.push("/auth/login");
@@ -112,12 +135,11 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
   }, [router]);
 
   // Notifications state
-  const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<Record<string, unknown> | null>(
-    null
-  );
+  const [selectedNotification, setSelectedNotification] =
+    useState<Notification | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -136,7 +158,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
           if (!res.ok) throw new Error("Failed to fetch notifications");
           return res.json();
         })
-        .then((data) => setNotifications(data.data))
+        .then((data) => setNotifications((data.data || []) as Notification[]))
         .catch(() => setNotifications([]))
         .finally(() => setNotificationsLoading(false));
     }
@@ -151,12 +173,12 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
     if (!token) return;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
     const notif = notifications.find((n) => n.id === id);
-    
+
     // Optimistically update UI
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
-    
+
     // Mark as read in database
     try {
       const response = await fetch(`${API_URL}/notifications/${id}/read`, {
@@ -166,16 +188,18 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
           "Content-Type": "application/json",
         },
       });
-      
+
       if (!response.ok) {
         // Revert optimistic update on error
         setNotifications((prev) =>
-          prev.map((n) => (n.id === id ? { ...n, isRead: notif?.isRead || false } : n))
+          prev.map((n) =>
+            n.id === id ? { ...n, isRead: notif?.isRead || false } : n
+          )
         );
         console.error("Failed to mark notification as read");
         return;
       }
-      
+
       // Refresh notifications to ensure sync with database
       const refreshResponse = await fetch(`${API_URL}/notifications/`, {
         headers: {
@@ -185,17 +209,19 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
       if (refreshResponse.ok) {
         const refreshData = await refreshResponse.json();
         if (refreshData.success) {
-          setNotifications(refreshData.data || []);
+          setNotifications((refreshData.data || []) as Notification[]);
         }
       }
     } catch (error) {
       console.error("Failed to mark notification as read", error);
       // Revert optimistic update on error
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: notif?.isRead || false } : n))
+        prev.map((n) =>
+          n.id === id ? { ...n, isRead: notif?.isRead || false } : n
+        )
       );
     }
-    
+
     if (notif) {
       setSelectedNotification({ ...notif, isRead: true });
       setModalOpen(true);
@@ -377,12 +403,12 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                         className={n.isRead ? "opacity-50" : ""}
                       >
                         <div className="flex flex-col space-y-1">
-                          <span className="font-medium">{n.title}</span>
+                          <span className="font-medium">{String(n.title)}</span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(n.createdAt).toLocaleString()}
                           </span>
                           <span className="text-sm text-gray-600">
-                            {n.content}
+                            {String(n.content)}
                           </span>
                         </div>
                       </DropdownMenuItem>
@@ -409,12 +435,14 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage
-                        src={getProfileImageUrl(profile?.data?.customerProfile?.profileImageUrl)}
-                        alt={profile?.name || "User"}
+                        src={getProfileImageUrl(
+                          profile?.data?.customerProfile?.profileImageUrl
+                        )}
+                        alt={profile?.data?.name || profile?.name || "User"}
                       />
                       <AvatarFallback>
-                        {profile && profile.data.name
-                          ? profile.data.name
+                        {profile && profile.data?.name
+                          ? String(profile.data.name)
                               .split(" ")
                               .map((n: string) => n[0])
                               .join("")
@@ -430,14 +458,14 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                       <p className="text-sm font-medium leading-none">
                         {profileLoading
                           ? "Loading..."
-                          : profile && profile.data.name
+                          : profile && profile.data?.name
                           ? profile.data.name
                           : "Unknown User"}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {profileLoading
                           ? "Loading..."
-                          : profile && profile.data.email
+                          : profile && profile.data?.email
                           ? profile.data.email
                           : "-"}
                       </p>
@@ -504,13 +532,15 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-md font-medium">
-                    {selectedNotification.title}
+                    {String(selectedNotification.title)}
                   </h3>
                   <span className="text-xs text-muted-foreground">
                     {new Date(selectedNotification.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-sm">{selectedNotification.content}</p>
+                <p className="text-sm">
+                  {String(selectedNotification.content)}
+                </p>
               </div>
             ) : (
               "No notification details available."

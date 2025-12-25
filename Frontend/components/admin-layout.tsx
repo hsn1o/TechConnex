@@ -43,9 +43,29 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Badge as BadgeComponent } from "@/components/ui/badge";
+
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
+
+type AdminProfile = {
+  id?: string;
+  name?: string;
+  email?: string;
+  resume?: {
+    fileUrl?: string;
+  };
+  [key: string]: unknown;
+};
+
+type Notification = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string | number | Date;
+  isRead?: boolean;
+  [key: string]: unknown;
+};
 
 const NAV_ITEMS = [
   { name: "Dashboard", href: "/admin/dashboard", icon: Home },
@@ -65,16 +85,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   // Profile state
-  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
   // Notifications state
-  const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<Record<string, unknown> | null>(
-    null
-  );
+  const [selectedNotification, setSelectedNotification] =
+    useState<Notification | null>(null);
 
   const handleLogout = () => {
     // Clear user data from localStorage
@@ -115,7 +134,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         if (!res.ok) throw new Error("Unauthorized");
 
         const data = await res.json();
-        setProfile(data as Record<string, unknown>);
+        setProfile(data as AdminProfile);
       } catch {
         // Token invalid or expired
         localStorage.removeItem("token");
@@ -146,7 +165,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         if (!res.ok) throw new Error("Failed to fetch notifications");
         return res.json();
       })
-      .then((data) => setNotifications((data.data || []) as Array<Record<string, unknown>>))
+      .then((data) => setNotifications((data.data || []) as Notification[]))
       .catch(() => setNotifications([]))
       .finally(() => setNotificationsLoading(false));
   }, []);
@@ -160,12 +179,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     if (!token) return;
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
     const notif = notifications.find((n) => n.id === id);
-    
+
     // Optimistically update UI
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
-    
+
     // Mark as read in database
     try {
       const response = await fetch(`${API_URL}/notifications/${id}/read`, {
@@ -175,36 +194,40 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           "Content-Type": "application/json",
         },
       });
-      
+
       if (!response.ok) {
         // Revert optimistic update on error
         setNotifications((prev) =>
-          prev.map((n) => (n.id === id ? { ...n, isRead: notif?.isRead || false } : n))
+          prev.map((n) =>
+            n.id === id ? { ...n, isRead: notif?.isRead || false } : n
+          )
         );
         console.error("Failed to mark notification as read");
         return;
       }
-      
+
       // Refresh notifications to ensure sync with database
       const refreshResponse = await fetch(`${API_URL}/notifications/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          if (refreshData.success) {
-            setNotifications((refreshData.data || []) as Array<Record<string, unknown>>);
-          }
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        if (refreshData.success) {
+          setNotifications((refreshData.data || []) as Notification[]);
         }
+      }
     } catch (error) {
       console.error("Failed to mark notification as read", error);
       // Revert optimistic update on error
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: notif?.isRead || false } : n))
+        prev.map((n) =>
+          n.id === id ? { ...n, isRead: notif?.isRead || false } : n
+        )
       );
     }
-    
+
     if (notif) {
       setSelectedNotification({ ...notif, isRead: true });
       setModalOpen(true);
@@ -369,12 +392,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                         className={n.isRead ? "opacity-50" : ""}
                       >
                         <div className="flex flex-col space-y-1">
-                          <span className="font-medium">{n.title}</span>
+                          <span className="font-medium">{String(n.title)}</span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(n.createdAt).toLocaleString()}
                           </span>
                           <span className="text-sm text-gray-600">
-                            {n.content}
+                            {String(n.content)}
                           </span>
                         </div>
                       </DropdownMenuItem>
@@ -397,7 +420,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     <Avatar className="h-8 w-8">
                       {profile && profile.resume && profile.resume.fileUrl ? (
                         <AvatarImage
-                          src={`/${profile.resume.fileUrl.replace(/\\/g, "/")}`}
+                          src={`/${String(profile.resume.fileUrl).replace(
+                            /\\/g,
+                            "/"
+                          )}`}
                           alt={profile.name || "User"}
                         />
                       ) : (
@@ -408,7 +434,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       )}
                       <AvatarFallback>
                         {profile && profile.name
-                          ? profile.name
+                          ? String(profile.name)
                               .split(" ")
                               .map((n: string) => n[0])
                               .join("")
@@ -487,13 +513,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-md font-medium">
-                    {selectedNotification.title}
+                    {String(selectedNotification.title)}
                   </h3>
                   <span className="text-xs text-muted-foreground">
                     {new Date(selectedNotification.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-sm">{selectedNotification.content}</p>
+                <p className="text-sm">
+                  {String(selectedNotification.content)}
+                </p>
               </div>
             ) : (
               "No notification details available."

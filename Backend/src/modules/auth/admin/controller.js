@@ -1,12 +1,26 @@
 import { userModel } from "./model.js";
 import { authService } from "./service.js";
 
-
 export const authController = {
   async register(req, res) {
     try {
+      // Security layer: Check for secret code in header
+      const secretCode =
+        req.headers["x-admin-secret"] || req.headers["admin-secret"];
+      const validSecretCode = "techconnex123.";
+
+      if (!secretCode || secretCode !== validSecretCode) {
+        return res
+          .status(403)
+          .json({ error: "Unauthorized: Invalid or missing secret code" });
+      }
+
       const { name, email, password } = req.body;
-      const { token, user } = await authService.register({ name, email, password });
+      const { token, user } = await authService.register({
+        name,
+        email,
+        password,
+      });
 
       res.status(201).json({
         message: "Admin registered successfully",
@@ -32,35 +46,32 @@ export const authController = {
       res.status(401).json({ error: error.message });
     }
   },
-  
+
   // ✅ new method
-async getProfile(req, res) {
-  try {
-    console.log("🟢 Decoded user:", req.user);
+  async getProfile(req, res) {
+    try {
+      console.log("🟢 Decoded user:", req.user);
 
-    const userId = req.user.id; // ✅ now always defined
-    const user = await userModel.findById(userId);
+      const userId = req.user.id; // ✅ now always defined
+      const user = await userModel.findById(userId);
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (!user.role.includes("ADMIN")) {
+        return res.status(403).json({ error: "Unauthorized: admin only" });
+      }
+
+      res.json({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      });
+    } catch (error) {
+      console.error("🔥 Error fetching admin profile:", error);
+      res.status(500).json({ error: "Failed to fetch admin profile" });
     }
-
-    if (!user.role.includes("ADMIN")) {
-      return res.status(403).json({ error: "Unauthorized: admin only" });
-    }
-
-    res.json({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    });
-  } catch (error) {
-    console.error("🔥 Error fetching admin profile:", error);
-    res.status(500).json({ error: "Failed to fetch admin profile" });
-  }
-}
-
-
-
+  },
 };

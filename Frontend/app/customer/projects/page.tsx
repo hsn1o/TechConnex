@@ -44,8 +44,43 @@ import {
 import Link from "next/link";
 import { CustomerLayout } from "@/components/customer-layout";
 import { useRouter } from "next/navigation";
-import { getCompanyProjects, updateCompanyProject, exportCompanyProjects, getProfileImageUrl } from "@/lib/api";
+import {
+  getCompanyProjects,
+  updateCompanyProject,
+  exportCompanyProjects,
+  getProfileImageUrl,
+} from "@/lib/api";
 import { Download } from "lucide-react";
+
+type ProjectProvider = {
+  id?: string;
+  name?: string;
+  providerProfile?: {
+    profileImageUrl?: string;
+  };
+};
+
+type CustomerProject = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  type: string;
+  category: string;
+  priority?: string;
+  timeline?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  approvedPrice?: number;
+  progress?: number;
+  completedMilestones?: number;
+  totalMilestones?: number;
+  createdAt: string;
+  provider?: ProjectProvider;
+  budget?: number;
+  deadline?: string;
+  isUrgent?: boolean;
+};
 
 export default function CustomerProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,8 +88,10 @@ export default function CustomerProjectsPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState("grid");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Record<string, unknown> | null>(null);
-  const [projects, setProjects] = useState<Record<string, unknown>[]>([]);
+  const [editingProject, setEditingProject] = useState<CustomerProject | null>(
+    null
+  );
+  const [projects, setProjects] = useState<CustomerProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -71,7 +108,7 @@ export default function CustomerProjectsPage() {
         });
 
         if (response.success) {
-          setProjects(response.items || []);
+          setProjects((response.items || []) as CustomerProject[]);
         } else {
           setError("Failed to fetch projects");
         }
@@ -88,10 +125,11 @@ export default function CustomerProjectsPage() {
     fetchProjects();
   }, []);
   const handleContact = (
-    providerId: string,
-    providerName: string,
-    providerAvatar: string
+    providerId?: string,
+    providerName?: string,
+    providerAvatar?: string
   ) => {
+    if (!providerId || !providerName) return;
     router.push(
       `/customer/messages?userId=${providerId}&name=${encodeURIComponent(
         providerName
@@ -154,7 +192,8 @@ export default function CustomerProjectsPage() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority?: string) => {
+    if (!priority) return "bg-gray-100 text-gray-800";
     const normalizedPriority = priority.toLowerCase();
     switch (normalizedPriority) {
       case "high":
@@ -207,9 +246,9 @@ export default function CustomerProjectsPage() {
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
       case "budget-high":
-        return b.budgetMax - a.budgetMax;
+        return (b.budgetMax ?? 0) - (a.budgetMax ?? 0);
       case "budget-low":
-        return a.budgetMin - b.budgetMin;
+        return (a.budgetMin ?? 0) - (b.budgetMin ?? 0);
       case "deadline":
         // For projects with timeline, sort by timeline length
         if (a.timeline && b.timeline) {
@@ -226,7 +265,6 @@ export default function CustomerProjectsPage() {
     }
   });
 
-
   const handleSaveProject = async () => {
     if (!editingProject) return;
     try {
@@ -235,8 +273,9 @@ export default function CustomerProjectsPage() {
         title: editingProject.title,
         description: editingProject.description,
         category: editingProject.category,
-        priority:
-          editingProject.priority?.toLowerCase?.() || editingProject.priority,
+        priority: editingProject.priority
+          ? editingProject.priority.toLowerCase()
+          : editingProject.priority,
       };
 
       // If you show separate min/max in your dialog later, include them here:
@@ -281,7 +320,6 @@ export default function CustomerProjectsPage() {
     }
   };
 
-
   const stats = {
     total: projects.length,
     active: projects.filter((p) => p.status === "IN_PROGRESS").length,
@@ -315,7 +353,11 @@ export default function CustomerProjectsPage() {
                 Error loading projects
               </h3>
               <p className="text-sm sm:text-base text-gray-600 mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()} size="sm" className="sm:size-default">
+              <Button
+                onClick={() => window.location.reload()}
+                size="sm"
+                className="sm:size-default"
+              >
                 Try Again
               </Button>
             </div>
@@ -331,7 +373,9 @@ export default function CustomerProjectsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Projects</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              My Projects
+            </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">
               Manage and track all your ICT projects
             </p>
@@ -360,7 +404,10 @@ export default function CustomerProjectsPage() {
                 } catch (err) {
                   toast({
                     title: "Export failed",
-                    description: err instanceof Error ? err.message : "Failed to export projects",
+                    description:
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to export projects",
                     variant: "destructive",
                   });
                 }
@@ -385,8 +432,12 @@ export default function CustomerProjectsPage() {
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-500">Total Projects</p>
-                  <p className="text-xl sm:text-2xl font-bold mt-1">{stats.total}</p>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    Total Projects
+                  </p>
+                  <p className="text-xl sm:text-2xl font-bold mt-1">
+                    {stats.total}
+                  </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
                   <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
@@ -557,14 +608,18 @@ export default function CustomerProjectsPage() {
                               {project.type}
                             </Badge>
                             <Badge
-                              className={`${getPriorityColor(project.priority)} text-xs`}
+                              className={`${getPriorityColor(
+                                project.priority
+                              )} text-xs`}
                               variant="outline"
                             >
                               {project.priority}
                             </Badge>
                             {(project.priority === "High" ||
                               project.priority === "high") && (
-                              <Badge variant="destructive" className="text-xs">Urgent</Badge>
+                              <Badge variant="destructive" className="text-xs">
+                                Urgent
+                              </Badge>
                             )}
                           </div>
                           <CardDescription className="mt-1 line-clamp-3 text-xs sm:text-sm">
@@ -578,7 +633,9 @@ export default function CustomerProjectsPage() {
                     <div className="flex items-center space-x-2 sm:space-x-3">
                       <Avatar className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
                         <AvatarImage
-                          src={getProfileImageUrl(project.provider?.providerProfile?.profileImageUrl)}
+                          src={getProfileImageUrl(
+                            project.provider?.providerProfile?.profileImageUrl
+                          )}
                         />
                         <AvatarFallback>
                           {project.provider?.name
@@ -626,17 +683,23 @@ export default function CustomerProjectsPage() {
                       <div className="min-w-0">
                         <p className="text-gray-500 truncate">
                           {project.type === "Project" &&
-                          (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
+                          (project.status === "IN_PROGRESS" ||
+                            project.status === "COMPLETED") &&
                           project.approvedPrice
                             ? "Approved Price"
                             : "Budget"}
                         </p>
                         <p className="font-semibold truncate">
                           {project.type === "Project" &&
-                          (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
+                          (project.status === "IN_PROGRESS" ||
+                            project.status === "COMPLETED") &&
                           project.approvedPrice
                             ? `RM${project.approvedPrice.toLocaleString()}`
-                            : `RM${project.budgetMin?.toLocaleString() || 0} - RM${project.budgetMax?.toLocaleString() || 0}`}
+                            : `RM${
+                                project.budgetMin?.toLocaleString() || 0
+                              } - RM${
+                                project.budgetMax?.toLocaleString() || 0
+                              }`}
                         </p>
                       </div>
                       <div className="min-w-0">
@@ -650,8 +713,10 @@ export default function CustomerProjectsPage() {
                     <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500 flex-wrap gap-1">
                       <div className="flex items-center">
                         <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
-                        <span className="truncate">Created:{" "}
-                        {new Date(project.createdAt).toLocaleDateString()}</span>
+                        <span className="truncate">
+                          Created:{" "}
+                          {new Date(project.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
                       {project.type === "Project" && (
                         <span className="text-xs">
@@ -664,7 +729,9 @@ export default function CustomerProjectsPage() {
                     {project.type === "Project" &&
                       project.status === "COMPLETED" && (
                         <div className="flex items-center gap-1 flex-wrap">
-                          <span className="text-xs sm:text-sm text-gray-500">Status:</span>
+                          <span className="text-xs sm:text-sm text-gray-500">
+                            Status:
+                          </span>
                           <Badge className="bg-green-100 text-green-800 text-xs">
                             Completed
                           </Badge>
@@ -716,7 +783,10 @@ export default function CustomerProjectsPage() {
                         <div className="flex items-start sm:items-center space-x-3 sm:space-x-4 flex-1 min-w-0 w-full sm:w-auto">
                           <Avatar className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12">
                             <AvatarImage
-                              src={getProfileImageUrl(project.provider?.providerProfile?.profileImageUrl)}
+                              src={getProfileImageUrl(
+                                project.provider?.providerProfile
+                                  ?.profileImageUrl
+                              )}
                             />
                             <AvatarFallback>
                               {project.provider?.name
@@ -741,14 +811,21 @@ export default function CustomerProjectsPage() {
                                 {project.type}
                               </Badge>
                               <Badge
-                                className={`${getPriorityColor(project.priority)} text-xs`}
+                                className={`${getPriorityColor(
+                                  project.priority
+                                )} text-xs`}
                                 variant="outline"
                               >
                                 {project.priority}
                               </Badge>
                               {(project.priority === "High" ||
                                 project.priority === "high") && (
-                                <Badge variant="destructive" className="text-xs">Urgent</Badge>
+                                <Badge
+                                  variant="destructive"
+                                  className="text-xs"
+                                >
+                                  Urgent
+                                </Badge>
                               )}
                             </div>
                             <p className="text-xs sm:text-sm text-gray-600 mb-2 line-clamp-2 sm:line-clamp-3">
@@ -769,7 +846,9 @@ export default function CustomerProjectsPage() {
                                 </span>
                               )}
                               <span className="hidden sm:inline">•</span>
-                              <span className="truncate">{project.category}</span>
+                              <span className="truncate">
+                                {project.category}
+                              </span>
                               <span className="hidden sm:inline">•</span>
                               <span className="truncate">
                                 Created:{" "}
@@ -780,7 +859,9 @@ export default function CustomerProjectsPage() {
                               {project.timeline && (
                                 <>
                                   <span className="hidden sm:inline">•</span>
-                                  <span className="truncate">Timeline: {project.timeline}</span>
+                                  <span className="truncate">
+                                    Timeline: {project.timeline}
+                                  </span>
                                 </>
                               )}
                             </div>
@@ -790,17 +871,23 @@ export default function CustomerProjectsPage() {
                           <div className="text-left sm:text-right w-full sm:w-auto">
                             <p className="text-xs sm:text-sm text-gray-500">
                               {project.type === "Project" &&
-                              (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
+                              (project.status === "IN_PROGRESS" ||
+                                project.status === "COMPLETED") &&
                               project.approvedPrice
                                 ? "Approved Price"
                                 : "Budget"}
                             </p>
                             <p className="font-semibold text-sm sm:text-base">
                               {project.type === "Project" &&
-                              (project.status === "IN_PROGRESS" || project.status === "COMPLETED") &&
+                              (project.status === "IN_PROGRESS" ||
+                                project.status === "COMPLETED") &&
                               project.approvedPrice
                                 ? `RM${project.approvedPrice.toLocaleString()}`
-                                : `RM${project.budgetMin?.toLocaleString() || 0} - RM${project.budgetMax?.toLocaleString() || 0}`}
+                                : `RM${
+                                    project.budgetMin?.toLocaleString() || 0
+                                  } - RM${
+                                    project.budgetMax?.toLocaleString() || 0
+                                  }`}
                             </p>
                           </div>
                           {project.type === "Project" &&
@@ -863,13 +950,19 @@ export default function CustomerProjectsPage() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Edit Project</DialogTitle>
-              <DialogDescription className="text-sm sm:text-base">Update your project details</DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl">
+                Edit Project
+              </DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">
+                Update your project details
+              </DialogDescription>
             </DialogHeader>
             {editingProject && (
               <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <Label htmlFor="edit-title" className="text-sm sm:text-base">Project Title</Label>
+                  <Label htmlFor="edit-title" className="text-sm sm:text-base">
+                    Project Title
+                  </Label>
                   <Input
                     id="edit-title"
                     value={editingProject.title}
@@ -883,7 +976,12 @@ export default function CustomerProjectsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-description" className="text-sm sm:text-base">Description</Label>
+                  <Label
+                    htmlFor="edit-description"
+                    className="text-sm sm:text-base"
+                  >
+                    Description
+                  </Label>
                   <Textarea
                     id="edit-description"
                     value={editingProject.description}
@@ -899,26 +997,38 @@ export default function CustomerProjectsPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="edit-budget" className="text-sm sm:text-base">Budget (RM)</Label>
+                    <Label
+                      htmlFor="edit-budget"
+                      className="text-sm sm:text-base"
+                    >
+                      Budget (RM)
+                    </Label>
                     <Input
                       id="edit-budget"
                       type="number"
-                      value={editingProject.budget}
+                      value={editingProject.budget ?? ""}
                       onChange={(e) =>
                         setEditingProject({
                           ...editingProject,
-                          budget: Number.parseInt(e.target.value),
+                          budget: e.target.value
+                            ? Number.parseInt(e.target.value)
+                            : undefined,
                         })
                       }
                       className="mt-1.5 text-sm sm:text-base"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="edit-deadline" className="text-sm sm:text-base">Deadline</Label>
+                    <Label
+                      htmlFor="edit-deadline"
+                      className="text-sm sm:text-base"
+                    >
+                      Deadline
+                    </Label>
                     <Input
                       id="edit-deadline"
                       type="date"
-                      value={editingProject.deadline}
+                      value={editingProject.deadline ?? ""}
                       onChange={(e) =>
                         setEditingProject({
                           ...editingProject,
@@ -931,9 +1041,14 @@ export default function CustomerProjectsPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <Label htmlFor="edit-priority" className="text-sm sm:text-base">Priority</Label>
+                    <Label
+                      htmlFor="edit-priority"
+                      className="text-sm sm:text-base"
+                    >
+                      Priority
+                    </Label>
                     <Select
-                      value={editingProject.priority}
+                      value={editingProject.priority ?? ""}
                       onValueChange={(value) =>
                         setEditingProject({
                           ...editingProject,
@@ -952,9 +1067,14 @@ export default function CustomerProjectsPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="edit-category" className="text-sm sm:text-base">Category</Label>
+                    <Label
+                      htmlFor="edit-category"
+                      className="text-sm sm:text-base"
+                    >
+                      Category
+                    </Label>
                     <Select
-                      value={editingProject.category}
+                      value={editingProject.category ?? ""}
                       onValueChange={(value) =>
                         setEditingProject({
                           ...editingProject,
@@ -989,7 +1109,7 @@ export default function CustomerProjectsPage() {
                   <input
                     type="checkbox"
                     id="edit-urgent"
-                    checked={editingProject.isUrgent}
+                    checked={editingProject.isUrgent ?? false}
                     onChange={(e) =>
                       setEditingProject({
                         ...editingProject,
@@ -998,10 +1118,15 @@ export default function CustomerProjectsPage() {
                     }
                     className="rounded"
                   />
-                  <Label htmlFor="edit-urgent" className="text-sm sm:text-base">Mark as urgent</Label>
+                  <Label htmlFor="edit-urgent" className="text-sm sm:text-base">
+                    Mark as urgent
+                  </Label>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 pt-3 sm:pt-4">
-                  <Button onClick={handleSaveProject} className="flex-1 sm:flex-initial text-sm sm:text-base">
+                  <Button
+                    onClick={handleSaveProject}
+                    className="flex-1 sm:flex-initial text-sm sm:text-base"
+                  >
                     Save Changes
                   </Button>
                   <Button

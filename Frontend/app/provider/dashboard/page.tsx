@@ -25,12 +25,85 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ProviderLayout } from "@/components/provider-layout";
-import { getProviderProjectStats, getProviderProjects, getProviderRecommendedOpportunities, getProviderPerformanceMetrics, getProfileImageUrl } from "@/lib/api";
+import {
+  getProviderProjectStats,
+  getProviderProjects,
+  getProviderRecommendedOpportunities,
+  getProviderPerformanceMetrics,
+  getProfileImageUrl,
+} from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+
+type ProjectCustomer = {
+  id?: string;
+  name?: string;
+  email?: string;
+  customerProfile?: {
+    profileImageUrl?: string;
+    industry?: string;
+    location?: string;
+    website?: string;
+  };
+  profileImageUrl?: string;
+};
+
+type NextMilestone = {
+  title?: string;
+  description?: string;
+};
+
+type ProviderProject = {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  category?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  approvedPrice?: number;
+  progress?: number;
+  completedMilestones?: number;
+  totalMilestones?: number;
+  timeline?: string;
+  createdAt?: string;
+  customer?: ProjectCustomer;
+  nextMilestone?: NextMilestone;
+};
+
+type OpportunityCustomer = {
+  id?: string;
+  name?: string;
+  email?: string;
+  isVerified?: boolean;
+  createdAt?: string;
+  customerProfile?: {
+    profileImageUrl?: string;
+    location?: string;
+    companySize?: string;
+    industry?: string;
+    projectsPosted?: number;
+    totalSpend?: number | string;
+  };
+};
+
+type RecommendedOpportunity = {
+  id: string;
+  title: string;
+  description?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  timeline?: string;
+  skills?: string[];
+  category?: string;
+  proposalCount?: number;
+  matchScore?: number | null;
+  aiExplanation?: string | null;
+  customer?: OpportunityCustomer;
+};
 
 export default function ProviderDashboard() {
   const { toast } = useToast();
-  
+
   // Stats state
   const [stats, setStats] = useState({
     activeProjects: 0,
@@ -52,12 +125,12 @@ export default function ProviderDashboard() {
   const [performanceLoading, setPerformanceLoading] = useState(true);
 
   // Active projects state
-  const [activeProjects, setActiveProjects] = useState([]);
+  const [activeProjects, setActiveProjects] = useState<ProviderProject[]>([]);
   const [activeProjectsLoading, setActiveProjectsLoading] = useState(true);
 
-  const [recommendedOpportunities, setRecommendedOpportunities] = useState<Array<Record<string, unknown>>>(
-    []
-  );
+  const [recommendedOpportunities, setRecommendedOpportunities] = useState<
+    RecommendedOpportunity[]
+  >([]);
   const [loadingOpportunities, setLoadingOpportunities] = useState(true);
   const [errorOpportunities, setErrorOpportunities] = useState<string | null>(
     null
@@ -66,7 +139,9 @@ export default function ProviderDashboard() {
     cachedAt: number | null;
     nextRefreshAt: number | null;
   }>({ cachedAt: null, nextRefreshAt: null });
-  const [expandedOpportunityId, setExpandedOpportunityId] = useState<string | null>(null);
+  const [expandedOpportunityId, setExpandedOpportunityId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -87,7 +162,7 @@ export default function ProviderDashboard() {
         const projectsResponse = await getProviderProjects({
           page: 1,
           limit: 5,
-          status: "IN_PROGRESS"
+          status: "IN_PROGRESS",
         });
         if (projectsResponse.success) {
           setActiveProjects(projectsResponse.projects || []);
@@ -95,9 +170,12 @@ export default function ProviderDashboard() {
 
         // Fetch recommended opportunities
         try {
-          const recommendationsResponse = await getProviderRecommendedOpportunities();
+          const recommendationsResponse =
+            await getProviderRecommendedOpportunities();
           if (recommendationsResponse.success) {
-            setRecommendedOpportunities(recommendationsResponse.recommendations || []);
+            setRecommendedOpportunities(
+              recommendationsResponse.recommendations || []
+            );
             setRecommendationsCacheInfo({
               cachedAt: recommendationsResponse.cachedAt,
               nextRefreshAt: recommendationsResponse.nextRefreshAt,
@@ -128,13 +206,12 @@ export default function ProviderDashboard() {
             responseRate: "85%",
           });
         }
-
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         toast({
           title: "Error",
           description: "Failed to load dashboard data",
-          variant: "destructive"
+          variant: "destructive",
         });
       } finally {
         setStatsLoading(false);
@@ -305,7 +382,7 @@ export default function ProviderDashboard() {
                       </div>
                     ))
                   ) : activeProjects.length > 0 ? (
-                    activeProjects.map((project: Record<string, unknown>) => (
+                    activeProjects.map((project) => (
                       <Link
                         key={project.id}
                         href={`/provider/projects/${project.id}`}
@@ -315,7 +392,10 @@ export default function ProviderDashboard() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
+                                src={getProfileImageUrl(
+                                  project.customer?.customerProfile
+                                    ?.profileImageUrl
+                                )}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}
@@ -325,8 +405,10 @@ export default function ProviderDashboard() {
                               <h4 className="font-semibold text-gray-900">
                                 {project.title}
                               </h4>
-                              <Link 
-                                href={`/provider/companies/${project.customer?.id}`}
+                              <Link
+                                href={`/provider/companies/${
+                                  project.customer?.id || ""
+                                }`}
                                 onClick={(e) => e.stopPropagation()}
                                 className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
                               >
@@ -337,22 +419,26 @@ export default function ProviderDashboard() {
                                   In Progress
                                 </Badge>
                                 <span className="text-xs text-gray-500">
-                                  Timeline: {project.timeline || "Not specified"}
+                                  Timeline:{" "}
+                                  {project.timeline || "Not specified"}
                                 </span>
                               </div>
                               {project.nextMilestone && (
                                 <p className="text-xs text-blue-600 mt-1">
-                                  Next: {project.nextMilestone.title}
+                                  Next: {project.nextMilestone.title || ""}
                                 </p>
                               )}
                             </div>
                           </div>
                           <div className="text-right">
                             <p className="font-semibold text-gray-900">
-                              {project.approvedPrice 
+                              {project.approvedPrice
                                 ? `RM${project.approvedPrice.toLocaleString()}`
-                                : `RM${project.budgetMin?.toLocaleString() || "0"} - RM${project.budgetMax?.toLocaleString() || "0"}`
-                              }
+                                : `RM${
+                                    project.budgetMin?.toLocaleString() || "0"
+                                  } - RM${
+                                    project.budgetMax?.toLocaleString() || "0"
+                                  }`}
                             </p>
                             <div className="mt-2 w-24">
                               <Progress
@@ -381,45 +467,72 @@ export default function ProviderDashboard() {
               <CardHeader className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                   <div className="flex-1">
-                    <CardTitle className="text-lg sm:text-xl">Recommended Opportunities</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl">
+                      Recommended Opportunities
+                    </CardTitle>
                     <CardDescription className="text-xs sm:text-sm mt-1">
                       AI-matched projects based on your skills and preferences
                     </CardDescription>
                   </div>
-                  <Link href="/provider/opportunities" className="w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  <Link
+                    href="/provider/opportunities"
+                    className="w-full sm:w-auto"
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                    >
                       Browse All
                     </Button>
                   </Link>
                 </div>
-                {recommendationsCacheInfo.cachedAt && recommendationsCacheInfo.nextRefreshAt && (
-                  <div className="text-xs text-gray-500 mt-2 sm:mt-3">
-                    {(() => {
-                      const now = Date.now();
-                      const cachedAt = recommendationsCacheInfo.cachedAt;
-                      const nextRefreshAt = recommendationsCacheInfo.nextRefreshAt;
-                      const ageMs = now - cachedAt;
-                      const remainingMs = nextRefreshAt - now;
-                      
-                      const ageMinutes = Math.floor(ageMs / 60000);
-                      const remainingMinutes = Math.floor(remainingMs / 60000);
-                      const remainingHours = Math.floor(remainingMinutes / 60);
-                      const remainingMins = remainingMinutes % 60;
-                      
-                      return (
-                        <>
-                          <span>Updated: {ageMinutes} minute{ageMinutes !== 1 ? 's' : ''} ago</span>
-                          {remainingMs > 0 && (
-                            <>
-                              {" • "}
-                              <span>Next refresh: in {remainingHours > 0 ? `${remainingHours} hour${remainingHours !== 1 ? 's' : ''} ` : ''}{remainingMins} minute{remainingMins !== 1 ? 's' : ''}</span>
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
+                {recommendationsCacheInfo.cachedAt &&
+                  recommendationsCacheInfo.nextRefreshAt && (
+                    <div className="text-xs text-gray-500 mt-2 sm:mt-3">
+                      {(() => {
+                        const now = Date.now();
+                        const cachedAt = recommendationsCacheInfo.cachedAt;
+                        const nextRefreshAt =
+                          recommendationsCacheInfo.nextRefreshAt;
+                        const ageMs = now - cachedAt;
+                        const remainingMs = nextRefreshAt - now;
+
+                        const ageMinutes = Math.floor(ageMs / 60000);
+                        const remainingMinutes = Math.floor(
+                          remainingMs / 60000
+                        );
+                        const remainingHours = Math.floor(
+                          remainingMinutes / 60
+                        );
+                        const remainingMins = remainingMinutes % 60;
+
+                        return (
+                          <>
+                            <span>
+                              Updated: {ageMinutes} minute
+                              {ageMinutes !== 1 ? "s" : ""} ago
+                            </span>
+                            {remainingMs > 0 && (
+                              <>
+                                {" • "}
+                                <span>
+                                  Next refresh: in{" "}
+                                  {remainingHours > 0
+                                    ? `${remainingHours} hour${
+                                        remainingHours !== 1 ? "s" : ""
+                                      } `
+                                    : ""}
+                                  {remainingMins} minute
+                                  {remainingMins !== 1 ? "s" : ""}
+                                </span>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
                 <div className="space-y-3 sm:space-y-4">
@@ -436,8 +549,9 @@ export default function ProviderDashboard() {
                       No recommended opportunities found. Check back later!
                     </div>
                   ) : (
-                    recommendedOpportunities.map((opportunity: Record<string, unknown>) => {
-                      const isExpanded = expandedOpportunityId === opportunity.id;
+                    recommendedOpportunities.map((opportunity) => {
+                      const isExpanded =
+                        expandedOpportunityId === opportunity.id;
                       return (
                         <div
                           key={opportunity.id}
@@ -448,7 +562,9 @@ export default function ProviderDashboard() {
                             <div className="absolute top-2 right-2 sm:top-3 sm:right-3 opacity-0 lg:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                               <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full text-xs font-medium shadow-md">
                                 <Sparkles className="w-3 h-3" />
-                                <span className="hidden sm:inline">AI Insights</span>
+                                <span className="hidden sm:inline">
+                                  AI Insights
+                                </span>
                               </div>
                             </div>
                           )}
@@ -459,23 +575,26 @@ export default function ProviderDashboard() {
                                 <h4 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors text-base sm:text-lg break-words">
                                   {opportunity.title}
                                 </h4>
-                                {opportunity.matchScore !== undefined && (
-                                  <Badge
-                                    className={`text-xs font-semibold shrink-0 ${
-                                      opportunity.matchScore >= 80
-                                        ? "bg-green-100 text-green-700 border-green-300"
-                                        : opportunity.matchScore >= 60
-                                        ? "bg-blue-100 text-blue-700 border-blue-300"
-                                        : "bg-yellow-100 text-yellow-700 border-yellow-300"
-                                    }`}
-                                  >
-                                    {opportunity.matchScore}% match
-                                  </Badge>
-                                )}
+                                {opportunity.matchScore !== undefined &&
+                                  opportunity.matchScore !== null && (
+                                    <Badge
+                                      className={`text-xs font-semibold shrink-0 ${
+                                        opportunity.matchScore >= 80
+                                          ? "bg-green-100 text-green-700 border-green-300"
+                                          : opportunity.matchScore >= 60
+                                          ? "bg-blue-100 text-blue-700 border-blue-300"
+                                          : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                                      }`}
+                                    >
+                                      {opportunity.matchScore}% match
+                                    </Badge>
+                                  )}
                               </div>
                               <p className="text-xs sm:text-sm font-medium text-gray-700 mt-1">
-                                RM {opportunity.budgetMin?.toLocaleString()} - RM{" "}
-                                {opportunity.budgetMax?.toLocaleString()}
+                                RM{" "}
+                                {opportunity.budgetMin?.toLocaleString() || "0"}{" "}
+                                - RM{" "}
+                                {opportunity.budgetMax?.toLocaleString() || "0"}
                               </p>
                               {opportunity.customer?.name && (
                                 <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -496,20 +615,40 @@ export default function ProviderDashboard() {
                           {opportunity.aiExplanation && (
                             <div className="mb-3 sm:mb-4 overflow-hidden">
                               {/* Collapsed State - Desktop hover, Mobile click */}
-                              <div className={`lg:group-hover:hidden ${isExpanded ? 'hidden' : 'block'} transition-all duration-300`}>
-                                <button 
-                                  onClick={() => setExpandedOpportunityId(isExpanded ? null : opportunity.id)}
+                              <div
+                                className={`lg:group-hover:hidden ${
+                                  isExpanded ? "hidden" : "block"
+                                } transition-all duration-300`}
+                              >
+                                <button
+                                  onClick={() =>
+                                    setExpandedOpportunityId(
+                                      isExpanded ? null : opportunity.id
+                                    )
+                                  }
                                   className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700 active:text-blue-800 font-medium touch-manipulation"
                                 >
                                   <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                                  <span className="hidden sm:inline">Hover to see AI insights</span>
-                                  <span className="sm:hidden">Tap to see AI insights</span>
-                                  <ChevronRight className={`w-3 h-3 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  <span className="hidden sm:inline">
+                                    Hover to see AI insights
+                                  </span>
+                                  <span className="sm:hidden">
+                                    Tap to see AI insights
+                                  </span>
+                                  <ChevronRight
+                                    className={`w-3 h-3 shrink-0 transition-transform ${
+                                      isExpanded ? "rotate-90" : ""
+                                    }`}
+                                  />
                                 </button>
                               </div>
 
                               {/* Expanded State - Shows on hover (desktop) or click (mobile) */}
-                              <div className={`lg:group-hover:block ${isExpanded ? 'block' : 'hidden'} animate-in fade-in slide-in-from-top-2 duration-300`}>
+                              <div
+                                className={`lg:group-hover:block ${
+                                  isExpanded ? "block" : "hidden"
+                                } animate-in fade-in slide-in-from-top-2 duration-300`}
+                              >
                                 <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-lg border-2 border-blue-200 shadow-md">
                                   <div className="flex items-center gap-2 mb-2 sm:mb-3">
                                     <div className="p-1.5 bg-blue-100 rounded-lg shrink-0">
@@ -520,7 +659,9 @@ export default function ProviderDashboard() {
                                     </p>
                                     {/* Close button for mobile */}
                                     <button
-                                      onClick={() => setExpandedOpportunityId(null)}
+                                      onClick={() =>
+                                        setExpandedOpportunityId(null)
+                                      }
                                       className="ml-auto lg:hidden text-blue-600 hover:text-blue-800 p-1"
                                       aria-label="Close insights"
                                     >
@@ -528,16 +669,28 @@ export default function ProviderDashboard() {
                                     </button>
                                   </div>
                                   <div className="text-xs sm:text-sm text-blue-800 space-y-1.5 sm:space-y-2">
-                                    {opportunity.aiExplanation.split('\n').filter(line => line.trim()).map((line, index) => {
-                                      // Remove bullet point markers if present and format as list item
-                                      const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
-                                      return cleanLine ? (
-                                        <div key={index} className="flex items-start gap-2 sm:gap-3">
-                                          <span className="text-blue-600 mt-0.5 font-bold flex-shrink-0">•</span>
-                                          <span className="leading-relaxed break-words">{cleanLine}</span>
-                                        </div>
-                                      ) : null;
-                                    })}
+                                    {opportunity.aiExplanation
+                                      .split("\n")
+                                      .filter((line: string) => line.trim())
+                                      .map((line: string, index: number) => {
+                                        // Remove bullet point markers if present and format as list item
+                                        const cleanLine = line
+                                          .replace(/^[•\-\*]\s*/, "")
+                                          .trim();
+                                        return cleanLine ? (
+                                          <div
+                                            key={index}
+                                            className="flex items-start gap-2 sm:gap-3"
+                                          >
+                                            <span className="text-blue-600 mt-0.5 font-bold flex-shrink-0">
+                                              •
+                                            </span>
+                                            <span className="leading-relaxed break-words">
+                                              {cleanLine}
+                                            </span>
+                                          </div>
+                                        ) : null;
+                                      })}
                                   </div>
                                 </div>
                               </div>
@@ -545,15 +698,17 @@ export default function ProviderDashboard() {
                           )}
 
                           <div className="flex flex-wrap gap-1.5 mb-3 sm:mb-4">
-                            {(opportunity.skills || []).slice(0, 6).map((skill: string) => (
-                              <Badge
-                                key={skill}
-                                variant="secondary"
-                                className="text-xs group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors border"
-                              >
-                                {skill}
-                              </Badge>
-                            ))}
+                            {(opportunity.skills || [])
+                              .slice(0, 6)
+                              .map((skill: string) => (
+                                <Badge
+                                  key={skill}
+                                  variant="secondary"
+                                  className="text-xs group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors border"
+                                >
+                                  {skill}
+                                </Badge>
+                              ))}
                             {(opportunity.skills || []).length > 6 && (
                               <Badge
                                 variant="secondary"
@@ -566,20 +721,30 @@ export default function ProviderDashboard() {
 
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pt-3 border-t border-gray-200 group-hover:border-blue-200 transition-colors">
                             <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-600 w-full sm:w-auto">
-                              <span className="capitalize font-medium">{opportunity.category}</span>
+                              <span className="capitalize font-medium">
+                                {opportunity.category || ""}
+                              </span>
                               {opportunity.timeline && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="w-3 h-3 shrink-0" />
-                                  <span className="break-words">{opportunity.timeline}</span>
+                                  <span className="break-words">
+                                    {opportunity.timeline}
+                                  </span>
                                 </span>
                               )}
                               {opportunity.proposalCount !== undefined && (
-                                <span className="whitespace-nowrap">{opportunity.proposalCount} proposal{opportunity.proposalCount !== 1 ? 's' : ''}</span>
+                                <span className="whitespace-nowrap">
+                                  {opportunity.proposalCount} proposal
+                                  {opportunity.proposalCount !== 1 ? "s" : ""}
+                                </span>
                               )}
                             </div>
-                            <Link href={`/provider/opportunities/${opportunity.id}`} className="w-full sm:w-auto">
-                              <Button 
-                                size="sm" 
+                            <Link
+                              href={`/provider/opportunities/${opportunity.id}`}
+                              className="w-full sm:w-auto"
+                            >
+                              <Button
+                                size="sm"
                                 className="w-full sm:w-auto group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md"
                               >
                                 <span>View Details</span>
@@ -604,7 +769,6 @@ export default function ProviderDashboard() {
                 <CardTitle>Performance Metrics</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Total Projects</span>
                   <span className="font-semibold">
@@ -752,4 +916,3 @@ export default function ProviderDashboard() {
     </ProviderLayout>
   );
 }
-

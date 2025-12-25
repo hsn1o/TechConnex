@@ -2,6 +2,8 @@
 import { ProviderLayout } from "@/components/provider-layout";
 import FindCompaniesClient from "@/components/provider/companies/FindCompaniesClient";
 
+export const dynamic = 'force-dynamic';
+
 export default async function CompaniesPage() {
   let locations = [
     { value: "all", label: "All Locations" },

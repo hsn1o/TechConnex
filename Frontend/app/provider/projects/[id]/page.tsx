@@ -1471,18 +1471,19 @@ export default function ProviderProjectDetailsPage() {
                                   </div>
                                 ) : null}
 
-                                {(() => {
+                                {/* FIX 1: Start Deliverables */}
+                                {/* Added explicit return type to IIFE */}
+                                {((): React.ReactNode => {
                                   if (!milestone.startDeliverables) return null;
 
                                   const sd = milestone.startDeliverables;
-                                  let displayText = "";
+                                  let displayText: string = "";
 
                                   if (typeof sd === "string") {
                                     displayText = sd;
                                   } else if (
                                     typeof sd === "object" &&
-                                    sd !== null &&
-                                    "description" in sd
+                                    sd !== null
                                   ) {
                                     const desc = (sd as Record<string, unknown>)
                                       .description;
@@ -1509,37 +1510,44 @@ export default function ProviderProjectDetailsPage() {
                                   );
                                 })()}
 
-                                {/* Show submit deliverables if available (persists even after status changes) */}
-                                {milestone.submitDeliverables && (
+                                {/* FIX 2: Submit Deliverables (Main Loop) */}
+                                {/* Added !! to force boolean check to avoid returning 'unknown' */}
+                                {!!milestone.submitDeliverables && (
                                   <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                                     <p className="text-sm font-medium text-purple-900 mb-1">
                                       ✅ Deliverables / Completion Notes (When
                                       Submitting):
                                     </p>
                                     <p className="text-sm text-purple-800 whitespace-pre-wrap">
-                                      {(() => {
-                                        if (
-                                          typeof milestone.submitDeliverables ===
-                                            "object" &&
-                                          milestone.submitDeliverables &&
-                                          "description" in
-                                            milestone.submitDeliverables &&
-                                          typeof milestone.submitDeliverables
-                                            .description === "string"
+                                      {((): React.ReactNode => {
+                                        const sd = milestone.submitDeliverables;
+                                        let text: string = "";
+                                        if (typeof sd === "string") {
+                                          text = sd;
+                                        } else if (
+                                          typeof sd === "object" &&
+                                          sd !== null &&
+                                          "description" in sd
                                         ) {
-                                          return milestone.submitDeliverables
-                                            .description;
+                                          const desc = (
+                                            sd as Record<string, unknown>
+                                          ).description;
+                                          text =
+                                            typeof desc === "string"
+                                              ? desc
+                                              : String(desc || "");
+                                        } else {
+                                          text = String(sd || "");
                                         }
-                                        return String(
-                                          milestone.submitDeliverables ?? ""
-                                        );
+                                        return text;
                                       })()}
                                     </p>
                                   </div>
                                 )}
 
-                                {/* Show submission note if available (persists even after status changes) */}
-                                {milestone.submissionNote && (
+                                {/* Show submission note if available */}
+                                {/* Added !! to force boolean check */}
+                                {!!milestone.submissionNote && (
                                   <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <p className="text-sm font-medium text-blue-900 mb-1">
                                       📝 Submission Note:
@@ -1550,11 +1558,11 @@ export default function ProviderProjectDetailsPage() {
                                   </div>
                                 )}
 
-                                {/* Show latest requested changes reason if available (persists even after status changes) */}
+                                {/* Show latest requested changes reason if available */}
                                 {milestone.submissionHistory &&
                                   Array.isArray(milestone.submissionHistory) &&
                                   milestone.submissionHistory.length > 0 &&
-                                  (() => {
+                                  ((): React.ReactNode => {
                                     const latestRequest = milestone
                                       .submissionHistory[
                                       milestone.submissionHistory.length - 1
@@ -1601,8 +1609,9 @@ export default function ProviderProjectDetailsPage() {
                                     return null;
                                   })()}
 
-                                {/* Show attachment if available (persists even after status changes) */}
-                                {milestone.submissionAttachmentUrl && (
+                                {/* Show attachment if available */}
+                                {/* Added !! to force boolean check */}
+                                {!!milestone.submissionAttachmentUrl && (
                                   <div className="mt-3">
                                     <div className="flex items-center gap-2 mb-2">
                                       <Paperclip className="w-4 h-4 text-gray-600" />
@@ -1610,9 +1619,9 @@ export default function ProviderProjectDetailsPage() {
                                         📎 Submission Attachment
                                       </span>
                                     </div>
-                                    {(() => {
+                                    {((): React.ReactNode => {
                                       const normalized =
-                                        milestone.submissionAttachmentUrl.replace(
+                                        milestone.submissionAttachmentUrl!.replace(
                                           /\\/g,
                                           "/"
                                         );
@@ -1648,7 +1657,7 @@ export default function ProviderProjectDetailsPage() {
                                                     const downloadUrl =
                                                       await getR2DownloadUrl(
                                                         milestone.submissionAttachmentUrl as string
-                                                      ); // Use original URL/key
+                                                      );
                                                     window.open(
                                                       downloadUrl.downloadUrl,
                                                       "_blank"
@@ -1690,7 +1699,7 @@ export default function ProviderProjectDetailsPage() {
                                   </div>
                                 )}
 
-                                {/* Show submission history if available (persists even after status changes) */}
+                                {/* Show submission history if available */}
                                 {milestone.submissionHistory &&
                                   Array.isArray(milestone.submissionHistory) &&
                                   milestone.submissionHistory.length > 0 && (
@@ -1708,8 +1717,6 @@ export default function ProviderProjectDetailsPage() {
                                             history: Record<string, unknown>,
                                             idx: number
                                           ) => {
-                                            // Calculate revision number: first submission is revision 1, then 2, 3, etc.
-                                            // The revision number in history is the one BEFORE it was rejected
                                             const revisionNumberValue =
                                               history.revisionNumber;
                                             const revisionNumber: number =
@@ -1767,24 +1774,51 @@ export default function ProviderProjectDetailsPage() {
                                                   </div>
                                                 ) : null}
 
-                                                {submitDeliverables ? (
+                                                {/* FIX 3: History Submit Deliverables */}
+                                                {/* Added boolean cast check */}
+                                                {!!submitDeliverables ? (
                                                   <div className="mb-2">
                                                     <p className="text-xs font-medium text-gray-700 mb-1">
                                                       Deliverables:
                                                     </p>
                                                     <p className="text-xs text-gray-600 whitespace-pre-wrap">
-                                                      {typeof submitDeliverables ===
-                                                        "object" &&
-                                                      submitDeliverables &&
-                                                      "description" in
-                                                        submitDeliverables &&
-                                                      typeof submitDeliverables.description ===
-                                                        "string"
-                                                        ? submitDeliverables.description
-                                                        : String(
+                                                      {((): React.ReactNode => {
+                                                        let text: string = "";
+                                                        if (
+                                                          typeof submitDeliverables ===
+                                                          "string"
+                                                        ) {
+                                                          text =
+                                                            submitDeliverables;
+                                                        } else if (
+                                                          typeof submitDeliverables ===
+                                                            "object" &&
+                                                          submitDeliverables !==
+                                                            null &&
+                                                          "description" in
+                                                            submitDeliverables
+                                                        ) {
+                                                          const desc = (
+                                                            submitDeliverables as Record<
+                                                              string,
+                                                              unknown
+                                                            >
+                                                          ).description;
+                                                          text =
+                                                            typeof desc ===
+                                                            "string"
+                                                              ? desc
+                                                              : String(
+                                                                  desc || ""
+                                                                );
+                                                        } else {
+                                                          text = String(
                                                             submitDeliverables ||
                                                               ""
-                                                          )}
+                                                          );
+                                                        }
+                                                        return text;
+                                                      })()}
                                                     </p>
                                                   </div>
                                                 ) : null}
@@ -1809,7 +1843,7 @@ export default function ProviderProjectDetailsPage() {
                                                     <p className="text-xs font-medium text-gray-700 mb-1">
                                                       Attachment:
                                                     </p>
-                                                    {(() => {
+                                                    {((): React.ReactNode => {
                                                       const attachmentUrl =
                                                         getAttachmentUrl(
                                                           submissionAttachmentUrl
@@ -1848,7 +1882,7 @@ export default function ProviderProjectDetailsPage() {
                                                                     const downloadUrl =
                                                                       await getR2DownloadUrl(
                                                                         submissionAttachmentUrl
-                                                                      ); // Use original URL/key
+                                                                      );
                                                                     window.open(
                                                                       downloadUrl.downloadUrl,
                                                                       "_blank"

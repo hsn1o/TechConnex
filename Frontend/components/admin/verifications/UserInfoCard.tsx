@@ -1,21 +1,22 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { KycUser } from "./types"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { KycUser } from "./types";
 
 interface UserInfoCardProps {
-  user: KycUser
+  user: KycUser;
 }
 
 export function UserInfoCard({ user }: UserInfoCardProps) {
-  const profileCreatedAt = user.profile?.createdAt
-    ? typeof profileCreatedAt === "string"
-      ? profileCreatedAt
-      : typeof profileCreatedAt === "number"
-        ? new Date(profileCreatedAt).toISOString()
-        : null
-    : null
+  const rawCreatedAt = user.profile?.createdAt;
+  const profileCreatedAt = rawCreatedAt
+    ? typeof rawCreatedAt === "string"
+      ? rawCreatedAt
+      : typeof rawCreatedAt === "number"
+      ? new Date(rawCreatedAt).toISOString()
+      : null
+    : null;
 
   return (
     <Card>
@@ -49,6 +50,5 @@ export function UserInfoCard({ user }: UserInfoCardProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
-

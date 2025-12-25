@@ -2,6 +2,8 @@
 import { CustomerLayout } from "@/components/customer-layout";
 import FindProvidersClient from "@/components/customer/providers/FindProvidersClient";
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProvidersPage() {
   
 

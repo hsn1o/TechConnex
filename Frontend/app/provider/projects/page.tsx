@@ -33,16 +33,57 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ProviderLayout } from "@/components/provider-layout";
-import { getProviderProjects, getProviderProjectStats, exportProviderProjects, getProfileImageUrl } from "@/lib/api";
+import {
+  getProviderProjects,
+  getProviderProjectStats,
+  exportProviderProjects,
+  getProfileImageUrl,
+} from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+type ProjectCustomer = {
+  id?: string;
+  name?: string;
+  email?: string;
+  customerProfile?: {
+    profileImageUrl?: string;
+    industry?: string;
+    location?: string;
+    website?: string;
+  };
+  profileImageUrl?: string;
+};
+
+type NextMilestone = {
+  title?: string;
+  description?: string;
+};
+
+type ProviderProject = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  category: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  approvedPrice?: number;
+  progress?: number;
+  completedMilestones?: number;
+  totalMilestones?: number;
+  timeline?: string;
+  createdAt: string;
+  customer?: ProjectCustomer;
+  nextMilestone?: NextMilestone;
+};
 
 export default function ProviderProjectsPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [projects, setProjects] = useState<Array<Record<string, unknown>>>([]);
+  const [projects, setProjects] = useState<ProviderProject[]>([]);
   const [stats, setStats] = useState({
     totalProjects: 0,
     activeProjects: 0,
@@ -74,7 +115,7 @@ export default function ProviderProjectsPage() {
         ]);
 
         if (projectsResponse.success) {
-          setProjects(projectsResponse.projects || []);
+          setProjects((projectsResponse.projects || []) as ProviderProject[]);
         }
 
         if (statsResponse.success) {
@@ -139,14 +180,15 @@ export default function ProviderProjectsPage() {
     });
   };
   const handleContact = (
-    providerId: string,
-    providerName: string,
-    providerAvatar: string
+    customerId?: string,
+    customerName?: string,
+    customerAvatar?: string
   ) => {
+    if (!customerId || !customerName) return;
     router.push(
-      `/provider/messages?userId=${providerId}&name=${encodeURIComponent(
-        providerName
-      )}&avatar=${encodeURIComponent(providerAvatar || "")}`
+      `/provider/messages?userId=${customerId}&name=${encodeURIComponent(
+        customerName
+      )}&avatar=${encodeURIComponent(customerAvatar || "")}`
     );
   };
   // Since we're filtering on the server side, we can use projects directly
@@ -170,7 +212,10 @@ export default function ProviderProjectsPage() {
                 try {
                   const blob = await exportProviderProjects({
                     search: searchQuery,
-                    status: statusFilter !== "all" ? statusFilter.toUpperCase() : undefined,
+                    status:
+                      statusFilter !== "all"
+                        ? statusFilter.toUpperCase()
+                        : undefined,
                   });
                   const url = URL.createObjectURL(blob);
                   const link = document.createElement("a");
@@ -187,7 +232,10 @@ export default function ProviderProjectsPage() {
                 } catch (err) {
                   toast({
                     title: "Export failed",
-                    description: err instanceof Error ? err.message : "Failed to export projects",
+                    description:
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to export projects",
                     variant: "destructive",
                   });
                 }
@@ -402,7 +450,10 @@ export default function ProviderProjectsPage() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
+                                src={getProfileImageUrl(
+                                  project.customer?.customerProfile
+                                    ?.profileImageUrl
+                                )}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}
@@ -425,8 +476,10 @@ export default function ProviderProjectsPage() {
                               {project.approvedPrice
                                 ? formatCurrency(project.approvedPrice)
                                 : `${formatCurrency(
-                                    project.budgetMin
-                                  )} - ${formatCurrency(project.budgetMax)}`}
+                                    project.budgetMin ?? 0
+                                  )} - ${formatCurrency(
+                                    project.budgetMax ?? 0
+                                  )}`}
                             </p>
                             <p className="text-sm text-gray-500">
                               Created: {formatDate(project.createdAt)}
@@ -529,7 +582,10 @@ export default function ProviderProjectsPage() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
+                                src={getProfileImageUrl(
+                                  project.customer?.customerProfile
+                                    ?.profileImageUrl
+                                )}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}
@@ -552,8 +608,10 @@ export default function ProviderProjectsPage() {
                               {project.approvedPrice
                                 ? formatCurrency(project.approvedPrice)
                                 : `${formatCurrency(
-                                    project.budgetMin
-                                  )} - ${formatCurrency(project.budgetMax)}`}
+                                    project.budgetMin ?? 0
+                                  )} - ${formatCurrency(
+                                    project.budgetMax ?? 0
+                                  )}`}
                             </p>
                             <p className="text-sm text-gray-500">
                               Created: {formatDate(project.createdAt)}
@@ -655,7 +713,10 @@ export default function ProviderProjectsPage() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
+                                src={getProfileImageUrl(
+                                  project.customer?.customerProfile
+                                    ?.profileImageUrl
+                                )}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}
@@ -678,8 +739,10 @@ export default function ProviderProjectsPage() {
                               {project.approvedPrice
                                 ? formatCurrency(project.approvedPrice)
                                 : `${formatCurrency(
-                                    project.budgetMin
-                                  )} - ${formatCurrency(project.budgetMax)}`}
+                                    project.budgetMin ?? 0
+                                  )} - ${formatCurrency(
+                                    project.budgetMax ?? 0
+                                  )}`}
                             </p>
                             <p className="text-sm text-gray-500">
                               Completed: {formatDate(project.createdAt)}
@@ -743,7 +806,10 @@ export default function ProviderProjectsPage() {
                           <div className="flex items-center space-x-4">
                             <Avatar>
                               <AvatarImage
-                                src={getProfileImageUrl(project.customer?.customerProfile?.profileImageUrl)}
+                                src={getProfileImageUrl(
+                                  project.customer?.customerProfile
+                                    ?.profileImageUrl
+                                )}
                               />
                               <AvatarFallback>
                                 {project.customer?.name?.charAt(0) || "C"}
@@ -766,8 +832,10 @@ export default function ProviderProjectsPage() {
                               {project.approvedPrice
                                 ? formatCurrency(project.approvedPrice)
                                 : `${formatCurrency(
-                                    project.budgetMin
-                                  )} - ${formatCurrency(project.budgetMax)}`}
+                                    project.budgetMin ?? 0
+                                  )} - ${formatCurrency(
+                                    project.budgetMax ?? 0
+                                  )}`}
                             </p>
                             <p className="text-sm text-gray-500">
                               Created: {formatDate(project.createdAt)}

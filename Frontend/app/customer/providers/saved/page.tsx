@@ -32,22 +32,28 @@ type SavedProvider = {
 export default function SavedProvidersPage() {
   const [providers, setProviders] = useState<SavedProvider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setToken(localStorage.getItem("token") || "");
+    }
+  }, []);
 
   const getUserId = () => {
-    const userJson =
-      typeof window !== "undefined" ? localStorage.getItem("user") : null;
+    if (typeof window === "undefined") return "";
+    const userJson = localStorage.getItem("user");
     try {
       return userJson ? JSON.parse(userJson)?.id || "" : "";
     } catch {
       return "";
     }
   };
-  const token = localStorage.getItem("token") || "";
 
   const fetchSaved = useCallback(async () => {
     try {
       const userId = getUserId();
-      if (!userId) {
+      if (!userId || !token) {
         setProviders([]);
         setLoading(false);
         return;
@@ -59,7 +65,7 @@ export default function SavedProvidersPage() {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // ✅ token added here
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -79,7 +85,7 @@ export default function SavedProvidersPage() {
   const unsave = async (providerId: string) => {
     try {
       const userId = getUserId();
-      if (!userId) return;
+      if (!userId || !token) return;
       const res = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
@@ -108,14 +114,20 @@ export default function SavedProvidersPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Saved Providers
             </h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1">Providers you have bookmarked</p>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">
+              Providers you have bookmarked
+            </p>
           </div>
         </div>
 
         {loading ? (
-          <p className="text-sm sm:text-base text-gray-600 text-center py-8">Loading saved providers...</p>
+          <p className="text-sm sm:text-base text-gray-600 text-center py-8">
+            Loading saved providers...
+          </p>
         ) : providers.length === 0 ? (
-          <p className="text-sm sm:text-base text-gray-600 text-center py-8">You have no saved providers yet.</p>
+          <p className="text-sm sm:text-base text-gray-600 text-center py-8">
+            You have no saved providers yet.
+          </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
             {providers.map((provider) => (
@@ -126,10 +138,10 @@ export default function SavedProvidersPage() {
                 <CardHeader className="pb-3 sm:pb-4 p-4 sm:p-6">
                   <div className="flex items-start space-x-3 sm:space-x-4">
                     <Avatar className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0">
-                      <AvatarImage
-                        src={getProfileImageUrl(provider.avatar)}
-                      />
-                      <AvatarFallback className="text-xs sm:text-sm lg:text-base">{provider.name.charAt(0)}</AvatarFallback>
+                      <AvatarImage src={getProfileImageUrl(provider.avatar)} />
+                      <AvatarFallback className="text-xs sm:text-sm lg:text-base">
+                        {provider.name.charAt(0)}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
@@ -143,7 +155,7 @@ export default function SavedProvidersPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 text-xs sm:text-sm text-gray-500">
-                        <MapPin className="w-3 h-3 flex-shrink-0" /> 
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
                         <span className="truncate">{provider.location}</span>
                       </div>
                     </div>
@@ -153,7 +165,9 @@ export default function SavedProvidersPage() {
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-1">
                       <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 fill-current flex-shrink-0" />
-                      <span className="font-medium text-xs sm:text-sm">{provider.rating}</span>
+                      <span className="font-medium text-xs sm:text-sm">
+                        {provider.rating}
+                      </span>
                       <span className="text-xs sm:text-sm text-gray-500">
                         ({provider.reviewCount})
                       </span>
@@ -180,9 +194,17 @@ export default function SavedProvidersPage() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                    <Link href={`/customer/providers/${provider.id}`} className="flex-1">
-                      <Button size="sm" variant="outline" className="w-full text-xs sm:text-sm">
-                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> View Profile
+                    <Link
+                      href={`/customer/providers/${provider.id}`}
+                      className="flex-1"
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs sm:text-sm"
+                      >
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />{" "}
+                        View Profile
                       </Button>
                     </Link>
                     <Button
@@ -191,7 +213,8 @@ export default function SavedProvidersPage() {
                       onClick={() => unsave(provider.id)}
                       className="text-xs sm:text-sm w-full sm:w-auto"
                     >
-                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" /> Remove
+                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />{" "}
+                      Remove
                     </Button>
                   </div>
                 </CardContent>
