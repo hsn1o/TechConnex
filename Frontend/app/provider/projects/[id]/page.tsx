@@ -89,6 +89,7 @@ type ProjectProposal = {
   deliveryTime?: number;
 };
 
+
 type ProjectData = {
   id: string;
   title: string;
